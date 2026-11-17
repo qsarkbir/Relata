@@ -30,7 +30,7 @@
 - `npm run typecheck`: 型検査
 - `npm run lint`: ESLint
 
-作業を終える前に、`typecheck`、`lint`、`test` がすべて通ることを確かめる。
+作業を終える前に、`typecheck`、`lint`、`test` がすべて通ることを確かめる。ただし、他のエージェントと同じフォルダで作業しているときは、`npm test` と `npm run lint` を実行せず、設計書 §16.4 の「範囲を絞った確認」に替える（`npm test` は `src/` に一時ファイルを書くため）。全体の確認は統括役が最後に行う。
 
 ## TypeScript
 - `strict` と `noUncheckedIndexedAccess` を有効にする。

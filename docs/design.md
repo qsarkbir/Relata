@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 1.6（2026-11-18） |
+| 版 | 1.8（2026-11-18） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -47,6 +47,7 @@
 | D-14 | TypeScript は 6.0 系に固定する（`~6.0.3`）。7 系への移行は typescript-eslint が対応してから判断する | 7 系では typescript-eslint が動かず、層の境界の検査（§4.1）ができないため（T0-06 のレビューで判明） |
 | D-15 | 多言語対応（FR-UI-01）はライブラリを使わず、`src/i18n/` に型付きの辞書と純粋な翻訳関数を自作する。日本語の辞書を正とし、英語の辞書は同じキーをすべて持つことを型で強制する | 対象は日英の 2 言語で、複数形の規則なども要らない。React に依存しない関数にすれば、`render`（書き出しのラベル）からも使える（§4.1）。キーの打ち間違いと訳し漏れを型検査で防げる |
 | D-16 | 画面の言語の既定は日本語（`DEFAULT_LOCALE`）。ただし、ブラウザの言語の一覧が日本語にも英語にも当たらないときは英語（`FALLBACK_LOCALE`）にする | 主な利用者は西アジア史の研究者で、ブラウザの言語がアラビア語、ペルシア語、トルコ語などの人も多い。その人たちには日本語より英語のほうが読める見込みが高い（T0-11 のレビューで指摘） |
+| D-17 | Worker の起動は `src/workers/*.client.ts`、版番号と古い結果の破棄は `src/state/`、計算の中止は Worker の terminate で行う。レイアウトの純粋な算法は `src/core/layout/`（graph-algo）に置く。`render` は SVG を文字列で作り、文字の幅の測定は関数で受け取る。時間の再生の時計はアプリに 1 つだけ置き（state は `tick` などの更新の関数だけ、駆動は `src/app/` のフック）、地図は props で受け取る（§4.1、§7.3、§8.1、§8.5、§8.6、§9.2） | T0-13 の試運転で、graph-algo、renderer、map-geo から、設計書の書き方では担当や置き場所が決まらないと指摘されたため |
 
 ---
 
@@ -63,7 +64,7 @@
 | 地図 | MapLibre GL JS ＋ deck.gl | オープンソースで、時間アニメーション（TripsLayer）が得意 |
 | 地図の SVG 出力 | d3-geo | WebGL の画面はそのまま SVG にできないため |
 | Worker との通信 | Comlink | Worker の関数を普通の非同期関数として呼べる |
-| 表データの読み込み | Papa Parse（CSV）、SheetJS（Excel）、encoding-japanese（Shift_JIS） | 定番 |
+| 表データの読み込み | Papa Parse（CSV）、Excel は未定（進行表の R-05）。文字コードの変換は標準の `TextDecoder`（§11.1） | Papa Parse は定番。npm の SheetJS は版が古いため見直す |
 | PDF | jsPDF ＋ svg2pdf.js、Noto Sans JP と Noto Naskh Arabic（サブセット） | SVG からベクター PDF を作る。日本語とアラビア文字のフォントを埋め込む |
 | 文字の整形 | harfbuzzjs | PDF に書き出すとき、アラビア文字の連結形を正しく作るため（§11.2） |
 | テスト | Vitest（単体）、Playwright（E2E） | Vite と相性がよい |
@@ -81,16 +82,20 @@
 ### 4.1 層と依存の向き
 
 ```
-  views（React の画面）──→ state（Zustand）──→ core（純粋な TS）
-        │                                         ↑
-        ├──→ render（シーン → SVG/Canvas）───────────┤
-        └──→ map（MapLibre + deck.gl）──────────────┤
-  workers（指標・レイアウト・bundling）────────────────┤
-  io（読み込み・書き出し）─────────────────────────────┘
+  app ──→ views（React の画面）──→ state（Zustand）──→ core（純粋な TS）
+            │                       │
+            │                       └──→ workers/*.client.ts（Worker の起動）
+            ├──→ render（シーン → SVG 文字列）──→ core、i18n
+            └──→ map（MapLibre + deck.gl）──→ render、core
+  workers（指標・レイアウト・bundling）──→ render/bundling、core
+  io（読み込み・書き出し）──→ core（図の書き出しは render）
+  i18n（表示文字列）──→ core。render、views、app から使う
 ```
 
 - **`src/core/` は何にも依存しない。** DOM、React、ブラウザ API、`Date` を使わない。JSX も書かない（`.tsx` を置かない）。
 - **`src/render/` は React に依存しない。** 画面からも書き出し処理からも呼べるようにする。JSX も書かない。`core` と `i18n`（書き出しのラベル用）だけに依存し、`state`、`views`、`app`、`map`、`io`、`workers` を import しない。
+- **`src/state/` は画面に依存しない純粋なストア。** `core` と `workers/*.client.ts` に依存してよい。`*.worker.ts` を直接 import しない。DOM や `requestAnimationFrame` を使う処理（時間の再生の駆動など）は `app` か `views` に置き、state には更新の関数（`tick(dt)` など）だけを置く（§9.2）。views は Worker の client を直接呼ばず、state を通す。
+- **`src/map/` は `core` と `render`（`arrows/`、`bundling/` の型）に依存してよい。** `state`、`io`、`workers` は import しない。ストアの値と更新の関数は views から props で受け取る（§9.2）。この規則の ESLint での検査は、地図の作業を始める前に足す（進行表の R-11）。
 - **`src/io/` と `src/workers/` は画面に依存しない。** React、Zustand、`state`、`views`、`app` を import しない。`io/export` の図の部分は `render` を使う。`workers/bundling.worker.ts` は `render/bundling/` の算法を使う（§16.1 の分担による例外ではなく、上の図の「下向き」の依存として許す）。
 - **`src/i18n/` は React と画面とブラウザに依存しない。** `render` から使われるため（D-15）。React、Zustand、地図のライブラリ、`state`、`views`、`app`、`render`、`map`、`io`、`workers` を import せず、`navigator` などのブラウザのグローバルと `Date` を使わず、JSX を書かない。`core` には依存してよい。言語の判定に要る値（`navigator.languages` など）は呼ぶ側が渡す。
 - これらの規則は ESLint で機械的に検査する（パスを解決して判定する `import-x/no-restricted-paths`、パッケージ名の `no-restricted-imports`、ブラウザのグローバルの `no-restricted-globals`、JSX と動的 import の `no-restricted-syntax`）。検査が効いていることは `tests/lint/check-boundaries.mjs` で確かめる。
@@ -105,15 +110,16 @@ src/
     filter/              フィルタの定義と適用
     time/                日付の解析、暦の換算（西暦・ヒジュラ暦…）、幅のある年代の計算
     text/                検索と照合のための文字の正規化（アラビア文字、転写の補助記号）
-    graph/               graphology グラフの構築、重みの集約、射影
-    metrics/             指標の結果の型と、Worker の中でも呼べる純粋な計算関数。Worker を起動して呼び出す窓口は state 側に置く（core は Worker を扱えないため）
+    graph/               graphology グラフの構築、重みの集約、射影。Worker に渡す GraphSnapshot の作成（§7.3）
+    metrics/             指標の要求・結果の型と、Worker の中でも呼べる純粋な計算関数（graph-algo の担当）
+    layout/              レイアウトの純粋な算法（円形、層状、地理座標、初期配置。graph-algo の担当）
     encode/              見た目への割り当て（指標→大きさ、属性→色、スケール）
     util/                assertNever など共通の小道具
   io/
     import/              CSV、Excel、JSON（将来: GEXF、GraphML、旧 Palladio）
     export/              CSV、GraphML、GEXF、プロジェクト JSON、図（SVG/PDF/PNG）
     project/             プロジェクトファイルの型と版の移行
-  workers/               metrics.worker.ts、layout.worker.ts、bundling.worker.ts
+  workers/               metrics.worker.ts、layout.worker.ts、bundling.worker.ts と、それぞれを起動する *.client.ts（§7.3）
   render/
     scene/               描画方式に依存しない「シーン」の型と生成
     svg/                 SVG 描画（画面表示と書き出しの両方）
@@ -359,7 +365,13 @@ export interface FilterState {
 | コミュニティ | 無向として計算 | Louvain（Blondel ほか 2008） | graphology-communities-louvain |
 
 - **実行**: Worker で行う。フィルタの変更から 200 ミリ秒待って計算を始める（連続操作で何度も計算しないため）。
-- **古い結果の破棄**: 計算を頼むたびに版番号を 1 増やし、結果に版番号を付けて返す。最新の版でない結果は捨てる。計算中に新しい依頼が来たら、前の計算を中止する。
+- **古い結果の破棄**: state が、計算を頼むたびに版番号を 1 増やして手元に覚え、結果を受け取ったら（await の後で）最新の版かどうかを照合する。最新でなければ捨てる。版番号は Worker との間でやりとりしない（要求と結果の型に含めない）。計算中に新しい依頼が来たら、前の計算を中止する。
+- **役割の分担**（D-17）:
+  - `src/core/metrics/`: 要求と結果の型、純粋な計算関数。Vitest では Worker を使わず、これを直接テストする。
+  - `src/workers/metrics.worker.ts`: Comlink で公開する。受け取った `GraphSnapshot` を組み立て直し、`core/metrics` の計算関数を呼ぶ。
+  - `src/workers/metrics.client.ts`: `new Worker(new URL(...), { type: 'module' })` で起動し、Comlink で包む。公開する API は `run(req): Promise<Result>` と `cancel()`。`cancel()` は保留中の Promise を `AbortError` で reject してから Worker を terminate し、次の `run` のために作り直す（terminate すると Comlink の Promise は決して終わらないため）。
+  - `src/state/`: 版番号を採番し、古い結果を捨てる。**中止は Worker を terminate して作り直す**（同期の計算は途中で止められないため）。
+- **グラフの受け渡し**: graphology のグラフはクラスのインスタンスなので、Worker へそのまま送れない（structured clone できない）。`core/graph` が graphology の書き出し形式（`graph.export()`）を `GraphSnapshot` として作り、Worker の中で `Graph.from()` で組み立て直す。レイアウトも同じ。bundling の入力はグラフではなく、レイアウト後のエッジの座標（§4.3）。
 - **注意表示**（FR-MT-05）: ノード型が 2 種類以上あるとき、中心性の欄に注意を出す。
 - **検証**: `tests/golden/` に、小さなグラフ（有向、無向、二部、非連結、自己ループあり）と networkx で求めた正解値を置き、相対誤差 1e-6 以内で一致することを確かめる。
 
@@ -383,6 +395,7 @@ interface SceneEdge { id: string; path: PathCommand[]; width: number | TaperedWi
 ```
 
 - 画面表示と SVG 出力は、同じシーンから作る。そのため、画面と書き出した図が必ず一致する。
+- `render` は SVG を **文字列** として作る（DOM を作らない）。**ラベルなどのテキストと属性値は、すべて render がエスケープする。色は形式（`#rrggbb` など）を検証してから使う。** 利用者のデータや、共有されたプロジェクトファイルの文字列が SVG に入るため。Node の Vitest で DOM なしにテストでき、書き出しではそのまま Blob にできる。画面では views がその文字列を使い、ズームやパンの `transform` と、選択などのイベントは views が付ける。
 - PNG は、同じ SVG を Canvas に描いて作る。PDF は、svg2pdf.js で SVG を変換して作る。
 - 大規模なグラフで SVG が遅い場合は、同じシーンを描く Canvas 版を追加する（NFR-05）。
 - `dashed` は欠損の可視化に使う（FR-VG-12）。
@@ -421,7 +434,8 @@ interface SceneEdge { id: string; path: PathCommand[]; width: number | TaperedWi
 - **地図**: 同じ算法を、地図に投影した後の座標で使う（§9）。
 
 ### 8.5 レイアウト（FR-VG-01、02）
-- **力学モデル**: ForceAtlas2（Jacomy ほか 2014）。Worker で動かし、途中経過を画面に流す。乱数の種を固定し、プロジェクトに保存する（NFR-08）。
+- **置き場所**: 純粋な算法は `src/core/layout/`、Worker は `src/workers/layout.worker.ts`（どちらも graph-algo。D-17 と同じ分担）。
+- **力学モデル**: ForceAtlas2（Jacomy ほか 2014）。Worker で動かし、途中経過を画面に流す。途中経過は、コールバックを渡さずに、反復を区切って呼ぶ形（`step(n)` を呼ぶたびに座標を返す）で受け取る（Worker に関数を渡さない規則のため）。乱数の種を固定し、プロジェクトに保存する（NFR-08）。
 - **円形**: 型ごとにまとめて円周に並べる。
 - **層状**: 型ごとに縦の列に分け、列の中の順序は交差が減るように並べる（重心法）。
 - **地理座標**: 緯度・経度をメルカトル図法で平面に写す。
@@ -430,7 +444,7 @@ interface SceneEdge { id: string; path: PathCommand[]; width: number | TaperedWi
 ### 8.6 ラベル（FR-VG-10）
 - 表示する候補を、表示方法の設定に従って決める。
 - 大きいノードのラベルから順に置き、すでに置いたラベルと重なるものは表示しない（貪欲法）。
-- **右から左へ書く文字**（NFR-09）: ラベルの文字の向きを判定する。アラビア文字が主のラベルは、SVG の `direction="rtl"` を付け、ノードの左側に置く。文字の幅は、実際にブラウザで測って重なりを判定する（アラビア文字は連結で幅が変わるため）。
+- **右から左へ書く文字**（NFR-09）: ラベルの文字の向きを判定する。アラビア文字が主のラベルは、SVG の `direction="rtl"` を付け、ノードの左側に置く。文字の幅は、実際にブラウザで測って重なりを判定する（アラビア文字は連結で幅が変わるため）。`render` はブラウザに依存しないので、幅を測る関数（`measureText(text, font) => number`）を引数で受け取る。画面では views が Canvas で測る関数を渡す。
 
 ---
 
@@ -438,8 +452,9 @@ interface SceneEdge { id: string; path: PathCommand[]; width: number | TaperedWi
 
 ### 9.1 地図（FR-MP-01〜06）
 - **背景地図**: MapLibre GL で描く。既定は OpenStreetMap のラスタータイル。利用者は XYZ 形式の URL を指定できる。ネットに頼らない背景として、Natural Earth の海岸線（低解像度）をアプリに同梱する。
+- **束ねた経路**: bundling は重いので Worker で行う。map は投影した座標を props の関数で返し、state が bundling の client を呼び、結果の経路を map が props で受け取る（map は workers を import しない）。
 - **重ね合わせ**: deck.gl で描く。ノードは ScatterplotLayer、エッジは ArcLayer（弧）または PathLayer（直線、束ねた経路）で描く。有向の表し方は、§8.3 と同じ幾何計算（`src/render/arrows/`）を地図の座標で使う。
-- **範囲選択**（FR-MP-04）: 選んだ範囲を `FilterDef` に変換して、ストアに渡す。地図の中でデータを直接絞り込まない。
+- **範囲選択**（FR-MP-04）: 選んだ範囲を `FilterDef` に変換して、views から props で受け取った関数（`onAddFilter` など）に渡す。地図の中でデータを直接絞り込まない。
 - **座標のないノード**（FR-MP-05）: 件数と一覧をパネルに出す。
 - **帰属表示**（FR-MP-06）: 地図の右下に常に出す。
 
@@ -448,7 +463,7 @@ interface SceneEdge { id: string; path: PathCommand[]; width: number | TaperedWi
 
 ```ts
 interface TimeState {
-  cursor: DayNumber;                  // 現在時刻
+  cursor: DayNumber;                  // 現在時刻（DayNumber はユリウス通日の整数。§5.1）
   mode: 'cumulative' | 'window';      // 累積／移動窓
   windowDays: number;                 // 移動窓の幅
   playing: boolean;
@@ -457,6 +472,8 @@ interface TimeState {
 ```
 
 - 再生は `requestAnimationFrame` で進め、タブが非表示のときは止める。
+- **再生の時計はアプリに 1 つだけ置く（ui の担当）。** state は `TimeState` と更新の関数（`tick(経過ミリ秒)`、`play`、`pause` など）だけを持つ。`requestAnimationFrame` とタブの表示状態（`document.visibilityState`）で `tick` を呼ぶ駆動は、`src/app/` の 1 つのフック（`usePlaybackClock` など）に置く（state を DOM に依存させないため）。グラフ、地図、年表は `TimeState` を受け取って描くだけで、自分の時計を持たない。
+- `src/map/` は `state` を import しない。ストアの値と更新の関数は、views から props で受け取る（§4.1）。
 - 幅のある年代のエッジは、「最も早い日」に現れ始め、「最も遅い日」に完全に現れる（不透明度を徐々に上げる）。幅があることが見た目でわかるようにする。
 
 ### 9.3 アニメーションの表現（FR-MP-03）
@@ -490,7 +507,7 @@ interface TimeState {
 
 ### 11.1 読み込み
 - 手順: ファイル選択 → 形式と文字コードの判定 → 表の解析 → 列の対応づけ（ウィザード）→ `Dataset` の生成 → 警告の一覧の表示。
-- Shift_JIS の判定: 先頭の一部を UTF-8 として解釈し、不正なバイト列があれば Shift_JIS とみなす。利用者が手動で変更できる。
+- 文字コードの判定: (1) BOM があればそれに従う。(2) ファイル**全体**を UTF-8 として厳密に（`TextDecoder` の `fatal: true` で）復号できれば UTF-8。(3) できなければ Shift_JIS（CP932）で同様に試す。(4) どれも通らなければ UTF-8 で読み、置換文字が出た旨を警告する。(5) Shift_JIS と判定したときは、半角カナの割合などから疑わしさを調べて警告し、試し読みを見せる（アラビア語の Windows-1256 のバイト列は、Shift_JIS の半角カナとして誤りなく復号できてしまうため）。1 バイトの文字コード（Windows-1256 など）は自動判定に入れず、手動の指定だけにする（進行表の R-06）。判定結果は画面に出し、利用者が変更できる。【なぜ】先頭の一部だけを見ると、切れ目が多バイト文字の途中に当たって誤判定する（T0-13 の io の指摘）。変換は標準の `TextDecoder` で行えるので、encoding-japanese は必要になるまで入れない。
 - 警告（FR-IN-06）は `ImportWarning { row: number; column?: string; code: WarningCode; message: string }` の配列として返す。
 
 ### 11.2 書き出し
@@ -573,14 +590,21 @@ interface ProjectFile {
 
 | エージェント | 担当 | 書き込んでよい場所 |
 |---|---|---|
-| `core-model` | データモデル、フィルタ、時間、グラフ構築、射影、見た目への割り当て | `src/core/`（`metrics/` を除く） |
-| `graph-algo` | 指標、レイアウト、edge bundling の算法、Worker | `src/workers/`、`src/core/metrics/`、`src/render/bundling/`、`tests/golden/` |
+| `core-model` | データモデル、フィルタ、時間、グラフ構築、射影、見た目への割り当て | `src/core/`（`metrics/` と `layout/` を除く） |
+| `graph-algo` | 指標、レイアウト、edge bundling の算法、Worker | `src/workers/`、`src/core/metrics/`、`src/core/layout/`、`src/render/bundling/`、`tests/golden/` |
 | `renderer` | シーン層、SVG 描画、有向エッジの幾何、図の書き出し | `src/render/`（`bundling/` を除く）、`src/io/export/` の図の部分 |
 | `map-geo` | 地図ビュー、時間アニメーション、地図の書き出し | `src/map/` |
-| `ui` | React の画面、状態管理、読み込みウィザード、多言語対応 | `src/views/`、`src/state/`、`src/app/`、`src/i18n/` |
-| `io` | 各形式の読み込みと書き出し（図以外）、プロジェクトファイル | `src/io/`（図の書き出しを除く） |
-| `qa-tester` | 単体テスト、E2E、回帰テスト、CI | `tests/`、各所の `*.test.ts`、`.github/workflows/` |
+| `ui` | React の画面、状態管理、読み込みウィザード、多言語対応 | `src/views/`、`src/state/`、`src/app/`、`src/i18n/`、`index.html` |
+| `io` | 各形式の読み込みと書き出し（図以外）、プロジェクトファイル、サンプルデータ | `src/io/`（図の書き出しを除く）、`public/samples/` |
+| `qa-tester` | 要件 ID つきのテスト、E2E、回帰テスト、CI、共通の設定 | `tests/`（`tests/fixtures/<担当>/` を除く）、`.github/workflows/`、共通の設定ファイル（下記） |
 | `reviewer` | 型、層の境界、コメント規約、旧版の不具合の再発を確認（書き込まない） | なし |
+
+**テストの置き場所**: 実装担当は、自分の範囲のコードの単体テストを、同じフォルダの `*.test.ts` に書く（§16.2 の 2）。テスト用のデータ（文字コードの見本など）は `tests/fixtures/<担当の範囲>/`（例: `tests/fixtures/io/`）に置いてよい。qa-tester は、要件 ID を名前に含むテスト、回帰テスト、E2E を `tests/`（`tests/unit/`、`tests/regression/`、`tests/e2e/`）に足し、実装担当の `*.test.ts` は書き換えない（並行作業で同じファイルを書かないため）。
+
+**共通のファイルの扱い**:
+- `package.json` と `package-lock.json`: 実装担当は、自分のタスクに要る依存を `npm install` で足してよい。足す前に統括役に名前と理由を伝え、ライセンス（NFR-12）と版を完了報告に書く（並行する worktree で lock ファイルがぶつかるのを避けるため）。scripts は変えない（qa-tester が統括役の指示で変える）。worktree で作業するときは、最初に `npm ci` を実行する。
+- `tsconfig*.json`、`eslint.config.js`、`vite.config.ts`、`vitest.config.ts`、`playwright.config.ts`、`.prettierrc`、`.prettierignore`、`.nvmrc`、`.npmrc`、`.gitignore`: 統括役が qa-tester に頼んで変える。実装担当は、変更が要るときは統括役に報告する。
+- `docs/`、`CLAUDE.md`、`.claude/`: 統括役だけが変える。
 
 **使うモデル**（D-13）:
 
@@ -604,6 +628,31 @@ interface ProjectFile {
 - 書き込む場所が重ならないタスクは、並行して進めてよい。それぞれ別の git worktree で作業する。
 - `src/core/model/` の型の変更は全員に影響するので、並行させない。各フェーズの最初に確定させる。
 - 他のエージェントの担当範囲を変える必要が出たら、自分では直さず、統括役に報告する。
+- 同じ作業フォルダで複数のエージェントが動くときは、`npm test` と `npm run lint` を実行しない（`npm test` に含まれる層の境界の検査が、`src/` に一時ファイルを書くため）。§16.4 の「範囲を絞った確認」を使い、全体の確認は統括役が最後に行う。
+
+### 16.4 全エージェント共通の作業手順
+**確認のコマンド**
+- 単独で作業しているとき: `npm run lint`、`npm run format:check`、`npm run typecheck`、`npm test`。画面や配信に関わるときは `npm run build` と `npm run test:e2e` も。
+- 他のエージェントと同じフォルダで作業しているとき（範囲を絞った確認）: `npx vitest run <自分の範囲>`、`npx eslint <自分の範囲>`、`npm run typecheck`、`npx prettier --check <自分の範囲>`。
+
+**ESLint で特に引っかかりやすい規則**（`eslint.config.js`）
+- 層の境界（§4.1）: import の向き、JSX と `.tsx` の禁止（core、render、i18n）、動的 `import()` の禁止（同）、ブラウザのグローバルと `Date` の禁止（core、i18n）。
+- `eslint-disable` には `-- 理由` を必ず書く。使われていない disable はエラーになる。
+- export する関数（アロー関数を含む）、クラス、interface、type には TSDoc が要る。`@param` と `@returns` も要る。
+- `switch` は網羅が要る（`switch-exhaustiveness-check`）。わざと網羅しないテストでは、理由つきの disable を使う。
+- 型から見て不要な条件（`no-unnecessary-condition`）、`??` を使える箇所の `||`（`prefer-nullish-coalescing`）もエラーになる。
+
+**完了報告の共通の項目**（各エージェント定義の項目に加えて書く）
+1. 対応した要件 ID
+2. 作った・変えた・消したファイル
+3. 確認の結果（コマンドごとの成否、テストの件数）
+4. 追加した依存（版とライセンス）
+5. 設計文書と食い違った点、追記すべき点、決まっていなかった点
+6. 指示から外れた点とその理由
+
+**してはいけないこと**
+- コミット、push、ブランチの切り替え（統括役が行う）。
+- 担当範囲の外のファイルの変更。必要なら統括役に報告する。
 
 ---
 
