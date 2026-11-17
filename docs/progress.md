@@ -16,7 +16,7 @@
 |---|---|
 | フェーズ | **0 準備**（13 タスク中 9 完了） |
 | 直近の完了 | T0-08 Vitest と Playwright（2026-11-18） |
-| 作業中 | なし |
+| 作業中 | T0-09 CI のワークフロー（ブランチ `t0-09-ci`、qa-tester） |
 | 待っていること | なし（Q-03 はフェーズ 1 の T1-22 までに決める） |
 | メモ | GitHub リポジトリ `qsarkbir/relata` は作成済み（非公開）。作業フォルダは `C:\Users\qsark\Documents\GitHub\2026_relata` |
 
@@ -68,7 +68,7 @@
 | T0-06 | Vite ＋ React ＋ TypeScript の雛形。`tsconfig` を strict に。`engines` と `.nvmrc` で Node の版を固定 | 統括役 | T0-04 | NFR-10 | ✅ | 2026-11-18 | Sonnet が実装、reviewer（Opus）が確認。TypeScript は 6.0.3（D-14）。lint と test は T0-07、T0-08 で用意するため、完了の定義のうち typecheck と build だけ確認 |
 | T0-07 | ESLint、Prettier、層の境界の規則（`no-restricted-imports`） | qa-tester | T0-06 | 設計 §4.1 | ✅ | 2026-11-18 | qa-tester（Sonnet）が実装、reviewer（Opus）が確認し指摘をすべて反映。境界は import-x/no-restricted-paths と tsconfig.core.json（DOM なし）の二重で検査。`tests/lint/check-boundaries.mjs`（11 項目）で規則が効くことを確認。jsdoc の規則も導入 |
 | T0-08 | Vitest と Playwright の設定、見本のテスト | qa-tester | T0-06 | NFR-11 | ✅ | 2026-11-18 | qa-tester（Sonnet）が実装、reviewer（Opus）の指摘をすべて反映。Vitest 5.1（`npm test` はカバレッジ込みで、src/core に 80% のしきい値）、Playwright 1.65（Chromium）。tests/ は tsconfig.test.json で型検査。層の境界の検査も `npm test` で走る |
-| T0-09 | CI のワークフロー（lint、型検査、テスト、ビルド） | qa-tester | T0-07、T0-08 | 設計 §14 | ⬜ | | 手順: `npm ci` → `npx playwright install --with-deps chromium` → lint → format:check → typecheck → test（カバレッジ込み）→ build → test:e2e。失敗時は `playwright-report/` を artifact に。test:e2e は内部で build する（二重の build は許容するか、CI では preview だけ起動するかを決める）。終わったら `main` の保護に required status checks を足す |
+| T0-09 | CI のワークフロー（lint、型検査、テスト、ビルド） | qa-tester | T0-07、T0-08 | 設計 §14 | 🔄 | | 手順: `npm ci` → `npx playwright install --with-deps chromium` → lint → format:check → typecheck → test（カバレッジ込み）→ build → test:e2e。失敗時は `playwright-report/` を artifact に。test:e2e は内部で build する（二重の build は許容するか、CI では preview だけ起動するかを決める）。終わったら `main` の保護に required status checks を足す |
 | T0-10 | GitHub Pages への配信（`base` を `/relata/` に、配信ワークフロー） | qa-tester＋利用者 | T0-05、T0-09 | NFR-01 | ⬜ | | Pages の有効化は利用者が GitHub の設定画面で行う。サイトはリポジトリが非公開でも誰でも見られる（設計 §14）。`base` を `/relata/` にするとき、playwright.config.ts の `baseURL` と webServer の `url` を `http://localhost:4173/relata/` に、テストの `goto` を相対（`./`）にする |
 | T0-11 | 共通の小道具（`assertNever` など）と、多言語対応の枠組み | core-model、ui | T0-06 | FR-UI-01 | ⬜ | | エージェントの試運転を兼ねる |
 | T0-12 | LICENSE（BSD-3-Clause）、README（日英。Palladio に由来することを明記） | 統括役 | T0-04 | NFR-12、FR-UI-05 | ✅ | 2026-11-18 | LICENSE に Stanford University（2019）の著作権表示と Palladio に由来する旨を追加。README は日英。画面の「このツールについて」（FR-UI-05）は T1-16 で作る |
