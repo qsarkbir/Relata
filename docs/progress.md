@@ -14,16 +14,16 @@
 
 | 項目 | 内容 |
 |---|---|
-| フェーズ | **0 準備**（13 タスク中 4 完了） |
-| 直近の完了 | T0-04 git の初期化と初回コミット（2026-11-18） |
+| フェーズ | **0 準備**（13 タスク中 5 完了） |
+| 直近の完了 | T0-05 GitHub への接続、初回 push、`main` の保護（2026-11-18） |
 | 作業中 | なし |
 | 待っていること | なし（Q-03 はフェーズ 1 の T1-22 までに決める） |
 | メモ | GitHub リポジトリ `qsarkbir/relata` は作成済み（非公開）。作業フォルダは `C:\Users\qsark\Documents\GitHub\2026_relata` |
 
 ### 次にやること
 
-1. **T0-05** GitHub リポジトリへの接続と初回 push（利用者＋統括役）。統括役が remote を設定し、push は利用者の GitHub 認証で行う。`main` の保護は利用者が GitHub の設定画面で行う。
-2. **T0-06**（Vite ＋ React ＋ TypeScript の雛形）と **T0-12**（LICENSE、README）は、T0-05 を待たずに始められる。
+1. **T0-06**（Vite ＋ React ＋ TypeScript の雛形）と **T0-12**（LICENSE、README）を進められる。
+2. T0-09（CI）が終わったら、`main` の保護に「CI が通ること」（required status checks）を足す。
 
 ---
 
@@ -45,7 +45,7 @@
 
 | フェーズ | 目標 | 状態 | 進み具合 |
 |---|---|---|---|
-| 0 準備 | 開発の土台。空のアプリが GitHub Pages で表示される | 🔄 | 4 / 13 |
+| 0 準備 | 開発の土台。空のアプリが GitHub Pages で表示される | 🔄 | 5 / 13 |
 | 1 MVP | 読み込み（ヒジュラ暦を含む）、絞り込み、指標、有向グラフの表示、SVG 出力（v0.1） | ⬜ | 0 / 26 |
 | 2 研究機能 | k-partite と射影、欠損の可視化、時間、表ビュー、PDF（v0.2） | ⬜ | 0 / 10 |
 | 3 地図と bundling | 地図上の時間アニメーション、edge bundling（v0.3） | ⬜ | 0 / 8 |
@@ -63,14 +63,14 @@
 | T0-02 | メインのマシンで Git、Node.js（LTS）、Python ＋ networkx ＋ convertdate を確認 | 利用者 | — | 設計 §17 | ✅ | 2026-11-18 | Git 2.55.0、Node.js 24.21.0（npm 11.19.0）、Python 3.14.3、networkx 3.7、convertdate 2.5.1 |
 | T0-03 | 作業フォルダの作成と、文書・エージェント定義のコピー | 利用者 | T0-02 | 設計 §17 | ✅ | 2026-11-18 | `docs/`、`.claude/agents/`（8 件）、`CLAUDE.md`、`upstream/`（8 リポジトリ）を確認 |
 | T0-04 | git の初期化、`.gitignore`（`upstream/`、`node_modules/`、`dist/`）、初回コミット | 統括役 | T0-03 | 設計 §18 | ✅ | 2026-11-18 | 既定のブランチは `main`。改行を LF にそろえる `.gitattributes` も追加 |
-| T0-05 | GitHub リポジトリへの接続（remote の設定、初回 push）と `main` の保護 | 利用者＋統括役 | T0-04 | 設計 §14 | ⬜ | | リポジトリ `qsarkbir/relata` は作成済み（2026-11-17、非公開）。push には利用者の GitHub 認証が必要 |
+| T0-05 | GitHub リポジトリへの接続（remote の設定、初回 push）と `main` の保護 | 利用者＋統括役 | T0-04 | 設計 §14 | ✅ | 2026-11-18 | GitHub 側の初回コミット（LICENSE、README）の上に積んで push。`main` の保護は強制 push と削除の禁止（管理者にも適用）。CI の必須化は T0-09 の後 |
 | T0-06 | Vite ＋ React ＋ TypeScript の雛形。`tsconfig` を strict に。`engines` と `.nvmrc` で Node の版を固定 | 統括役 | T0-04 | NFR-10 | ⬜ | | |
 | T0-07 | ESLint、Prettier、層の境界の規則（`no-restricted-imports`） | qa-tester | T0-06 | 設計 §4.1 | ⬜ | | |
 | T0-08 | Vitest と Playwright の設定、見本のテスト | qa-tester | T0-06 | NFR-11 | ⬜ | | |
-| T0-09 | CI のワークフロー（lint、型検査、テスト、ビルド） | qa-tester | T0-07、T0-08 | 設計 §14 | ⬜ | | |
+| T0-09 | CI のワークフロー（lint、型検査、テスト、ビルド） | qa-tester | T0-07、T0-08 | 設計 §14 | ⬜ | | 終わったら `main` の保護に required status checks を足す |
 | T0-10 | GitHub Pages への配信（`base` を `/relata/` に、配信ワークフロー） | qa-tester＋利用者 | T0-05、T0-09 | NFR-01 | ⬜ | | Pages の有効化は利用者が GitHub の設定画面で行う。サイトはリポジトリが非公開でも誰でも見られる（設計 §14） |
 | T0-11 | 共通の小道具（`assertNever` など）と、多言語対応の枠組み | core-model、ui | T0-06 | FR-UI-01 | ⬜ | | エージェントの試運転を兼ねる |
-| T0-12 | LICENSE（BSD-3-Clause）、README（日英。Palladio に由来することを明記） | 統括役 | T0-04 | NFR-12、FR-UI-05 | ⬜ | | |
+| T0-12 | LICENSE（BSD-3-Clause）、README（日英。Palladio に由来することを明記） | 統括役 | T0-04 | NFR-12、FR-UI-05 | ⬜ | | GitHub が作った LICENSE（BSD-3-Clause、著作権者は篠田）がある。Palladio（Stanford）の著作権表示を足す必要がある |
 | T0-13 | 全エージェントの試運転（小さなタスクで動作と報告の形式を確認し、必要なら定義を直す） | 統括役 | T0-11 | 設計 §16 | ⬜ | | |
 
 **完了条件**: 空のアプリが GitHub Pages で表示される。CI が通る。全エージェントが試運転を終えている。
@@ -173,6 +173,7 @@
 | 2026-11-17 | Q-04 を決定（フェーズ 0 から GitHub Pages で配信する。D-12） |
 | 2026-11-18 | T0-02、T0-03 を完了。networkx と convertdate を導入 |
 | 2026-11-18 | T0-04 を完了（git の初期化、`.gitignore`、`.gitattributes`、初回コミット） |
+| 2026-11-18 | T0-05 を完了。remote を設定し、`main` を push。`main` を保護（強制 push と削除の禁止） |
 
 ---
 
