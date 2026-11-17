@@ -4,6 +4,12 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = '4173';
 
 /**
+ * build を省くか。【なぜ】CI は E2E の前に build 済みなので、環境変数 E2E_SKIP_BUILD で二重の build を避ける。
+ * 手元では未設定なので、これまでどおり build してから起動する。
+ */
+const SKIP_BUILD = !!process.env.E2E_SKIP_BUILD;
+
+/**
  * Playwright（E2E テスト）の設定。
  *
  * 設計書 §14 に従い、対象は Chromium だけにする。
@@ -24,7 +30,9 @@ export default defineConfig({
   // 本番（GitHub Pages）と同じ形を確かめるため（NFR-01）。
   // --strictPort は、ポートが使用中のとき別のポートに逃げず、失敗させる。
   webServer: {
-    command: `npm run build && npm run preview -- --port ${PORT} --strictPort`,
+    command: SKIP_BUILD
+      ? `npm run preview -- --port ${PORT} --strictPort`
+      : `npm run build && npm run preview -- --port ${PORT} --strictPort`,
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

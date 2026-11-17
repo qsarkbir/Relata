@@ -40,6 +40,8 @@ npm run dev     # 開発サーバーを起動する
 npm run build   # dist/ に静的ファイルを出力する
 npm run typecheck
 npm run lint
+npm test         # 単体テスト（Vitest）
+npm run test:e2e  # E2E テスト（Playwright）
 ```
 
 ### ライセンス
