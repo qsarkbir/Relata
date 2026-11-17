@@ -3,6 +3,7 @@
   //   - tsconfig.core.json : src/core/ だけを、DOM の型なしで検査する（core が DOM に触れたら止める）
   //   - tsconfig.app.json  : ブラウザで動く src/ 以下（DOM と JSX を使う）
   //   - tsconfig.node.json : Node.js で動く設定ファイル（vite.config.ts）
+  //   - tsconfig.test.json : tests/ のテストと、vitest・playwright の設定ファイル
   //   ブラウザ用の設定に Node の型が混ざると、src/core/ で誤って Node 専用 API を
   //   使っても気づけなくなる。そのため設定ごと分けている（設計書 §4.1）。
   //
@@ -10,13 +11,14 @@
   //   ブラウザ API を使っても tsc は止めない。そこで tsconfig.core.json を足して型の面から守り、
   //   値の参照や import は ESLint（no-restricted-globals など、T0-07）でも止める（設計書 §4.1）。
   //
-  // 【将来の予定】src/workers/ を作るときは、tsconfig.app.json の exclude にそこを加え、
+  // src/workers/ を作るときは、tsconfig.app.json の exclude にそこを加え、
   //   lib を ["ES2022", "WebWorker"] にした tsconfig.worker.json を references に足す。
-  //   DOM と WebWorker の型は同じ名前の宣言がぶつかるため、同じ設定には同居できない。
+  // 【なぜ】DOM と WebWorker の型は同じ名前の宣言がぶつかるため、同じ設定には同居できない。
   "files": [],
   "references": [
     { "path": "./tsconfig.core.json" },
     { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+    { "path": "./tsconfig.node.json" },
+    { "path": "./tsconfig.test.json" }
   ]
 }
