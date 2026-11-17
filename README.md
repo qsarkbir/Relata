@@ -36,7 +36,7 @@ Node.js 24 系（[.nvmrc](.nvmrc)）が必要です。
 
 ```bash
 npm ci          # 依存パッケージを入れる
-npm run dev     # 開発サーバーを起動する
+npm run dev     # 開発サーバーを起動する（http://localhost:5173/relata/ で開く。末尾の /relata/ が必要）
 npm run build   # dist/ に静的ファイルを出力する
 npm run typecheck
 npm run lint

@@ -16,13 +16,13 @@
 |---|---|
 | フェーズ | **0 準備**（13 タスク中 11 完了） |
 | 直近の完了 | T0-11 共通の小道具（`assertNever`）と多言語対応の枠組み（2026-11-18） |
-| 作業中 | なし |
-| 待っていること | 利用者: `main` の保護に CI（「検査・テスト・E2E」）の成功を必須にするか（統括役が設定できる）。Q-03 はフェーズ 1 の T1-22 までに決める |
+| 作業中 | T0-10 GitHub Pages への配信（ブランチ `t0-10-pages` に用意済み。main への統合は Pages の有効化の後） |
+| 待っていること | 利用者: (1) GitHub の Settings → Pages → Build and deployment の Source を「GitHub Actions」にする（T0-10）。(2) `main` の保護に CI の成功を必須にするか決める。Q-03 は T1-22 までに決める |
 | メモ | GitHub リポジトリ `qsarkbir/relata` は作成済み（非公開）。作業フォルダは `C:\Users\qsark\Documents\GitHub\2026_relata` |
 
 ### 次にやること
 
-1. **T0-10**（GitHub Pages への配信）。ワークフローは統括役側で用意できる。Pages の有効化（Settings → Pages → Source を「GitHub Actions」に）は利用者が行う。
+1. **T0-10**（GitHub Pages への配信）。ブランチ `t0-10-pages` に用意済み（`base: '/relata/'`、CI に deploy ジョブ）。利用者が Pages を有効にしたら、統括役が main に統合し、`https://qsarkbir.github.io/relata/` で表示を確かめる。
 2. **T0-13** 全エージェントの試運転。core-model、ui、qa-tester、reviewer は T0-07〜T0-11 で済み。残りは graph-algo、io、renderer、map-geo。試運転で出た定義への意見（報告の形式、並行作業の決まり、ESLint の規則の周知）を反映する。
 3. `main` の保護に「CI が通ること」（required status checks）を足すかどうか（利用者の判断）。
 
@@ -69,7 +69,7 @@
 | T0-07 | ESLint、Prettier、層の境界の規則（`no-restricted-imports`） | qa-tester | T0-06 | 設計 §4.1 | ✅ | 2026-11-18 | qa-tester（Sonnet）が実装、reviewer（Opus）が確認し指摘をすべて反映。境界は import-x/no-restricted-paths と tsconfig.core.json（DOM なし）の二重で検査。`tests/lint/check-boundaries.mjs`（11 項目）で規則が効くことを確認。jsdoc の規則も導入 |
 | T0-08 | Vitest と Playwright の設定、見本のテスト | qa-tester | T0-06 | NFR-11 | ✅ | 2026-11-18 | qa-tester（Sonnet）が実装、reviewer（Opus）の指摘をすべて反映。Vitest 5.1（`npm test` はカバレッジ込みで、src/core に 80% のしきい値）、Playwright 1.65（Chromium）。tests/ は tsconfig.test.json で型検査。層の境界の検査も `npm test` で走る |
 | T0-09 | CI のワークフロー（lint、型検査、テスト、ビルド） | qa-tester | T0-07、T0-08 | 設計 §14 | ✅ | 2026-11-18 | `.github/workflows/ci.yml`。1 ジョブ「検査・テスト・E2E」で npm ci → lint → format:check → typecheck → test → build → E2E（build 済みの dist を配信）。GitHub 上で成功（約 2 分）。dist を artifact に保存。required status checks の追加は利用者の判断待ち |
-| T0-10 | GitHub Pages への配信（`base` を `/relata/` に、配信ワークフロー） | qa-tester＋利用者 | T0-05、T0-09 | NFR-01 | ⬜ | | Pages の有効化は利用者が GitHub の設定画面で行う。サイトはリポジトリが非公開でも誰でも見られる（設計 §14）。`base` を `/relata/` にするとき、playwright.config.ts の `baseURL` と webServer の `url` を `http://localhost:4173/relata/` に、テストの `goto` を相対（`./`）にする |
+| T0-10 | GitHub Pages への配信（`base` を `/relata/` に、配信ワークフロー） | qa-tester＋利用者 | T0-05、T0-09 | NFR-01 | 🔄 | | Pages の有効化は利用者が GitHub の設定画面で行う。サイトはリポジトリが非公開でも誰でも見られる（設計 §14）。`base` を `/relata/` にするとき、playwright.config.ts の `baseURL` と webServer の `url` を `http://localhost:4173/relata/` に、テストの `goto` を相対（`./`）にする |
 | T0-11 | 共通の小道具（`assertNever` など）と、多言語対応の枠組み | core-model、ui | T0-06 | FR-UI-01 | ✅ | 2026-11-18 | core-model が `src/core/util/assertNever.ts`、ui が `src/i18n/`（型付き辞書、`translate`、`pickLocale`。D-15、D-16）を実装。reviewer の指摘を反映し、qa-tester が i18n の層の規則を ESLint に追加（check-boundaries は 14 項目）。試運転として両エージェントから定義への意見を回収（T0-13 で反映） |
 | T0-12 | LICENSE（BSD-3-Clause）、README（日英。Palladio に由来することを明記） | 統括役 | T0-04 | NFR-12、FR-UI-05 | ✅ | 2026-11-18 | LICENSE に Stanford University（2019）の著作権表示と Palladio に由来する旨を追加。README は日英。画面の「このツールについて」（FR-UI-05）は T1-16 で作る |
 | T0-13 | 全エージェントの試運転（小さなタスクで動作と報告の形式を確認し、必要なら定義を直す） | 統括役 | T0-11 | 設計 §16 | ⬜ | | |
