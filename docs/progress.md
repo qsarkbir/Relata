@@ -14,8 +14,8 @@
 
 | 項目 | 内容 |
 |---|---|
-| フェーズ | **0 準備**（13 タスク中 7 完了） |
-| 直近の完了 | T0-07 ESLint、Prettier、層の境界（2026-11-18） |
+| フェーズ | **0 準備**（13 タスク中 8 完了） |
+| 直近の完了 | T0-12 LICENSE、README（2026-11-18） |
 | 作業中 | なし |
 | 待っていること | なし（Q-03 はフェーズ 1 の T1-22 までに決める） |
 | メモ | GitHub リポジトリ `qsarkbir/relata` は作成済み（非公開）。作業フォルダは `C:\Users\qsark\Documents\GitHub\2026_relata` |
@@ -23,7 +23,7 @@
 ### 次にやること
 
 1. **T0-08**（Vitest、Playwright）を qa-tester（Sonnet）で進める。`tests/lint/check-boundaries.mjs` を `npm test` から呼べるようにする。tests/ の .ts 用の tsconfig も作る。
-2. **T0-11**（`assertNever`、多言語対応の枠組み）と **T0-12**（LICENSE、README）も始められる。
+2. **T0-11**（`assertNever`、多言語対応の枠組み）も始められる。
 3. T0-09（CI）が終わったら、`main` の保護に「CI が通ること」（required status checks）を足す。
 
 ---
@@ -46,7 +46,7 @@
 
 | フェーズ | 目標 | 状態 | 進み具合 |
 |---|---|---|---|
-| 0 準備 | 開発の土台。空のアプリが GitHub Pages で表示される | 🔄 | 7 / 13 |
+| 0 準備 | 開発の土台。空のアプリが GitHub Pages で表示される | 🔄 | 8 / 13 |
 | 1 MVP | 読み込み（ヒジュラ暦を含む）、絞り込み、指標、有向グラフの表示、SVG 出力（v0.1） | ⬜ | 0 / 26 |
 | 2 研究機能 | k-partite と射影、欠損の可視化、時間、表ビュー、PDF（v0.2） | ⬜ | 0 / 10 |
 | 3 地図と bundling | 地図上の時間アニメーション、edge bundling（v0.3） | ⬜ | 0 / 8 |
@@ -71,7 +71,7 @@
 | T0-09 | CI のワークフロー（lint、型検査、テスト、ビルド） | qa-tester | T0-07、T0-08 | 設計 §14 | ⬜ | | 終わったら `main` の保護に required status checks を足す |
 | T0-10 | GitHub Pages への配信（`base` を `/relata/` に、配信ワークフロー） | qa-tester＋利用者 | T0-05、T0-09 | NFR-01 | ⬜ | | Pages の有効化は利用者が GitHub の設定画面で行う。サイトはリポジトリが非公開でも誰でも見られる（設計 §14） |
 | T0-11 | 共通の小道具（`assertNever` など）と、多言語対応の枠組み | core-model、ui | T0-06 | FR-UI-01 | ⬜ | | エージェントの試運転を兼ねる |
-| T0-12 | LICENSE（BSD-3-Clause）、README（日英。Palladio に由来することを明記） | 統括役 | T0-04 | NFR-12、FR-UI-05 | ⬜ | | GitHub が作った LICENSE（BSD-3-Clause、著作権者は篠田）がある。Palladio（Stanford）の著作権表示を足す必要がある |
+| T0-12 | LICENSE（BSD-3-Clause）、README（日英。Palladio に由来することを明記） | 統括役 | T0-04 | NFR-12、FR-UI-05 | ✅ | 2026-11-18 | LICENSE に Stanford University（2019）の著作権表示と Palladio に由来する旨を追加。README は日英。画面の「このツールについて」（FR-UI-05）は T1-16 で作る |
 | T0-13 | 全エージェントの試運転（小さなタスクで動作と報告の形式を確認し、必要なら定義を直す） | 統括役 | T0-11 | 設計 §16 | ⬜ | | |
 
 **完了条件**: 空のアプリが GitHub Pages で表示される。CI が通る。全エージェントが試運転を終えている。
@@ -178,6 +178,7 @@
 | 2026-11-18 | 設計書 1.2。エージェントごとの使うモデルを決定（D-13）。エージェント定義に `model` を追加 |
 | 2026-11-18 | 設計書 1.3。T0-06 を完了。TypeScript を 6.0 系に固定（D-14）、`.npmrc` で Node の版を強制 |
 | 2026-11-18 | 設計書 1.4。T0-07 を完了。§4.1 に層ごとの依存の規則と検査の方法を、§4.2 に core/metrics の役割（Worker の窓口は state 側）を明記 |
+| 2026-11-18 | T0-12 を完了（LICENSE に Palladio の著作権表示を追加、README を日英で作成） |
 
 ---
 
