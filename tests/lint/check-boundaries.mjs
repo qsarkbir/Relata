@@ -5,12 +5,12 @@
 // 期待した規則が期待した回数だけ報告されることを確かめる。
 //
 // 使い方: node tests/lint/check-boundaries.mjs
-// npm test へ組み込む案は、docs/progress.md の T0-08 の欄を参照。
+// npm test からは tests/unit/lint-boundaries.test.ts が呼ぶ。
 //
 // 注意: 同じ作業フォルダで、型検査（tsc）やビルドと同時に動かさない。
 // 一時ファイルを src/ に書くため、他の処理がそれを読み込んで失敗することがある。
 //
-// 【なぜ一時ファイル】型情報を使う規則（projectService）は、tsconfig に含まれる実在のファイルが必要。
+// 【なぜ】型情報を使う規則（projectService）は、tsconfig に含まれる実在のファイルが必要。
 // 検査が終わったら、成功しても失敗しても（Ctrl+C でも）消す。
 import { ESLint } from 'eslint';
 import { execFileSync } from 'node:child_process';
@@ -80,25 +80,25 @@ const cases = [
     lint: 'src/core/__lint_probe__.ts',
     files: {
       'src/core/__lint_probe__.ts': [
-        "import { a } from '../state/a';",
-        "import { b } from '../../src/views/b';",
-        "import { c } from '../render/c';",
-        "import { d } from '../app/d';",
-        "import { e } from '../io/e';",
-        "import { f } from '../map/f';",
-        "import { g } from '../workers/g';",
-        "import { h } from '../i18n/h';",
-        "import { i } from './x/../../state/a';",
+        "import { a } from '../state/__lint_probe__a';",
+        "import { b } from '../../src/views/__lint_probe__b';",
+        "import { c } from '../render/__lint_probe__c';",
+        "import { d } from '../app/__lint_probe__d';",
+        "import { e } from '../io/__lint_probe__e';",
+        "import { f } from '../map/__lint_probe__f';",
+        "import { g } from '../workers/__lint_probe__g';",
+        "import { h } from '../i18n/__lint_probe__h';",
+        "import { i } from './x/../../state/__lint_probe__a';",
         'export const x = [a, b, c, d, e, f, g, h, i];',
       ],
-      'src/state/a.ts': ['export const a = 1;'],
-      'src/views/b.ts': ['export const b = 1;'],
-      'src/render/c.ts': ['export const c = 1;'],
-      'src/app/d.ts': ['export const d = 1;'],
-      'src/io/e.ts': ['export const e = 1;'],
-      'src/map/f.ts': ['export const f = 1;'],
-      'src/workers/g.ts': ['export const g = 1;'],
-      'src/i18n/h.ts': ['export const h = 1;'],
+      'src/state/__lint_probe__a.ts': ['export const a = 1;'],
+      'src/views/__lint_probe__b.ts': ['export const b = 1;'],
+      'src/render/__lint_probe__c.ts': ['export const c = 1;'],
+      'src/app/__lint_probe__d.ts': ['export const d = 1;'],
+      'src/io/__lint_probe__e.ts': ['export const e = 1;'],
+      'src/map/__lint_probe__f.ts': ['export const f = 1;'],
+      'src/workers/__lint_probe__g.ts': ['export const g = 1;'],
+      'src/i18n/__lint_probe__h.ts': ['export const h = 1;'],
     },
     expect: { 'import-x/no-restricted-paths': 9 },
   },
@@ -107,12 +107,12 @@ const cases = [
     lint: 'src/core/filter/__lint_probe__.ts',
     files: {
       'src/core/filter/__lint_probe__.ts': [
-        "import { m } from '../encode/map';",
-        "import { n } from './map';",
+        "import { m } from '../encode/__lint_probe__map';",
+        "import { n } from './__lint_probe__map';",
         'export const x = [m, n];',
       ],
-      'src/core/encode/map.ts': ['export const m = 1;'],
-      'src/core/filter/map.ts': ['export const n = 1;'],
+      'src/core/encode/__lint_probe__map.ts': ['export const m = 1;'],
+      'src/core/filter/__lint_probe__map.ts': ['export const n = 1;'],
     },
     expect: { 'import-x/no-restricted-paths': 0 },
   },
@@ -146,20 +146,20 @@ const cases = [
       'src/render/__lint_probe__.ts': [
         "import { useState } from 'react';",
         "import { create } from 'zustand';",
-        "import { a } from '../state/a';",
-        "import { b } from '../views/b';",
-        "import { c } from '../app/c';",
-        "import { f } from '../map/f';",
-        "import { e } from '../io/e';",
-        "import { g } from '../workers/g';",
+        "import { a } from '../state/__lint_probe__a';",
+        "import { b } from '../views/__lint_probe__b';",
+        "import { c } from '../app/__lint_probe__c';",
+        "import { f } from '../map/__lint_probe__f';",
+        "import { e } from '../io/__lint_probe__e';",
+        "import { g } from '../workers/__lint_probe__g';",
         'export const x = [useState, create, a, b, c, f, e, g];',
       ],
-      'src/state/a.ts': ['export const a = 1;'],
-      'src/views/b.ts': ['export const b = 1;'],
-      'src/app/c.ts': ['export const c = 1;'],
-      'src/map/f.ts': ['export const f = 1;'],
-      'src/io/e.ts': ['export const e = 1;'],
-      'src/workers/g.ts': ['export const g = 1;'],
+      'src/state/__lint_probe__a.ts': ['export const a = 1;'],
+      'src/views/__lint_probe__b.ts': ['export const b = 1;'],
+      'src/app/__lint_probe__c.ts': ['export const c = 1;'],
+      'src/map/__lint_probe__f.ts': ['export const f = 1;'],
+      'src/io/__lint_probe__e.ts': ['export const e = 1;'],
+      'src/workers/__lint_probe__g.ts': ['export const g = 1;'],
     },
     expect: { 'no-restricted-imports': 2, 'import-x/no-restricted-paths': 6 },
   },
@@ -168,12 +168,12 @@ const cases = [
     lint: 'src/render/__lint_probe__.ts',
     files: {
       'src/render/__lint_probe__.ts': [
-        "import { a } from '../core/a';",
-        "import { t } from '../i18n/t';",
+        "import { a } from '../core/__lint_probe__a';",
+        "import { t } from '../i18n/__lint_probe__t';",
         'export const x = [a, t];',
       ],
-      'src/core/a.ts': ['export const a = 1;'],
-      'src/i18n/t.ts': ['export const t = 1;'],
+      'src/core/__lint_probe__a.ts': ['export const a = 1;'],
+      'src/i18n/__lint_probe__t.ts': ['export const t = 1;'],
     },
     expect: { 'no-restricted-imports': 0, 'import-x/no-restricted-paths': 0 },
   },
@@ -192,12 +192,12 @@ const cases = [
     files: {
       'src/workers/__lint_probe__.ts': [
         "import { useState } from 'react';",
-        "import { a } from '../state/a';",
-        "import { c } from '../core/c';",
+        "import { a } from '../state/__lint_probe__a';",
+        "import { c } from '../core/__lint_probe__c';",
         'export const x = [useState, a, c];',
       ],
-      'src/state/a.ts': ['export const a = 1;'],
-      'src/core/c.ts': ['export const c = 1;'],
+      'src/state/__lint_probe__a.ts': ['export const a = 1;'],
+      'src/core/__lint_probe__c.ts': ['export const c = 1;'],
     },
     expect: { 'no-restricted-imports': 1, 'import-x/no-restricted-paths': 1 },
   },
@@ -236,12 +236,15 @@ const cases = [
  * ESLint の型情報の仕組み（projectService）が古いフォルダの内容を覚えていて「見つからない」と
  * 誤るのを避けるため。
  *
- * @param {string} rel - `__lint_probe__` を含む相対パス
+ * 補助ファイルの名前と import 文にも `__lint_probe__` を入れてあるので、本文にも同じ置き換えを掛けて揃える。
+ * 【なぜ】将来 src/i18n/t.ts のような実在のファイルができても、名前がぶつからないようにする。
+ *
+ * @param {string} rel - `__lint_probe__` を含む相対パスまたは文字列
  * @returns {string} pid 入りの相対パス
  */
 let seq = 0;
 const withPid = (rel) =>
-  rel.replace('__lint_probe__', `__lint_probe__${String(pid)}_${String(seq)}`);
+  rel.replaceAll('__lint_probe__', `__lint_probe__${String(pid)}_${String(seq)}`);
 
 /**
  * 補助ファイルの名前は pid を入れず、書いた場所をそのまま使う（他の項目と重ならないよう、
@@ -256,77 +259,80 @@ function writeProbe(rel, lines) {
   const made = mkdirSync(resolve(path, '..'), { recursive: true });
   if (made !== undefined) createdDirs.push(made);
   // wx: 既に同名のファイルがあれば失敗させ、他のファイルを上書きしない
-  writeFileSync(path, lines.join('\n') + '\n', { flag: 'wx' });
+  writeFileSync(path, withPid(lines.join('\n')) + '\n', { flag: 'wx' });
   written.add(path);
   return path;
 }
 
-cleanStale();
-const eslint = new ESLint({ cwd: root });
+// 【なぜ】本体を try/finally で包む。途中で例外が起きても、一時ファイルと作ったフォルダを片付ける。
 let failed = 0;
+try {
+  cleanStale();
+  const eslint = new ESLint({ cwd: root });
 
-for (const c of cases) {
-  seq++;
-  const mine = [];
-  try {
-    for (const [rel, lines] of Object.entries(c.files)) mine.push(writeProbe(rel, lines));
-    const [result] = await eslint.lintFiles([resolve(root, withPid(c.lint))]);
-    const messages = result?.messages ?? [];
-    const counts = {};
-    for (const m of messages) {
-      if (m.ruleId) counts[m.ruleId] = (counts[m.ruleId] ?? 0) + 1;
+  for (const c of cases) {
+    seq++;
+    const mine = [];
+    try {
+      for (const [rel, lines] of Object.entries(c.files)) mine.push(writeProbe(rel, lines));
+      const [result] = await eslint.lintFiles([resolve(root, withPid(c.lint))]);
+      const messages = result?.messages ?? [];
+      const counts = {};
+      for (const m of messages) {
+        if (m.ruleId) counts[m.ruleId] = (counts[m.ruleId] ?? 0) + 1;
+      }
+      // 構文エラーなどの致命的な失敗は、規則の件数に現れないので別に数える。
+      const fatal = messages.filter((m) => m.fatal);
+      const ok =
+        fatal.length === 0 &&
+        Object.entries(c.expect).every(([rule, n]) => (counts[rule] ?? 0) === n);
+      console.log(`${ok ? 'OK  ' : 'FAIL'} ${c.name}`);
+      if (!ok) {
+        failed++;
+        console.log('     期待:', JSON.stringify(c.expect), '実際:', JSON.stringify(counts));
+        for (const m of fatal) console.log('     致命的エラー:', m.message);
+      }
+    } finally {
+      for (const p of mine) {
+        rmSync(p, { force: true });
+        written.delete(p);
+      }
     }
-    // 構文エラーなどの致命的な失敗は、規則の件数に現れないので別に数える。
-    const fatal = messages.filter((m) => m.fatal);
+  }
+
+  // 【なぜ】DOM の型を持たない tsconfig.core.json が、core の DOM の型の使用を止めることも確かめる。
+  {
+    seq++;
+    const path = writeProbe('src/core/__lint_probe__.ts', [
+      'export const a = globalThis.window;',
+      'export type T = HTMLElement | Node;',
+    ]);
+    let output = '';
+    try {
+      execFileSync(
+        process.execPath,
+        [resolve(root, 'node_modules/typescript/bin/tsc'), '-p', 'tsconfig.core.json'],
+        { cwd: root, encoding: 'utf8', stdio: 'pipe' },
+      );
+    } catch (e) {
+      // tsc は型エラーがあると終了コード 2 で終わる。エラーの文面は stdout に出る。
+      output = String(e.stdout ?? '');
+    } finally {
+      rmSync(path, { force: true });
+      written.delete(path);
+    }
+    // window は globalThis の添字として、HTMLElement と Node は名前の未定義として報告される。
     const ok =
-      fatal.length === 0 &&
-      Object.entries(c.expect).every(([rule, n]) => (counts[rule] ?? 0) === n);
-    console.log(`${ok ? 'OK  ' : 'FAIL'} ${c.name}`);
+      output.includes('(1,') && ['HTMLElement', 'Node'].every((w) => output.includes(`'${w}'`));
+    console.log(
+      `${ok ? 'OK  ' : 'FAIL'} core で DOM の型を使うと tsconfig.core.json の型検査で止まる`,
+    );
     if (!ok) {
       failed++;
-      console.log('     期待:', JSON.stringify(c.expect), '実際:', JSON.stringify(counts));
-      for (const m of fatal) console.log('     致命的エラー:', m.message);
-    }
-  } finally {
-    for (const p of mine) {
-      rmSync(p, { force: true });
-      written.delete(p);
+      console.log(output);
     }
   }
+} finally {
+  cleanup();
 }
-
-// 【なぜ】DOM の型を持たない tsconfig.core.json が、core の DOM の型の使用を止めることも確かめる。
-{
-  seq++;
-  const path = writeProbe('src/core/__lint_probe__.ts', [
-    'export const a = globalThis.window;',
-    'export type T = HTMLElement | Node;',
-  ]);
-  let output = '';
-  try {
-    execFileSync(
-      process.execPath,
-      [resolve(root, 'node_modules/typescript/bin/tsc'), '-p', 'tsconfig.core.json'],
-      { cwd: root, encoding: 'utf8', stdio: 'pipe' },
-    );
-  } catch (e) {
-    // tsc は型エラーがあると終了コード 2 で終わる。エラーの文面は stdout に出る。
-    output = String(e.stdout ?? '');
-  } finally {
-    rmSync(path, { force: true });
-    written.delete(path);
-  }
-  // window は globalThis の添字として、HTMLElement と Node は名前の未定義として報告される。
-  const ok =
-    output.includes('(1,') && ['HTMLElement', 'Node'].every((w) => output.includes(`'${w}'`));
-  console.log(
-    `${ok ? 'OK  ' : 'FAIL'} core で DOM の型を使うと tsconfig.core.json の型検査で止まる`,
-  );
-  if (!ok) {
-    failed++;
-    console.log(output);
-  }
-}
-
-cleanup();
 process.exit(failed === 0 ? 0 : 1);

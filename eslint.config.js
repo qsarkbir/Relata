@@ -369,10 +369,10 @@ export default defineConfig(
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: { globals: globals.node },
   },
-  // tests/ の .ts ファイルを型検査する tsconfig は、T0-08（テストの導入）で作る。
-  // それまでは tests/ に .ts を置かない。
+  // tests/ の .ts と、テストツールの設定ファイルは tsconfig.test.json（T0-08）に含まれる。
+  // projectService がそれを見つけて型情報を使う。層の境界の規則は src/ の各層にだけ掛かり、tests/ には掛からない。
   {
-    files: ['vite.config.ts', 'tests/**/*.ts'],
+    files: ['vite.config.ts', 'vitest.config.ts', 'playwright.config.ts', 'tests/**/*.ts'],
     languageOptions: { globals: globals.node },
   },
 
