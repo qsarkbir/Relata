@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 1.2（2026-11-18） |
+| 版 | 1.3（2026-11-18） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -44,6 +44,7 @@
 | D-11 | リポジトリは `qsarkbir/relata`。**v0.1 の公開まで非公開**にする | 利用者の決定。有料アカウントのため、非公開のままでも GitHub Pages を使える |
 | D-12 | GitHub Pages には**フェーズ 0 から配信する**（サイトは誰でも見られる） | 利用者の決定。中身は空のアプリで、データを含まないため |
 | D-13 | 統括役と reviewer は **Opus**、実装担当（qa-tester を含む）は **Sonnet**、軽い仕事（検索、一覧づくり、定型の確認など）は **Haiku** で動かす（§16.1） | 利用者の決定。判断と確認に強いモデルを、量の多い実装に速く安いモデルを充てる |
+| D-14 | TypeScript は 6.0 系に固定する（`~6.0.3`）。7 系への移行は typescript-eslint が対応してから判断する | 7 系では typescript-eslint が動かず、層の境界の検査（§4.1）ができないため（T0-06 のレビューで判明） |
 
 ---
 
@@ -51,7 +52,7 @@
 
 | 領域 | 採用 | 理由 |
 |---|---|---|
-| 言語 | TypeScript（`strict`、`noUncheckedIndexedAccess`） | 型で不具合を早く見つける |
+| 言語 | TypeScript **6.0 系**（`~6.0.3`。`strict`、`noUncheckedIndexedAccess`） | 型で不具合を早く見つける。7 系（ネイティブ版）は JS から呼べるコンパイラ API がなく、typescript-eslint が対応していない（2026-11 時点で `<6.1.0`）ため、対応するまで 6.0 に留める（D-14） |
 | ビルド | Vite | 静的ファイルを出力し、TypeScript を標準で扱え、速い |
 | UI | React | D-02 |
 | 状態管理 | Zustand | 小さく、型付けが簡単 |
@@ -612,7 +613,7 @@ interface ProjectFile {
 | Claude Code | 作業場所のフォルダで起動する。`CLAUDE.md` と `.claude/agents/` が自動で読み込まれる |
 | 参照用の旧ソース | `upstream/`。リポジトリには含めない（`.gitignore`）。必要なときだけ参照する |
 
-Node.js の版は `package.json` の `engines` と `.nvmrc` で固定し、CI と手元で同じ版を使う。
+Node.js の版は `package.json` の `engines` と `.nvmrc` で固定し、CI と手元で同じ版を使う（現在は 24 系）。`.npmrc` の `engine-strict=true` で、版が合わないときは導入を止める。CI では `actions/setup-node` の `node-version-file: .nvmrc` を使う。
 
 ---
 

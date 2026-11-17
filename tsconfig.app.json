@@ -1,0 +1,55 @@
+{
+  // アプリ本体（src/ 以下）の型検査の設定。
+  "compilerOptions": {
+    // 【なぜ】型検査の結果だけが欲しく、JS の出力は Vite が担当するので、tsc は何も出力しない。
+    "noEmit": true,
+    // 【なぜ】tsc -b（プロジェクト参照）を使うには composite 相当の設定が必要。
+    //   増分ビルドの記録は node_modules 内に置き、作業フォルダを汚さない。
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+
+    // 【なぜ】target は、構文（クラスのフィールドなど）を検査するときの基準。tsc は何も出力しない
+    //   （noEmit）ので、実際の変換は Vite の build.target が行う。
+    //   lib は、組み込み API の型を使えるようにする。ES2022 を指定すると、
+    //   Array.prototype.at や Object.hasOwn の型が使える（実行時の機能は、動かすブラウザ側の対応による）。
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    // 【なぜ】Vite 固有の型（import.meta.env、画像などのアセットの import）を使えるようにする。
+    //   vite-env.d.ts に書く方法もあるが、同じ型を二重に読み込むので、ここ一か所にまとめる。
+    "types": ["vite/client"],
+    "skipLibCheck": true,
+
+    // 【なぜ】"bundler" は Vite のような、バンドラーが import を解決する環境向けの方式。
+    //   拡張子なしの import（'./App'）を書ける。
+    "moduleResolution": "bundler",
+    // 【なぜ】型だけの import は `import type` と明示させる。実行時に消える import と
+    //   残る import が一目で分かり、Vite（ファイル単位の変換）でも結果が変わらない。
+    "verbatimModuleSyntax": true,
+    // 【なぜ】Vite は 1 ファイルずつ変換するため、他のファイルの情報がないと
+    //   正しく変換できない書き方（型だけの再 export など）を、あらかじめ禁止する。
+    //   verbatimModuleSyntax が有効なら暗黙に有効になるが、意図を明示するためあえて書く。
+    "isolatedModules": true,
+    // 【なぜ】TypeScript 専用の構文（enum、namespace、コンストラクタの引数プロパティ
+    //   `constructor(private x: number)` など、消すだけでは JS にならないもの）を禁止する。
+    //   Vite などの「型を消すだけ」の変換器でそのまま動く範囲に収めるため。
+    "erasableSyntaxOnly": true,
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+
+    // 【なぜ】strict は null 検査や暗黙の any の禁止などをまとめて有効にする（CLAUDE.md の規約）。
+    "strict": true,
+    // 【なぜ】配列やレコードの添字アクセス（xs[0]、rec[key]）の型に undefined を加える。
+    //   存在しない要素を読む不具合を、型の段階で気づけるようにする（CLAUDE.md の規約）。
+    "noUncheckedIndexedAccess": true,
+    // 【なぜ】親クラスのメソッドを上書きするとき `override` の明記を求め、
+    //   親側の改名で上書きが外れる事故を防ぐ。
+    "noImplicitOverride": true,
+    // 【なぜ】switch の case で break を忘れた「落ちる」分岐を、エラーにする。
+    "noFallthroughCasesInSwitch": true,
+    // 【なぜ】使っていない変数や引数は、消し忘れや打ち間違いのことが多いので、エラーにする。
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["src"]
+}
