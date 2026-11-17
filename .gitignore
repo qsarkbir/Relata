@@ -1,0 +1,22 @@
+# 旧 Palladio のソース（参照専用。リポジトリに含めない。設計書 §17）
+upstream/
+
+# 依存パッケージとビルドの出力
+node_modules/
+dist/
+.vite/
+
+# テストの出力
+coverage/
+playwright-report/
+test-results/
+
+# 個人の設定と秘密情報
+.env
+.env.*
+.claude/settings.local.json
+
+# 記録とOSの一時ファイル
+*.log
+.DS_Store
+Thumbs.db

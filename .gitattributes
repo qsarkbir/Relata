@@ -1,0 +1,6 @@
+# 改行を LF にそろえる（Windows と CI の Linux で差分が出ないように）
+* text=auto eol=lf
+
+# Windows のバッチは CRLF のまま
+*.bat text eol=crlf
+*.cmd text eol=crlf
