@@ -1,6 +1,13 @@
 BSD 3-Clause License
 
 Copyright (c) 2026, SHINODA Tomoaki
+Copyright (c) 2019, Stanford University
+All rights reserved.
+
+Relata is derived from Palladio (https://github.com/humanitiesplusdesign/palladio),
+developed by Humanities + Design, Stanford University, and distributed under
+the BSD 3-Clause License. The Stanford University copyright notice above
+applies to the portions derived from Palladio.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are met:
