@@ -8,6 +8,9 @@ dist/
 
 # テストの出力
 coverage/
+
+# 層の境界の検査用の一時ファイル（tests/lint/check-boundaries.mjs）
+src/**/__lint_probe__*
 playwright-report/
 test-results/
 
