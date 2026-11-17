@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 1.4（2026-11-18） |
+| 版 | 1.6（2026-11-18） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -45,6 +45,8 @@
 | D-12 | GitHub Pages には**フェーズ 0 から配信する**（サイトは誰でも見られる） | 利用者の決定。中身は空のアプリで、データを含まないため |
 | D-13 | 統括役と reviewer は **Opus**、実装担当（qa-tester を含む）は **Sonnet**、軽い仕事（検索、一覧づくり、定型の確認など）は **Haiku** で動かす（§16.1） | 利用者の決定。判断と確認に強いモデルを、量の多い実装に速く安いモデルを充てる |
 | D-14 | TypeScript は 6.0 系に固定する（`~6.0.3`）。7 系への移行は typescript-eslint が対応してから判断する | 7 系では typescript-eslint が動かず、層の境界の検査（§4.1）ができないため（T0-06 のレビューで判明） |
+| D-15 | 多言語対応（FR-UI-01）はライブラリを使わず、`src/i18n/` に型付きの辞書と純粋な翻訳関数を自作する。日本語の辞書を正とし、英語の辞書は同じキーをすべて持つことを型で強制する | 対象は日英の 2 言語で、複数形の規則なども要らない。React に依存しない関数にすれば、`render`（書き出しのラベル）からも使える（§4.1）。キーの打ち間違いと訳し漏れを型検査で防げる |
+| D-16 | 画面の言語の既定は日本語（`DEFAULT_LOCALE`）。ただし、ブラウザの言語の一覧が日本語にも英語にも当たらないときは英語（`FALLBACK_LOCALE`）にする | 主な利用者は西アジア史の研究者で、ブラウザの言語がアラビア語、ペルシア語、トルコ語などの人も多い。その人たちには日本語より英語のほうが読める見込みが高い（T0-11 のレビューで指摘） |
 
 ---
 
@@ -90,6 +92,7 @@
 - **`src/core/` は何にも依存しない。** DOM、React、ブラウザ API、`Date` を使わない。JSX も書かない（`.tsx` を置かない）。
 - **`src/render/` は React に依存しない。** 画面からも書き出し処理からも呼べるようにする。JSX も書かない。`core` と `i18n`（書き出しのラベル用）だけに依存し、`state`、`views`、`app`、`map`、`io`、`workers` を import しない。
 - **`src/io/` と `src/workers/` は画面に依存しない。** React、Zustand、`state`、`views`、`app` を import しない。`io/export` の図の部分は `render` を使う。`workers/bundling.worker.ts` は `render/bundling/` の算法を使う（§16.1 の分担による例外ではなく、上の図の「下向き」の依存として許す）。
+- **`src/i18n/` は React と画面とブラウザに依存しない。** `render` から使われるため（D-15）。React、Zustand、地図のライブラリ、`state`、`views`、`app`、`render`、`map`、`io`、`workers` を import せず、`navigator` などのブラウザのグローバルと `Date` を使わず、JSX を書かない。`core` には依存してよい。言語の判定に要る値（`navigator.languages` など）は呼ぶ側が渡す。
 - これらの規則は ESLint で機械的に検査する（パスを解決して判定する `import-x/no-restricted-paths`、パッケージ名の `no-restricted-imports`、ブラウザのグローバルの `no-restricted-globals`、JSX と動的 import の `no-restricted-syntax`）。検査が効いていることは `tests/lint/check-boundaries.mjs` で確かめる。
 - さらに `core` は、DOM の型を持たない `tsconfig.core.json`（`lib: ["ES2022"]`）でも型検査する。ESLint の名前の一覧では漏れる DOM の型やグローバルを、型検査で止めるため。
 
@@ -120,7 +123,7 @@ src/
   state/                 Zustand ストア
   views/                 React コンポーネント
   app/                   起動処理、画面の配置
-  i18n/                  日本語・英語の表示文字列
+  i18n/                  日本語・英語の表示文字列と翻訳関数（React に依存しない。D-15）
 tests/
   golden/                networkx で作った指標の正解値と、その生成スクリプト
   e2e/                   Playwright（ユースケースごと）
