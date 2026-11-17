@@ -51,5 +51,8 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
+  // 【なぜ】src/ 全体を含める。core も含むので、core は tsconfig.core.json と二重に検査される
+  //   （DOM の型あり・なしの両方で通る必要がある）。外すと、app から core を import したときに
+  //   参照先が「この設定の対象外」になり、型検査できなくなるため、承知の上で二重にしている。
   "include": ["src"]
 }

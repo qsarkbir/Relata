@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 1.3（2026-11-18） |
+| 版 | 1.4（2026-11-18） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -87,9 +87,11 @@
   io（読み込み・書き出し）─────────────────────────────┘
 ```
 
-- **`src/core/` は何にも依存しない。** DOM、React、ブラウザ API を import しない。
-- **`src/render/` は React に依存しない。** 画面からも書き出し処理からも呼べるようにする。
-- この規則は ESLint の `no-restricted-imports` で機械的に検査する。
+- **`src/core/` は何にも依存しない。** DOM、React、ブラウザ API、`Date` を使わない。JSX も書かない（`.tsx` を置かない）。
+- **`src/render/` は React に依存しない。** 画面からも書き出し処理からも呼べるようにする。JSX も書かない。`core` と `i18n`（書き出しのラベル用）だけに依存し、`state`、`views`、`app`、`map`、`io`、`workers` を import しない。
+- **`src/io/` と `src/workers/` は画面に依存しない。** React、Zustand、`state`、`views`、`app` を import しない。`io/export` の図の部分は `render` を使う。`workers/bundling.worker.ts` は `render/bundling/` の算法を使う（§16.1 の分担による例外ではなく、上の図の「下向き」の依存として許す）。
+- これらの規則は ESLint で機械的に検査する（パスを解決して判定する `import-x/no-restricted-paths`、パッケージ名の `no-restricted-imports`、ブラウザのグローバルの `no-restricted-globals`、JSX と動的 import の `no-restricted-syntax`）。検査が効いていることは `tests/lint/check-boundaries.mjs` で確かめる。
+- さらに `core` は、DOM の型を持たない `tsconfig.core.json`（`lib: ["ES2022"]`）でも型検査する。ESLint の名前の一覧では漏れる DOM の型やグローバルを、型検査で止めるため。
 
 ### 4.2 ディレクトリ構成
 
@@ -101,7 +103,7 @@ src/
     time/                日付の解析、暦の換算（西暦・ヒジュラ暦…）、幅のある年代の計算
     text/                検索と照合のための文字の正規化（アラビア文字、転写の補助記号）
     graph/               graphology グラフの構築、重みの集約、射影
-    metrics/             指標計算の窓口と結果の型（実体は workers で実行）
+    metrics/             指標の結果の型と、Worker の中でも呼べる純粋な計算関数。Worker を起動して呼び出す窓口は state 側に置く（core は Worker を扱えないため）
     encode/              見た目への割り当て（指標→大きさ、属性→色、スケール）
     util/                assertNever など共通の小道具
   io/

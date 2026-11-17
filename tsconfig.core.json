@@ -1,0 +1,35 @@
+{
+  // src/core/ だけを、DOM の型なしで検査する設定。
+  // 【なぜ】tsconfig.app.json は src/ 全体に DOM の型を与えるので、core が window や
+  //   HTMLElement を使っても tsc は止めない。この設定は lib に DOM を入れず、types も空にして、
+  //   core が DOM や Node.js の型に触れたらコンパイルエラーにする（設計書 §4.1）。
+  //   ESLint の no-restricted-globals は値の参照を止めるが、型の位置の HTMLElement は止められない。
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.core.tsbuildinfo",
+
+    "target": "ES2022",
+    // 【なぜ】DOM を入れない。ES2022 の組み込みだけを使える。
+    "lib": ["ES2022"],
+    // 【なぜ】空にして、Node.js や Vite の型を自動で読み込まないようにする。
+    "types": [],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    "moduleResolution": "bundler",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "erasableSyntaxOnly": true,
+    "moduleDetection": "force",
+
+    // 以下の厳格さは tsconfig.app.json と同じ。
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": ["src/core"]
+}
