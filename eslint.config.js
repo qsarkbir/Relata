@@ -63,6 +63,17 @@ const browserGlobalRestrictions = browserGlobalNames.map((name) => ({
   name,
   message: `${name} はブラウザの機能です。src/core/ は DOM やブラウザ API に依存しません（設計書 §4.1、CLAUDE.md）。必要な値は引数で受け取ってください。`,
 }));
+// 【なぜ】src/i18n/ は render（書き出しのラベル）からも使われるため、ブラウザに依存しない（D-15）。
+// 言語の判定に要る値（navigator.languages など）は、呼ぶ側が引数で渡す。
+const i18nBrowserGlobalRestrictions = browserGlobalNames.map((name) => ({
+  name,
+  message: `${name} はブラウザの機能です。src/i18n/ は render からも使われるため、ブラウザに依存しません（設計書 §4.1、D-15）。言語の判定に要る値は、呼ぶ側が引数で渡してください。`,
+}));
+const i18nDateRestriction = {
+  name: 'Date',
+  message:
+    'Date は使いません。src/i18n/ はブラウザにも暦にも依存せず、日付の整形は core の関数に任せます（設計書 §4.1、§5.1）。',
+};
 
 // 【なぜ】日付は内部で JDN（ユリウス通日）の整数として持つ。Date はグレゴリオ暦を前提とし、
 // 紀元前や幅のある年代、ヒジュラ暦の扱いに向かず、タイムゾーンにも左右される（設計書 §5.1）。
@@ -103,7 +114,7 @@ const noImplicitDependencySyntax = [
 const noTsxFileSyntax = {
   selector: 'Program',
   message:
-    'src/core/ と src/render/ に .tsx ファイルは置きません。JSX を書くのは src/views/ と src/app/ だけです（設計書 §4.1）。',
+    'src/core/、src/render/、src/i18n/ に .tsx ファイルは置きません。JSX を書くのは src/views/ と src/app/ だけです（設計書 §4.1）。',
 };
 
 // 層ごとの「パッケージ名による」禁止。パスの解決が要らないので no-restricted-imports で書く。
@@ -230,6 +241,7 @@ export default defineConfig(
       'src/render/**/*.{ts,tsx}',
       'src/io/**/*.{ts,tsx}',
       'src/workers/**/*.{ts,tsx}',
+      'src/i18n/**/*.{ts,tsx}',
     ],
     plugins: { 'import-x': importX },
     settings: {
@@ -262,6 +274,31 @@ export default defineConfig(
         },
       ],
       'no-restricted-globals': ['error', ...browserGlobalRestrictions, dateRestriction],
+      'no-restricted-syntax': ['error', ...noImplicitDependencySyntax],
+    },
+  },
+  {
+    files: ['src/i18n/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        restrictPackages(
+          ['react', 'react-dom', 'zustand', 'maplibre-gl', 'deck.gl', '@deck.gl'],
+          'src/i18n/ は render からも使われるため（D-15）、React・Zustand・地図の部品に依存しません（設計書 §4.1）。',
+        ),
+      ],
+      'import-x/no-restricted-paths': [
+        'error',
+        {
+          basePath: import.meta.dirname,
+          zones: zones(
+            './src/i18n',
+            [state, views, app, render, map, io, workers],
+            'src/i18n/ は render からも使われるため（D-15）、state、views、app、render、map、io、workers を import しません。core には依存してよい（設計書 §4.1）。',
+          ),
+        },
+      ],
+      'no-restricted-globals': ['error', ...i18nBrowserGlobalRestrictions, i18nDateRestriction],
       'no-restricted-syntax': ['error', ...noImplicitDependencySyntax],
     },
   },
@@ -319,10 +356,10 @@ export default defineConfig(
       ],
     },
   },
-  // core と render には .tsx ファイル自体を置かない。上と同じ規則を再掲するのは、
+  // core、render、i18n には .tsx ファイル自体を置かない。上と同じ規則を再掲するのは、
   // 同じ規則を設定し直すと、後ろのものが前のものを丸ごと置き換えるため。
   {
-    files: ['src/core/**/*.tsx', 'src/render/**/*.tsx'],
+    files: ['src/core/**/*.tsx', 'src/render/**/*.tsx', 'src/i18n/**/*.tsx'],
     rules: {
       'no-restricted-syntax': ['error', ...noImplicitDependencySyntax, noTsxFileSyntax],
     },

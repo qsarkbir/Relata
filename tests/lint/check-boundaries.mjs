@@ -187,6 +187,43 @@ const cases = [
     expect: { 'no-restricted-syntax': 3 },
   },
   {
+    name: 'i18n は react、zustand、state、render などを import できず、navigator と Date も使えない',
+    lint: 'src/i18n/__lint_probe__.ts',
+    files: {
+      'src/i18n/__lint_probe__.ts': [
+        "import { useState } from 'react';",
+        "import { a } from '../state/a';",
+        "import { r } from '../render/r';",
+        'export const x = [useState, a, r, navigator.language, new Date()];',
+      ],
+      'src/state/a.ts': ['export const a = 1;'],
+      'src/render/r.ts': ['export const r = 1;'],
+    },
+    expect: {
+      'no-restricted-imports': 1,
+      'import-x/no-restricted-paths': 2,
+      'no-restricted-globals': 2,
+    },
+  },
+  {
+    name: 'i18n は core を import できる',
+    lint: 'src/i18n/__lint_probe__.ts',
+    files: {
+      'src/i18n/__lint_probe__.ts': ["import { a } from '../core/a';", 'export const x = a;'],
+      'src/core/a.ts': ['export const a = 1;'],
+    },
+    expect: { 'no-restricted-imports': 0, 'import-x/no-restricted-paths': 0 },
+  },
+  {
+    name: 'i18n の .tsx で JSX を書けない',
+    lint: 'src/i18n/__lint_probe__.tsx',
+    files: {
+      'src/i18n/__lint_probe__.tsx': ['export const a = <div />;'],
+    },
+    // JSXElement 1 件 + .tsx ファイル自体の禁止 1 件
+    expect: { 'no-restricted-syntax': 2 },
+  },
+  {
     name: 'io と workers は react、zustand、state、views、app を import できない',
     lint: 'src/workers/__lint_probe__.ts',
     files: {
