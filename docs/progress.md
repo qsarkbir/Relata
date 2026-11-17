@@ -14,16 +14,17 @@
 
 | 項目 | 内容 |
 |---|---|
-| フェーズ | **0 準備**（13 タスク中 5 完了） |
-| 直近の完了 | T0-05 GitHub への接続、初回 push、`main` の保護（2026-11-18） |
+| フェーズ | **0 準備**（13 タスク中 6 完了） |
+| 直近の完了 | T0-06 Vite ＋ React ＋ TypeScript の雛形（2026-11-18） |
 | 作業中 | なし |
 | 待っていること | なし（Q-03 はフェーズ 1 の T1-22 までに決める） |
 | メモ | GitHub リポジトリ `qsarkbir/relata` は作成済み（非公開）。作業フォルダは `C:\Users\qsark\Documents\GitHub\2026_relata` |
 
 ### 次にやること
 
-1. **T0-06**（Vite ＋ React ＋ TypeScript の雛形）と **T0-12**（LICENSE、README）を進められる。
-2. T0-09（CI）が終わったら、`main` の保護に「CI が通ること」（required status checks）を足す。
+1. **T0-07**（ESLint、Prettier、層の境界）と **T0-08**（Vitest、Playwright）を qa-tester（Sonnet）で進める。書き込む場所が重なる（`package.json`）ので、順に行う。
+2. **T0-11**（`assertNever`、多言語対応の枠組み）と **T0-12**（LICENSE、README）も始められる。
+3. T0-09（CI）が終わったら、`main` の保護に「CI が通ること」（required status checks）を足す。
 
 ---
 
@@ -45,7 +46,7 @@
 
 | フェーズ | 目標 | 状態 | 進み具合 |
 |---|---|---|---|
-| 0 準備 | 開発の土台。空のアプリが GitHub Pages で表示される | 🔄 | 5 / 13 |
+| 0 準備 | 開発の土台。空のアプリが GitHub Pages で表示される | 🔄 | 6 / 13 |
 | 1 MVP | 読み込み（ヒジュラ暦を含む）、絞り込み、指標、有向グラフの表示、SVG 出力（v0.1） | ⬜ | 0 / 26 |
 | 2 研究機能 | k-partite と射影、欠損の可視化、時間、表ビュー、PDF（v0.2） | ⬜ | 0 / 10 |
 | 3 地図と bundling | 地図上の時間アニメーション、edge bundling（v0.3） | ⬜ | 0 / 8 |
@@ -64,8 +65,8 @@
 | T0-03 | 作業フォルダの作成と、文書・エージェント定義のコピー | 利用者 | T0-02 | 設計 §17 | ✅ | 2026-11-18 | `docs/`、`.claude/agents/`（8 件）、`CLAUDE.md`、`upstream/`（8 リポジトリ）を確認 |
 | T0-04 | git の初期化、`.gitignore`（`upstream/`、`node_modules/`、`dist/`）、初回コミット | 統括役 | T0-03 | 設計 §18 | ✅ | 2026-11-18 | 既定のブランチは `main`。改行を LF にそろえる `.gitattributes` も追加 |
 | T0-05 | GitHub リポジトリへの接続（remote の設定、初回 push）と `main` の保護 | 利用者＋統括役 | T0-04 | 設計 §14 | ✅ | 2026-11-18 | GitHub 側の初回コミット（LICENSE、README）の上に積んで push。`main` の保護は強制 push と削除の禁止（管理者にも適用）。CI の必須化は T0-09 の後 |
-| T0-06 | Vite ＋ React ＋ TypeScript の雛形。`tsconfig` を strict に。`engines` と `.nvmrc` で Node の版を固定 | 統括役 | T0-04 | NFR-10 | ⬜ | | |
-| T0-07 | ESLint、Prettier、層の境界の規則（`no-restricted-imports`） | qa-tester | T0-06 | 設計 §4.1 | ⬜ | | |
+| T0-06 | Vite ＋ React ＋ TypeScript の雛形。`tsconfig` を strict に。`engines` と `.nvmrc` で Node の版を固定 | 統括役 | T0-04 | NFR-10 | ✅ | 2026-11-18 | Sonnet が実装、reviewer（Opus）が確認。TypeScript は 6.0.3（D-14）。lint と test は T0-07、T0-08 で用意するため、完了の定義のうち typecheck と build だけ確認 |
+| T0-07 | ESLint、Prettier、層の境界の規則（`no-restricted-imports`） | qa-tester | T0-06 | 設計 §4.1 | ⬜ | | jsdoc 系の規則を入れるなら、TSDoc と宣言の間の【TS】コメントで TSDoc を見失わないか確かめる（T0-06 のレビュー指摘 10） |
 | T0-08 | Vitest と Playwright の設定、見本のテスト | qa-tester | T0-06 | NFR-11 | ⬜ | | |
 | T0-09 | CI のワークフロー（lint、型検査、テスト、ビルド） | qa-tester | T0-07、T0-08 | 設計 §14 | ⬜ | | 終わったら `main` の保護に required status checks を足す |
 | T0-10 | GitHub Pages への配信（`base` を `/relata/` に、配信ワークフロー） | qa-tester＋利用者 | T0-05、T0-09 | NFR-01 | ⬜ | | Pages の有効化は利用者が GitHub の設定画面で行う。サイトはリポジトリが非公開でも誰でも見られる（設計 §14） |
@@ -175,6 +176,7 @@
 | 2026-11-18 | T0-04 を完了（git の初期化、`.gitignore`、`.gitattributes`、初回コミット） |
 | 2026-11-18 | T0-05 を完了。remote を設定し、`main` を push。`main` を保護（強制 push と削除の禁止） |
 | 2026-11-18 | 設計書 1.2。エージェントごとの使うモデルを決定（D-13）。エージェント定義に `model` を追加 |
+| 2026-11-18 | 設計書 1.3。T0-06 を完了。TypeScript を 6.0 系に固定（D-14）、`.npmrc` で Node の版を強制 |
 
 ---
 
