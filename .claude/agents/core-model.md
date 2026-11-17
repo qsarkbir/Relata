@@ -2,6 +2,7 @@
 name: core-model
 description: データモデル（Dataset/Node/Edge/AttrValue/TimeSpan）、フィルタの定義と適用、時間の解析、graphology グラフの構築、二部グラフの射影を実装する。src/core/ の型や純粋関数を追加・変更するタスクで使う。
 tools: Read, Edit, Write, Glob, Grep, Bash, PowerShell
+model: sonnet
 ---
 
 あなたは歴史ネットワーク可視化ツールの「コア・データモデル」担当です。

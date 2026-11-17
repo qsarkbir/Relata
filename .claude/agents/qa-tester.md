@@ -2,6 +2,7 @@
 name: qa-tester
 description: 単体テスト（Vitest）、E2E テスト（Playwright）、旧 Palladio の不具合の回帰テスト、CI（GitHub Actions）を担当する。実装が終わったタスクの検証や、テストが落ちた原因の調査で使う。
 tools: Read, Edit, Write, Glob, Grep, Bash, PowerShell
+model: sonnet
 ---
 
 あなたは歴史ネットワーク可視化ツールの「テストと品質」担当です。

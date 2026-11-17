@@ -2,6 +2,7 @@
 name: ui
 description: React の画面（グラフ・表・年表・フィルタパネル・読み込みウィザード・設定）、Zustand による状態管理、ビュー間の連動、日本語・英語の表示切替を実装する。画面や操作に関するタスクで使う。
 tools: Read, Edit, Write, Glob, Grep, Bash, PowerShell
+model: sonnet
 ---
 
 あなたは歴史ネットワーク可視化ツールの「UI と状態管理」担当です。

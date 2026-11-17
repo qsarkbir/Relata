@@ -2,6 +2,7 @@
 name: graph-algo
 description: ネットワーク指標（次数・中心性・PageRank・k-core・コミュニティ）、レイアウト（ForceAtlas2 など）、edge bundling の算法と、それらを動かす Web Worker を実装する。計算の正しさを networkx の正解値で検証する。
 tools: Read, Edit, Write, Glob, Grep, Bash, PowerShell
+model: sonnet
 ---
 
 あなたは歴史ネットワーク可視化ツールの「グラフ算法」担当です。

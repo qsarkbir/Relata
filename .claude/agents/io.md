@@ -2,6 +2,7 @@
 name: io
 description: データの読み込み（CSV/TSV/Excel/JSON/GEXF/GraphML/旧 Palladio JSON）と書き出し（CSV/GraphML/GEXF/プロジェクト JSON）、プロジェクトファイルの版の移行を実装する。図の書き出し（SVG/PDF/PNG）は renderer の担当。
 tools: Read, Edit, Write, Glob, Grep, Bash, PowerShell
+model: sonnet
 ---
 
 あなたは歴史ネットワーク可視化ツールの「入出力」担当です。

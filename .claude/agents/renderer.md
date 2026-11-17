@@ -2,6 +2,7 @@
 name: renderer
 description: 描画方式に依存しないシーン層、SVG 描画、有向エッジ（矢印・先細り・往復エッジの分離）の幾何計算、図の書き出し（SVG/PDF/PNG）を実装する。グラフの見た目や書き出しに関するタスクで使う。
 tools: Read, Edit, Write, Glob, Grep, Bash, PowerShell
+model: sonnet
 ---
 
 あなたは歴史ネットワーク可視化ツールの「描画」担当です。

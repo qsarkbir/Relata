@@ -2,6 +2,7 @@
 name: map-geo
 description: 地図ビュー（MapLibre GL + deck.gl）、地図上のノード・エッジ・bundling 済み経路の表示、時間アニメーション、地図の書き出しを実装する。地図や時間の再生に関するタスクで使う。
 tools: Read, Edit, Write, Glob, Grep, Bash, PowerShell
+model: sonnet
 ---
 
 あなたは歴史ネットワーク可視化ツールの「地図とアニメーション」担当です。
