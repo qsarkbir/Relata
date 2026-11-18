@@ -14,17 +14,16 @@
 
 | 項目 | 内容 |
 |---|---|
-| フェーズ | **0 準備**（13 タスク中 12 完了） |
-| 直近の完了 | T0-13 全エージェントの試運転（2026-11-18） |
-| 作業中 | なし（T0-10 はブランチ `t0-10-pages` に用意済みで、Pages の有効化を待っている） |
-| 待っていること | 利用者: (1) GitHub の Settings → Pages → Build and deployment の Source を「GitHub Actions」にする（T0-10）。(2) `main` の保護に CI（「検査・テスト・E2E」）の成功を必須にするか決める（統括役が設定できる）。(3) R-06（読み込める文字コードを広げるか）。Q-03 は T1-22 までに決める |
+| フェーズ | **0 準備**（13 タスク中 13 完了） |
+| 直近の完了 | T0-10 GitHub Pages への配信（2026-11-18）。**フェーズ 0 完了** |
+| 作業中 | なし |
+| 待っていること | 利用者: (1) `main` の保護に CI（「検査・テスト・E2E」）の成功を必須にするか決める（統括役が設定できる）。(2) R-06（読み込める文字コードを広げるか）を T1-06 までに。Q-03 は T1-22 までに決める |
 | メモ | GitHub リポジトリ `qsarkbir/relata` は作成済み（非公開）。作業フォルダは `C:\Users\qsark\Documents\GitHub\2026_relata` |
 
 ### 次にやること
 
-1. **T0-10**（GitHub Pages への配信）。ブランチ `t0-10-pages` に用意済み（`base: '/relata/'`、CI に deploy ジョブ。ブランチでの CI は成功）。利用者が Pages を有効にしたら、統括役が main に統合し、`https://qsarkbir.github.io/relata/` で表示を確かめる。
-2. T0-10 が終われば、フェーズ 0 が完了する。次は **T1-01**（データモデルの型の確定）。始める前に、統括役が R-01、R-02 を決める。利用者は R-06（読み込める文字コードを広げるか）を判断する。
-3. `main` の保護に「CI が通ること」（required status checks）を足すかどうか（利用者の判断）。
+1. フェーズ 1 を始める。最初は **T1-01**（データモデルの型の確定）。始める前に、統括役が R-01、R-02 を決める。利用者は R-06（読み込める文字コードを広げるか）を判断する。
+2. `main` の保護に「CI が通ること」（required status checks）を足すかどうか（利用者の判断）。
 
 ---
 
@@ -46,7 +45,7 @@
 
 | フェーズ | 目標 | 状態 | 進み具合 |
 |---|---|---|---|
-| 0 準備 | 開発の土台。空のアプリが GitHub Pages で表示される | 🔄 | 12 / 13 |
+| 0 準備 | 開発の土台。空のアプリが GitHub Pages で表示される | ✅ | 13 / 13 |
 | 1 MVP | 読み込み（ヒジュラ暦を含む）、絞り込み、指標、有向グラフの表示、SVG 出力（v0.1） | ⬜ | 0 / 26 |
 | 2 研究機能 | k-partite と射影、欠損の可視化、時間、表ビュー、PDF（v0.2） | ⬜ | 0 / 10 |
 | 3 地図と bundling | 地図上の時間アニメーション、edge bundling（v0.3） | ⬜ | 0 / 8 |
@@ -69,7 +68,7 @@
 | T0-07 | ESLint、Prettier、層の境界の規則（`no-restricted-imports`） | qa-tester | T0-06 | 設計 §4.1 | ✅ | 2026-11-18 | qa-tester（Sonnet）が実装、reviewer（Opus）が確認し指摘をすべて反映。境界は import-x/no-restricted-paths と tsconfig.core.json（DOM なし）の二重で検査。`tests/lint/check-boundaries.mjs`（11 項目）で規則が効くことを確認。jsdoc の規則も導入 |
 | T0-08 | Vitest と Playwright の設定、見本のテスト | qa-tester | T0-06 | NFR-11 | ✅ | 2026-11-18 | qa-tester（Sonnet）が実装、reviewer（Opus）の指摘をすべて反映。Vitest 5.1（`npm test` はカバレッジ込みで、src/core に 80% のしきい値）、Playwright 1.65（Chromium）。tests/ は tsconfig.test.json で型検査。層の境界の検査も `npm test` で走る |
 | T0-09 | CI のワークフロー（lint、型検査、テスト、ビルド） | qa-tester | T0-07、T0-08 | 設計 §14 | ✅ | 2026-11-18 | `.github/workflows/ci.yml`。1 ジョブ「検査・テスト・E2E」で npm ci → lint → format:check → typecheck → test → build → E2E（build 済みの dist を配信）。GitHub 上で成功（約 2 分）。dist を artifact に保存。required status checks の追加は利用者の判断待ち |
-| T0-10 | GitHub Pages への配信（`base` を `/relata/` に、配信ワークフロー） | qa-tester＋利用者 | T0-05、T0-09 | NFR-01 | 🔄 | | Pages の有効化は利用者が GitHub の設定画面で行う。サイトはリポジトリが非公開でも誰でも見られる（設計 §14）。`base` を `/relata/` にするとき、playwright.config.ts の `baseURL` と webServer の `url` を `http://localhost:4173/relata/` に、テストの `goto` を相対（`./`）にする |
+| T0-10 | GitHub Pages への配信（`base` を `/relata/` に、配信ワークフロー） | qa-tester＋利用者 | T0-05、T0-09 | NFR-01 | ✅ | 2026-11-18 | `base: /relata/`、CI に deploy ジョブ（main への push で verify の後に配信）。利用者が Pages を有効化。Pages の有効化は利用者が GitHub の設定画面で行う。サイトはリポジトリが非公開でも誰でも見られる（設計 §14）。`base` を `/relata/` にするとき、playwright.config.ts の `baseURL` と webServer の `url` を `http://localhost:4173/relata/` に、テストの `goto` を相対（`./`）にする |
 | T0-11 | 共通の小道具（`assertNever` など）と、多言語対応の枠組み | core-model、ui | T0-06 | FR-UI-01 | ✅ | 2026-11-18 | core-model が `src/core/util/assertNever.ts`、ui が `src/i18n/`（型付き辞書、`translate`、`pickLocale`。D-15、D-16）を実装。reviewer の指摘を反映し、qa-tester が i18n の層の規則を ESLint に追加（check-boundaries は 14 項目）。試運転として両エージェントから定義への意見を回収（T0-13 で反映） |
 | T0-12 | LICENSE（BSD-3-Clause）、README（日英。Palladio に由来することを明記） | 統括役 | T0-04 | NFR-12、FR-UI-05 | ✅ | 2026-11-18 | LICENSE に Stanford University（2019）の著作権表示と Palladio に由来する旨を追加。README は日英。画面の「このツールについて」（FR-UI-05）は T1-16 で作る |
 | T0-13 | 全エージェントの試運転（小さなタスクで動作と報告の形式を確認し、必要なら定義を直す） | 統括役 | T0-11 | 設計 §16 | ✅ | 2026-11-18 | core-model、ui、qa-tester、reviewer は T0-07〜T0-11 の実作業で、graph-algo、io、renderer、map-geo は読むだけの作業計画づくりで試運転。意見を受けて全定義と設計書（1.8、D-17、§16.4）を直し、未決の点を R-01〜R-13 に記録。reviewer が確認 |
@@ -205,6 +204,7 @@ T0-13 の試運転で、各エージェントが挙げた未決の点。利用�
 | 2026-11-18 | T0-11 を完了（`assertNever`、多言語対応の枠組み） |
 | 2026-11-18 | 設計書 1.7、1.8。T0-13 の試運転の結果から D-17、§16.4（共通の作業手順）を追加し、§3、§4.1 の図と層の規則、§7.3、§8、§9、§11.1、§16.1 を直した。設計の論点 R-01〜R-13 を記録 |
 | 2026-11-18 | T0-13 を完了（全エージェントの試運転と、定義の見直し） |
+| 2026-11-18 | T0-10 を完了（GitHub Pages への配信）。フェーズ 0 完了 |
 
 ---
 
