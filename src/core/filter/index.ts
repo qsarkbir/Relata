@@ -1,0 +1,47 @@
+// filter の入口。フィルタの型、適用、ファセットの件数、Undo の履歴をここから export する。
+// 【TS】型だけの export は `export type`、値は `export { … }`（verbatimModuleSyntax のため区別する）。
+export type {
+  FilterId,
+  Target,
+  MissingPolicy,
+  CategoryKey,
+  TextMatching,
+  TimeMatch,
+  FilterDef,
+  EdgeRule,
+  FilterState,
+} from './types';
+export { toFilterId, FILTER_KINDS, DEFAULT_FILTER_STATE } from './types';
+
+export {
+  addFilter,
+  replaceFilter,
+  removeFilter,
+  clearFilters,
+  setEdgeRule,
+  setShowIsolated,
+} from './state';
+
+export type { FilterResult, FilterCounts } from './apply';
+export { applyFilters } from './apply';
+
+export type { FacetCount } from './facets';
+export { facetCounts } from './facets';
+
+export type { FilterIssue } from './check';
+export { checkFilterState } from './check';
+
+export { categoryKeyId, categoryKeysOf } from './keys';
+
+export type { FilterHistory } from './history';
+export {
+  HISTORY_LIMIT,
+  createHistory,
+  pushHistory,
+  undoHistory,
+  redoHistory,
+  canUndo,
+  canRedo,
+} from './history';
+
+export { parseFilterState } from './parse';
