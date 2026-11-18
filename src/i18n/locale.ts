@@ -14,6 +14,25 @@ export const LOCALES = ['ja', 'en'] as const;
 export type Locale = (typeof LOCALES)[number];
 
 /**
+ * 言語の自称（その言語自身の表記）。言語の切り替えボタンに使う。
+ *
+ * 言語を足すと、ここに足し忘れて型エラーになる。
+ */
+// 【TS】`satisfies Record<Locale, string>` は、キーが Locale のすべてであることを検査しつつ、型は推論のまま残す。
+export const LOCALE_NAMES = {
+  ja: '日本語',
+  en: 'English',
+} satisfies Record<Locale, string>;
+
+/**
+ * 言語ごとの文字の向き。`<html dir>` に使う。アラビア語などを足すときは `'rtl'` にする（NFR-09）。
+ */
+export const TEXT_DIRECTION = {
+  ja: 'ltr',
+  en: 'ltr',
+} satisfies Record<Locale, 'ltr' | 'rtl'>;
+
+/**
  * 既定の言語。日本語の辞書を正とし、言語を決める材料が何も無いときに使う（設計書 D-15）。
  */
 export const DEFAULT_LOCALE: Locale = 'ja';

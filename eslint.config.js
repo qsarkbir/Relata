@@ -69,6 +69,13 @@ const i18nBrowserGlobalRestrictions = browserGlobalNames.map((name) => ({
   name,
   message: `${name} はブラウザの機能です。src/i18n/ は render からも使われるため、ブラウザに依存しません（設計書 §4.1、D-15）。言語の判定に要る値は、呼ぶ側が引数で渡してください。`,
 }));
+// 【なぜ】src/state/ は Worker の外の「画面の状態」を持つ層だが、React にも DOM にも依存させない（D-26）。
+// 状態は純粋な TypeScript の関数として単体テストでき、見た目は views が担う。
+// 永続化（localStorage など）が要るときは、呼ぶ側（app）が保存先を渡す。
+const stateBrowserGlobalRestrictions = browserGlobalNames.map((name) => ({
+  name,
+  message: `${name} はブラウザの機能です。src/state/ は React にも DOM にも依存しません（設計書 §4.1、D-26）。保存先や時刻などは、app から引数や関数として渡してください。`,
+}));
 const i18nDateRestriction = {
   name: 'Date',
   message:
@@ -110,11 +117,11 @@ const noImplicitDependencySyntax = [
   },
 ];
 
-// core と render には .tsx のファイル自体を置かない。JSX を書く場所は views と app だけである。
+// core、render、i18n、state には .tsx のファイル自体を置かない。JSX を書く場所は views と app だけである。
 const noTsxFileSyntax = {
   selector: 'Program',
   message:
-    'src/core/、src/render/、src/i18n/ に .tsx ファイルは置きません。JSX を書くのは src/views/ と src/app/ だけです（設計書 §4.1）。',
+    'src/core/、src/render/、src/i18n/、src/state/ に .tsx ファイルは置きません。JSX を書くのは src/views/ と src/app/ だけです（設計書 §4.1）。',
 };
 
 // 層ごとの「パッケージ名による」禁止。パスの解決が要らないので no-restricted-imports で書く。
@@ -242,6 +249,7 @@ export default defineConfig(
       'src/io/**/*.{ts,tsx}',
       'src/workers/**/*.{ts,tsx}',
       'src/i18n/**/*.{ts,tsx}',
+      'src/state/**/*.{ts,tsx}',
     ],
     plugins: { 'import-x': importX },
     settings: {
@@ -303,6 +311,65 @@ export default defineConfig(
     },
   },
   {
+    files: ['src/state/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            ...['react', 'react-dom', 'maplibre-gl', 'deck.gl', '@deck.gl'].map((name) => ({
+              name,
+              message: `${name} には依存しません。src/state/ は React・地図の部品に依存せず、画面の外でも動く純粋な状態にします（設計書 §4.1、D-26）。`,
+            })),
+            // 【なぜ】'zustand' の本体は React 用の入口（use フックを含む）。
+            // 状態の定義には React に依存しない 'zustand/vanilla' を使い、views 側で React に結びつける。
+            {
+              name: 'zustand',
+              message:
+                "'zustand' は React 用の入口なので使いません。'zustand/vanilla' を使ってください（設計書 §4.1、D-26）。",
+            },
+          ],
+          patterns: [
+            {
+              group: ['react/*', 'react-dom/*', 'maplibre-gl/*', 'deck.gl/*', '@deck.gl/*'],
+              message: 'src/state/ は React・地図の部品に依存しません（設計書 §4.1、D-26）。',
+            },
+            // 【なぜ】zustand/vanilla と zustand/middleware は React に依存しないので許す。
+            // React に依存する入口（react、traditional、shallow の useShallow）だけを名指しで止める。
+            {
+              group: ['zustand/react', 'zustand/react/*', 'zustand/traditional', 'zustand/shallow'],
+              message:
+                "zustand の React 用の入口は使いません。'zustand/vanilla' を使ってください（設計書 §4.1、D-26）。",
+            },
+          ],
+        },
+      ],
+      'import-x/no-restricted-paths': [
+        'error',
+        {
+          basePath: import.meta.dirname,
+          zones: [
+            ...zones(
+              './src/state',
+              [views, app, render, map, io],
+              'src/state/ は views、app、render、map、io を import しません。依存は上位の層から下へ向かう一方向です。core、i18n、workers の *.client.ts には依存してよい（設計書 §4.1、D-26）。',
+            ),
+            // 【なぜ】workers は、Worker の中身（*.worker.ts）だけを止める。*.client.ts は
+            // 画面なしで呼べる窓口なので、state から使ってよい。from は glob で書く。
+            {
+              target: './src/state',
+              from: './src/workers/**/*.worker.ts',
+              message:
+                'src/state/ は *.worker.ts を import しません。Worker は workers/*.client.ts の窓口を通して使います（設計書 §4.1、D-26）。',
+            },
+          ],
+        },
+      ],
+      'no-restricted-globals': ['error', ...stateBrowserGlobalRestrictions],
+      'no-restricted-syntax': ['error', ...noImplicitDependencySyntax],
+    },
+  },
+  {
     files: ['src/render/**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
@@ -359,7 +426,7 @@ export default defineConfig(
   // core、render、i18n には .tsx ファイル自体を置かない。上と同じ規則を再掲するのは、
   // 同じ規則を設定し直すと、後ろのものが前のものを丸ごと置き換えるため。
   {
-    files: ['src/core/**/*.tsx', 'src/render/**/*.tsx', 'src/i18n/**/*.tsx'],
+    files: ['src/core/**/*.tsx', 'src/render/**/*.tsx', 'src/i18n/**/*.tsx', 'src/state/**/*.tsx'],
     rules: {
       'no-restricted-syntax': ['error', ...noImplicitDependencySyntax, noTsxFileSyntax],
     },
