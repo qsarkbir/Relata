@@ -11,9 +11,11 @@ on:
   workflow_dispatch:
 
 # 【なぜ】同じブランチで新しい実行が始まったら古い実行を止める。待ち時間と実行枠の節約になる。
+# 【なぜ】ただし main は止めない。main の実行には配信（deploy ジョブ）が含まれ、
+# 配信の途中で止まると公開サイトが中途半端になりうるため。main では続けて push しても順に待つ。
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 # 【なぜ】既定の権限を「読み取りのみ」に絞る。万一ワークフローが悪用されても、書き込みができないようにする（最小権限）。
 permissions:
@@ -95,7 +97,7 @@ jobs:
             test-results/
           retention-days: 7
 
-      # 【なぜ】ビルド成果物を残す。T0-10（GitHub Pages への配信）が、同じ成果物を使えるようにするため。
+      # 【なぜ】ビルド成果物を残す。下の deploy ジョブが、検査を通ったこの dist をそのまま配信に使うため。
       - name: dist を保存
         uses: actions/upload-artifact@v7
         with:
@@ -103,3 +105,53 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 7
+
+  # 配信（デプロイ）: 検査を通った dist を GitHub Pages に公開する。公開先は https://qsarkbir.github.io/relata/ 。
+  #
+  # 【注意】リポジトリの Settings → Pages → Source が「GitHub Actions」になっていないと、
+  # main への push で、このジョブだけが失敗する（「Pages site not found」や 404 の旨のエラー）。
+  # 検査（verify）の結果には影響しない。直し方: 上の設定を「GitHub Actions」にしてから、
+  # Actions 画面で失敗した実行を開き「Re-run failed jobs」を押す（コードの修正は不要）。
+  deploy:
+    name: GitHub Pages に配信
+    # 【なぜ】verify が成功したときだけ配信する。検査に落ちた版を公開しない。
+    needs: verify
+    # 【なぜ】main への push のときだけ配信する。PR や作業ブランチの試作を公開しないため。
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # 【なぜ】このジョブだけに書き込み権限を足す。pages: write は配信の実行、
+    # id-token: write は「この実行は本当にこのリポジトリのものか」を GitHub に証明するために必要。
+    # contents: read はジョブ単位の permissions を書くと外れるため、取得用に明記し直す。
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    # 【なぜ】公式の推奨どおり。配信は 1 本ずつ順に行い（group: pages）、実行中の配信は止めない（cancel-in-progress: false）。
+    # 止めると公開サイトが中途半端になりうる。
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    # 【なぜ】github-pages 環境を使う。Actions 画面と利用者の画面に、公開先の URL と配信履歴が出る。
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # 【なぜ】verify が保存した dist を取り出す。ここで build し直さないので、
+      # 検査・E2E を通ったものと、公開するものが同一になる。
+      - name: dist を取り出す
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      # 【なぜ】Pages 用の形式（tar）に包んで保存する。deploy-pages は、この専用の artifact（名前 github-pages）だけを配信する。
+      - name: 配信用の成果物を作る
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist/
+
+      # 【なぜ】Pages に公開する。公開先の URL は、上の environment の url に渡される。
+      - name: GitHub Pages に配信
+        id: deployment
+        uses: actions/deploy-pages@v5

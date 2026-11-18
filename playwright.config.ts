@@ -7,6 +7,13 @@ const PORT = '4173';
  * build を省くか。【なぜ】CI は E2E の前に build 済みなので、環境変数 E2E_SKIP_BUILD で二重の build を避ける。
  * 手元では未設定なので、これまでどおり build してから起動する。
  */
+/**
+ * 配信先のURL。【なぜ】vite.config.ts の base（/relata/）に合わせ、末尾の `/` まで付ける。
+ * テストは `page.goto('./')` のように相対で書く。`goto('/')` は base の外（サイトの根）を開いてしまい、
+ * 404 になる。baseURL の末尾に `/` がないと、相対指定が `/relata` の親から解決される点にも注意。
+ */
+const BASE_URL = `http://localhost:${PORT}/relata/`;
+
 const SKIP_BUILD = !!process.env.E2E_SKIP_BUILD;
 
 /**
@@ -22,7 +29,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: `http://localhost:${PORT}`,
+    baseURL: BASE_URL,
     trace: 'retain-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
@@ -33,7 +40,7 @@ export default defineConfig({
     command: SKIP_BUILD
       ? `npm run preview -- --port ${PORT} --strictPort`
       : `npm run build && npm run preview -- --port ${PORT} --strictPort`,
-    url: `http://localhost:${PORT}`,
+    url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

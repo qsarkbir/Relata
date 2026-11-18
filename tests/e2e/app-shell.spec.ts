@@ -5,7 +5,8 @@ test.describe('アプリの外枠', () => {
     page,
   }) => {
     // 操作: ビルド済みのアプリを開く。
-    await page.goto('/');
+    // 【なぜ】相対の './' にする。baseURL が /relata/ なので、base の外（'/'）を開く誤りを防げる。
+    await page.goto('./');
 
     // 期待: 見出し「Relata」が見える。
     await expect(page.getByRole('heading', { name: 'Relata' })).toBeVisible();
