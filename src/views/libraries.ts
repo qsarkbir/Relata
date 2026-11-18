@@ -11,6 +11,7 @@ export interface LibraryInfo {
  * 依存を足したら、ここにも足す。`libraries.test.ts` が `package.json` との一致を確かめる（D-25）。
  */
 export const LIBRARIES: readonly LibraryInfo[] = [
+  { name: 'graphology', license: 'MIT' },
   { name: 'react', license: 'MIT' },
   { name: 'react-dom', license: 'MIT' },
   { name: 'zustand', license: 'MIT' },
