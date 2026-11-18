@@ -224,6 +224,63 @@ const cases = [
     expect: { 'no-restricted-syntax': 2 },
   },
   {
+    name: 'state は react、zustand（本体）、地図、views、app、render、map、io、worker 本体を import できない',
+    lint: 'src/state/__lint_probe__.ts',
+    files: {
+      'src/state/__lint_probe__.ts': [
+        "import { useState } from 'react';",
+        "import { createRoot } from 'react-dom/client';",
+        "import { create } from 'zustand';",
+        "import { useShallow } from 'zustand/react/shallow';",
+        "import maplibregl from 'maplibre-gl';",
+        "import { Deck } from '@deck.gl/core';",
+        "import { a } from '../views/__lint_probe__a';",
+        "import { b } from '../app/__lint_probe__b';",
+        "import { c } from '../render/__lint_probe__c';",
+        "import { d } from '../map/__lint_probe__d';",
+        "import { e } from '../io/__lint_probe__e';",
+        "import { f } from '../workers/__lint_probe__f.worker';",
+        'export const x = [useState, createRoot, create, useShallow, maplibregl, Deck, a, b, c, d, e, f];',
+      ],
+      'src/views/__lint_probe__a.ts': ['export const a = 1;'],
+      'src/app/__lint_probe__b.ts': ['export const b = 1;'],
+      'src/render/__lint_probe__c.ts': ['export const c = 1;'],
+      'src/map/__lint_probe__d.ts': ['export const d = 1;'],
+      'src/io/__lint_probe__e.ts': ['export const e = 1;'],
+      'src/workers/__lint_probe__f.worker.ts': ['export const f = 1;'],
+    },
+    expect: { 'no-restricted-imports': 6, 'import-x/no-restricted-paths': 6 },
+  },
+  {
+    name: 'state は zustand/vanilla、i18n、core、workers の *.client.ts を import できる',
+    lint: 'src/state/__lint_probe__.ts',
+    files: {
+      'src/state/__lint_probe__.ts': [
+        "import { createStore } from 'zustand/vanilla';",
+        "import { t } from '../i18n/__lint_probe__t';",
+        "import { a } from '../core/__lint_probe__a';",
+        "import { w } from '../workers/__lint_probe__w.client';",
+        'export const x = [createStore, t, a, w];',
+      ],
+      'src/i18n/__lint_probe__t.ts': ['export const t = 1;'],
+      'src/core/__lint_probe__a.ts': ['export const a = 1;'],
+      'src/workers/__lint_probe__w.client.ts': ['export const w = 1;'],
+    },
+    expect: { 'no-restricted-imports': 0, 'import-x/no-restricted-paths': 0 },
+  },
+  {
+    name: 'state は DOM のグローバルを使えず、.tsx で JSX も書けない',
+    lint: 'src/state/__lint_probe__.tsx',
+    files: {
+      'src/state/__lint_probe__.tsx': [
+        'export const a = [window, document, navigator, localStorage, requestAnimationFrame];',
+        'export const b = <div />;',
+      ],
+    },
+    // グローバル 5 件。構文は JSXElement 1 件 + .tsx ファイル自体の禁止 1 件
+    expect: { 'no-restricted-globals': 5, 'no-restricted-syntax': 2 },
+  },
+  {
     name: 'io と workers は react、zustand、state、views、app を import できない',
     lint: 'src/workers/__lint_probe__.ts',
     files: {

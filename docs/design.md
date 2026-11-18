@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 2.2（2026-11-19） |
+| 版 | 2.3（2026-11-19） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -56,6 +56,7 @@
 | D-23 | 見た目への割り当て（T1-05、§8.2、R-08）: 配色は `src/core/encode/` に置く。カテゴリは Okabe-Ito の 8 色（Okabe & Ito 2008）を順に使い、9 個目以降のカテゴリはまとめて灰色（`#999999`、凡例では「その他」）、欠損は薄い灰色（`#DDDDDD`）にする（色を巡回させない）。連続値は viridis（CC0）の色を補間する。`NodeType.color`、`NodeType.shape` があれば型の色と形に優先して使う。スケールの定義域は [min(0, 最小値), 最大値] とする（0 を基準にし、平方根では最小値 0 のときに面積が値に正確に比例する）。出力は「最小 + t ×（最大 − 最小）」で、平方根と対数では負の値を 0 として扱い、その件数を返す。値が欠損の要素は最小の大きさにし、欠損の印を付ける。割り当ての設定 `EncodingSettings` は JSON にできる値とし、`parseEncodingSettings` と既定値を置く | 色を巡回させると別のカテゴリが同じ色になり、色の意味が崩れるため。0 を基準にしないと、値の差が実際より大きく見えるため |
 | D-24 | プロジェクトファイル（T1-08、§11.3、R-02）: 版 1 は `{ app: 'Relata', formatVersion: 1, savedAt, dataset, importSettings, view: { filter } }` とする。`importSettings` は `{ missingTokens: { token, reason }[]; encoding?: string; columnCalendars: { column, calendar }[] }`（利用者の列名をキーにしないため配列で持つ）。見た目、配置、時間の設定は、それぞれのタスク（T1-05、T1-10、T2-05 など）で `view` に**任意の項目として**足す。**`formatVersion` は互換性のない変更のときだけ上げ、任意の項目の追加では上げない**（無い項目は既定値で補う）。`savedAt` は呼ぶ側が渡す（関数を純粋に保つため）。読み込みでは、版の移行 → 各部の parse（`parseDataset`、`parseFilterState`）→ `checkDataset` の順に行い、問題は警告として返す。これより新しい版のファイルは読み込まず、その旨を返す。欠損の記号は、前後の空白を除いて NFC 正規化した後の完全一致で照合する（照合キーは使わない。記号の揺れは利用者が意図したものとみなす。実装は T1-06） | 項目を足すたびに版を上げると移行の関数が増えるため。後から来るタスクが、プロジェクトファイルの形を壊さずに設定を足せるようにするため |
 | D-25 | アプリの骨格（T1-16、§10）: ストアは Zustand で、§10 の 4 つに分ける。T1-16 では `uiStore`（言語、進行中の処理の一覧、開いているダイアログ）と `dataStore`（`Dataset \| null`）を作り、`filterStore` と `viewStore` は T1-18、T1-21 などで足す。言語は「利用者が選んだ値（`localStorage`）→ `pickLocale(navigator.languages)`」の順に決め、`<html lang dir>` を合わせる。進行表示（FR-UI-03）は `startTask(label, cancel?)` が ID を返し、`updateTask`、`endTask` で更新する汎用の仕組みにする。「このツールについて」は `<dialog>` で出し、使用ライブラリの一覧は手で保守し、`package.json` の `dependencies` と一致することをテストで確かめる。CSS は素の CSS で、左右は論理プロパティ（`margin-inline-start` など）で書く | 骨格の段階で、まだ型が決まっていないストアを作らないため。アラビア語圏の利用者の画面で左右が崩れないようにするため。ライブラリの一覧の書き漏れを防ぐため |
+| D-26 | 画面の部品の置き場所と state の依存（T1-16 のレビュー）: React の部品（ダイアログ、進行表示など）と、ストアを読む React のフック（`useUi`、`useData`、`useT` など）は `src/views/` に置く。`src/app/` は起動処理（`main.tsx`）、画面の配置（`App.tsx`）、ブラウザとの橋渡し（`localStorage`、`<html lang dir>`）だけにする。`state` は `i18n` の型と定数（`Locale` など）に依存してよい。`state` の層の境界は ESLint で検査する（React、`zustand` の React 用の入口、views、app、render、map、io、`*.worker.ts`、DOM のグローバルを禁止。`zustand/vanilla` は許す） | views から app を import する逆向きの依存を作らないため。言語は state が持つ値なので、その型が要るため。§4.1 の規則を機械で守るため |
 
 ---
 
@@ -97,12 +98,12 @@
             └──→ map（MapLibre + deck.gl）──→ render、core
   workers（指標・レイアウト・bundling）──→ render/bundling、core
   io（読み込み・書き出し）──→ core（図の書き出しは render）
-  i18n（表示文字列）──→ core。render、views、app から使う
+  i18n（表示文字列）──→ core。render、views、app、state から使う
 ```
 
 - **`src/core/` は何にも依存しない。** DOM、React、ブラウザ API、`Date` を使わない。JSX も書かない（`.tsx` を置かない）。
 - **`src/render/` は React に依存しない。** 画面からも書き出し処理からも呼べるようにする。JSX も書かない。`core` と `i18n`（書き出しのラベル用）だけに依存し、`state`、`views`、`app`、`map`、`io`、`workers` を import しない。
-- **`src/state/` は画面に依存しない純粋なストア。** `core` と `workers/*.client.ts` に依存してよい。`*.worker.ts` を直接 import しない。DOM や `requestAnimationFrame` を使う処理（時間の再生の駆動など）は `app` か `views` に置き、state には更新の関数（`tick(dt)` など）だけを置く（§9.2）。views は Worker の client を直接呼ばず、state を通す。
+- **`src/state/` は画面に依存しない純粋なストア。** `core`、`workers/*.client.ts`、`i18n` の型と定数に依存してよい（D-26）。`*.worker.ts` を直接 import しない。DOM や `requestAnimationFrame` を使う処理（時間の再生の駆動など）は `app` か `views` に置き、state には更新の関数（`tick(dt)` など）だけを置く（§9.2）。views は Worker の client を直接呼ばず、state を通す。
 - **`src/map/` は `core` と `render`（`arrows/`、`bundling/` の型）に依存してよい。** `state`、`io`、`workers` は import しない。ストアの値と更新の関数は views から props で受け取る（§9.2）。この規則の ESLint での検査は、地図の作業を始める前に足す（進行表の R-11）。
 - **`src/io/` と `src/workers/` は画面に依存しない。** React、Zustand、`state`、`views`、`app` を import しない。`io/export` の図の部分は `render` を使う。`workers/bundling.worker.ts` は `render/bundling/` の算法を使う（§16.1 の分担による例外ではなく、上の図の「下向き」の依存として許す）。
 - **`src/i18n/` は React と画面とブラウザに依存しない。** `render` から使われるため（D-15）。React、Zustand、地図のライブラリ、`state`、`views`、`app`、`render`、`map`、`io`、`workers` を import せず、`navigator` などのブラウザのグローバルと `Date` を使わず、JSX を書かない。`core` には依存してよい。言語の判定に要る値（`navigator.languages` など）は呼ぶ側が渡す。
@@ -135,8 +136,8 @@ src/
     bundling/            edge bundling の算法
   map/                   地図ビュー
   state/                 Zustand ストア
-  views/                 React コンポーネント
-  app/                   起動処理、画面の配置
+  views/                 React コンポーネントと、ストアを読むフック（D-26）
+  app/                   起動処理、画面の配置、ブラウザとの橋渡し（D-26）
   i18n/                  日本語・英語の表示文字列と翻訳関数（React に依存しない。D-15）
 tests/
   golden/                networkx で作った指標の正解値と、その生成スクリプト
