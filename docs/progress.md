@@ -111,7 +111,7 @@
 | T1-02 | 日付の解析と暦の換算（JDN、幅のある年代、紀元前、**ヒジュラ暦**、アラビア・インド数字） | core-model | T1-01、T1-26 | FR-DM-05、FR-TM-06、要件 §6.4 | ⬜ | | 正解値は convertdate で作る（graph-algo と分担） |
 | T1-03 | フィルタの定義と適用、ファセットの件数、Undo の履歴 | core-model | T1-01 | FR-FL-01、02、04〜10 | ✅ | 2026-11-19 | core-model が `src/core/filter/`（`applyFilters`、`facetCounts`、`checkFilterState`、`parseFilterState`、状態の操作、Undo/Redo）を実装。時間のフィルタ（FR-FL-03）の型と適用も含む。reviewer の必須の指摘（ファセットの件数と表示の件数の食い違い）を受けて D-21 (6) を改訂（設計書 2.4） |
 | T1-04 | グラフの構築と重みの集約 | core-model | T1-01 | FR-GR-01、02、FR-DM-03 | 🔄 | | |
-| T1-05 | 見た目への割り当てとスケール（線形／平方根／対数） | core-model | T1-01 | FR-VG-03、04、08 | ⬜ | | 既定は平方根 |
+| T1-05 | 見た目への割り当てとスケール（線形／平方根／対数） | core-model | T1-01 | FR-VG-03、04、08 | ✅ | 2026-11-19 | core-model が `src/core/encode/`（スケール、Okabe-Ito と viridis の配色、`EncodingSettings` と `parseEncodingSettings`、大きさ・太さ・色・形の割り当て、凡例の情報、型の色と形の衝突の報告）を実装。既定は平方根（D-08）。R-08 は D-23 で決定。reviewer の指摘を受けて D-23 を補足 |
 | T1-26 | 文字の正規化（アラビア文字の揺れ、転写の補助記号、数字）と照合キー | core-model | T1-01 | FR-FL-12、設計 §5.2 | ✅ | 2026-11-19 | core-model が `src/core/text/`（`matchKey`、`matchIncludes`、7 つの設定）を実装。reviewer が全 Unicode の文字で正規化の形による食い違いがないことを確認し、指摘を受けて D-20 を改訂（`compat`、`invisibles` の独立、ؤ・ئ、単独の補助記号） |
 | T1-06 | CSV/TSV/Excel の読み込み、文字コード、列の型、警告、欠損の記号 | io | T1-01、T1-02 | FR-IN-01〜03、05〜07 | ⬜ | | Shift_JIS を含む |
 | T1-07 | Palladio 式の 1 表からの変換 | io | T1-06 | FR-IN-04、要件 §6.3 | ⬜ | | |
