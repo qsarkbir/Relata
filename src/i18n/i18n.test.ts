@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_LOCALE,
   FALLBACK_LOCALE,
+  LOCALES,
+  LOCALE_NAMES,
+  TEXT_DIRECTION,
   interpolate,
   isLocale,
   pickLocale,
@@ -32,8 +35,10 @@ describe('辞書', () => {
 
 describe('translate', () => {
   it('FR-UI-01: 言語ごとの文言を返す', () => {
-    expect(translate('ja', 'app.underConstruction')).toBe('準備中です。');
-    expect(translate('en', 'app.underConstruction')).toBe('Coming soon.');
+    expect(translate('ja', 'app.tagline')).toBe('歴史研究のためのネットワーク可視化ツール');
+    expect(translate('en', 'app.tagline')).toBe(
+      'A network visualization tool for historical research',
+    );
   });
 
   it('FR-UI-01: 差し込みの無い文言に params を渡しても変わらない', () => {
@@ -107,5 +112,14 @@ describe('pickLocale', () => {
 
   it('FR-UI-01: 未対応の言語のあとに ja があれば ja', () => {
     expect(pickLocale(['ar', 'ja'])).toBe('ja');
+  });
+});
+
+describe('言語ごとの表', () => {
+  it('FR-UI-01: 言語名と文字の向きが、すべての言語にある', () => {
+    for (const l of LOCALES) {
+      expect(LOCALE_NAMES[l].length).toBeGreaterThan(0);
+      expect(['ltr', 'rtl']).toContain(TEXT_DIRECTION[l]);
+    }
   });
 });
