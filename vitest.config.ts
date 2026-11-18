@@ -27,8 +27,10 @@ export default defineConfig({
       reporter: ['text', 'html'],
       // 【なぜ】しきい値（NFR-11）は src/core/ にだけ掛ける。画面は E2E で確かめる。
       include: ['src/core/**/*.ts'],
-      // 【なぜ】exclude は書かない。Vitest 4 以降は、テストファイル（*.test.ts）が
-      //   exclude とは別の仕組みで自動的に測定の対象から外れる（既定の exclude は空）。
+      // 【なぜ】テストファイル（*.test.ts）は、Vitest 4 以降は exclude とは別の仕組みで
+      //   自動的に測定の対象から外れる。テスト用のデータ（fixtures/）は本番のコードではなく、
+      //   テストで全行が実行されて割合を押し上げるだけなので、ここで外す（設計書 §16.1）。
+      exclude: ['src/**/fixtures/**'],
       // 【なぜ】テストから読み込まれていない core のファイルも 0% として数えられるので、
       //   テストを書き忘れるとしきい値（NFR-11）で落ちる。`npm test` のたびに確かめるため、
       //   test スクリプトに --coverage を付けてある。

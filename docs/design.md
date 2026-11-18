@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 1.8（2026-11-18） |
+| 版 | 2.0（2026-11-18） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -48,6 +48,8 @@
 | D-15 | 多言語対応（FR-UI-01）はライブラリを使わず、`src/i18n/` に型付きの辞書と純粋な翻訳関数を自作する。日本語の辞書を正とし、英語の辞書は同じキーをすべて持つことを型で強制する | 対象は日英の 2 言語で、複数形の規則なども要らない。React に依存しない関数にすれば、`render`（書き出しのラベル）からも使える（§4.1）。キーの打ち間違いと訳し漏れを型検査で防げる |
 | D-16 | 画面の言語の既定は日本語（`DEFAULT_LOCALE`）。ただし、ブラウザの言語の一覧が日本語にも英語にも当たらないときは英語（`FALLBACK_LOCALE`）にする | 主な利用者は西アジア史の研究者で、ブラウザの言語がアラビア語、ペルシア語、トルコ語などの人も多い。その人たちには日本語より英語のほうが読める見込みが高い（T0-11 のレビューで指摘） |
 | D-17 | Worker の起動は `src/workers/*.client.ts`、版番号と古い結果の破棄は `src/state/`、計算の中止は Worker の terminate で行う。レイアウトの純粋な算法は `src/core/layout/`（graph-algo）に置く。`render` は SVG を文字列で作り、文字の幅の測定は関数で受け取る。時間の再生の時計はアプリに 1 つだけ置き（state は `tick` などの更新の関数だけ、駆動は `src/app/` のフック）、地図は props で受け取る（§4.1、§7.3、§8.1、§8.5、§8.6、§9.2） | T0-13 の試運転で、graph-algo、renderer、map-geo から、設計書の書き方では担当や置き場所が決まらないと指摘されたため |
+| D-18 | データモデルの細部（R-01、R-02）: 日付の属性は `{ kind: 'date' }`（`FuzzyDate` に元の暦 `calendar` を持たせる）。ノードとエッジの `geo` と `time` は「項目が無い ＝ 列が無い」「`Missing` ＝ 値が欠けている」と区別する。読み込みの設定は `Dataset` に入れず、プロジェクトファイルの `importSettings` に置く。地図の範囲選択のフィルタ（`geo`）は T3-06 で足す（§5） | 日付を数値に潰すと幅と元の表記が失われる。`undefined` で欠損を表さない規約（CLAUDE.md）と、「列が無い」場合を両立させるため。`Dataset` を読み込みの手段から独立させ、GraphML などから読んでも同じ形にするため |
+| D-19 | T1-01 のレビューを受けたデータモデルの補足: `Node`/`Edge` を `GraphNode`/`GraphEdge` に改名する。`attrs` は `getAttr`/`makeAttrs` を通して扱う。ノード ID は型ごとの名前空間に入れ、ID の列から作るものとラベルから作るものを印で区別する。属性の「キーが無い ＝ 当てはまらない」「`Missing` ＝ 欠損」。空の値は `Missing` で表す。`TimeSpan.end` に `Missing`（終わりが分からない）を許す。欠損の記号の対応表は `Dataset` から外す。外から来た値は `parseDataset` で組み立て直す（§5） | DOM の `Node` との取り違えを防ぐため。列名が `constructor` などのとき `attrs[key]` が誤った値を返すため。k-partite の表の ID の衝突を防ぐため。旧版の「黙って除外」（filter-audit #10）を構造的に防ぐため。自動保存から戻れなくなるのを防ぐため |
 
 ---
 
@@ -106,7 +108,7 @@
 ```
 src/
   core/                  純粋な TypeScript。単体テストの主対象
-    model/               データ型（Dataset, Node, Edge, AttrValue, TimeSpan …）
+    model/               データ型（Dataset, GraphNode, GraphEdge, AttrValue, TimeSpan …）
     filter/              フィルタの定義と適用
     time/                日付の解析、暦の換算（西暦・ヒジュラ暦…）、幅のある年代の計算
     text/                検索と照合のための文字の正規化（アラビア文字、転写の補助記号）
@@ -175,8 +177,11 @@ export type NodeId = string & { readonly __brand: 'NodeId' };
 export type EdgeId = string & { readonly __brand: 'EdgeId' };
 export type NodeTypeId = string & { readonly __brand: 'NodeTypeId' };
 
-/** ユリウス通日（JDN）。暦に依存しない日の通し番号（§5.1） */
+/** ユリウス通日（JDN）の整数。暦に依存しない日の通し番号（§5.1） */
 export type DayNumber = number;
+
+/** 暦。フェーズ 4 で 'julian' | 'solar-hijri' | 'rumi' を足す */
+export type CalendarId = 'gregorian' | 'hijri';
 
 /** ノード型（k-partite の「部」） */
 export interface NodeType {
@@ -186,47 +191,57 @@ export interface NodeType {
   shape?: 'circle' | 'square' | 'triangle' | 'diamond';
 }
 
-/** 属性の値。欠損を理由つきで持つため、判別共用体にする（FR-DM-04） */
-export type AttrValue =
-  | { kind: 'value'; value: Scalar | Scalar[]; certainty?: Certainty }   // Scalar[] は複数値（FR-DM-07）
-  | { kind: 'missing'; reason: MissingReason };
-
 export type Scalar = string | number | boolean;
 export type MissingReason = 'unrecorded' | 'lost' | 'illegible' | 'not-applicable';
 export type Certainty = 'certain' | 'probable' | 'possible';
 
+/** 欠損。理由を必ず持つ（FR-DM-04） */
+export interface Missing { kind: 'missing'; reason: MissingReason }
+
 /** 幅のある日付。最も早い日と最も遅い日で表す（FR-DM-05） */
 export interface FuzzyDate {
-  earliest: DayNumber;
-  latest: DayNumber;
-  certainty: Certainty;
-  label: string;          // 元の表記（例: "c.1650"）
+  readonly earliest: DayNumber;   // 安全な整数（Number.isSafeInteger）
+  readonly latest: DayNumber;     // earliest <= latest
+  readonly certainty: Certainty;
+  readonly calendar: CalendarId;  // 元の暦（表示や書き出しで元の表記に戻すため）
+  readonly label: string;         // 元の表記（例: "c.1650"、"15 Ramaḍān 1050"）
 }
 
-/** 期間。始点と終点がそれぞれ幅を持てる。1 点の日付なら start だけ */
-export interface TimeSpan {
-  start: FuzzyDate;
-  end?: FuzzyDate;
+/** 属性の値。判別共用体にする（FR-DM-04、05、07） */
+export type AttrValue =
+  | { kind: 'value'; value: Scalar | readonly Scalar[]; certainty?: Certainty }  // 配列は複数値（FR-DM-07）
+  | { kind: 'date'; value: FuzzyDate | readonly FuzzyDate[] }                   // 日付の属性（valueType: 'date'）
+  | Missing;
+
+/** 期間。始点と終点がそれぞれ幅を持てる。1 点の日付なら end を持たない。
+ *  終わりが分からない期間（「1650 年から」）は end に Missing を入れる */
+export interface TimeSpan { readonly kind: 'span'; readonly start: FuzzyDate; readonly end?: FuzzyDate | Missing }
+
+/** 地点（十進数の度。緯度 -90〜90、経度 -180〜180） */
+export interface GeoPoint { readonly kind: 'point'; readonly lat: number; readonly lon: number }
+
+/** 属性の表。キーは利用者の列名。`attrs[key]` で直接引かず、getAttr / makeAttrs を使う（D-19） */
+export type Attrs = Readonly<Record<string, AttrValue>>;
+
+/** ノード。DOM の `Node` と名前がぶつからないよう GraphNode とする（D-19） */
+export interface GraphNode {
+  readonly id: NodeId;
+  readonly type: NodeTypeId;
+  readonly label: string;
+  readonly attrs: Attrs;
+  readonly geo?: GeoPoint | Missing;
+  readonly time?: TimeSpan | Missing;
 }
 
-export interface Node {
-  id: NodeId;
-  type: NodeTypeId;
-  label: string;
-  attrs: Record<string, AttrValue>;
-  geo?: { lat: number; lon: number };
-  time?: TimeSpan;
-}
-
-export interface Edge {
-  id: EdgeId;             // 多重エッジを区別するため、エッジにも ID を持たせる（FR-DM-08）
-  source: NodeId;
-  target: NodeId;
-  directed: boolean;
-  relation?: string;
-  weight: number;         // 既定 1
-  time?: TimeSpan;
-  attrs: Record<string, AttrValue>;
+export interface GraphEdge {
+  readonly id: EdgeId;    // 多重エッジを区別するため、エッジにも ID を持たせる（FR-DM-08）
+  readonly source: NodeId;
+  readonly target: NodeId;
+  readonly directed: boolean;
+  readonly relation?: string;
+  readonly weight: number;  // 既定 1。有限で 0 以上
+  readonly time?: TimeSpan | Missing;
+  readonly attrs: Attrs;
 }
 
 export interface AttributeDef {
@@ -239,19 +254,31 @@ export interface AttributeDef {
 }
 
 export interface Dataset {
-  graphMode: 'directed' | 'undirected' | 'mixed';    // FR-DM-03
-  nodeTypes: NodeType[];
-  nodes: Node[];
-  edges: Edge[];
-  schema: AttributeDef[];
-  missingCodes: { symbol: string; reason: MissingReason }[];   // FR-IN-07
-  meta: { title: string; source?: string };
+  readonly graphMode: 'directed' | 'undirected' | 'mixed';    // FR-DM-03
+  readonly nodeTypes: readonly NodeType[];
+  readonly nodes: readonly GraphNode[];
+  readonly edges: readonly GraphEdge[];
+  readonly schema: readonly AttributeDef[];
+  readonly meta: { readonly title: string; readonly source?: string };
 }
+// 欠損の記号の対応表（FR-IN-07）は読み込みの設定なので、Dataset ではなく
+// プロジェクトファイルの importSettings に置く（D-18、T1-08）。
 ```
 
 - `graphMode` が `directed` なら全エッジの `directed` は true、`undirected` なら false。`mixed` のときだけエッジごとに異なる。
 - 読み込み処理（`src/io/import/`）は、必ずこの `Dataset` を出力する。
-- `FuzzyDate` には、元の表記（`label`）と元の暦（`calendar: 'gregorian' | 'hijri' | …`）も持たせ、表示や書き出しで元の表記に戻れるようにする。
+- **`geo` と `time` の「無い」と「欠損」を区別する**（D-18）。項目そのものが無い（`undefined`）のは「このデータには地点や時期の列が無い」ことを表す。列はあるが値が空なら `Missing`（理由つき）を入れる。CLAUDE.md の「欠損を `undefined` で表さない」を守るため。
+- **日付の属性**（`valueType: 'date'`）の値は `{ kind: 'date' }` で持つ。数値（JDN）に潰さないのは、幅、確からしさ、元の暦と表記を保つため（D-18）。
+- **属性の「キーが無い」と「欠損」の区別**（D-19）: その属性がノードの型に当てはまらない（`AttributeDef.nodeType` が別の型）なら、キーを持たない（集計で数えない）。当てはまるのに値が無いなら `Missing` を入れる。当てはまる属性のキーが無いのは不変条件の違反（`checkDataset` が報告する）。
+- **空の値は `Missing` で表す**: 空文字、空の配列、文字列の `"undefined"` や `"null"` を値として持たない（filter-audit #10）。空文字と空の配列は `checkDataset` が報告する。
+- **`attrs` の引き方**（D-19）: キーは利用者の列名なので、`constructor` や `__proto__` もありうる。`attrs[key]` で直接引くと `Object.prototype` の項目が返るため、必ず `getAttr(attrs, key)`（`Object.hasOwn` で調べる）と `makeAttrs(entries)`（`Object.fromEntries` で作る）を使う。
+- **ノード ID の作り方**（D-19）: 表に ID の列があっても、ID は型ごとの名前空間に入れる（k-partite の表では、人物と地名がそれぞれ 1, 2, 3… を使うことが多いため）。ID の列から作る ID と、型＋ラベルから作る ID は、先頭の印で区別する（`makeNodeIdFromTypeAndKey` と `makeNodeIdFromTypeAndLabel`）。元の ID とラベルは、ID から読み戻せる（書き出しで使う）。前後の空白の除去は読み込み（io）の担当。
+- `Dataset` とその中身は不変（`readonly`）として扱う。変えるときは新しいオブジェクトを作る（§1 の 5、差分で更新しない）。
+- `src/core/model/` には、型のほかに次を置く。
+  - ID の作成関数（`toNodeId` など。ブランド型への変換をここだけで行う）
+  - 型ガード（`isMissing` など）と、外から来た値（`unknown`）を検査して組み立て直す `parseDataset(x): { ok: true; value: Dataset } | { ok: false; path: string; reason: string }`（プロジェクトファイルの読み込みで使う。余分な項目と `__proto__` を落とし、壊れている箇所を返す）
+  - 不変条件の検査 `checkDataset(ds)`: ID の重複（ノード、エッジ、ノード型、schema のキー）、存在しないノードを指すエッジ、`graphMode` とエッジの `directed` の食い違い、存在しない型、`earliest > latest`、期間の逆転、整数でない日、範囲外の座標、重みの不正、有限でない数値、空の値、schema にない属性、schema の型と合わない値、当てはまる属性のキーが無いこと。問題の一覧を返し、例外は投げない（§12）。**`checkDataset` が問題を返さない Dataset は、JSON に書き出して読み直しても `parseDataset` を通る**（自動保存から必ず戻れるようにするため）。
+- **読み込みの設定**（列ごとの暦、文字コード、列名の対応、欠損の記号）は `Dataset` に入れず、プロジェクトファイルの `importSettings` に置く（T1-08、D-18）。`Dataset` は「何が読み込まれたか」だけを表す。
 
 ### 5.1 暦と日付（FR-DM-05、FR-TM-06〜09）
 
@@ -599,7 +626,7 @@ interface ProjectFile {
 | `qa-tester` | 要件 ID つきのテスト、E2E、回帰テスト、CI、共通の設定 | `tests/`（`tests/fixtures/<担当>/` を除く）、`.github/workflows/`、共通の設定ファイル（下記） |
 | `reviewer` | 型、層の境界、コメント規約、旧版の不具合の再発を確認（書き込まない） | なし |
 
-**テストの置き場所**: 実装担当は、自分の範囲のコードの単体テストを、同じフォルダの `*.test.ts` に書く（§16.2 の 2）。テスト用のデータ（文字コードの見本など）は `tests/fixtures/<担当の範囲>/`（例: `tests/fixtures/io/`）に置いてよい。qa-tester は、要件 ID を名前に含むテスト、回帰テスト、E2E を `tests/`（`tests/unit/`、`tests/regression/`、`tests/e2e/`）に足し、実装担当の `*.test.ts` は書き換えない（並行作業で同じファイルを書かないため）。
+**テストの置き場所**: 実装担当は、自分の範囲のコードの単体テストを、同じフォルダの `*.test.ts` に書く（§16.2 の 2）。テスト用のデータは、TypeScript のデータなら自分の範囲の `fixtures/`（例: `src/core/model/fixtures/`。`src/` のテストからは `tests/` を import できないため）、ファイル（文字コードの見本など）なら `tests/fixtures/<担当の範囲>/`（例: `tests/fixtures/io/`）に置く。`fixtures/` はカバレッジの対象から外し、本番のコードから import しない。qa-tester は、要件 ID を名前に含むテスト、回帰テスト、E2E を `tests/`（`tests/unit/`、`tests/regression/`、`tests/e2e/`）に足し、実装担当の `*.test.ts` は書き換えない（並行作業で同じファイルを書かないため）。
 
 **共通のファイルの扱い**:
 - `package.json` と `package-lock.json`: 実装担当は、自分のタスクに要る依存を `npm install` で足してよい。足す前に統括役に名前と理由を伝え、ライセンス（NFR-12）と版を完了報告に書く（並行する worktree で lock ファイルがぶつかるのを避けるため）。scripts は変えない（qa-tester が統括役の指示で変える）。worktree で作業するときは、最初に `npm ci` を実行する。
