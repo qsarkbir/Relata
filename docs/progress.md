@@ -115,7 +115,7 @@
 | T1-26 | 文字の正規化（アラビア文字の揺れ、転写の補助記号、数字）と照合キー | core-model | T1-01 | FR-FL-12、設計 §5.2 | ✅ | 2026-11-19 | core-model が `src/core/text/`（`matchKey`、`matchIncludes`、7 つの設定）を実装。reviewer が全 Unicode の文字で正規化の形による食い違いがないことを確認し、指摘を受けて D-20 を改訂（`compat`、`invisibles` の独立、ؤ・ئ、単独の補助記号） |
 | T1-06 | CSV/TSV/Excel の読み込み、文字コード、列の型、警告、欠損の記号 | io | T1-01、T1-02 | FR-IN-01〜03、05〜07 | ⬜ | | Shift_JIS を含む |
 | T1-07 | Palladio 式の 1 表からの変換 | io | T1-06 | FR-IN-04、要件 §6.3 | ⬜ | | |
-| T1-08 | プロジェクトファイルの形式、保存と読み込み、往復テスト | io | T1-01 | FR-IN-08、FR-PJ-01 | 🔄 | | |
+| T1-08 | プロジェクトファイルの形式、保存と読み込み、往復テスト | io | T1-01 | FR-IN-08、FR-PJ-01 | ✅ | 2026-11-19 | io が `src/io/project/`（`serializeProject`、`parseProject`、版の移行、`ImportSettings`、欠損の記号の照合 `compileMissingTokens`/`matchMissingToken`）を実装。FR-PJ-01 はデータとフィルタの部分（見た目、配置、時間は後のタスクで `view` に足す）。reviewer の指摘を受けて D-24 を補足（`savedAt` は任意、見えない書式文字、列挙に要素を足すときは版を上げる）。要件定義書 §6.6 の図を D-18、D-24 に合わせた（要件定義書 1.2） |
 | T1-09 | 指標の Worker と networkx の正解値 | graph-algo | T1-04 | FR-MT-01〜03 | ⬜ | | |
 | T1-10 | レイアウトの Worker（ForceAtlas2、円形、固定） | graph-algo | T1-04 | FR-VG-01、NFR-08 | ⬜ | | 乱数の種を保存 |
 | T1-11 | シーン層と SVG 描画（右から左へ書くラベルを含む） | renderer | T1-05 | FR-VG-03、08、NFR-09 | ⬜ | | |
