@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 2.0（2026-11-18） |
+| 版 | 2.1（2026-11-19） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -50,6 +50,12 @@
 | D-17 | Worker の起動は `src/workers/*.client.ts`、版番号と古い結果の破棄は `src/state/`、計算の中止は Worker の terminate で行う。レイアウトの純粋な算法は `src/core/layout/`（graph-algo）に置く。`render` は SVG を文字列で作り、文字の幅の測定は関数で受け取る。時間の再生の時計はアプリに 1 つだけ置き（state は `tick` などの更新の関数だけ、駆動は `src/app/` のフック）、地図は props で受け取る（§4.1、§7.3、§8.1、§8.5、§8.6、§9.2） | T0-13 の試運転で、graph-algo、renderer、map-geo から、設計書の書き方では担当や置き場所が決まらないと指摘されたため |
 | D-18 | データモデルの細部（R-01、R-02）: 日付の属性は `{ kind: 'date' }`（`FuzzyDate` に元の暦 `calendar` を持たせる）。ノードとエッジの `geo` と `time` は「項目が無い ＝ 列が無い」「`Missing` ＝ 値が欠けている」と区別する。読み込みの設定は `Dataset` に入れず、プロジェクトファイルの `importSettings` に置く。地図の範囲選択のフィルタ（`geo`）は T3-06 で足す（§5） | 日付を数値に潰すと幅と元の表記が失われる。`undefined` で欠損を表さない規約（CLAUDE.md）と、「列が無い」場合を両立させるため。`Dataset` を読み込みの手段から独立させ、GraphML などから読んでも同じ形にするため |
 | D-19 | T1-01 のレビューを受けたデータモデルの補足: `Node`/`Edge` を `GraphNode`/`GraphEdge` に改名する。`attrs` は `getAttr`/`makeAttrs` を通して扱う。ノード ID は型ごとの名前空間に入れ、ID の列から作るものとラベルから作るものを印で区別する。属性の「キーが無い ＝ 当てはまらない」「`Missing` ＝ 欠損」。空の値は `Missing` で表す。`TimeSpan.end` に `Missing`（終わりが分からない）を許す。欠損の記号の対応表は `Dataset` から外す。外から来た値は `parseDataset` で組み立て直す（§5） | DOM の `Node` との取り違えを防ぐため。列名が `constructor` などのとき `attrs[key]` が誤った値を返すため。k-partite の表の ID の衝突を防ぐため。旧版の「黙って除外」（filter-audit #10）を構造的に防ぐため。自動保存から戻れなくなるのを防ぐため |
+| D-20 | 照合キー（T1-26、§5.2）: `matchKey(text, options)` を `src/core/text/` に置く。設定は手順ごとの真偽値（`arabic`、`diacritics`、`digits`、`caseFold`、`spaces`）で、既定の「ゆるい照合」（`LOOSE_MATCH`）はすべて有効、「厳密な照合」（`STRICT_MATCH`）は NFC 正規化だけを行う。補助記号の除去は、NFD に分解して**ラテン文字などの結合用補助記号（U+0300〜U+036F）だけ**を除き、NFC に戻す。アラビア文字の母音記号（U+064B〜U+065F、U+0670）、コーランの記号（U+06D6〜U+06ED）、タトウィール（U+0640）を除き、ハムザ付きのアリフ（أ إ آ）とワスラ付きのアリフ（ٱ）を ا に、ة・ۀ・ە を ه に、ى・ی を ي に、ک を ك にそろえる。ʿ ʾ ʻ ʼ ‘ ’ ' \` を除き、ı を i にする。ゼロ幅の文字（ZWNJ、ZWJ、ZWSP）、双方向の制御文字、ソフトハイフンを除き、`spaces` では連続する空白を 1 つにして前後を除く。部分一致の判定 `matchIncludes(haystack, needle, options)` も置く | 濁点（U+3099）などを除くと「が」と「か」が同じになり、日本語の検索が壊れるため、除く範囲を限る。ZWNJ はペルシア語の表記で入ったり入らなかったりするため。厳密な照合は「見た目が同じなら同じ」（NFC）までにとどめる |
+| D-21 | フィルタの細部（T1-03、§6）: (1) テキストのフィルタは `matching: 'loose' \| 'strict'` を持ち、ノードではラベルと文字列の属性値、エッジでは `relation` と文字列の属性値を照合キーで部分一致させる。空の検索語は全件を通す。(2) カテゴリと範囲のフィルタは、その属性のキーを持たない要素（その型に当てはまらない属性）を**そのまま通す**。複数値は、どれか 1 つが条件に合えば通す。カテゴリの値は `String(値)` で比べる。`include` が空なら、その属性を持つ要素をすべて除く（選択が空になったフィルタを消すのは画面の役目）。(3) 範囲は両端を含む。数値でない値は条件に合わないとみなす。(4) 時間のフィルタは `time` の項目が無い要素を通し、`Missing` は `missing` の指定に従う。期間は [始点の earliest, 終点の latest] とし、終わりが分からない期間は終わりを無限とみなす（`within` は通らない）。(5) `edgeRule: 'either-end'` のとき、表示するエッジの両端は、フィルタで除かれたノードでも表示する。(6) ファセットの件数は「同じ対象・同じ属性のカテゴリのフィルタを除いた全フィルタ」で手順 1〜4 をやり直した後の表示集合で数え、全体の件数はその属性のキーを持つ要素の数とする。(7) 欠損で除いた件数は、フィルタごとに対象の全要素で数える。(8) `FilterState` を外から読む `parseFilterState` を `core/filter` に置く（プロジェクトファイルで使う） | 旧版の「k-partite で別の型のノードが巻き添えで消える」問題を避けるため。片端だけ表示されたエッジが宙に浮かないようにするため。ファセットの件数を、画面に出す絞り込み後の件数（FR-FL-09）と食い違わせないため |
+| D-22 | グラフの構築（T1-04、§7.1）: graphology を使う。`buildGraph(dataset, filterResult, options)` は表示ノード集合と表示エッジ集合からグラフを作り、型は `graphMode` に合わせる（多重エッジなし）。まとめ方は「有向は (始点, 終点) ごと、無向は順序を問わない組ごと」で、混在グラフでは有向と無向を別にまとめる。重みは `weight: 'count'`（件数）、`'weight'`（`GraphEdge.weight` の合計。既定）、`{ attr }`（数値属性の合計）から選ぶ。属性の合計では、欠損と数値でない値を 0 として足さず、その件数をまとめたエッジに持たせる。まとめたエッジのキーは `JSON.stringify` で作り（文字列の単純な連結にしない。filter-audit #9）、元のエッジ ID の一覧を持たせる。自己ループは `selfLoops` で含めるか除く（既定は含める）。Worker に渡す `GraphSnapshot` は `graph.export()` の結果とし、`toSnapshot`、`fromSnapshot` を `core/graph` に置く | 重みの列を読み込んだ利用者には、その合計が自然なため。キーの連結による衝突を構造的に防ぐため |
+| D-23 | 見た目への割り当て（T1-05、§8.2、R-08）: 配色は `src/core/encode/` に置く。カテゴリは Okabe-Ito の 8 色（Okabe & Ito 2008）を順に使い、9 個目以降のカテゴリはまとめて灰色（`#999999`、凡例では「その他」）、欠損は薄い灰色（`#DDDDDD`）にする（色を巡回させない）。連続値は viridis（CC0）の色を補間する。`NodeType.color`、`NodeType.shape` があれば型の色と形に優先して使う。スケールの定義域は [min(0, 最小値), 最大値] とする（0 を基準にし、平方根では最小値 0 のときに面積が値に正確に比例する）。出力は「最小 + t ×（最大 − 最小）」で、平方根と対数では負の値を 0 として扱い、その件数を返す。値が欠損の要素は最小の大きさにし、欠損の印を付ける。割り当ての設定 `EncodingSettings` は JSON にできる値とし、`parseEncodingSettings` と既定値を置く | 色を巡回させると別のカテゴリが同じ色になり、色の意味が崩れるため。0 を基準にしないと、値の差が実際より大きく見えるため |
+| D-24 | プロジェクトファイル（T1-08、§11.3、R-02）: 版 1 は `{ app: 'Relata', formatVersion: 1, savedAt, dataset, importSettings, view: { filter } }` とする。`importSettings` は `{ missingTokens: { token, reason }[]; encoding?: string; columnCalendars: { column, calendar }[] }`（利用者の列名をキーにしないため配列で持つ）。見た目、配置、時間の設定は、それぞれのタスク（T1-05、T1-10、T2-05 など）で `view` に**任意の項目として**足す。**`formatVersion` は互換性のない変更のときだけ上げ、任意の項目の追加では上げない**（無い項目は既定値で補う）。`savedAt` は呼ぶ側が渡す（関数を純粋に保つため）。読み込みでは、版の移行 → 各部の parse（`parseDataset`、`parseFilterState`）→ `checkDataset` の順に行い、問題は警告として返す。これより新しい版のファイルは読み込まず、その旨を返す。欠損の記号は、前後の空白を除いて NFC 正規化した後の完全一致で照合する（照合キーは使わない。記号の揺れは利用者が意図したものとみなす。実装は T1-06） | 項目を足すたびに版を上げると移行の関数が増えるため。後から来るタスクが、プロジェクトファイルの形を壊さずに設定を足せるようにするため |
+| D-25 | アプリの骨格（T1-16、§10）: ストアは Zustand で、§10 の 4 つに分ける。T1-16 では `uiStore`（言語、進行中の処理の一覧、開いているダイアログ）と `dataStore`（`Dataset \| null`）を作り、`filterStore` と `viewStore` は T1-18、T1-21 などで足す。言語は「利用者が選んだ値（`localStorage`）→ `pickLocale(navigator.languages)`」の順に決め、`<html lang dir>` を合わせる。進行表示（FR-UI-03）は `startTask(label, cancel?)` が ID を返し、`updateTask`、`endTask` で更新する汎用の仕組みにする。「このツールについて」は `<dialog>` で出し、使用ライブラリの一覧は手で保守し、`package.json` の `dependencies` と一致することをテストで確かめる。CSS は素の CSS で、左右は論理プロパティ（`margin-inline-start` など）で書く | 骨格の段階で、まだ型が決まっていないストアを作らないため。アラビア語圏の利用者の画面で左右が崩れないようにするため。ライブラリの一覧の書き漏れを防ぐため |
 
 ---
 
@@ -312,6 +318,7 @@ export interface Dataset {
   5. 小文字に
 - どの手順を適用するかは、設定で選べるようにする（厳密な照合も選べる）。
 - この照合キーは、検索、ファセットの値の照合、日付の月名の解析で共通に使う。
+- 関数の形、除く文字の範囲、厳密な照合の意味は D-20 に定める。
 
 ---
 
@@ -325,7 +332,7 @@ export type FilterDef =
   | { id: FilterId; kind: 'category'; target: Target; attr: string; include: CategoryKey[] }
   | { id: FilterId; kind: 'range';    target: Target; attr: string; min?: number; max?: number; missing: MissingPolicy }
   | { id: FilterId; kind: 'time';     target: Target; from: DayNumber; to: DayNumber; match: 'overlaps' | 'within'; missing: MissingPolicy }
-  | { id: FilterId; kind: 'text';     target: Target; query: string }
+  | { id: FilterId; kind: 'text';     target: Target; query: string; matching: 'loose' | 'strict' }  // D-21
   | { id: FilterId; kind: 'nodeType'; include: NodeTypeId[] };
 
 export type Target = 'node' | 'edge';
@@ -352,6 +359,7 @@ export interface FilterState {
 
 - **ファセットの件数**（FR-FL-07）: ある属性のファセットの件数は、「そのファセット自身を除くすべてのフィルタ」を当てはめた集合で数える。値を選んでも、同じファセットの他の値の件数が 0 にならない（旧版と同じ見せ方）。
 - **計算量**: ノード数 V、エッジ数 E、フィルタ数 F に対して O(F·(V+E))。想定規模では十分速い。
+- 属性を持たない要素、複数値、空の `include`、片端の規則での端点の扱い、ファセットの件数の数え方は D-21 に定める。
 - **適用中のフィルタの一覧**（FR-FL-08）は、`FilterState.filters` をそのまま並べる。一覧を別に持たない。
 
 ### 6.3 Undo と Redo
@@ -365,6 +373,7 @@ export interface FilterState {
 - 表示エッジ集合 E から graphology のグラフを作る。種類は `graphMode` に合わせる（`directed`、`undirected`、`mixed`）。
 - 同じ 2 点間（有向なら同じ向き）のエッジを 1 本にまとめ、重みを「件数」または「属性の合計」で求める。まとめた元のエッジ ID の一覧を保持する（表や詳細表示から元データに戻れるように）。
 - 自己ループは、設定に応じて含めるか除く。
+- 重みの選び方、欠損の扱い、まとめたエッジのキー、`GraphSnapshot` は D-22 に定める。
 
 ### 7.2 射影（FR-GR-03〜05）
 - 入力: グラフ、射影先の型 A、仲介する型 B、重み付けの方法。
@@ -433,6 +442,7 @@ interface SceneEdge { id: string; path: PathCommand[]; width: number | TaperedWi
   - **平方根**（既定、D-08）: 値の平方根に比例させる。ノードの場合は半径に当てはめるので、**面積が値に比例する**。線の場合は、大きい値の線が太くなりすぎるのを抑える。
   - **対数**: log(1+v) に比例させる。桁の違う値が混ざるときに使う。
 - 色の割り当ては、カテゴリには色覚の多様性に配慮した配色を、連続値には一方向に濃くなる配色を、既定とする（NFR-07）。
+- 配色の置き場所と色、定義域の取り方、負の値と欠損の扱いは D-23 に定める。
 
 ### 8.3 有向エッジ（FR-VG-05〜07、09）
 - **表し方**
@@ -549,10 +559,11 @@ interface TimeState {
 ```ts
 interface ProjectFile {
   app: 'Relata';
-  formatVersion: number;          // 1 から始める
+  formatVersion: number;          // 1 から始める。互換性のない変更のときだけ上げる（D-24）
   savedAt: string;                // ISO 8601
   dataset: Dataset;
-  view: { filter: FilterState; view: ViewState };
+  importSettings: ImportSettings; // 欠損の記号、文字コード、列ごとの暦（D-18、D-24）
+  view: { filter: FilterState };  // 見た目、配置、時間の設定は後のタスクで任意の項目として足す
 }
 ```
 - 版の移行: `migrations: Record<number, (old: unknown) => unknown>` に「版 n から n+1 への変換」を並べ、古いファイルを順に変換する。変換関数ごとにテストを書く。
