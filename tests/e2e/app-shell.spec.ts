@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { startApp } from './support';
 
 // 【なぜ】ブラウザの言語は test.use({ locale }) で明示する。Chromium の既定は en-US で、
 //       言語の自動判定（D-16）が入ったので、指定しないと lang が環境しだいになってしまう。
@@ -124,16 +125,29 @@ test.describe('NFR-07: キーボード操作', () => {
   test('NFR-07: Tab と Enter だけでダイアログを開け、Esc で閉じ、フォーカスが元のボタンに戻る', async ({
     page,
   }) => {
-    await page.goto('./');
+    // 【なぜ】`startApp` で、最初の描画（見出しとヘッダのボタン）が済むまで待つ。`goto` の完了は描画の完了を
+    //   保証しない。描画の前に Tab を押すと、キー入力が空振りして、その後の `toBeFocused` が待っても満たされない
+    //   （初回の起動が遅いときだけ落ちる、不安定さの疑われる原因）。
+    await startApp(page);
     const opener = page.getByRole('button', { name: 'About this tool' });
+    await expect(opener).toBeVisible();
+    // 【なぜ】開始位置を明示する。ページにフォーカスが無い状態の最初の Tab は、環境によって取りこぼされうる。
+    //   ページの端（見出しの外）をクリックして、文書にフォーカスを置いてから、先頭へ戻す。
+    await page.locator('body').click({ position: { x: 1, y: 1 } });
 
-    // 操作: Tab だけで「About this tool」へ進む（日本語、English、About の順）。
-    await page.keyboard.press('Tab');
-    await expect(page.getByRole('button', { name: '日本語' })).toBeFocused();
-    await page.keyboard.press('Tab');
-    await expect(page.getByRole('button', { name: 'English' })).toBeFocused();
-    await page.keyboard.press('Tab');
-    await expect(opener).toBeFocused();
+    // 操作: Tab だけで「About this tool」へ進む。順序はヘッダの左から:
+    //   「Open project」「Clear autosave」（データが無いので「Save」は無効で飛ばされる）、日本語、English、About。
+    const order = [
+      page.getByRole('button', { name: 'Open project' }),
+      page.getByRole('button', { name: 'Clear autosave' }),
+      page.getByRole('button', { name: '日本語' }),
+      page.getByRole('button', { name: 'English' }),
+      opener,
+    ];
+    for (const button of order) {
+      await page.keyboard.press('Tab');
+      await expect(button).toBeFocused();
+    }
 
     // 操作: Enter で開く。
     await page.keyboard.press('Enter');

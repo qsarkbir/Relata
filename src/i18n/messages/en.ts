@@ -116,4 +116,52 @@ export const en = {
   'tasks.cancel': 'Cancel',
   'tasks.cancelLabel': 'Cancel "{label}"',
   'tasks.unknownProgress': 'Working',
+  'project.group': 'Project',
+  'project.save': 'Save',
+  'project.open': 'Open project',
+  'project.clearAutosave': 'Clear autosave',
+  'project.task.open': 'Loading project',
+  'project.loaded.file': 'Loaded project {title}.',
+  'project.loaded.autosave': 'Restored the previous autosave {title}.',
+  'project.warnings.count': '{n} item(s) need your attention.',
+  'project.warnings.label': 'Load warnings',
+  'project.warning.dataset': 'Data inconsistency ({code}, target {owner})',
+  'project.warning.filter': 'Filter problem ({kind}, filter {id})',
+  'project.warning.unknownField':
+    'Skipped an unknown field ({path}). The file may have been saved by a newer version of the app.',
+  'project.failed.file': 'Could not open the project. Your current work is unchanged.',
+  'project.failed.autosave': 'Could not restore the previous autosave. Starting fresh.',
+  'project.failed.read': 'Could not read the file.',
+  'project.failure.notJson': 'Not readable as JSON. The file is damaged or of another kind.',
+  'project.failure.notRelata': 'Not a Relata project file.',
+  'project.failure.newerVersion':
+    'This file was saved by a newer format version ({version}). Update the app and open it again.',
+  'project.failure.migration':
+    'Could not convert the old-format file (version {version}) to the current format.',
+  'project.failure.broken': 'The file is damaged at {path}.',
+  'project.autosave.unavailable':
+    'Autosave is not available in this browser (private browsing, for example). You can keep working, but use Save to keep a file.',
+  'project.dismiss': 'Close',
+  'project.autosave.cleared':
+    'Cleared the saved copy. If you keep working, it will be autosaved again.',
+  'project.warnings.show': 'Show {n} warning(s)',
+  'project.autosave.clearFailed':
+    "Could not clear the autosave. Delete this site's data in the browser settings.",
+  'project.autosave.quota': 'Not enough storage space to autosave. Use Save to keep a file.',
+  'project.autosave.serialize': 'Could not build the autosave content. Use Save to keep a file.',
+  'project.autosave.stopped':
+    'The stored autosave was made by a newer version of the app. Autosave is stopped so that it is not overwritten. Update the app.',
+  'project.otherTab':
+    'This app is also open in another tab. Only the autosave of the tab you changed last is kept.',
+  'project.confirm.title': 'Replace the current data?',
+  'project.confirm.body': 'Opening {file} replaces the data that is open now.',
+  'project.confirm.saveHint':
+    'Work not saved to a file cannot be recovered. We recommend pressing Save first.',
+  'project.confirm.open': 'Open',
+  'project.confirm.cancel': 'Cancel',
+  'project.task.restore': 'Restoring the previous autosave',
+  'project.failure.newerVersionUnknown':
+    'This file was saved by a newer version. Update the app and open it again.',
+  'project.failure.migrationUnknown':
+    'Could not convert the old-format file to the current format.',
 } satisfies Record<MessageKey, string>;

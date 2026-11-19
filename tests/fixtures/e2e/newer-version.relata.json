@@ -1,0 +1,213 @@
+{
+  "app": "Relata",
+  "formatVersion": 999,
+  "savedAt": "2026-01-02T03:04:05.000Z",
+  "dataset": {
+    "graphMode": "directed",
+    "nodeTypes": [
+      { "id": "type-1", "label": "タイプ 1" },
+      { "id": "type-2", "label": "タイプ 2" },
+      { "id": "type-3", "label": "タイプ 3" }
+    ],
+    "nodes": [
+      {
+        "id": "p1",
+        "type": "type-3",
+        "label": "ابن عسكر",
+        "attrs": {
+          "地名": { "kind": "value", "value": "شفشاون" },
+          "Year": { "kind": "value", "value": 980 }
+        }
+      },
+      {
+        "id": "p2",
+        "type": "type-1",
+        "label": "يوسف بن عيسى الفجيجي",
+        "attrs": {
+          "地名": { "kind": "value", "value": "شفشاون" },
+          "Year": { "kind": "value", "value": 950 }
+        }
+      },
+      {
+        "id": "p3",
+        "type": "type-1",
+        "label": "ابن عيسى الفهدي",
+        "attrs": {
+          "地名": { "kind": "value", "value": "مكناس" },
+          "Year": { "kind": "value", "value": 930 }
+        }
+      },
+      {
+        "id": "p4",
+        "type": "type-1",
+        "label": "أبو العباس الحارثي",
+        "attrs": {
+          "地名": { "kind": "value", "value": "مكناس" },
+          "Year": { "kind": "value", "value": 900 }
+        }
+      },
+      {
+        "id": "p5",
+        "type": "type-1",
+        "label": "عبد الله الغزواني",
+        "attrs": {
+          "地名": { "kind": "value", "value": "مراكش" },
+          "Year": { "kind": "value", "value": 930 }
+        }
+      },
+      {
+        "id": "p6",
+        "type": "type-1",
+        "label": "عبد العزيز التباع",
+        "attrs": {
+          "地名": { "kind": "value", "value": "مراكش" },
+          "Year": { "kind": "value", "value": 910 }
+        }
+      },
+      {
+        "id": "p7",
+        "type": "type-1",
+        "label": "محمد بن سليمان الجزولي",
+        "attrs": {
+          "地名": { "kind": "missing", "reason": "illegible" },
+          "Year": { "kind": "value", "value": 860 }
+        }
+      },
+      {
+        "id": "p18",
+        "type": "type-2",
+        "label": "أحمد بن أحمد العبادي التلمساني",
+        "attrs": {
+          "地名": { "kind": "value", "value": "مليانة" },
+          "Year": { "kind": "value", "value": 980 }
+        }
+      },
+      {
+        "id": "p19",
+        "type": "type-2",
+        "label": "أحمد العبادي التلمساني",
+        "attrs": {
+          "地名": { "kind": "value", "value": "تلمسان" },
+          "Year": { "kind": "value", "value": 930 }
+        }
+      },
+      {
+        "id": "p35",
+        "type": "type-3",
+        "label": "عبد الله الهبطي",
+        "attrs": {
+          "地名": { "kind": "value", "value": "مواهب" },
+          "Year": { "kind": "value", "value": 960 }
+        }
+      },
+      {
+        "id": "p39",
+        "type": "type-2",
+        "label": "أبو القاسم بن علي ابن خجو",
+        "attrs": {
+          "地名": { "kind": "value", "value": "جبل بني حسان" },
+          "Year": { "kind": "missing", "reason": "lost" }
+        }
+      },
+      {
+        "id": "p40",
+        "type": "type-1",
+        "label": "محمد بن علي الحاج الشطيبي",
+        "attrs": {
+          "地名": { "kind": "missing", "reason": "lost" },
+          "Year": { "kind": "value", "value": 960 }
+        }
+      },
+      {
+        "id": "p20",
+        "type": "type-1",
+        "label": "عبد الرحمن المدني الزيات",
+        "attrs": {
+          "地名": { "kind": "value", "value": "المدينة" },
+          "Year": { "kind": "missing", "reason": "unrecorded" }
+        }
+      },
+      {
+        "id": "p35b",
+        "type": "type-2",
+        "label": "عبد الله الهبطي",
+        "attrs": {
+          "地名": { "kind": "missing", "reason": "not-applicable" },
+          "Year": { "kind": "missing", "reason": "not-applicable" }
+        }
+      },
+      {
+        "id": "anon",
+        "type": "type-3",
+        "label": "Ibn Khajjū, Abū l-Qāsim (pupil; name illegible)",
+        "attrs": {
+          "地名": { "kind": "missing", "reason": "unrecorded" },
+          "Year": { "kind": "missing", "reason": "illegible" }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "e1",
+        "source": "p1",
+        "target": "p2",
+        "directed": true,
+        "relation": "أخذ عن",
+        "weight": 1,
+        "attrs": {}
+      },
+      { "id": "e2", "source": "p2", "target": "p5", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e3", "source": "p2", "target": "p3", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e4", "source": "p3", "target": "p4", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e5", "source": "p4", "target": "p7", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e6", "source": "p5", "target": "p6", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e7", "source": "p6", "target": "p7", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e8", "source": "p1", "target": "p18", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e9", "source": "p18", "target": "p19", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e10", "source": "p19", "target": "p7", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e11", "source": "p39", "target": "p35", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e12", "source": "p35", "target": "p39", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e13", "source": "p1", "target": "p40", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e141", "source": "p35", "target": "p5", "directed": true, "weight": 1, "attrs": {} },
+      {
+        "id": "e-self",
+        "source": "p6",
+        "target": "p6",
+        "directed": true,
+        "relation": "ذكر نفسه",
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "e-35b",
+        "source": "p35b",
+        "target": "p39",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "e-anon",
+        "source": "anon",
+        "target": "p40",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      }
+    ],
+    "schema": [
+      { "key": "地名", "label": "地名", "appliesTo": "node", "valueType": "category" },
+      { "key": "Year", "label": "年", "appliesTo": "node", "valueType": "number" }
+    ],
+    "meta": {
+      "title": "Maghrib sample",
+      "source": "tests/fixtures/io/palladio/maghrib-20231106.json から抜き出した見本（一部は合成）"
+    }
+  },
+  "importSettings": {
+    "missingTokens": [{ "token": "〔欠〕", "reason": "lost" }],
+    "encoding": "utf-8",
+    "columnCalendars": [{ "column": "Year", "calendar": "hijri" }]
+  },
+  "view": { "filter": { "filters": [], "edgeRule": "both-ends", "showIsolated": false } }
+}

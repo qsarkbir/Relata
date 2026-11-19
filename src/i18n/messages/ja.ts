@@ -112,6 +112,53 @@ export const ja = {
   'tasks.cancel': '取り消し',
   'tasks.cancelLabel': '「{label}」を取り消す',
   'tasks.unknownProgress': '処理中',
+  'project.group': 'プロジェクト',
+  'project.save': '保存',
+  'project.open': 'プロジェクトを開く',
+  'project.clearAutosave': '自動保存を消す',
+  'project.task.open': 'プロジェクトを読み込み中',
+  'project.loaded.file': 'プロジェクト「{title}」を読み込みました。',
+  'project.loaded.autosave': '前回の自動保存「{title}」を復元しました。',
+  'project.warnings.count': '確認が必要な点が {n} 件あります。',
+  'project.warnings.label': '読み込みの警告',
+  'project.warning.dataset': 'データの不整合（{code}、対象 {owner}）',
+  'project.warning.filter': 'フィルタの問題（{kind}、フィルタ {id}）',
+  'project.warning.unknownField':
+    '知らない項目を読み飛ばしました（{path}）。新しい版のアプリで保存されたファイルかもしれません。',
+  'project.failed.file': 'プロジェクトを開けませんでした。今の作業はそのままです。',
+  'project.failed.autosave': '前回の自動保存を復元できませんでした。新しく始めます。',
+  'project.failed.read': 'ファイルを読み取れませんでした。',
+  'project.failure.notJson': 'JSON として読めません。壊れているか、別の種類のファイルです。',
+  'project.failure.notRelata': 'Relata のプロジェクトファイルではありません。',
+  'project.failure.newerVersion':
+    'このファイルは新しい版（{version}）で保存されています。アプリを更新してから開いてください。',
+  'project.failure.migration': '古い版（{version}）のファイルを、今の版へ変換できませんでした。',
+  'project.failure.broken': 'ファイルの {path} が壊れています。',
+  'project.autosave.unavailable':
+    'このブラウザでは自動保存を使えません（プライベートブラウズなど）。作業は続けられますが、「保存」でファイルに残してください。',
+  'project.dismiss': '閉じる',
+  'project.autosave.cleared': '保存してある分を消しました。作業を続けると、また自動保存されます。',
+  'project.warnings.show': '警告 {n} 件を見る',
+  'project.autosave.clearFailed':
+    '自動保存を消せませんでした。ブラウザの設定で、このサイトのデータを削除してください。',
+  'project.autosave.quota':
+    '容量が足りないため自動保存できませんでした。「保存」でファイルに残してください。',
+  'project.autosave.serialize':
+    '自動保存の内容を作れませんでした。「保存」でファイルに残してください。',
+  'project.autosave.stopped':
+    '保存されていた自動保存は、このアプリより新しい版のものです。上書きしないよう、自動保存を止めました。アプリを更新してください。',
+  'project.otherTab':
+    'このアプリは別のタブでも開かれています。自動保存は、最後に変更したタブのものだけが残ります。',
+  'project.confirm.title': '今のデータを置き換えますか',
+  'project.confirm.body': 'ファイル {file} を開くと、いま開いているデータは置き換わります。',
+  'project.confirm.saveHint':
+    'ファイルに保存していない作業は戻りません。先に「保存」を押すことをおすすめします。',
+  'project.confirm.open': '開く',
+  'project.confirm.cancel': 'やめる',
+  'project.task.restore': '前回の自動保存を復元中',
+  'project.failure.newerVersionUnknown':
+    'このファイルは新しい版で保存されています。アプリを更新してから開いてください。',
+  'project.failure.migrationUnknown': '古い版のファイルを、今の版へ変換できませんでした。',
 } as const;
 
 /**
