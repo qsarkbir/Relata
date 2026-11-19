@@ -1,0 +1,1678 @@
+{
+  "networkxVersion": "3.7",
+  "cases": {
+    "undirected_weighted": {
+      "type": "undirected",
+      "nodes": ["a", "b", "c", "d", "e", "f", "g"],
+      "edges": [
+        {
+          "source": "a",
+          "target": "b",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "b",
+          "target": "c",
+          "weight": 2,
+          "directed": false
+        },
+        {
+          "source": "a",
+          "target": "c",
+          "weight": 3,
+          "directed": false
+        },
+        {
+          "source": "c",
+          "target": "d",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "d",
+          "target": "e",
+          "weight": 4,
+          "directed": false
+        },
+        {
+          "source": "e",
+          "target": "f",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "d",
+          "target": "f",
+          "weight": 2,
+          "directed": false
+        },
+        {
+          "source": "f",
+          "target": "g",
+          "weight": 1,
+          "directed": false
+        }
+      ],
+      "expected": {
+        "node": {
+          "degree": {
+            "a": 2,
+            "b": 2,
+            "c": 3,
+            "d": 3,
+            "e": 2,
+            "f": 3,
+            "g": 1
+          },
+          "weightedDegree": {
+            "a": 4,
+            "b": 3,
+            "c": 6,
+            "d": 7,
+            "e": 5,
+            "f": 4,
+            "g": 1
+          },
+          "eigenvector": {
+            "a": 0.20386585915623676,
+            "b": 0.1553003338363999,
+            "c": 0.2998677975945497,
+            "d": 0.6294674358399988,
+            "e": 0.5570458791530893,
+            "f": 0.3645637168304558,
+            "g": 0.07045391297102267
+          },
+          "betweenness": {
+            "a": 0.0,
+            "b": 0.0,
+            "c": 0.5333333333333333,
+            "d": 0.6,
+            "e": 0.0,
+            "f": 0.3333333333333333,
+            "g": 0.0
+          },
+          "closeness": {
+            "a": 0.42857142857142855,
+            "b": 0.42857142857142855,
+            "c": 0.6,
+            "d": 0.6666666666666666,
+            "e": 0.5,
+            "f": 0.5454545454545454,
+            "g": 0.375
+          },
+          "pagerank": {
+            "a": 0.13161109286811298,
+            "b": 0.10333256884155628,
+            "c": 0.19036461239476374,
+            "d": 0.21806109227601853,
+            "e": 0.15834034289894927,
+            "f": 0.1458653354985782,
+            "g": 0.05242495522202098
+          },
+          "kCore": {
+            "a": 2,
+            "b": 2,
+            "c": 2,
+            "d": 2,
+            "e": 2,
+            "f": 2,
+            "g": 1
+          },
+          "clustering": {
+            "a": 1.0,
+            "b": 1.0,
+            "c": 0.3333333333333333,
+            "d": 0.3333333333333333,
+            "e": 1.0,
+            "f": 0.3333333333333333,
+            "g": 0
+          }
+        },
+        "global": {
+          "nodeCount": 7,
+          "edgeCount": 8,
+          "density": 0.38095238095238093,
+          "averageDegree": 2.2857142857142856,
+          "components": 1,
+          "transitivity": 0.5
+        }
+      }
+    },
+    "undirected_selfloop": {
+      "type": "undirected",
+      "nodes": ["a", "b", "c", "d", "e"],
+      "edges": [
+        {
+          "source": "a",
+          "target": "a",
+          "weight": 2,
+          "directed": false
+        },
+        {
+          "source": "a",
+          "target": "b",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "b",
+          "target": "c",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "c",
+          "target": "a",
+          "weight": 3,
+          "directed": false
+        },
+        {
+          "source": "c",
+          "target": "d",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "d",
+          "target": "e",
+          "weight": 2,
+          "directed": false
+        },
+        {
+          "source": "e",
+          "target": "e",
+          "weight": 1,
+          "directed": false
+        }
+      ],
+      "expected": {
+        "node": {
+          "degree": {
+            "a": 4,
+            "b": 2,
+            "c": 3,
+            "d": 2,
+            "e": 3
+          },
+          "weightedDegree": {
+            "a": 8,
+            "b": 2,
+            "c": 5,
+            "d": 3,
+            "e": 4
+          },
+          "eigenvector": {
+            "a": 0.747307591662339,
+            "b": 0.28222899715624944,
+            "c": 0.5734758461723221,
+            "d": 0.15961710793019682,
+            "e": 0.08675246002824137
+          },
+          "betweenness": {
+            "a": 0.0,
+            "b": 0.0,
+            "c": 0.6666666666666666,
+            "d": 0.5,
+            "e": 0.0
+          },
+          "closeness": {
+            "a": 0.5714285714285714,
+            "b": 0.5714285714285714,
+            "c": 0.8,
+            "d": 0.6666666666666666,
+            "e": 0.4444444444444444
+          },
+          "pagerank": {
+            "a": 0.28555141649396854,
+            "b": 0.11270205367317199,
+            "c": 0.2485231549207579,
+            "d": 0.1738779885872715,
+            "e": 0.17934538632483016
+          },
+          "kCore": {
+            "a": 2,
+            "b": 2,
+            "c": 2,
+            "d": 1,
+            "e": 1
+          },
+          "clustering": {
+            "a": 1.0,
+            "b": 1.0,
+            "c": 0.3333333333333333,
+            "d": 0,
+            "e": 0
+          }
+        },
+        "global": {
+          "nodeCount": 5,
+          "edgeCount": 7,
+          "density": 0.7,
+          "averageDegree": 2.8,
+          "components": 1,
+          "transitivity": 0.5
+        }
+      }
+    },
+    "undirected_disconnected": {
+      "type": "undirected",
+      "nodes": ["a", "b", "c", "d", "p", "q", "r", "s", "iso1", "iso2"],
+      "edges": [
+        {
+          "source": "a",
+          "target": "b",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "b",
+          "target": "c",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "c",
+          "target": "a",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "c",
+          "target": "d",
+          "weight": 2,
+          "directed": false
+        },
+        {
+          "source": "p",
+          "target": "q",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "q",
+          "target": "r",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "r",
+          "target": "s",
+          "weight": 1,
+          "directed": false
+        }
+      ],
+      "expected": {
+        "node": {
+          "degree": {
+            "a": 2,
+            "b": 2,
+            "c": 3,
+            "d": 1,
+            "p": 1,
+            "q": 2,
+            "r": 2,
+            "s": 1,
+            "iso1": 0,
+            "iso2": 0
+          },
+          "weightedDegree": {
+            "a": 2,
+            "b": 2,
+            "c": 4,
+            "d": 2,
+            "p": 1,
+            "q": 2,
+            "r": 2,
+            "s": 1,
+            "iso1": 0,
+            "iso2": 0
+          },
+          "eigenvector": {
+            "a": 0.3952957086954833,
+            "b": 0.3952957086954833,
+            "c": 0.6646227883152627,
+            "d": 0.4957410156784656,
+            "p": 4.121629733838043e-12,
+            "q": 6.6689369983921345e-12,
+            "r": 6.6689369983921345e-12,
+            "s": 4.121629733838043e-12,
+            "iso1": 6.689529593284316e-43,
+            "iso2": 6.689529593284316e-43
+          },
+          "betweenness": {
+            "a": 0.0,
+            "b": 0.0,
+            "c": 0.05555555555555555,
+            "d": 0.0,
+            "p": 0.0,
+            "q": 0.05555555555555555,
+            "r": 0.05555555555555555,
+            "s": 0.0,
+            "iso1": 0.0,
+            "iso2": 0.0
+          },
+          "closeness": {
+            "a": 0.25,
+            "b": 0.25,
+            "c": 0.3333333333333333,
+            "d": 0.19999999999999998,
+            "p": 0.16666666666666666,
+            "q": 0.25,
+            "r": 0.25,
+            "s": 0.16666666666666666,
+            "iso1": 0.0,
+            "iso2": 0.0
+          },
+          "pagerank": {
+            "a": 0.09990741469141577,
+            "b": 0.09990741469141577,
+            "c": 0.18529164372203374,
+            "d": 0.09682123773850829,
+            "p": 0.08454872120059186,
+            "q": 0.15641513422109493,
+            "r": 0.15641513422109493,
+            "s": 0.08454872120059186,
+            "iso1": 0.01807228915662651,
+            "iso2": 0.01807228915662651
+          },
+          "kCore": {
+            "a": 2,
+            "b": 2,
+            "c": 2,
+            "d": 1,
+            "p": 1,
+            "q": 1,
+            "r": 1,
+            "s": 1,
+            "iso1": 0,
+            "iso2": 0
+          },
+          "clustering": {
+            "a": 1.0,
+            "b": 1.0,
+            "c": 0.3333333333333333,
+            "d": 0,
+            "p": 0,
+            "q": 0,
+            "r": 0,
+            "s": 0,
+            "iso1": 0,
+            "iso2": 0
+          }
+        },
+        "global": {
+          "nodeCount": 10,
+          "edgeCount": 7,
+          "density": 0.15555555555555556,
+          "averageDegree": 1.4,
+          "components": 4,
+          "transitivity": 0.42857142857142855
+        }
+      }
+    },
+    "bipartite": {
+      "type": "undirected",
+      "nodes": ["p1", "p2", "p3", "l1", "l2", "l3", "l4"],
+      "edges": [
+        {
+          "source": "p1",
+          "target": "l1",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "p1",
+          "target": "l2",
+          "weight": 2,
+          "directed": false
+        },
+        {
+          "source": "p2",
+          "target": "l2",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "p2",
+          "target": "l3",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "p3",
+          "target": "l3",
+          "weight": 3,
+          "directed": false
+        },
+        {
+          "source": "p3",
+          "target": "l4",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "p1",
+          "target": "l4",
+          "weight": 1,
+          "directed": false
+        }
+      ],
+      "expected": {
+        "node": {
+          "degree": {
+            "p1": 3,
+            "p2": 2,
+            "p3": 2,
+            "l1": 1,
+            "l2": 2,
+            "l3": 2,
+            "l4": 2
+          },
+          "weightedDegree": {
+            "p1": 4,
+            "p2": 2,
+            "p3": 4,
+            "l1": 1,
+            "l2": 3,
+            "l3": 4,
+            "l4": 2
+          },
+          "eigenvector": {
+            "p1": 0.20412414523825906,
+            "p2": 0.2430894502692919,
+            "p3": 0.631855088211311,
+            "l1": 0.06025261779658558,
+            "l2": 0.19225948945773447,
+            "l3": 0.6312802681125512,
+            "l4": 0.24676128921258159
+          },
+          "betweenness": {
+            "p1": 0.4666666666666667,
+            "p2": 0.16666666666666666,
+            "p3": 0.16666666666666666,
+            "l1": 0.0,
+            "l2": 0.23333333333333334,
+            "l3": 0.13333333333333333,
+            "l4": 0.23333333333333334
+          },
+          "closeness": {
+            "p1": 0.6,
+            "p2": 0.5,
+            "p3": 0.5,
+            "l1": 0.4,
+            "l2": 0.5454545454545454,
+            "l3": 0.46153846153846156,
+            "l4": 0.5454545454545454
+          },
+          "pagerank": {
+            "p1": 0.20936778194578617,
+            "p2": 0.10365291894579494,
+            "p3": 0.18118779331692844,
+            "l1": 0.06591922509204817,
+            "l2": 0.15446236930748491,
+            "l3": 0.18098828022006488,
+            "l4": 0.10442163117189264
+          },
+          "kCore": {
+            "p1": 2,
+            "p2": 2,
+            "p3": 2,
+            "l1": 1,
+            "l2": 2,
+            "l3": 2,
+            "l4": 2
+          },
+          "clustering": {
+            "p1": 0,
+            "p2": 0,
+            "p3": 0,
+            "l1": 0,
+            "l2": 0,
+            "l3": 0,
+            "l4": 0
+          }
+        },
+        "global": {
+          "nodeCount": 7,
+          "edgeCount": 7,
+          "density": 0.3333333333333333,
+          "averageDegree": 2.0,
+          "components": 1,
+          "transitivity": 0
+        }
+      }
+    },
+    "directed_weighted": {
+      "type": "directed",
+      "nodes": ["a", "b", "c", "d", "e", "f", "g"],
+      "edges": [
+        {
+          "source": "a",
+          "target": "b",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "b",
+          "target": "a",
+          "weight": 2,
+          "directed": true
+        },
+        {
+          "source": "b",
+          "target": "c",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "c",
+          "target": "d",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "d",
+          "target": "c",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "d",
+          "target": "e",
+          "weight": 2,
+          "directed": true
+        },
+        {
+          "source": "e",
+          "target": "e",
+          "weight": 2,
+          "directed": true
+        },
+        {
+          "source": "e",
+          "target": "f",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "f",
+          "target": "b",
+          "weight": 2,
+          "directed": true
+        },
+        {
+          "source": "f",
+          "target": "g",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "a",
+          "target": "f",
+          "weight": 3,
+          "directed": true
+        }
+      ],
+      "expected": {
+        "node": {
+          "degreeIn": {
+            "a": 1,
+            "b": 2,
+            "c": 2,
+            "d": 1,
+            "e": 2,
+            "f": 2,
+            "g": 1
+          },
+          "degreeOut": {
+            "a": 2,
+            "b": 2,
+            "c": 1,
+            "d": 2,
+            "e": 2,
+            "f": 2,
+            "g": 0
+          },
+          "degree": {
+            "a": 3,
+            "b": 4,
+            "c": 3,
+            "d": 3,
+            "e": 4,
+            "f": 4,
+            "g": 1
+          },
+          "weightedDegreeIn": {
+            "a": 2,
+            "b": 3,
+            "c": 2,
+            "d": 1,
+            "e": 4,
+            "f": 4,
+            "g": 1
+          },
+          "weightedDegreeOut": {
+            "a": 4,
+            "b": 3,
+            "c": 1,
+            "d": 3,
+            "e": 3,
+            "f": 3,
+            "g": 0
+          },
+          "weightedDegree": {
+            "a": 6,
+            "b": 6,
+            "c": 3,
+            "d": 4,
+            "e": 7,
+            "f": 7,
+            "g": 1
+          },
+          "closenessOut": {
+            "a": 0.46153846153846156,
+            "b": 0.5,
+            "c": 0.3157894736842105,
+            "d": 0.42857142857142855,
+            "e": 0.4,
+            "f": 0.46153846153846156,
+            "g": 0.0
+          },
+          "hubs": {
+            "a": 0.44711370723123167,
+            "b": 0.02008049701465918,
+            "c": 5.026793370017617e-83,
+            "d": 0.14690671783106568,
+            "e": 0.2636682419772807,
+            "f": 0.12223083594576266,
+            "g": 0.0
+          },
+          "authorities": {
+            "a": 0.01165061481583007,
+            "b": 0.20062447538994513,
+            "c": 0.04844261867411757,
+            "d": 1.795978957790523e-82,
+            "e": 0.23821376065840746,
+            "f": 0.4656096375074724,
+            "g": 0.03545889295422736
+          },
+          "betweenness": {
+            "a": 0.06666666666666667,
+            "b": 0.4,
+            "c": 0.23333333333333334,
+            "d": 0.26666666666666666,
+            "e": 0.26666666666666666,
+            "f": 0.43333333333333335,
+            "g": 0.0
+          },
+          "closeness": {
+            "a": 0.2777777777777778,
+            "b": 0.3787878787878788,
+            "c": 0.462962962962963,
+            "d": 0.32051282051282054,
+            "e": 0.2976190476190476,
+            "f": 0.462962962962963,
+            "g": 0.4
+          },
+          "pagerank": {
+            "a": 0.11905312098682445,
+            "b": 0.15503543597130195,
+            "c": 0.11060329025869585,
+            "d": 0.12521250398965175,
+            "e": 0.23573875276284273,
+            "f": 0.17388871851500268,
+            "g": 0.08046817751568042
+          },
+          "kCore": {
+            "a": 2,
+            "b": 2,
+            "c": 2,
+            "d": 2,
+            "e": 2,
+            "f": 2,
+            "g": 1
+          },
+          "clustering": {
+            "a": 1.0,
+            "b": 0.3333333333333333,
+            "c": 0,
+            "d": 0,
+            "e": 0,
+            "f": 0.16666666666666666,
+            "g": 0
+          }
+        },
+        "global": {
+          "nodeCount": 7,
+          "edgeCount": 11,
+          "density": 0.2619047619047619,
+          "averageDegree": 1.5714285714285714,
+          "components": 1,
+          "transitivity": 0.23076923076923078,
+          "reciprocity": 0.36363636363636365
+        }
+      }
+    },
+    "directed_disconnected": {
+      "type": "directed",
+      "nodes": ["a", "b", "c", "d", "x", "y", "z"],
+      "edges": [
+        {
+          "source": "a",
+          "target": "b",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "b",
+          "target": "c",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "c",
+          "target": "a",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "c",
+          "target": "d",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "x",
+          "target": "y",
+          "weight": 2,
+          "directed": true
+        }
+      ],
+      "expected": {
+        "node": {
+          "degreeIn": {
+            "a": 1,
+            "b": 1,
+            "c": 1,
+            "d": 1,
+            "x": 0,
+            "y": 1,
+            "z": 0
+          },
+          "degreeOut": {
+            "a": 1,
+            "b": 1,
+            "c": 2,
+            "d": 0,
+            "x": 1,
+            "y": 0,
+            "z": 0
+          },
+          "degree": {
+            "a": 2,
+            "b": 2,
+            "c": 3,
+            "d": 1,
+            "x": 1,
+            "y": 1,
+            "z": 0
+          },
+          "weightedDegreeIn": {
+            "a": 1,
+            "b": 1,
+            "c": 1,
+            "d": 1,
+            "x": 0,
+            "y": 2,
+            "z": 0
+          },
+          "weightedDegreeOut": {
+            "a": 1,
+            "b": 1,
+            "c": 2,
+            "d": 0,
+            "x": 2,
+            "y": 0,
+            "z": 0
+          },
+          "weightedDegree": {
+            "a": 2,
+            "b": 2,
+            "c": 3,
+            "d": 1,
+            "x": 2,
+            "y": 2,
+            "z": 0
+          },
+          "closenessOut": {
+            "a": 0.25,
+            "b": 0.3,
+            "c": 0.375,
+            "d": 0.0,
+            "x": 0.16666666666666666,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "hubs": {
+            "a": 5.0487097934144397e-29,
+            "b": 5.0487097934144397e-29,
+            "c": 7.105427357600951e-15,
+            "d": 0.0,
+            "x": 0.9999999999999929,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "authorities": {
+            "a": 7.105427357600901e-15,
+            "b": 1.0097419586828808e-28,
+            "c": 1.0097419586828808e-28,
+            "d": 7.105427357600901e-15,
+            "x": 0.0,
+            "y": 0.9999999999999858,
+            "z": 0.0
+          },
+          "betweenness": {
+            "a": 0.03333333333333333,
+            "b": 0.06666666666666667,
+            "c": 0.1,
+            "d": 0.0,
+            "x": 0.0,
+            "y": 0.0,
+            "z": 0.0
+          },
+          "closeness": {
+            "a": 0.2222222222222222,
+            "b": 0.2222222222222222,
+            "c": 0.2222222222222222,
+            "d": 0.25,
+            "x": 0.0,
+            "y": 0.16666666666666666,
+            "z": 0.0
+          },
+          "pagerank": {
+            "a": 0.16203196474529719,
+            "b": 0.20058400674206153,
+            "c": 0.23335324243933672,
+            "d": 0.16203196474529719,
+            "x": 0.06285683670857302,
+            "y": 0.11628514791086134,
+            "z": 0.06285683670857302
+          },
+          "kCore": {
+            "a": 2,
+            "b": 2,
+            "c": 2,
+            "d": 1,
+            "x": 1,
+            "y": 1,
+            "z": 0
+          },
+          "clustering": {
+            "a": 1.0,
+            "b": 1.0,
+            "c": 0.3333333333333333,
+            "d": 0,
+            "x": 0,
+            "y": 0,
+            "z": 0
+          }
+        },
+        "global": {
+          "nodeCount": 7,
+          "edgeCount": 5,
+          "density": 0.11904761904761904,
+          "averageDegree": 0.7142857142857143,
+          "components": 3,
+          "transitivity": 0.6,
+          "reciprocity": 0.0
+        }
+      }
+    },
+    "mixed_overlap": {
+      "type": "mixed",
+      "nodes": ["a", "b", "c", "d"],
+      "edges": [
+        {
+          "source": "a",
+          "target": "b",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "a",
+          "target": "b",
+          "weight": 2,
+          "directed": true
+        },
+        {
+          "source": "b",
+          "target": "c",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "c",
+          "target": "d",
+          "weight": 2,
+          "directed": false
+        },
+        {
+          "source": "d",
+          "target": "a",
+          "weight": 1,
+          "directed": true
+        }
+      ],
+      "expected": {
+        "node": {
+          "degreeIn": {
+            "a": 2,
+            "b": 1,
+            "c": 2,
+            "d": 1
+          },
+          "degreeOut": {
+            "a": 1,
+            "b": 2,
+            "c": 1,
+            "d": 2
+          },
+          "degree": {
+            "a": 3,
+            "b": 3,
+            "c": 3,
+            "d": 3
+          },
+          "weightedDegreeIn": {
+            "a": 2,
+            "b": 3,
+            "c": 3,
+            "d": 2
+          },
+          "weightedDegreeOut": {
+            "a": 3,
+            "b": 2,
+            "c": 2,
+            "d": 3
+          },
+          "weightedDegree": {
+            "a": 5,
+            "b": 5,
+            "c": 5,
+            "d": 5
+          },
+          "closenessOut": {
+            "a": 0.5,
+            "b": 0.75,
+            "c": 0.5,
+            "d": 0.75
+          },
+          "hubs": {
+            "a": 0.9999999999999727,
+            "b": 1.0455496733338874e-14,
+            "c": 6.232257386110912e-42,
+            "d": 1.6917349083805796e-14
+          },
+          "authorities": {
+            "a": 1.1980933148615813e-14,
+            "b": 0.9999999999999686,
+            "c": 1.9385557051400682e-14,
+            "d": 9.348386079166331e-42
+          },
+          "betweenness": {
+            "a": 0.3333333333333333,
+            "b": 0.3333333333333333,
+            "c": 0.3333333333333333,
+            "d": 0.3333333333333333
+          },
+          "closeness": {
+            "a": 0.75,
+            "b": 0.5,
+            "c": 0.75,
+            "d": 0.5
+          },
+          "pagerank": {
+            "a": 0.20973472288015224,
+            "b": 0.21577451444813348,
+            "c": 0.29026527711984773,
+            "d": 0.28422548555186655
+          },
+          "kCore": {
+            "a": 2,
+            "b": 2,
+            "c": 2,
+            "d": 2
+          },
+          "clustering": {
+            "a": 0,
+            "b": 0,
+            "c": 0,
+            "d": 0
+          }
+        },
+        "global": {
+          "nodeCount": 4,
+          "edgeCount": 5,
+          "density": 0.5,
+          "averageDegree": 1.5,
+          "components": 1,
+          "transitivity": 0,
+          "reciprocity": 0.0
+        }
+      }
+    },
+    "undirected_zero_partial": {
+      "type": "undirected",
+      "nodes": ["a", "b", "c", "d", "e"],
+      "edges": [
+        {
+          "source": "a",
+          "target": "b",
+          "weight": 0,
+          "directed": false
+        },
+        {
+          "source": "b",
+          "target": "c",
+          "weight": 2,
+          "directed": false
+        },
+        {
+          "source": "c",
+          "target": "d",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "d",
+          "target": "e",
+          "weight": 0,
+          "directed": false
+        },
+        {
+          "source": "c",
+          "target": "e",
+          "weight": 3,
+          "directed": false
+        }
+      ],
+      "expected": {
+        "node": {
+          "degree": {
+            "a": 1,
+            "b": 2,
+            "c": 3,
+            "d": 2,
+            "e": 2
+          },
+          "weightedDegree": {
+            "a": 0,
+            "b": 2,
+            "c": 6,
+            "d": 1,
+            "e": 3
+          },
+          "eigenvector": {
+            "a": 1.9511829192940575e-33,
+            "b": 0.3779644730095603,
+            "c": 0.7071067811859243,
+            "d": 0.18898223650478016,
+            "e": 0.5669467095143405
+          },
+          "betweenness": {
+            "a": 0.0,
+            "b": 0.5,
+            "c": 0.6666666666666666,
+            "d": 0.0,
+            "e": 0.0
+          },
+          "closeness": {
+            "a": 0.4444444444444444,
+            "b": 0.6666666666666666,
+            "c": 0.8,
+            "d": 0.5714285714285714,
+            "e": 0.5714285714285714
+          },
+          "pagerank": {
+            "a": 0.03614457831325302,
+            "b": 0.1671551069141469,
+            "c": 0.46239010094430644,
+            "d": 0.10164984261369997,
+            "e": 0.23266037121459385
+          },
+          "kCore": {
+            "a": 1,
+            "b": 1,
+            "c": 2,
+            "d": 2,
+            "e": 2
+          },
+          "clustering": {
+            "a": 0,
+            "b": 0,
+            "c": 0.3333333333333333,
+            "d": 1.0,
+            "e": 1.0
+          }
+        },
+        "global": {
+          "nodeCount": 5,
+          "edgeCount": 5,
+          "density": 0.5,
+          "averageDegree": 2.0,
+          "components": 1,
+          "transitivity": 0.5
+        }
+      }
+    },
+    "undirected_zero_all": {
+      "type": "undirected",
+      "nodes": ["a", "b", "c", "d"],
+      "edges": [
+        {
+          "source": "a",
+          "target": "b",
+          "weight": 0,
+          "directed": false
+        },
+        {
+          "source": "b",
+          "target": "c",
+          "weight": 0,
+          "directed": false
+        },
+        {
+          "source": "c",
+          "target": "d",
+          "weight": 0,
+          "directed": false
+        }
+      ],
+      "expected": {
+        "node": {
+          "degree": {
+            "a": 1,
+            "b": 2,
+            "c": 2,
+            "d": 1
+          },
+          "weightedDegree": {
+            "a": 0,
+            "b": 0,
+            "c": 0,
+            "d": 0
+          },
+          "eigenvector": {
+            "a": 0.5,
+            "b": 0.5,
+            "c": 0.5,
+            "d": 0.5
+          },
+          "betweenness": {
+            "a": 0.0,
+            "b": 0.6666666666666666,
+            "c": 0.6666666666666666,
+            "d": 0.0
+          },
+          "closeness": {
+            "a": 0.5,
+            "b": 0.75,
+            "c": 0.75,
+            "d": 0.5
+          },
+          "pagerank": {
+            "a": 0.25,
+            "b": 0.25,
+            "c": 0.25,
+            "d": 0.25
+          },
+          "kCore": {
+            "a": 1,
+            "b": 1,
+            "c": 1,
+            "d": 1
+          },
+          "clustering": {
+            "a": 0,
+            "b": 0,
+            "c": 0,
+            "d": 0
+          }
+        },
+        "global": {
+          "nodeCount": 4,
+          "edgeCount": 3,
+          "density": 0.5,
+          "averageDegree": 1.5,
+          "components": 1,
+          "transitivity": 0
+        }
+      }
+    },
+    "directed_zero_partial": {
+      "type": "directed",
+      "nodes": ["a", "b", "c", "d", "e"],
+      "edges": [
+        {
+          "source": "a",
+          "target": "b",
+          "weight": 0,
+          "directed": true
+        },
+        {
+          "source": "b",
+          "target": "c",
+          "weight": 2,
+          "directed": true
+        },
+        {
+          "source": "c",
+          "target": "d",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "d",
+          "target": "b",
+          "weight": 3,
+          "directed": true
+        },
+        {
+          "source": "d",
+          "target": "e",
+          "weight": 0,
+          "directed": true
+        },
+        {
+          "source": "e",
+          "target": "c",
+          "weight": 1,
+          "directed": true
+        }
+      ],
+      "expected": {
+        "node": {
+          "degreeIn": {
+            "a": 0,
+            "b": 2,
+            "c": 2,
+            "d": 1,
+            "e": 1
+          },
+          "degreeOut": {
+            "a": 1,
+            "b": 1,
+            "c": 1,
+            "d": 2,
+            "e": 1
+          },
+          "degree": {
+            "a": 1,
+            "b": 3,
+            "c": 3,
+            "d": 3,
+            "e": 2
+          },
+          "weightedDegreeIn": {
+            "a": 0,
+            "b": 3,
+            "c": 3,
+            "d": 1,
+            "e": 0
+          },
+          "weightedDegreeOut": {
+            "a": 0,
+            "b": 2,
+            "c": 1,
+            "d": 3,
+            "e": 1
+          },
+          "weightedDegree": {
+            "a": 0,
+            "b": 5,
+            "c": 4,
+            "d": 4,
+            "e": 1
+          },
+          "closenessOut": {
+            "a": 0.4,
+            "b": 0.375,
+            "c": 0.44999999999999996,
+            "d": 0.5625,
+            "e": 0.375
+          },
+          "hubs": {
+            "a": 0.0,
+            "b": 6.080243333813197e-15,
+            "c": 3.651064214997743e-54,
+            "d": 0.9999999999999909,
+            "e": 3.0401216669065986e-15
+          },
+          "authorities": {
+            "a": 0.0,
+            "b": 0.9999999999999908,
+            "c": 9.120365000719795e-15,
+            "d": 1.0953192644993227e-53,
+            "e": 0.0
+          },
+          "betweenness": {
+            "a": 0.0,
+            "b": 0.29166666666666663,
+            "c": 0.5,
+            "d": 0.41666666666666663,
+            "e": 0.041666666666666664
+          },
+          "closeness": {
+            "a": 0.0,
+            "b": 0.5714285714285714,
+            "c": 0.6666666666666666,
+            "d": 0.5,
+            "e": 0.4
+          },
+          "pagerank": {
+            "a": 0.03614457831325302,
+            "b": 0.298488414298607,
+            "c": 0.32058262203331406,
+            "d": 0.3086398070415733,
+            "e": 0.03614457831325302
+          },
+          "kCore": {
+            "a": 1,
+            "b": 2,
+            "c": 2,
+            "d": 2,
+            "e": 2
+          },
+          "clustering": {
+            "a": 0,
+            "b": 0.3333333333333333,
+            "c": 0.6666666666666666,
+            "d": 0.6666666666666666,
+            "e": 1.0
+          }
+        },
+        "global": {
+          "nodeCount": 5,
+          "edgeCount": 6,
+          "density": 0.3,
+          "averageDegree": 1.2,
+          "components": 1,
+          "transitivity": 0.6,
+          "reciprocity": 0.0
+        }
+      }
+    },
+    "directed_zero_all": {
+      "type": "directed",
+      "nodes": ["a", "b", "c"],
+      "edges": [
+        {
+          "source": "a",
+          "target": "b",
+          "weight": 0,
+          "directed": true
+        },
+        {
+          "source": "b",
+          "target": "c",
+          "weight": 0,
+          "directed": true
+        }
+      ],
+      "expected": {
+        "node": {
+          "degreeIn": {
+            "a": 0,
+            "b": 1,
+            "c": 1
+          },
+          "degreeOut": {
+            "a": 1,
+            "b": 1,
+            "c": 0
+          },
+          "degree": {
+            "a": 1,
+            "b": 2,
+            "c": 1
+          },
+          "weightedDegreeIn": {
+            "a": 0,
+            "b": 0,
+            "c": 0
+          },
+          "weightedDegreeOut": {
+            "a": 0,
+            "b": 0,
+            "c": 0
+          },
+          "weightedDegree": {
+            "a": 0,
+            "b": 0,
+            "c": 0
+          },
+          "closenessOut": {
+            "a": 0.6666666666666666,
+            "b": 0.5,
+            "c": 0.0
+          },
+          "betweenness": {
+            "a": 0.0,
+            "b": 0.5,
+            "c": 0.0
+          },
+          "closeness": {
+            "a": 0.0,
+            "b": 0.5,
+            "c": 0.6666666666666666
+          },
+          "pagerank": {
+            "a": 0.3333333333333333,
+            "b": 0.3333333333333333,
+            "c": 0.3333333333333333
+          },
+          "kCore": {
+            "a": 1,
+            "b": 1,
+            "c": 1
+          },
+          "clustering": {
+            "a": 0,
+            "b": 0,
+            "c": 0
+          }
+        },
+        "global": {
+          "nodeCount": 3,
+          "edgeCount": 2,
+          "density": 0.3333333333333333,
+          "averageDegree": 0.6666666666666666,
+          "components": 1,
+          "transitivity": 0,
+          "reciprocity": 0.0
+        },
+        "hitsDefined": false
+      }
+    },
+    "mixed": {
+      "type": "mixed",
+      "nodes": ["a", "b", "c", "d", "e", "f"],
+      "edges": [
+        {
+          "source": "a",
+          "target": "b",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "b",
+          "target": "c",
+          "weight": 2,
+          "directed": false
+        },
+        {
+          "source": "c",
+          "target": "c",
+          "weight": 1,
+          "directed": false
+        },
+        {
+          "source": "c",
+          "target": "d",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "d",
+          "target": "e",
+          "weight": 2,
+          "directed": true
+        },
+        {
+          "source": "e",
+          "target": "d",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "e",
+          "target": "f",
+          "weight": 1,
+          "directed": true
+        },
+        {
+          "source": "f",
+          "target": "a",
+          "weight": 3,
+          "directed": true
+        }
+      ],
+      "expected": {
+        "node": {
+          "degreeIn": {
+            "a": 2,
+            "b": 2,
+            "c": 2,
+            "d": 2,
+            "e": 1,
+            "f": 1
+          },
+          "degreeOut": {
+            "a": 1,
+            "b": 2,
+            "c": 3,
+            "d": 1,
+            "e": 2,
+            "f": 1
+          },
+          "degree": {
+            "a": 3,
+            "b": 4,
+            "c": 5,
+            "d": 3,
+            "e": 3,
+            "f": 2
+          },
+          "weightedDegreeIn": {
+            "a": 4,
+            "b": 3,
+            "c": 3,
+            "d": 2,
+            "e": 2,
+            "f": 1
+          },
+          "weightedDegreeOut": {
+            "a": 1,
+            "b": 3,
+            "c": 4,
+            "d": 2,
+            "e": 2,
+            "f": 3
+          },
+          "weightedDegree": {
+            "a": 5,
+            "b": 6,
+            "c": 7,
+            "d": 4,
+            "e": 4,
+            "f": 4
+          },
+          "closenessOut": {
+            "a": 0.3333333333333333,
+            "b": 0.45454545454545453,
+            "c": 0.5555555555555556,
+            "d": 0.3333333333333333,
+            "e": 0.45454545454545453,
+            "f": 0.3333333333333333
+          },
+          "hubs": {
+            "a": 0.0290453733577096,
+            "b": 0.3080717452822483,
+            "c": 0.14281799756866823,
+            "d": 1.2144712759255275e-36,
+            "e": 0.016166616039245286,
+            "f": 0.5038982677521285
+          },
+          "authorities": {
+            "a": 0.5930358774379992,
+            "b": 0.10255015492438653,
+            "c": 0.24733468829732583,
+            "d": 0.05181081051623155,
+            "e": 2.143959658627044e-36,
+            "f": 0.005268468824056836
+          },
+          "betweenness": {
+            "a": 0.4,
+            "b": 0.5,
+            "c": 0.4,
+            "d": 0.35000000000000003,
+            "e": 0.35000000000000003,
+            "f": 0.30000000000000004
+          },
+          "closeness": {
+            "a": 0.5555555555555556,
+            "b": 0.45454545454545453,
+            "c": 0.3333333333333333,
+            "d": 0.45454545454545453,
+            "e": 0.3333333333333333,
+            "f": 0.3333333333333333
+          },
+          "pagerank": {
+            "a": 0.16949648246071705,
+            "b": 0.26299245356185885,
+            "c": 0.22098927875349744,
+            "d": 0.12929193226633412,
+            "e": 0.1348981424263784,
+            "f": 0.08233171053121388
+          },
+          "kCore": {
+            "a": 2,
+            "b": 2,
+            "c": 2,
+            "d": 2,
+            "e": 2,
+            "f": 2
+          },
+          "clustering": {
+            "a": 0,
+            "b": 0,
+            "c": 0,
+            "d": 0,
+            "e": 0,
+            "f": 0
+          }
+        },
+        "global": {
+          "nodeCount": 6,
+          "edgeCount": 8,
+          "density": 0.3333333333333333,
+          "averageDegree": 1.6666666666666667,
+          "components": 1,
+          "transitivity": 0,
+          "reciprocity": 0.4
+        }
+      }
+    }
+  }
+}

@@ -121,7 +121,7 @@
 | T1-06 | CSV/TSV/Excel の読み込み、文字コード、列の型、警告、欠損の記号 | io | T1-01、T1-02 | FR-IN-01〜03、05〜07 | ⬜ | | Shift_JIS を含む |
 | T1-07 | Palladio 式の 1 表からの変換 | io | T1-06 | FR-IN-04、要件 §6.3 | ⬜ | | |
 | T1-08 | プロジェクトファイルの形式、保存と読み込み、往復テスト | io | T1-01 | FR-IN-08、FR-PJ-01 | ✅ | 2026-11-19 | io が `src/io/project/`（`serializeProject`、`parseProject`、版の移行、`ImportSettings`、欠損の記号の照合 `compileMissingTokens`/`matchMissingToken`）を実装。FR-PJ-01 はデータとフィルタの部分（見た目、配置、時間は後のタスクで `view` に足す）。reviewer の指摘を受けて D-24 を補足（`savedAt` は任意、見えない書式文字、列挙に要素を足すときは版を上げる）。要件定義書 §6.6 の図を D-18、D-24 に合わせた（要件定義書 1.2） |
-| T1-09 | 指標の Worker と networkx の正解値 | graph-algo | T1-04 | FR-MT-01〜03 | 🔄 | | |
+| T1-09 | 指標の Worker と networkx の正解値 | graph-algo | T1-04 | FR-MT-01〜03 | ✅ | 2026-11-19 | graph-algo が `src/core/metrics/`（全指標。HITS は自作）、`src/workers/metrics.worker.ts`、`metrics.client.ts`（cancel、Worker の異常で reject）、`tests/golden/metrics/`（networkx 3.7 の正解値 12 ケース）を実装。graphology-metrics 2.4.2（MIT）、comlink 4.4.2（Apache-2.0）を追加。qa-tester が `tsconfig.worker.json` と Worker の ESLint 規則を追加（R-13）。reviewer の必須の指摘（重み 0 で PageRank が失敗）を直し、D-30 を補足。実測: ノード 1,000、エッジ 5,000 で全指標 約 0.5 秒、5,000／20,000 で約 5 秒（Worker で進行を表示）。Louvain はフェーズ 4 |
 | T1-10 | レイアウトの Worker（ForceAtlas2、円形、固定） | graph-algo | T1-04 | FR-VG-01、NFR-08 | ⬜ | | 乱数の種を保存 |
 | T1-11 | シーン層と SVG 描画（右から左へ書くラベルを含む） | renderer | T1-05 | FR-VG-03、08、NFR-09 | ✅ | 2026-11-19 | renderer が `src/render/`（`buildScene`、`renderSvg`、エスケープと色の検証、右から左のラベルの判定）を実装。reviewer の必須の指摘（右から左のラベルがノードに重なる）を直し、Chrome の getBBox で確認。Illustrator と Inkscape での見え方は利用者の目視が要る |
 | T1-12 | 有向エッジ（矢印［既定］／先細り／濃淡、往復エッジ、縁で止める） | renderer | T1-11 | FR-VG-05〜07 | ⬜ | | |
