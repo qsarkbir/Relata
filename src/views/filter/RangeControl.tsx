@@ -55,7 +55,9 @@ export function RangeControl({ target, def, active, duplicates, excluded }: Rang
     if (prev?.min !== active?.min) setMin(active?.min === undefined ? '' : String(active.min));
     if (prev?.max !== active?.max) setMax(active?.max === undefined ? '' : String(active.max));
     if (prev?.missing !== active?.missing) setMissing(active?.missing ?? 'exclude');
-    setError(null);
+    // 【なぜ】誤りの表示は、範囲の端が変わったときだけ消す。欠損の扱いだけを切り替えたときは、
+    //       入力欄の不正な下書き（例: 「abc」）が残るので、その誤りの表示も残す。
+    if (prev?.min !== active?.min || prev?.max !== active?.max) setError(null);
   }
 
   const lo = parseNumber(min);
