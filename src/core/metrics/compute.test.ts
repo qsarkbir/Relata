@@ -461,3 +461,64 @@ describe('NFR-04: 1,000 ノード程度での実行時間の目安', () => {
     },
   );
 });
+
+describe('FR-MT-01: 負の重み・有限でない重み（外から作られたスナップショット）', () => {
+  /**
+   * 重みを指定した 3 点の輪のスナップショット（buildGraph は負の重みを作らないが、外から来うる）。
+   *
+   * @param weights - エッジ 3 本の重み
+   * @param type - グラフの種類
+   * @returns スナップショット
+   */
+  const make = (weights: number[], type: 'directed' | 'undirected'): GraphSnapshot => {
+    const nodes = ['a', 'b', 'c'];
+    const pairs = [
+      ['a', 'b'],
+      ['b', 'c'],
+      ['c', 'a'],
+    ];
+    return {
+      options: { type, multi: false, allowSelfLoops: true },
+      attributes: {},
+      nodes: nodes.map((key) => ({ key, attributes: { label: key, type: PERSON } })),
+      edges: pairs.map(([source, target], i) => ({
+        key: `e${String(i)}`,
+        source: source ?? '',
+        target: target ?? '',
+        attributes: {
+          weight: weights[i] ?? 1,
+          count: 1,
+          edgeIds: [],
+          directed: type === 'directed',
+          missingWeightCount: 0,
+        },
+        ...(type === 'undirected' ? { undirected: true } : {}),
+      })),
+    };
+  };
+
+  for (const [name, weights] of [
+    ['負', [1, -5, 1]],
+    ['NaN', [1, Number.NaN, 1]],
+    ['無限大', [1, Number.POSITIVE_INFINITY, 1]],
+  ] as const) {
+    it(`FR-MT-01: ${name}の重みがあると、HITS・PageRank は notDefined で、空回りせずすぐ返る`, () => {
+      const r = computeMetrics(make([...weights], 'directed'));
+      for (const outcome of [r.node.eigenvector, r.node.pagerank]) {
+        expect(outcome?.ok).toBe(false);
+        if (outcome !== undefined && !outcome.ok) expect(outcome.code).toBe('notDefined');
+      }
+      // 他の指標は計算される。
+      for (const id of ['degree', 'betweenness', 'closeness', 'kCore', 'clustering'] as const) {
+        expect(r.node[id]?.ok, id).toBe(true);
+      }
+      expect(r.global.density?.ok).toBe(true);
+    });
+  }
+
+  it('FR-MT-01: 無向グラフの固有ベクトルも、負の重みで notDefined', () => {
+    const r = computeMetrics(make([1, -5, 1], 'undirected'));
+    expect(r.node.eigenvector?.ok).toBe(false);
+    expect(r.node.betweenness?.ok).toBe(true);
+  });
+});

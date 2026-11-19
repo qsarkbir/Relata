@@ -409,6 +409,22 @@ function countComponents(adjacency: readonly ReadonlySet<number>[]): number {
 }
 
 /**
+ * 重みを使う指標（PageRank、固有ベクトル、HITS）の入口の検査。
+ *
+ * 負の重みや有限でない重みがあると、反復が 0 / 0 や NaN で空回りして上限まで続く。`buildGraph`（D-22）は
+ * 負の重みを欠損として足さないので通常は来ないが、スナップショットは外から作られうるので、先に止める。
+ *
+ * @param p - 計算用のグラフ
+ * @returns 問題があれば理由の文。なければ null
+ */
+function invalidWeightMessage(p: Prepared): string | null {
+  for (const w of p.arcWeight) {
+    if (!Number.isFinite(w) || w < 0) return '負の重み、または有限でない重みがあります';
+  }
+  return null;
+}
+
+/**
  * HITS（Kleinberg、1999、"Authoritative sources in a hyperlinked environment"）。
  * ハブ（よい権威を指す点）と権威（よいハブから指される点）を、べき乗法で求める。
  * 計算量: 1 回の反復が O(E)（弧の配列を 2 回なぞるだけ）。反復回数は収束の速さによる。
@@ -420,7 +436,8 @@ function countComponents(adjacency: readonly ReadonlySet<number>[]): number {
  * 4. 前回との差の絶対値の和が V × 許容より小さければ終わる。
  * 5. ハブと権威を、それぞれ総和 1 にする。
  *
- * 重み 0 の弧は何も足さない（除いたのと同じ）。graphology-metrics の `hits` は 1 回の反復が
+ * 重み 0 の弧は何も足さない（除いたのと同じ）。負の重みと有限でない重みは `notDefined` で止める
+ * （空回りを防ぐ。反復中の値が 0 以下や NaN になった場合も同じ）。graphology-metrics の `hits` は 1 回の反復が
  * 文字列のキーの辞書を作り直すので使わず、`Float64Array` で自作した。
  *
  * @param p - 計算用のグラフ
@@ -432,8 +449,10 @@ function hitsColumns(p: Prepared): MetricOutcome<NodeMetricValues['eigenvector']
   const source = Int32Array.from(p.arcSource);
   const target = Int32Array.from(p.arcTarget);
   const weight = Float64Array.from(p.arcWeight);
+  const invalid = invalidWeightMessage(p);
+  if (invalid !== null) return fail('notDefined', invalid);
   let total = 0;
-  for (let i = 0; i < m; i++) total += Math.max(weight[i] ?? 0, 0);
+  for (let i = 0; i < m; i++) total += weight[i] ?? 0;
   if (!(total > 0)) return fail('notDefined', '重みが正のエッジがありません');
 
   let h = new Float64Array(n).fill(1 / n);
@@ -451,6 +470,8 @@ function hitsColumns(p: Prepared): MetricOutcome<NodeMetricValues['eigenvector']
     }
     let max = 0;
     for (let v = 0; v < n; v++) max = Math.max(max, next[v] ?? 0);
+    // 【なぜ】最大値が 0 以下や NaN だと、割り算が NaN になって上限の回数まで空回りする。先に止める。
+    if (!(max > 0)) return fail('notDefined', 'HITS の反復値が 0 以下になりました');
     let error = 0;
     for (let v = 0; v < n; v++) {
       next[v] = (next[v] ?? 0) / max;
@@ -460,6 +481,9 @@ function hitsColumns(p: Prepared): MetricOutcome<NodeMetricValues['eigenvector']
     if (error < n * TOLERANCE) {
       const hubSum = h.reduce((x, y) => x + y, 0);
       const authSum = a.reduce((x, y) => x + y, 0);
+      if (!(hubSum > 0) || !(authSum > 0)) {
+        return fail('notDefined', 'HITS の総和が 0 以下になりました');
+      }
       return {
         ok: true,
         value: {
@@ -548,8 +572,10 @@ const NODE_COMPUTERS: {
     }),
   // Page ほか（1999）, "The PageRank citation ranking"。べき乗法。1 回の反復が O(E)。
   // 重み 0 の弧は除く（冒頭のコメント）。
-  pagerank: (p) =>
-    attempt(() =>
+  pagerank: (p) => {
+    const invalid = invalidWeightMessage(p);
+    if (invalid !== null) return fail('notDefined', invalid);
+    return attempt(() =>
       p.ids.length === 0
         ? []
         : toColumn(
@@ -561,11 +587,14 @@ const NODE_COMPUTERS: {
               maxIterations: MAX_ITERATIONS,
             }),
           ),
-    ),
+    );
+  },
   // 有向（混在を含む）は HITS で代える。無向はべき乗法（A + I の累乗で、二部グラフでも収束する）、
   // L2 正規化。非連結のグラフでは、値は一様な初期値から出発した結果になる（networkx と同じ）。
   eigenvector: (p) => {
     if (p.kind !== 'undirected') return hitsColumns(p);
+    const invalid = invalidWeightMessage(p);
+    if (invalid !== null) return fail('notDefined', invalid);
     return attempt(() => ({
       kind: 'eigenvector' as const,
       value:
