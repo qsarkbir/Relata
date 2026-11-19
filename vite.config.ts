@@ -15,4 +15,8 @@ export default defineConfig({
   base: '/relata/',
   // React の JSX 変換と、開発中の即時反映（Fast Refresh）を有効にする。
   plugins: [react()],
+  // 【なぜ】Worker の出力を ES モジュールにする。client は `new Worker(url, { type: 'module' })` で
+  // 起動する（開発サーバーでも同じ）ので、build の出力も同じ形式に揃える。既定の 'iife' は、
+  // Worker が複数になったとき共通部分を共有できず、各 Worker に同じコードが複製される（設計書 §7.3、D-17）。
+  worker: { format: 'es' },
 });
