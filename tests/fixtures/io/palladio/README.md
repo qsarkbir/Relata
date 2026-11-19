@@ -12,3 +12,12 @@
   - 公開サンプル（T1-22。`public/samples/` に Relata の形式で置く）の元データ。
 - 利用者の判断により、公開してよい（GitHub Pages で誰でも見られる）。
 - 保存の形: 中身は受け取ったファイルと同じ（JSON として等しいことを確かめた）。Prettier の検査を通すため、空白だけを整形してある。
+
+### 公開するときの題名と説明（利用者が確認済み。英語）
+
+T1-22 で公開サンプルにするとき、次の文をそのまま使う（日本語の画面では和訳を添える）。
+
+- **Title**: Scholars and Sufis of the Maghrib in the Fifteenth and Sixteenth Centuries
+- **Description**: This dataset records the social network of scholars and Sufis in the Maghrib during the fifteenth and sixteenth centuries. It is derived from *Dawḥat al-nāshir li-maḥāsin man kāna bi-l-Maghrib min mashāyikh al-qarn al-ʿāshir* by Ibn ʿAskar al-Shafshāwanī (d. 986/1578), and was originally prepared for Palladio to visualize the network on a map.
+
+表記は IJMES 式の転写に合わせた（Maghrib、ʿ と ʾ、長母音の ā ī ū、ḥ など）。
