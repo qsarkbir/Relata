@@ -1,4 +1,5 @@
 import { AboutDialog } from '../views/AboutDialog';
+import { FilterPanel } from '../views/FilterPanel';
 import { TaskPanel } from '../views/TaskPanel';
 import { useData, useT, useUi } from '../views/hooks';
 import { LOCALES, LOCALE_NAMES } from '../i18n';
@@ -54,7 +55,7 @@ export function App() {
       </header>
       <div className="app-body">
         <aside className="region-filters" aria-label={t('app.region.filters')}>
-          <p className="placeholder">{t('app.region.filters.placeholder')}</p>
+          <FilterPanel />
         </aside>
         <main className="region-main" aria-label={t('app.region.main')}>
           {dataset === null ? (

@@ -118,3 +118,145 @@ button {
   white-space: pre-wrap;
   font-size: 0.8rem;
 }
+
+/* フィルタパネル（T1-18）。左右は論理プロパティ。 */
+.region-filters {
+  overflow-y: auto;
+}
+.filter-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.filter-toolbar h2 {
+  margin: 0;
+  margin-inline-end: auto;
+  font-size: 1.1rem;
+}
+.filter-panel h3 {
+  font-size: 1rem;
+  margin-block: 1rem 0.5rem;
+  border-block-end: 1px solid #ccc;
+}
+.filter-panel h4 {
+  font-size: 0.9rem;
+  margin-block: 0.75rem 0.25rem;
+}
+.filter-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  font-weight: bold;
+  margin-block: 0.75rem;
+}
+.hint {
+  color: #444;
+  font-size: 0.85rem;
+  margin-block: 0.25rem;
+}
+.error {
+  color: #9c1c1c;
+  font-weight: bold;
+}
+.error::before {
+  /* 色だけで伝えない: 記号も付ける。 */
+  content: '! ';
+}
+.applied-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.applied-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.applied-list > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+  padding-block: 0.25rem;
+  border-block-end: 1px solid #ddd;
+}
+.applied-summary {
+  overflow-wrap: anywhere;
+}
+.applied-target {
+  font-weight: bold;
+}
+.issues {
+  flex-basis: 100%;
+  margin: 0;
+  padding-inline-start: 1.25rem;
+  color: #7a4b00;
+  font-size: 0.85rem;
+}
+.issues li::marker {
+  content: '! ';
+}
+.facet-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-block-size: 14rem;
+  overflow-y: auto;
+}
+.facet-list label,
+.filter-rules label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+.facet-value {
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+.facet-count {
+  font-variant-numeric: tabular-nums;
+  color: #333;
+}
+.facet summary,
+.range summary {
+  cursor: pointer;
+  padding-block: 0.2rem;
+}
+.range-fields,
+.text-search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.range-fields {
+  flex-direction: row;
+}
+.range-fields label,
+.range form > label,
+.text-search label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.range form,
+.text-search {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.range input[type='number'],
+.text-search input {
+  inline-size: 100%;
+  box-sizing: border-box;
+}
+fieldset {
+  margin-block: 0.75rem;
+  padding: 0.5rem;
+}
+.filter-rules fieldset {
+  border: none;
+  padding: 0;
+}

@@ -2,8 +2,8 @@ import { useCallback } from 'react';
 import { useStore } from 'zustand';
 import { translate } from '../i18n';
 import type { MessageKey, MessageParams } from '../i18n';
-import { dataStore, uiStore } from '../state';
-import type { DataState, UiState } from '../state';
+import { dataStore, filterStore, uiStore } from '../state';
+import type { DataState, FilterStoreState, UiState } from '../state';
 
 /**
  * uiStore の一部を購読する。
@@ -26,6 +26,16 @@ export function useUi<T>(selector: (s: UiState) => T): T {
  */
 export function useData<T>(selector: (s: DataState) => T): T {
   return useStore(dataStore, selector);
+}
+
+/**
+ * filterStore の一部を購読する。
+ *
+ * @param selector - 取り出す値を選ぶ関数
+ * @returns 選んだ値
+ */
+export function useFilter<T>(selector: (s: FilterStoreState) => T): T {
+  return useStore(filterStore, selector);
 }
 
 /**
