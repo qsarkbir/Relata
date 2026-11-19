@@ -296,6 +296,39 @@ const cases = [
     expect: { 'no-restricted-imports': 1, 'import-x/no-restricted-paths': 1 },
   },
   {
+    // 【なぜ】Worker の中（*.worker.ts）には DOM が無い（設計書 §4.1、D-30）。
+    // document と window は禁止し、self は Worker のグローバルなので通す。fetch も Worker にあるので通す。
+    name: 'worker（*.worker.ts）は document と window を使えない（self と fetch は使える）',
+    lint: 'src/workers/__lint_probe__.worker.ts',
+    files: {
+      'src/workers/__lint_probe__.worker.ts': [
+        'export const t = document.title;',
+        'export const w = window.name;',
+        'export const s = self.name;',
+        "export const f = fetch('x');",
+      ],
+    },
+    expect: { 'no-restricted-globals': 2 },
+  },
+  {
+    name: 'worker（*.worker.ts）は state、views、app を import できない（core は import できる）',
+    lint: 'src/workers/__lint_probe__.worker.ts',
+    files: {
+      'src/workers/__lint_probe__.worker.ts': [
+        "import { a } from '../state/__lint_probe__a';",
+        "import { b } from '../views/__lint_probe__b';",
+        "import { d } from '../app/__lint_probe__d';",
+        "import { c } from '../core/__lint_probe__c';",
+        'export const x = [a, b, c, d];',
+      ],
+      'src/state/__lint_probe__a.ts': ['export const a = 1;'],
+      'src/views/__lint_probe__b.ts': ['export const b = 1;'],
+      'src/app/__lint_probe__d.ts': ['export const d = 1;'],
+      'src/core/__lint_probe__c.ts': ['export const c = 1;'],
+    },
+    expect: { 'import-x/no-restricted-paths': 3 },
+  },
+  {
     name: 'CLAUDE.md の規約: any、非 null アサーション、switch の網羅漏れ、理由なしの disable',
     lint: 'src/core/__lint_probe__.ts',
     files: {
@@ -420,6 +453,41 @@ try {
       output.includes('(1,') && ['HTMLElement', 'Node'].every((w) => output.includes(`'${w}'`));
     console.log(
       `${ok ? 'OK  ' : 'FAIL'} core で DOM の型を使うと tsconfig.core.json の型検査で止まる`,
+    );
+    if (!ok) {
+      failed++;
+      console.log(output);
+    }
+  }
+
+  // 【なぜ】DOM の型を持たない tsconfig.worker.json が、worker の DOM の型の使用を止めることも確かめる
+  // （core の検査と同じ考え方。self は WebWorker の型にあるので通る）。
+  {
+    seq++;
+    const path = writeProbe('src/workers/__lint_probe__.worker.ts', [
+      'export const a = self.name;',
+      'export const b = document.title;',
+      'export type T = HTMLElement;',
+    ]);
+    let output = '';
+    try {
+      execFileSync(
+        process.execPath,
+        [resolve(root, 'node_modules/typescript/bin/tsc'), '-p', 'tsconfig.worker.json'],
+        { cwd: root, encoding: 'utf8', stdio: 'pipe' },
+      );
+    } catch (e) {
+      output = String(e.stdout ?? '');
+    } finally {
+      rmSync(path, { force: true });
+      written.delete(path);
+    }
+    // document と HTMLElement が名前の未定義として報告され、self.name（1 行目）は報告されない。
+    const ok =
+      ['document', 'HTMLElement'].every((w) => output.includes(`'${w}'`)) &&
+      !output.includes('(1,');
+    console.log(
+      `${ok ? 'OK  ' : 'FAIL'} worker で DOM を使うと tsconfig.worker.json の型検査で止まる（self は通る）`,
     );
     if (!ok) {
       failed++;
