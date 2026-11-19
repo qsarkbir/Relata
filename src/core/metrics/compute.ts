@@ -687,7 +687,16 @@ function buildNotes(
   }
   // FR-MT-05: ノード型が 2 種類以上なら、1 種類のノードを前提とする指標（中心性、クラスタ係数、
   // 密度、推移性）に注意する（二部グラフなど）。
-  const types = new Set(p.snapshot.nodes.map((n) => n.attributes?.type));
+  // 【なぜ】明示的に異なる型が 2 種類以上あるときだけ注意する。型が未設定（undefined）、空文字、
+  // 文字列でない値は数えない（buildGraph は必ず型を付けるので、未設定は外から作られたスナップショットだけ）。
+  // 【TS】`(t): t is string => ...` は型述語。true を返した要素だけが残るので、
+  //       filter の結果の配列から undefined が型の上でも消える。`NonNullable<T>` は T から null と undefined を除く
+  //       ユーティリティ型（ノード型は ID の文字列に目印を付けた型なので、`string` ではなくこれで表す）。
+  const types = new Set(
+    p.snapshot.nodes
+      .map((n) => n.attributes?.type)
+      .filter((t): t is NonNullable<typeof t> => typeof t === 'string' && t !== ''),
+  );
   if (types.size >= 2) {
     const nodeTargets: readonly NodeMetricId[] = [
       'betweenness',

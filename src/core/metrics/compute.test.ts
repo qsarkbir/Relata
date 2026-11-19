@@ -522,3 +522,38 @@ describe('FR-MT-01: 負の重み・有限でない重み（外から作られた
     expect(r.node.betweenness?.ok).toBe(true);
   });
 });
+
+describe('FR-MT-05: multipleNodeTypes は明示的に異なる 2 種類以上の型があるときだけ', () => {
+  /**
+   * ノードの型を指定したスナップショット（undefined は型の未設定。外から作られた場合を想定）。
+   *
+   * @param types - ノードごとの型（'' は空文字、undefined は未設定）
+   * @returns スナップショット
+   */
+  const withTypes = (types: readonly (string | undefined)[]): GraphSnapshot => ({
+    options: { type: 'undirected', multi: false, allowSelfLoops: true },
+    attributes: {},
+    nodes: types.map((t, i) => ({
+      key: `n${String(i)}`,
+      // 理由: 型の未設定や空文字は型どおりには作れないので、テストの入力として属性ごと作る。
+      attributes: (t === undefined
+        ? {}
+        : { label: 'x', type: t }) as GraphSnapshot['nodes'][number]['attributes'],
+    })),
+    edges: [],
+  });
+  const has = (types: readonly (string | undefined)[]): boolean =>
+    computeMetrics(withTypes(types)).notes.some((n) => n.code === 'multipleNodeTypes');
+
+  it('FR-MT-05: 型ありと未設定の混在では出ない', () => {
+    expect(has(['person', undefined])).toBe(false);
+  });
+  it('FR-MT-05: 2 種類の型では出る（未設定が混ざっていても）', () => {
+    expect(has(['person', 'place'])).toBe(true);
+    expect(has(['person', 'place', undefined])).toBe(true);
+  });
+  it('FR-MT-05: 空文字は数えない', () => {
+    expect(has(['person', ''])).toBe(false);
+    expect(has(['', ''])).toBe(false);
+  });
+});
