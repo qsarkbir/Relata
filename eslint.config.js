@@ -63,6 +63,28 @@ const browserGlobalRestrictions = browserGlobalNames.map((name) => ({
   name,
   message: `${name} はブラウザの機能です。src/core/ は DOM やブラウザ API に依存しません（設計書 §4.1、CLAUDE.md）。必要な値は引数で受け取ってください。`,
 }));
+// 【なぜ】Worker（*.worker.ts）には DOM が無い。Worker にもあるもの（fetch、URL、Blob、Worker、
+// indexedDB、navigator、location、XMLHttpRequest、WebSocket、File、FileReader、Event）は禁止しない。
+const workerForbiddenGlobalNames = [
+  'window',
+  'document',
+  'localStorage',
+  'sessionStorage',
+  'history',
+  'alert',
+  'confirm',
+  'prompt',
+  'HTMLElement',
+  'SVGElement',
+  'Element',
+  'MouseEvent',
+  'CanvasRenderingContext2D',
+  'getComputedStyle',
+];
+const workerGlobalRestrictions = workerForbiddenGlobalNames.map((name) => ({
+  name,
+  message: `${name} は DOM の機能です。Web Worker の中では使えません。window の代わりに self を使い、画面に触れる処理は client（メインスレッド）側に置きます（設計書 §4.1、D-30）。`,
+}));
 // 【なぜ】src/i18n/ は render（書き出しのラベル）からも使われるため、ブラウザに依存しない（D-15）。
 // 言語の判定に要る値（navigator.languages など）は、呼ぶ側が引数で渡す。
 const i18nBrowserGlobalRestrictions = browserGlobalNames.map((name) => ({
@@ -421,6 +443,25 @@ export default defineConfig(
           ],
         },
       ],
+    },
+  },
+  // 【なぜ】Web Worker の中（*.worker.ts）には window も document も無い。上の src/ 全体の設定は
+  // globals.browser を与えるので、ここで Worker のグローバル（self、postMessage など）に差し替え、
+  // DOM だけにあるものを禁止する。fetch、URL、Blob、Worker など Worker にもあるものは禁止しない。
+  // 型の面では tsconfig.worker.json（lib に DOM なし）が止める（設計書 §4.1、D-30）。
+  // 【なぜ】no-restricted-globals は、この設定より前に書いた core などの設定とは files が重ならないので、
+  // ここで単独に設定してよい。
+  {
+    files: ['src/workers/**/*.worker.ts'],
+    languageOptions: {
+      globals: {
+        ...globals.worker,
+        // globals.browser が与えた DOM のグローバルを外す（'off' は宣言の取り消し）。
+        ...Object.fromEntries(workerForbiddenGlobalNames.map((name) => [name, 'off'])),
+      },
+    },
+    rules: {
+      'no-restricted-globals': ['error', ...workerGlobalRestrictions],
     },
   },
   // core、render、i18n には .tsx ファイル自体を置かない。上と同じ規則を再掲するのは、
