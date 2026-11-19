@@ -18,6 +18,6 @@
 T1-22 で公開サンプルにするとき、次の文をそのまま使う（日本語の画面では和訳を添える）。
 
 - **Title**: Scholars and Sufis of the Maghrib in the Fifteenth and Sixteenth Centuries
-- **Description**: This dataset records the social network of scholars and Sufis in the Maghrib during the fifteenth and sixteenth centuries. It is derived from *Dawḥat al-nāshir li-maḥāsin man kāna bi-l-Maghrib min mashāyikh al-qarn al-ʿāshir* by Ibn ʿAskar al-Shafshāwanī (d. 986/1578), and was originally prepared for Palladio to visualize the network on a map.
+- **Description**: This dataset records the social network of scholars and Sufis in the Maghrib during the fifteenth and sixteenth centuries. It is derived from _Dawḥat al-nāshir li-maḥāsin man kāna bi-l-Maghrib min mashāyikh al-qarn al-ʿāshir_ by Ibn ʿAskar al-Shafshāwanī (d. 986/1578), and was originally prepared for Palladio to visualize the network on a map.
 
 表記は IJMES 式の転写に合わせた（Maghrib、ʿ と ʾ、長母音の ā ī ū、ḥ など）。
