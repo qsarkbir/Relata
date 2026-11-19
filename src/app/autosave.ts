@@ -125,16 +125,22 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
     }
   };
 
+  // 保存を始め、進行中の保存として覚えておく。終わったら（次の保存が始まっていなければ）忘れる。
+  // 【なぜ】`clear` が進行中の保存の完了を待つため。タイマーからも flush からも、ここを通す。
+  const startWrite = (): Promise<void> => {
+    const p = write();
+    inflight = p;
+    void p.finally(() => {
+      if (inflight === p) inflight = undefined;
+    });
+    return p;
+  };
+
   const schedule = (): void => {
     if (stopped || applying) return;
     if (timer !== undefined) clearTimeout(timer);
     timer = setTimeout(() => {
-      // 【なぜ】進行中の保存を覚えておく。`clear` が完了を待つため。
-      const p = write();
-      inflight = p;
-      void p.finally(() => {
-        if (inflight === p) inflight = undefined;
-      });
+      void startWrite();
     }, delay);
   };
 
@@ -187,15 +193,17 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
     flush: async () => {
       if (timer === undefined) return;
       clearTimeout(timer);
-      const p = write();
-      inflight = p;
-      await p;
+      await startWrite();
     },
     clear: async () => {
       if (timer !== undefined) clearTimeout(timer);
       timer = undefined;
       // 【なぜ】進行中の保存が消した後に書き込むと、「消した」のに残る。完了を待ってから消す（D-33 (4)）。
-      await inflight;
+      //       待っている間に次の保存が始まることがある（待ちの間の変更、flush）。最初の 1 つだけを
+      //       待つと、その次の保存が消した後に終わって残るので、進行中の保存が無くなるまで待つ。
+      while (inflight !== undefined) {
+        await inflight;
+      }
       try {
         await deps.storage.clear();
         return true;

@@ -190,6 +190,52 @@ describe('autosave', () => {
     expect(order).toEqual(['save-done', 'clear']);
   });
 
+  it('FR-PJ-02: clear を待っている間に次の保存が始まっても、それが終わってから消す', async () => {
+    const order: string[] = [];
+    const releases: (() => void)[] = [];
+    const slow: AutosaveStorage = {
+      load: () => Promise.resolve(null),
+      save: () =>
+        new Promise<void>((resolve) => {
+          const n = releases.length + 1;
+          releases.push(() => {
+            order.push(`save-${String(n)}-done`);
+            resolve();
+          });
+        }),
+      clear: () => {
+        order.push('clear');
+        return Promise.resolve();
+      },
+    };
+    const { data, filter, auto } = setup(slow);
+    auto.start();
+    data.getState().setDataset(sampleDataset());
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS); // 1 つ目の保存が止まっている
+    const cleared = auto.clear();
+    // 操作: 待っている間にフィルタを変え、1 秒後に 2 つ目の保存が始まる。
+    filter.getState().setShowIsolated(!selectFilterState(filter.getState()).showIsolated);
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+    expect(releases).toHaveLength(2);
+    // 期待: 1 つ目が終わっても、2 つ目が残っているので、まだ消さない。
+    releases[0]?.();
+    await vi.advanceTimersByTimeAsync(10);
+    expect(order).toEqual(['save-1-done']);
+    releases[1]?.();
+    await expect(cleared).resolves.toBe(true);
+    expect(order).toEqual(['save-1-done', 'save-2-done', 'clear']);
+  });
+
+  it('FR-PJ-02: flush の後でも clear は待ち続けない', async () => {
+    const m = memory();
+    const { data, auto } = setup(m);
+    auto.start();
+    data.getState().setDataset(sampleDataset());
+    await auto.flush();
+    await expect(auto.clear()).resolves.toBe(true);
+    expect(m.value).toBeNull();
+  });
+
   it('FR-PJ-02: 消すのに失敗したら false を返す', async () => {
     const bad: AutosaveStorage = { ...memory(), clear: () => Promise.reject(new Error('x')) };
     const { auto } = setup(bad);
