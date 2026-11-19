@@ -11,12 +11,14 @@
   //   ブラウザ API を使っても tsc は止めない。そこで tsconfig.core.json を足して型の面から守り、
   //   値の参照や import は ESLint（no-restricted-globals など、T0-07）でも止める（設計書 §4.1）。
   //
-  // src/workers/ を作るときは、tsconfig.app.json の exclude にそこを加え、
-  //   lib を ["ES2022", "WebWorker"] にした tsconfig.worker.json を references に足す。
+  //   - tsconfig.worker.json : src/**/*.worker.ts と、そこから使う core と render/bundling を、
+  //                            DOM なし・WebWorker ありで検査する（D-30）
   // 【なぜ】DOM と WebWorker の型は同じ名前の宣言がぶつかるため、同じ設定には同居できない。
+  //   *.client.ts は画面側で動くので、tsconfig.app.json で検査する。
   "files": [],
   "references": [
     { "path": "./tsconfig.core.json" },
+    { "path": "./tsconfig.worker.json" },
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" },
     { "path": "./tsconfig.test.json" }

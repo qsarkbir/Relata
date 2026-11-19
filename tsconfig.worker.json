@@ -1,0 +1,38 @@
+{
+  // Web Worker の中身（src/workers/*.worker.ts）と、そこから使う core と render/bundling だけを検査する設定
+  // （設計書 §4.1、§7.3、D-17、D-30、R-13）。
+  // 【なぜ】Worker には window も document も無い。tsconfig.app.json は lib に DOM を入れるので、
+  //   Worker が document を使っても tsc は止めない。そこで DOM なし・WebWorker ありの設定に分ける。
+  //   DOM と WebWorker の型は同じ名前の宣言がぶつかるため、同じ設定には同居できない。
+  // 【なぜ】*.client.ts は含めない。client は画面側（メインスレッド）で動き、Worker を起動するので DOM を使う。
+  //   client は tsconfig.app.json で検査する。client が `import type` で worker の型を読むのは、型だけなので構わない。
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.worker.tsbuildinfo",
+
+    "target": "ES2022",
+    // 【なぜ】DOM を入れず、Worker のグローバル（self、postMessage など）の型を与える。
+    "lib": ["ES2022", "WebWorker"],
+    // 【なぜ】空にして、Node.js や Vite の型を自動で読み込まない（tsconfig.core.json と同じ）。
+    "types": [],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    "moduleResolution": "bundler",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "erasableSyntaxOnly": true,
+    "moduleDetection": "force",
+
+    // 以下の厳格さは tsconfig.core.json と同じ。
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  // 【なぜ】render/bundling は、まだ無くてもよい（無い場所の指定は何も含めないだけ）。
+  "include": ["src/**/*.worker.ts", "src/core", "src/render/bundling"]
+}

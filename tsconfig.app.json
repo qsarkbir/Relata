@@ -3,9 +3,12 @@
   "compilerOptions": {
     // 【なぜ】型検査の結果だけが欲しく、JS の出力は Vite が担当するので、tsc は何も出力しない。
     "noEmit": true,
-    // 【なぜ】tsc -b（プロジェクト参照）を使うには composite 相当の設定が必要。
+    // 【なぜ】composite ではなく incremental にする。composite は「対象に列挙していないファイルを
+    //   import するとエラー（TS6307）」にするが、client が `import type` で読む metrics.worker.ts は、
+    //   この設定の exclude に入れている（worker は tsconfig.worker.json で検査する、D-30）。
+    //   この設定は他の設定から references されないので、composite は要らない。
     //   増分ビルドの記録は node_modules 内に置き、作業フォルダを汚さない。
-    "composite": true,
+    "incremental": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
 
     // 【なぜ】target は、構文（クラスのフィールドなど）を検査するときの基準。tsc は何も出力しない
@@ -54,5 +57,9 @@
   // 【なぜ】src/ 全体を含める。core も含むので、core は tsconfig.core.json と二重に検査される
   //   （DOM の型あり・なしの両方で通る必要がある）。外すと、app から core を import したときに
   //   参照先が「この設定の対象外」になり、型検査できなくなるため、承知の上で二重にしている。
-  "include": ["src"]
+  "include": ["src"],
+  // 【なぜ】*.worker.ts は DOM なしの tsconfig.worker.json で検査する（D-30）。DOM の型がある
+  //   この設定で検査すると、Worker の中で document を使っても止まらない。
+  //   *.client.ts はここで検査する。client が `import type` で worker の型を読むのは、型だけなので構わない。
+  "exclude": ["src/**/*.worker.ts"]
 }
