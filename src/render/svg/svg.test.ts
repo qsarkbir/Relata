@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { RelataGraph } from '../../core/graph';
 import { toNodeId, toNodeTypeId, type NodeId } from '../../core/model';
 import { buildScene } from '../scene';
-import { escapeXml, renderSvg, safeColor } from './index';
+import { escapeXml, renderSvg, safeColor, safeIdPrefix } from './index';
 import { num } from './escape';
 
 const t = toNodeTypeId('person');
@@ -169,7 +169,7 @@ describe('FR-OUT-01: エスケープと色の検証', () => {
 });
 
 describe('FR-OUT-01: idPrefix', () => {
-  it('すべての id に接頭辞が付き、エスケープされる', () => {
+  it('すべての id に接頭辞が付き、id に使えない文字は _ に替わる', () => {
     const g = oneGraph(
       [
         ['a', 'A'],
@@ -180,9 +180,22 @@ describe('FR-OUT-01: idPrefix', () => {
     const svg = renderSvg(sceneOf(g), { idPrefix: 'f1"-', background: '#ffffff' });
     const ids = [...svg.matchAll(/ id="([^"]*)"/g)].map((m) => m[1] ?? '');
     expect(ids.length).toBeGreaterThan(5);
-    for (const i of ids) expect(i.startsWith('f1&quot;-')).toBe(true);
+    for (const i of ids) expect(i.startsWith('f1_-')).toBe(true);
     assertWellFormed(svg);
     expect(new Set(ids).size).toBe(ids.length);
+  });
+  it('接頭辞は XML の名前と CSS のセレクタに使える形になる', () => {
+    expect(safeIdPrefix('')).toBe('');
+    expect(safeIdPrefix('fig1-')).toBe('fig1-');
+    expect(safeIdPrefix('1-fig')).toBe('_1-fig');
+    expect(safeIdPrefix('-a')).toBe('_-a');
+    expect(safeIdPrefix('a b"<')).toBe('a_b__');
+    expect(safeIdPrefix('図1.')).toBe('_1_');
+    const g = oneGraph([['a', 'A']]);
+    const svg = renderSvg(sceneOf(g), { idPrefix: '1 fig' });
+    const ids = [...svg.matchAll(/ id="([^"]*)"/g)].map((m) => m[1] ?? '');
+    expect(ids.length).toBeGreaterThan(0);
+    for (const i of ids) expect(i).toMatch(/^[A-Za-z_][A-Za-z0-9_-]*$/);
   });
   it('数値は有限で出力される', () => {
     expect(num(1e308 * 10)).toBe('0');

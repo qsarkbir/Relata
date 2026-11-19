@@ -9,7 +9,7 @@ import { assertNever } from '../../core/util/assertNever';
 import type { NodeShape } from '../../core/model';
 import { shapeExtent } from '../scene/build';
 import type { PathCommand, Scene, SceneEdge, SceneLabel, SceneNode } from '../scene/types';
-import { escapeXml, num, safeColor } from './escape';
+import { escapeXml, num, safeColor, safeIdPrefix } from './escape';
 
 /** `renderSvg` の選択肢。 */
 export interface RenderSvgOptions {
@@ -22,7 +22,11 @@ export interface RenderSvgOptions {
   readonly fontFamily?: string;
   /** 図の題（`<title>`。読み上げと、ファイルを開いたときの手がかり）。 */
   readonly title?: string;
-  /** すべての id の前に付ける文字列。1 つの文書に複数の図を入れるときの衝突を避ける。既定は空。 */
+  /**
+   * すべての id の前に付ける文字列。1 つの文書に複数の図を入れるときの衝突を避ける。既定は空。
+   * 英字で始まる英数字と `-`、`_` の文字列（例: `fig1-`）を指定する。それ以外の文字は `_` に替え、
+   * 先頭が英字か `_` でなければ `_` を前に付ける（`safeIdPrefix`）。
+   */
   readonly idPrefix?: string;
 }
 
@@ -113,7 +117,7 @@ export function renderSvg(scene: Scene, options: RenderSvgOptions = {}): string 
   const w = num(scene.width);
   const h = num(scene.height);
   const font = escapeXml(options.fontFamily ?? scene.fontFamily);
-  const p = escapeXml(options.idPrefix ?? '');
+  const p = safeIdPrefix(options.idPrefix ?? '');
   const out: string[] = [];
   out.push(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" font-family="${font}">`,

@@ -33,6 +33,28 @@ export function escapeXml(s: string): string {
 }
 
 /**
+ * id の接頭辞を、XML の名前（NCName）と CSS のセレクタの両方で使える形にする。
+ *
+ * 英数字、`_`、`-` 以外の文字は `_` に替え、先頭が英字か `_` でなければ `_` を前に付ける。
+ * 空文字列は空文字列のまま返す（既定。`id="edges"` など）。
+ *
+ * @param prefix - 利用者が指定した接頭辞
+ * @returns 安全な接頭辞
+ * @example
+ * safeIdPrefix('fig1-'); // 'fig1-'
+ * safeIdPrefix('1-fig'); // '_1-fig'
+ * safeIdPrefix('a b"'); // 'a_b_'
+ */
+// 【なぜ】エスケープだけでは、数字で始まる id（`1-figedges`）や空白を含む id が残る。
+//       XML の id としては不正で、CSS でも `#1-figedges` のままでは選べない。
+//       `.` や `:` も NCName では許される場合があるが、CSS のセレクタで意味を持つので除く。
+export function safeIdPrefix(prefix: string): string {
+  if (prefix === '') return '';
+  const body = prefix.replace(/[^A-Za-z0-9_-]/g, '_');
+  return /^[A-Za-z_]/.test(body) ? body : `_${body}`;
+}
+
+/**
  * 色を検査する。`#rrggbb` だけを通し、小文字にそろえる。それ以外は既定の色に替える。
  *
  * @param color - 色の候補
