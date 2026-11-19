@@ -17,6 +17,7 @@ import { RangeControl } from './filter/RangeControl';
 import { TextSearch } from './filter/TextSearch';
 import { useFilterShortcuts } from './filter/useFilterShortcuts';
 import { useData, useFilter, useT, useUi } from './hooks';
+import { getNumberFormat } from './intl';
 
 /**
  * フィルタパネル全体（FR-FL-01〜10、FR-FL-12）。データが無いときは案内だけを出す。
@@ -93,7 +94,7 @@ function PanelBody({ dataset }: PanelBodyProps) {
 
   const result = getFilterResult(dataset, state);
   const issues = getFilterIssues(dataset, state);
-  const nf = new Intl.NumberFormat(locale);
+  const nf = getNumberFormat(locale);
   const { counts } = result;
   return (
     <>
