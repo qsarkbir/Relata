@@ -4,6 +4,8 @@ import { translate } from '../i18n';
 import type { MessageKey, MessageParams } from '../i18n';
 import { dataStore, filterStore, uiStore } from '../state';
 import type { DataState, FilterStoreState, UiState } from '../state';
+import { projectNoticeStore } from './projectNotice';
+import type { ProjectNoticeState } from './projectNotice';
 
 /**
  * uiStore の一部を購読する。
@@ -46,4 +48,14 @@ export function useFilter<T>(selector: (s: FilterStoreState) => T): T {
 export function useT(): (key: MessageKey, params?: MessageParams) => string {
   const locale = useUi((s) => s.locale);
   return useCallback((key, params) => translate(locale, key, params), [locale]);
+}
+
+/**
+ * 保存と読み込みの知らせ（projectNotice）の一部を購読する。
+ *
+ * @param selector - 取り出す値を選ぶ関数
+ * @returns 選んだ値
+ */
+export function useProjectNotice<T>(selector: (s: ProjectNoticeState) => T): T {
+  return useStore(projectNoticeStore, selector);
 }

@@ -260,3 +260,40 @@ fieldset {
   border: none;
   padding: 0;
 }
+
+/* 保存と読み込み（T1-21）。 */
+.project-menu {
+  display: flex;
+  gap: 0.5rem;
+}
+.project-notice {
+  margin: 0;
+  padding-block: 0.5rem;
+  padding-inline: 1rem;
+  border-block-end: 1px solid #888;
+  background: #f4f4f4;
+}
+.project-notice-failed,
+.project-notice-read-error {
+  /* 色だけで伝えない: 太い枠線と見出しの文言も使う。 */
+  border-inline-start: 6px solid #a00;
+}
+.project-warnings {
+  max-block-size: 10rem;
+  overflow-y: auto;
+  margin-block: 0.25rem;
+}
+.project-notice-error {
+  border-inline-start: 6px solid #a00;
+}
+.project-report-reopen {
+  margin-inline: 1rem;
+  margin-block: 0.25rem;
+}
+.confirm-dialog {
+  max-inline-size: 32rem;
+}
+.confirm-dialog form {
+  display: flex;
+  gap: 0.75rem;
+}

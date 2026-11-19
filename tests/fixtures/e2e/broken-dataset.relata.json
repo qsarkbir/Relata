@@ -1,0 +1,77 @@
+{
+  "app": "Relata",
+  "formatVersion": 1,
+  "savedAt": "2026-01-02T03:04:05.000Z",
+  "dataset": {
+    "graphMode": "directed",
+    "nodeTypes": [
+      { "id": "type-1", "label": "タイプ 1" },
+      { "id": "type-2", "label": "タイプ 2" },
+      { "id": "type-3", "label": "タイプ 3" }
+    ],
+    "nodes": "not an array",
+    "edges": [
+      {
+        "id": "e1",
+        "source": "p1",
+        "target": "p2",
+        "directed": true,
+        "relation": "أخذ عن",
+        "weight": 1,
+        "attrs": {}
+      },
+      { "id": "e2", "source": "p2", "target": "p5", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e3", "source": "p2", "target": "p3", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e4", "source": "p3", "target": "p4", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e5", "source": "p4", "target": "p7", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e6", "source": "p5", "target": "p6", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e7", "source": "p6", "target": "p7", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e8", "source": "p1", "target": "p18", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e9", "source": "p18", "target": "p19", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e10", "source": "p19", "target": "p7", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e11", "source": "p39", "target": "p35", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e12", "source": "p35", "target": "p39", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e13", "source": "p1", "target": "p40", "directed": true, "weight": 1, "attrs": {} },
+      { "id": "e141", "source": "p35", "target": "p5", "directed": true, "weight": 1, "attrs": {} },
+      {
+        "id": "e-self",
+        "source": "p6",
+        "target": "p6",
+        "directed": true,
+        "relation": "ذكر نفسه",
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "e-35b",
+        "source": "p35b",
+        "target": "p39",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "e-anon",
+        "source": "anon",
+        "target": "p40",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      }
+    ],
+    "schema": [
+      { "key": "地名", "label": "地名", "appliesTo": "node", "valueType": "category" },
+      { "key": "Year", "label": "年", "appliesTo": "node", "valueType": "number" }
+    ],
+    "meta": {
+      "title": "Maghrib sample",
+      "source": "tests/fixtures/io/palladio/maghrib-20231106.json から抜き出した見本（一部は合成）"
+    }
+  },
+  "importSettings": {
+    "missingTokens": [{ "token": "〔欠〕", "reason": "lost" }],
+    "encoding": "utf-8",
+    "columnCalendars": [{ "column": "Year", "calendar": "hijri" }]
+  },
+  "view": { "filter": { "filters": [], "edgeRule": "both-ends", "showIsolated": false } }
+}
