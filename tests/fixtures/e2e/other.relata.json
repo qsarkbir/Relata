@@ -1,0 +1,20 @@
+{
+  "app": "Relata",
+  "formatVersion": 1,
+  "savedAt": "2026-01-02T03:04:05.000Z",
+  "dataset": {
+    "graphMode": "undirected",
+    "nodeTypes": [{ "id": "person", "label": "人物" }],
+    "nodes": [
+      { "id": "a", "type": "person", "label": "A", "attrs": {} },
+      { "id": "b", "type": "person", "label": "B", "attrs": {} }
+    ],
+    "edges": [
+      { "id": "ab", "source": "a", "target": "b", "directed": false, "weight": 1, "attrs": {} }
+    ],
+    "schema": [],
+    "meta": { "title": "Other data" }
+  },
+  "importSettings": { "missingTokens": [], "columnCalendars": [] },
+  "view": { "filter": { "filters": [], "edgeRule": "both-ends", "showIsolated": false } }
+}

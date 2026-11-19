@@ -1,8 +1,11 @@
 import { AboutDialog } from '../views/AboutDialog';
 import { FilterPanel } from '../views/FilterPanel';
+import { ProjectMenu } from '../views/ProjectMenu';
+import { ProjectNotice } from '../views/ProjectNotice';
 import { TaskPanel } from '../views/TaskPanel';
 import { useData, useT, useUi } from '../views/hooks';
 import { LOCALES, LOCALE_NAMES } from '../i18n';
+import { clearAutosave } from './autosaveService';
 import './app.css';
 
 /**
@@ -28,6 +31,11 @@ export function App() {
         <h1>{t('app.title')}</h1>
         <p className="tagline">{t('app.tagline')}</p>
         <div className="header-actions">
+          <ProjectMenu
+            onClearAutosave={() => {
+              void clearAutosave();
+            }}
+          />
           <div role="group" aria-label={t('locale.label')} className="locale-switch">
             {LOCALES.map((l) => (
               <button
@@ -53,6 +61,7 @@ export function App() {
           </button>
         </div>
       </header>
+      <ProjectNotice />
       <div className="app-body">
         <aside className="region-filters" aria-label={t('app.region.filters')}>
           <FilterPanel />

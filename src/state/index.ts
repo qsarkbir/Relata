@@ -1,7 +1,9 @@
 export { createUiStore, uiStore } from './uiStore';
 export type { DialogId, Task, UiState } from './uiStore';
-export { createDataStore, dataStore } from './dataStore';
-export type { DataState } from './dataStore';
+export { createDataStore, dataStore, EMPTY_IMPORT_SETTINGS } from './dataStore';
+export type { DataState, StoredImportSettings } from './dataStore';
+export { applySnapshot, takeSnapshot } from './project';
+export type { ProjectSnapshot, ProjectSnapshotView } from './project';
 export {
   bindFilterToData,
   createFilterStore,

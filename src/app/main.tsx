@@ -4,6 +4,7 @@ import { uiStore } from '../state';
 import { App } from './App';
 import { translate } from '../i18n';
 import type { Locale } from '../i18n';
+import { autosave, startTabWatch } from './autosaveService';
 import { applyDocumentLocale, resolveInitialLocale, saveLocale } from './locale';
 
 // 【TS】`getElementById` の戻り値は `HTMLElement | null`。null かもしれないので、
@@ -42,3 +43,14 @@ createRoot(container).render(
     <App />
   </StrictMode>,
 );
+
+// 【なぜ】見張りは最初から張る。復元の読み取りが遅い間に利用者がファイルを開けば、その作業も保存される。
+//       復元の適用そのものは、`restore` が見張りから外す。復元は描画の後に行い、IndexedDB が遅くても画面は先に出る。
+//       失敗しても `restore` は例外を投げない。
+autosave.start();
+void autosave.restore();
+startTabWatch();
+// 【なぜ】1 秒待つ間にタブを閉じても失われないよう、非表示になるときに今すぐ保存する。
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') void autosave.flush();
+});
