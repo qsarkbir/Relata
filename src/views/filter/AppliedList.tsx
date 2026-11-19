@@ -3,6 +3,7 @@ import { assertNever } from '../../core/util/assertNever';
 import type { FilterDef, FilterId, FilterIssue } from '../../core/filter';
 import type { Dataset } from '../../core/model';
 import { useFilter, useT, useUi } from '../hooks';
+import { getNumberFormat } from '../intl';
 import { categoryKeyText } from './labels';
 import type { Translate } from './labels';
 
@@ -31,7 +32,7 @@ export function AppliedList({ dataset, filters, issues, missingExcluded }: Appli
   const locale = useUi((s) => s.locale);
   const remove = useFilter((s) => s.remove);
   const clearAll = useFilter((s) => s.clearAll);
-  const nf = new Intl.NumberFormat(locale);
+  const nf = getNumberFormat(locale);
 
   return (
     <section className="applied" aria-labelledby="applied-title">
@@ -187,8 +188,13 @@ function plainSummary(t: Translate, nf: NumberFormatter, dataset: Dataset, f: Fi
       return `${targetText(t, f)} ${timeText(t, nf, f.from, f.to)}`;
     case 'text':
       return `${targetText(t, f)} ${t('filter.summary.text', { query: f.query })}`;
-    case 'nodeType':
-      return `${targetText(t, f)} ${t('filter.nodeTypes')}`;
+    case 'nodeType': {
+      // 【なぜ】選んでいる型の名前も入れる。読み上げで、どの「解除」ボタンかを区別できるように。
+      const names = f.include
+        .map((id) => dataset.nodeTypes.find((nt) => nt.id === id)?.label ?? id)
+        .join(', ');
+      return `${targetText(t, f)} ${t('filter.nodeTypes')}: ${names}`;
+    }
     default:
       return assertNever(f, 'FilterDef');
   }

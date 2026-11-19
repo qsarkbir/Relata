@@ -3,6 +3,7 @@ import { categoryKeyId } from '../../core/filter';
 import type { CategoryKey, FacetCount, Target } from '../../core/filter';
 import type { AttributeDef } from '../../core/model';
 import { useFilter, useT, useUi } from '../hooks';
+import { getCollator, getNumberFormat } from '../intl';
 import type { FilterOfKind } from './activeFilters';
 import { DuplicateNotice } from './DuplicateNotice';
 import { categoryFilterId } from './filterIds';
@@ -46,7 +47,8 @@ export function FacetControl({ target, def, getCounts, active, duplicates }: Fac
   const [showAll, setShowAll] = useState(false);
 
   const selected = new Set((active?.include ?? []).map(categoryKeyId));
-  const numberFormat = new Intl.NumberFormat(locale);
+  // 【なぜ】Intl の書式は作るのに時間がかかるので、言語ごとに使い回す（views/intl.ts）。
+  const numberFormat = getNumberFormat(locale);
 
   const toggle = (key: CategoryKey, on: boolean): void => {
     // 【なぜ】操作は最初のフィルタに対して行う。無ければ新しい ID で追加する。
@@ -66,7 +68,7 @@ export function FacetControl({ target, def, getCounts, active, duplicates }: Fac
     // 【なぜ】値は全体の件数の多い順、同数は言語ごとの照合順。「条件に合う件数」で並べると、
     //       他のフィルタを変えるたびに項目が入れ替わり、チェックしたい項目を目で追えなくなる。
     //       全体の件数は、フィルタを変えても動かない。欠損は最後（core が値の後ろに並べている）。
-    const collator = new Intl.Collator(locale);
+    const collator = getCollator(locale);
     const counts = getCounts();
     // `filter` は新しい配列を返すので、`sort` で並べ替えても元の配列は変わらない。
     const values = counts
