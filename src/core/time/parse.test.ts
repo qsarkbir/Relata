@@ -518,3 +518,35 @@ describe('月名と年の書き方（D-29 補足 9）', () => {
     expect(failure('#9# 1050').code).toBe('unrecognized');
   });
 });
+
+describe('ハイフンの異体（D-29 補足 12）', () => {
+  // 【なぜ】Word や Excel の貼り付けでは、ハイフンが似た別の文字になることがある。
+  // 照合キーのあと、U+2010〜2012、U+2212、U+FF0D（NFKC で U+002D になる）、U+FE63 は
+  // ASCII のハイフンと同じに扱う。en ダッシュ（U+2013）と em ダッシュ（U+2014）は別扱い。
+  // 【TS】文字列の中の `\uXXXX` は Unicode の符号位置で書いた 1 文字。見た目の区別がつかない文字を確実に書くため。
+  const variants = ['\u2010', '\u2011', '\u2012', '\u2212', '\uFF0D', '\uFE63'];
+
+  it('FR-DM-05 D-29: 異体のハイフンでも 1640-12 と同じ年月（1640 年 12 月）', () => {
+    for (const v of variants) {
+      expect(range(`1640${v}12`), `U+${v.charCodeAt(0).toString(16)}`).toEqual([
+        g(1640, 12, 1),
+        g(1640, 12, 31),
+      ]);
+    }
+  });
+
+  it('FR-DM-05 D-29: 異体のハイフンでも 4 桁どうしは範囲', () => {
+    for (const v of variants) {
+      expect(range(`1640${v}1660`), `U+${v.charCodeAt(0).toString(16)}`).toEqual([
+        g(1640, 1, 1),
+        g(1660, 12, 31),
+      ]);
+    }
+  });
+
+  it('FR-DM-05 D-29: en ダッシュと em ダッシュは常に範囲（1640\u201312 は 1640〜1612 で失敗）', () => {
+    expect(failure('1640\u201312').code).toBe('range-reversed');
+    expect(failure('1640\u201412').code).toBe('range-reversed');
+    expect(range('1640\u201341')).toEqual([g(1640, 1, 1), g(1641, 12, 31)]);
+  });
+});
