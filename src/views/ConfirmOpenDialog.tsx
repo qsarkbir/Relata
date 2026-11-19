@@ -8,7 +8,7 @@ export interface ConfirmOpenDialogProps {
   readonly fileName: string | null;
   /** 「開く」を選んだ。 */
   readonly onConfirm: () => void;
-  /** 「やめる」を選んだ、または Esc で閉じた。 */
+  /** 「やめる」を選んだ、または Esc で閉じた。「開く」を選んだときは呼ばれない。 */
   readonly onCancel: () => void;
 }
 
@@ -39,7 +39,13 @@ export function ConfirmOpenDialog({ fileName, onConfirm, onCancel }: ConfirmOpen
       ref={ref}
       className="confirm-dialog"
       aria-labelledby="confirm-open-title"
-      onClose={onCancel}
+      onClose={() => {
+        // 【なぜ】`close` イベントは、「やめる」や Esc で閉じたときだけでなく、「開く」の後に親が
+        //       fileName を null にして、上の effect が `d.close()` を呼んだときにも起きる。
+        //       そのときは、もう確認の対象が無い（open が false）ので、「やめる」の処理は呼ばない。
+        //       このイベントは描画の後に届くので、ここで見る open は最新の値になっている。
+        if (open) onCancel();
+      }}
     >
       <h2 id="confirm-open-title">{t('project.confirm.title')}</h2>
       <p>{fileName === null ? '' : tRich(t, 'project.confirm.body', {}, { file: fileName })}</p>
