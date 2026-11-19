@@ -49,6 +49,10 @@ test.describe('FR-FL-01 / FR-FL-02: 対象ごとのフィルタとノード型',
     // 期待: 両端がタイプ 2 のエッジは e9（18→19）と e-35b（35b→39）の 2 本。端点の 4 人が見える。
     await expectCounts(page, [4, 15], [2, 17]);
     await expect(appliedRegion(page)).toContainText('タイプ 2');
+    // 期待: 解除ボタンの読み上げに、選んでいる型の名前が入る（どのボタンか区別できる）。
+    await expect(
+      appliedRegion(page).getByRole('button', { name: '「ノード ノード型: タイプ 2」を解除する' }),
+    ).toBeVisible();
   });
 
   test('FR-FL-02: エッジ用のテキスト検索は、関係の名前（relation）に当たる', async ({ page }) => {
