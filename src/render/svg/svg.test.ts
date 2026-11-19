@@ -221,3 +221,40 @@ describe('NFR-09: 右から左のラベルの SVG', () => {
     assertWellFormed(svg);
   });
 });
+
+describe('FR-OUT-01: フォントの一覧', () => {
+  // 【なぜ】属性値の中の ' と " は実体参照になるが、XML として読むと元に戻る。
+  //       戻した値が、測定（canvas の font）に渡した一覧と同じであることを確かめる。
+  const decode = (v: string): string =>
+    v
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
+  it.each(['Amiri, serif', "'Times New Roman', serif", '"Noto Naskh Arabic", sans-serif'])(
+    '%s: 測定と SVG の font-family が同じ一覧になる',
+    (family) => {
+      const fonts: string[] = [];
+      const g = oneGraph([['a', 'ابن عسكر']]);
+      const scene = buildScene(
+        g,
+        new Map([[id('a'), { x: 0, y: 0 }]]),
+        {},
+        {
+          fontFamily: family,
+          measureText: (s, f) => {
+            fonts.push(f);
+            return s.length * 8;
+          },
+        },
+      );
+      const svg = renderSvg(scene);
+      assertWellFormed(svg);
+      expect(fonts).toEqual([`12px ${family}`]);
+      const attr = /<svg [^>]*font-family="([^"]*)"/.exec(svg)?.[1];
+      expect(attr).toBeDefined();
+      expect(decode(attr ?? '')).toBe(family);
+    },
+  );
+});

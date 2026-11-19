@@ -86,7 +86,13 @@ export interface BuildSceneOptions {
    */
   readonly measureText?: MeasureText;
   readonly legend?: LegendSpec;
-  /** 文字のフォント。測定と描画で同じものを使う。既定 `sans-serif`。 */
+  /**
+   * 文字のフォント。CSS の `font-family` と同じ書き方の一覧（例: `Amiri, serif`、
+   * `'Times New Roman', serif`）。測定と描画で同じものを使う。既定 `sans-serif`。
+   */
+  // 【なぜ】測定には `${大きさ}px ${一覧}`（canvas の font、CSS の font 一括指定）を、
+  //       SVG にはこの一覧をそのまま font-family 属性として渡す。どちらも同じ CSS の
+  //       一覧として解釈されるので、引用符やカンマを含んでも同じフォントになる。
   readonly fontFamily?: string;
 }
 

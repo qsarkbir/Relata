@@ -15,7 +15,10 @@ import { escapeXml, num, safeColor } from './escape';
 export interface RenderSvgOptions {
   /** 背景色（`#rrggbb`）。省略は透明。論文の図では白を指定するとよい。 */
   readonly background?: string;
-  /** 文字のフォントの上書き。省略はシーンのもの（測定と同じ）。 */
+  /**
+   * 文字のフォントの上書き（CSS の `font-family` の一覧）。省略はシーンのもの（測定と同じ）。
+   * 上書きすると、ラベルの幅はシーンを作ったときのフォントで測ったままになる。
+   */
   readonly fontFamily?: string;
   /** 図の題（`<title>`。読み上げと、ファイルを開いたときの手がかり）。 */
   readonly title?: string;
