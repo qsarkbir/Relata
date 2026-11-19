@@ -16,8 +16,8 @@
 |---|---|
 | フェーズ | **1 MVP**（26 タスク中 7 完了）。フェーズ 0 は完了 |
 | 直近の完了 | T1-05 見た目への割り当て、T1-08 プロジェクトファイル（2026-11-19） |
-| 作業中 | なし（T1-08 は PR で利用者の確認待ち） |
-| 待っていること | 利用者: (1) `main` の保護に CI（「検査・テスト・E2E」）の成功を必須にするか決める（統括役が設定できる）。(2) R-06（読み込める文字コードを広げるか）を T1-06 までに。Q-03 は T1-22 までに決める。(3) PR（T1-08）の確認と `main` への統合。(4) 統合済みのリモートのブランチ（`t1-design-2-1`、`t1-26-text-keys` など）の削除（クラウドのセッションからはブランチを消せないため） |
+| 作業中 | なし |
+| 待っていること | 利用者: (1) Q-03 は T1-22 までに決める。(2) 統合済みのリモートのブランチの削除（クラウドのセッションからはブランチを消せないため）。|
 | メモ | GitHub リポジトリ `qsarkbir/relata`（非公開）。公開サイト https://qsarkbir.github.io/relata/ 。2026-11-19 から、統括役は Claude Code のクラウドのセッションで作業する（下の「クラウドで作業するときの手順」） |
 
 ### 次にやること
@@ -28,8 +28,7 @@
    - **T1-11**（シーン層と SVG 描画。renderer。T1-05 の割り当てと凡例を使う。R-10 を決める）
    - **T1-18**（フィルタパネル。ui。T1-03 と T1-16 の上に作る）
    - **T1-21**（保存・読み込み・自動保存の画面。ui。T1-08 の上に作る。T1-18 と同じ担当なので順に）
-2. T1-06（表の読み込み）は T1-02 の後。R-06 は利用者の判断が要る。
-3. `main` の保護に「CI が通ること」（required status checks）を足すかどうか（利用者の判断）。
+2. T1-06（表の読み込み）は T1-02 の後。文字コードは D-27（R-06 の決定）に従う。
 
 ### クラウドで作業するときの手順
 クラウドのセッションは、GitHub の `main` を新しく取得したところから始まる。手元のマシンにだけあるものは使えない。
@@ -56,7 +55,7 @@
 | 記号 | 意味 |
 |---|---|
 | ⬜ | 未着手 |
-| 🔄 | 作業中 |
+| 🔄 | 作業中 | なし |
 | 👀 | レビュー待ち |
 | ✅ | 完了（[設計書 §20](design.md) の完了の定義を満たす） |
 | ⏸ | 保留（理由をメモ欄に書く） |
@@ -87,11 +86,11 @@
 | T0-02 | メインのマシンで Git、Node.js（LTS）、Python ＋ networkx ＋ convertdate を確認 | 利用者 | — | 設計 §17 | ✅ | 2026-11-18 | Git 2.55.0、Node.js 24.21.0（npm 11.19.0）、Python 3.14.3、networkx 3.7、convertdate 2.5.1 |
 | T0-03 | 作業フォルダの作成と、文書・エージェント定義のコピー | 利用者 | T0-02 | 設計 §17 | ✅ | 2026-11-18 | `docs/`、`.claude/agents/`（8 件）、`CLAUDE.md`、`upstream/`（8 リポジトリ）を確認 |
 | T0-04 | git の初期化、`.gitignore`（`upstream/`、`node_modules/`、`dist/`）、初回コミット | 統括役 | T0-03 | 設計 §18 | ✅ | 2026-11-18 | 既定のブランチは `main`。改行を LF にそろえる `.gitattributes` も追加 |
-| T0-05 | GitHub リポジトリへの接続（remote の設定、初回 push）と `main` の保護 | 利用者＋統括役 | T0-04 | 設計 §14 | ✅ | 2026-11-18 | GitHub 側の初回コミット（LICENSE、README）の上に積んで push。`main` の保護は強制 push と削除の禁止（管理者にも適用）。CI の必須化は T0-09 の後 |
+| T0-05 | GitHub リポジトリへの接続（remote の設定、初回 push）と `main` の保護 | 利用者＋統括役 | T0-04 | 設計 §14 | ✅ | 2026-11-18 | GitHub 側の初回コミット（LICENSE、README）の上に積んで push。`main` の保護は強制 push と削除の禁止（管理者にも適用）。CI の必須化は行わない（2026-11-19 の利用者の判断。利用者が PR を確認してから統合するので、その間に CI が通る） |
 | T0-06 | Vite ＋ React ＋ TypeScript の雛形。`tsconfig` を strict に。`engines` と `.nvmrc` で Node の版を固定 | 統括役 | T0-04 | NFR-10 | ✅ | 2026-11-18 | Sonnet が実装、reviewer（Opus）が確認。TypeScript は 6.0.3（D-14）。lint と test は T0-07、T0-08 で用意するため、完了の定義のうち typecheck と build だけ確認 |
 | T0-07 | ESLint、Prettier、層の境界の規則（`no-restricted-imports`） | qa-tester | T0-06 | 設計 §4.1 | ✅ | 2026-11-18 | qa-tester（Sonnet）が実装、reviewer（Opus）が確認し指摘をすべて反映。境界は import-x/no-restricted-paths と tsconfig.core.json（DOM なし）の二重で検査。`tests/lint/check-boundaries.mjs`（11 項目）で規則が効くことを確認。jsdoc の規則も導入 |
 | T0-08 | Vitest と Playwright の設定、見本のテスト | qa-tester | T0-06 | NFR-11 | ✅ | 2026-11-18 | qa-tester（Sonnet）が実装、reviewer（Opus）の指摘をすべて反映。Vitest 5.1（`npm test` はカバレッジ込みで、src/core に 80% のしきい値）、Playwright 1.65（Chromium）。tests/ は tsconfig.test.json で型検査。層の境界の検査も `npm test` で走る |
-| T0-09 | CI のワークフロー（lint、型検査、テスト、ビルド） | qa-tester | T0-07、T0-08 | 設計 §14 | ✅ | 2026-11-18 | `.github/workflows/ci.yml`。1 ジョブ「検査・テスト・E2E」で npm ci → lint → format:check → typecheck → test → build → E2E（build 済みの dist を配信）。GitHub 上で成功（約 2 分）。dist を artifact に保存。required status checks の追加は利用者の判断待ち |
+| T0-09 | CI のワークフロー（lint、型検査、テスト、ビルド） | qa-tester | T0-07、T0-08 | 設計 §14 | ✅ | 2026-11-18 | `.github/workflows/ci.yml`。1 ジョブ「検査・テスト・E2E」で npm ci → lint → format:check → typecheck → test → build → E2E（build 済みの dist を配信）。GitHub 上で成功（約 2 分）。dist を artifact に保存。required status checks は追加しない（利用者の判断） |
 | T0-10 | GitHub Pages への配信（`base` を `/relata/` に、配信ワークフロー） | qa-tester＋利用者 | T0-05、T0-09 | NFR-01 | ✅ | 2026-11-18 | `base: /relata/`、CI に deploy ジョブ（main への push で verify の後に配信）。利用者が Pages を有効化。Pages の有効化は利用者が GitHub の設定画面で行う。サイトはリポジトリが非公開でも誰でも見られる（設計 §14）。`base` を `/relata/` にするとき、playwright.config.ts の `baseURL` と webServer の `url` を `http://localhost:4173/relata/` に、テストの `goto` を相対（`./`）にする |
 | T0-11 | 共通の小道具（`assertNever` など）と、多言語対応の枠組み | core-model、ui | T0-06 | FR-UI-01 | ✅ | 2026-11-18 | core-model が `src/core/util/assertNever.ts`、ui が `src/i18n/`（型付き辞書、`translate`、`pickLocale`。D-15、D-16）を実装。reviewer の指摘を反映し、qa-tester が i18n の層の規則を ESLint に追加（check-boundaries は 14 項目）。試運転として両エージェントから定義への意見を回収（T0-13 で反映） |
 | T0-12 | LICENSE（BSD-3-Clause）、README（日英。Palladio に由来することを明記） | 統括役 | T0-04 | NFR-12、FR-UI-05 | ✅ | 2026-11-18 | LICENSE に Stanford University（2019）の著作権表示と Palladio に由来する旨を追加。README は日英。画面の「このツールについて」（FR-UI-05）は T1-16 で作る |
@@ -196,7 +195,7 @@ T0-13 の試運転で、各エージェントが挙げた未決の点。利用�
 | R-03 | 警告の行番号の定義（物理行かレコード番号か）と `WarningCode` の一覧。ファイル全体に関わる警告（置換文字、同名の合流）の表し方 | レコード番号（ヘッダを 1 行目とする）。物理行は分かる場合だけ別の項目に。`row` は省略可にする | T1-06 | 統括役 |
 | R-04 | ID のない表で「型＋ラベル」からノードを作ると同名異人が合流する（FR-DM-01 の例外）。警告だけにするか。照合は照合キーか元の表記か | 元の表記（Unicode の NFC 正規化だけ）で照合して合流させ、合流したノードの件数を警告に出す。利用者に ID の列を勧める。照合キーは使わない（表記の揺れで別人が合流するため） | T1-06 | 統括役 |
 | R-05 | Excel の読み込みのライブラリ（npm の SheetJS は 0.18.5 で古く既知の脆弱性がある） | まず `read-excel-file`（MIT）で試し、足りなければ SheetJS の配布元の tgz。どちらにしても Excel を選んだときだけ動的に読み込む。日付のセルは `Date` にせずシリアル値で受け取る設定で使う（1900 年のうるう年の誤りと、1904 年起点の方式に注意） | T1-06 | 統括役（設計書 §3 を直す） |
-| R-06 | 読み込める文字コードを広げるか（UTF-16、アラビア語の Windows-1256、トルコ語の Windows-1254）。要件 FR-IN-01 は UTF-8 と Shift_JIS だけ | 広げる（主な利用者の史料データに合わせる）。UTF-16 は BOM で自動判定し、Windows-1256 と 1254 は手動の指定だけにする（1 バイトの文字コードは自動では見分けられないため） | T1-06 | **利用者**（要件の変更） |
+| R-06 | 読み込める文字コードを広げるか（UTF-16、アラビア語の Windows-1256、トルコ語の Windows-1254）。要件 FR-IN-01 は UTF-8 と Shift_JIS だけ | 広げる（主な利用者の史料データに合わせる）。UTF-16 は BOM で自動判定し、Windows-1256 と 1254 は手動の指定だけにする（1 バイトの文字コードは自動では見分けられないため） | T1-06 | 決定（D-27）。今は広げない（利用者の判断）。後から一覧に足すだけで広げられる形で T1-06 を作る |
 | R-07 | 指標での重みの意味（媒介・近接で距離とみなすか）、自己ループの次数の数え方、混在グラフの指標、平均次数の定義 | 媒介・近接は重みなし（ホップ数。graphology-metrics には重みを使わない指定を明示して渡す）。自己ループは networkx に合わせる。平均次数は有向なら E/V、無向なら 2E/V。混在グラフは、無向エッジを両向きの 2 本の有向エッジとみなして計算し（相互性には数えない）、注意を出す | T1-09 | 統括役 |
 | R-08 | 色の配色（カテゴリは Okabe-Ito、連続値は viridis 系）をどこに置くか | `core/encode`（T1-05）に置く | T1-05 | 決定（D-23）。`core/encode` に置く。9 個目以降のカテゴリは灰色の「その他」 |
 | R-13 | Worker の型検査の設定（`*.worker.ts` は WebWorker の型、`*.client.ts` は DOM の型。同じフォルダに並ぶ） | `tsconfig.worker.json` は `*.worker.ts` と、そこから使う core と render/bundling だけを含め、`*.client.ts` は app の設定で検査する | T1-09 | 統括役 |
@@ -240,6 +239,8 @@ T0-13 の試運転で、各エージェントが挙げた未決の点。利用�
 | 2026-11-19 | 設計書 2.5。T1-04 のレビューを受けて D-22 を補足（`Graph.from` で復元、不正な重みは欠損として数える、ID の重複は先に出たものを採る）。T1-04 を完了 |
 | 2026-11-19 | 設計書 2.7。T1-05 のレビューを受けて D-23 を補足（0 を含む定義域、有限でない値は欠損、凡例の情報、`basis`、複数値、型の色と形の衝突）。T1-05 を完了。以後、`main` への統合は利用者が PR を確認して行う |
 | 2026-11-19 | 設計書 2.6、要件定義書 1.2。T1-08 のレビューを受けて D-24 を補足（`savedAt` は任意、欠損の記号の見えない書式文字、列挙に要素を足すときは版を上げる、未知の項目は警告）。要件定義書 §6.6 の構造の図を D-18、D-24 に合わせた。T1-08 を完了 |
+| 2026-11-19 | 設計書 2.8。R-06 を決定（D-27。文字コードは今は広げず、後から足せる形で T1-06 を作る） |
+| 2026-11-19 | `main` の保護に CI の成功の必須化は加えない（利用者の判断。現状維持） |
 
 ---
 
