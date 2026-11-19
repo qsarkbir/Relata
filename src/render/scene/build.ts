@@ -1,0 +1,438 @@
+/**
+ * シーンの組み立て（設計書 §8.1、D-31）。
+ */
+import type { RelataGraph } from '../../core/graph';
+import {
+  MISSING_COLOR,
+  OTHER_COLOR,
+  normalizeColor,
+  type ColorResult,
+  type SizeResult,
+  type WidthResult,
+} from '../../core/encode';
+import type { NodeId, NodeShape, NodeTypeId } from '../../core/model';
+import { assertNever } from '../../core/util/assertNever';
+import { detectDirection, type TextDirection } from '../text/direction';
+import type {
+  PathCommand,
+  Scene,
+  SceneEdge,
+  SceneLabel,
+  SceneLegend,
+  SceneLegendItem,
+  SceneNode,
+} from './types';
+
+/**
+ * 文字の幅を測る関数（D-17）。画面では views が Canvas で測る関数を、テストでは偽の関数を渡す。
+ * `font` は CSS の font 指定（例: `12px sans-serif`）。
+ */
+export type MeasureText = (text: string, font: string) => number;
+
+/** 割り当ての結果（`core/encode` の出力）をまとめたもの。無い項目は既定の見た目になる。 */
+export interface SceneEncoding {
+  /** ノードの半径。`encodeNodeSizes` の `sizes`。 */
+  readonly sizes?: ReadonlyMap<NodeId, SizeResult>;
+  /** ノードの色。`encodeNodeColorsBy…` の `colors`。 */
+  readonly colors?: ReadonlyMap<NodeId, ColorResult>;
+  /** 色の割り当てが無いノードに使う、型の色（`typeStyles().colors`）。 */
+  readonly typeColors?: ReadonlyMap<NodeTypeId, string>;
+  /** 型の形（`typeStyles().shapes`）。 */
+  readonly shapes?: ReadonlyMap<NodeTypeId, NodeShape>;
+  /**
+   * エッジの太さ。キーは、`buildGraph` が付けたまとめたエッジのキー（`graph.edges()` の値）。
+   * 元の `EdgeId` ではない。重みの一部だけが欠損したエッジの印は、FR-VG-12（フェーズ 2）で扱う。
+   * 【なぜ】グラフのエッジはまとめた後のものなので、元の `EdgeId` ではなくグラフのキーで引く。
+   */
+  readonly widths?: ReadonlyMap<string, WidthResult>;
+}
+
+/** 凡例の項目の指定。文言は呼ぶ側が翻訳して渡す（render は i18n に依存しない）。 */
+export interface LegendItemSpec {
+  readonly label: string;
+  readonly fill: string;
+  readonly shape?: NodeShape;
+  /** 見本の半径。省略は 6。 */
+  readonly r?: number;
+  readonly dashed?: boolean;
+}
+
+/** 凡例の指定。 */
+export interface LegendSpec {
+  readonly title?: string;
+  readonly items: readonly LegendItemSpec[];
+}
+
+/** ラベルの表示方法。重なりの解消は T1-13。 */
+export type LabelMode = 'all' | 'selected' | 'large';
+
+/** `buildScene` の選択肢。 */
+export interface BuildSceneOptions {
+  /** 図の余白（px）。既定 24。 */
+  readonly margin?: number;
+  /** 選択中のノード。 */
+  readonly selected?: ReadonlySet<NodeId>;
+  /** 選択の強調を図に含めるか。既定は含めない（D-31）。 */
+  readonly includeSelection?: boolean;
+  /** ラベルの表示。既定 `all`。 */
+  readonly labels?: LabelMode;
+  /** `large` のとき、ラベルを出すノードの数（大きい順）。既定 20。 */
+  readonly largeLabelCount?: number;
+  /** ラベルの文字の大きさ（px）。既定 12。 */
+  readonly labelFontSize?: number;
+  /**
+   * 文字の幅を測る関数。無いとき、または有限で 0 以上でない値を返したときは、
+   * 文字数 × 文字の大きさ × 0.6 で見積もる。ラベルと凡例は、この幅で図の範囲に収める。
+   */
+  readonly measureText?: MeasureText;
+  readonly legend?: LegendSpec;
+  /** 文字のフォント。測定と描画で同じものを使う。既定 `sans-serif`。 */
+  readonly fontFamily?: string;
+}
+
+const DEFAULT_RADIUS = 6;
+const DEFAULT_EDGE_WIDTH = 1.5;
+const DEFAULT_EDGE_COLOR = '#999999';
+const NODE_STROKE = '#333333';
+const SELECTED_STROKE = '#000000';
+const LABEL_GAP = 4;
+const LEGEND_GAP = 16;
+const LEGEND_PAD = 8;
+
+/**
+ * 形の外接円の半径。面積を円（半径 r）とそろえた形を、中心から最も遠い点で測る。
+ * 矢じりを縁で止める（T1-12）ときと、図の範囲を求めるときに使う。
+ *
+ * @param shape - 形
+ * @param r - 公称の半径
+ * @returns 外接円の半径
+ */
+export function shapeExtent(shape: NodeShape, r: number): number {
+  switch (shape) {
+    case 'circle':
+      return r;
+    case 'square':
+      // 面積 s² = πr²、外接円の半径は対角線の半分 s/√2。
+      return (r * Math.sqrt(Math.PI)) / Math.SQRT2;
+    case 'triangle':
+      // 正三角形の面積 (3√3/4)R² = πr²。R が外接円の半径。
+      return r * Math.sqrt((4 * Math.PI) / (3 * Math.sqrt(3)));
+    case 'diamond':
+      // 正方形を 45 度回した形。面積 2d² = πr²、d が外接円の半径。
+      return r * Math.sqrt(Math.PI / 2);
+    default:
+      return assertNever(shape, 'NodeShape');
+  }
+}
+
+/**
+ * 有限で 0 以上の数かを調べ、そうでなければ既定値を返す。
+ *
+ * @param v - 入力
+ * @param fallback - 既定値
+ * @returns 使える値
+ */
+function nonNeg(v: number | undefined, fallback: number): number {
+  return v !== undefined && Number.isFinite(v) && v >= 0 ? v : fallback;
+}
+
+// 【TS】`p is {…}` は型ガード。true の分岐で、TypeScript が p を undefined でない点として扱う。
+function finitePoint(
+  p: { readonly x: number; readonly y: number } | undefined,
+): p is { readonly x: number; readonly y: number } {
+  return p !== undefined && Number.isFinite(p.x) && Number.isFinite(p.y);
+}
+
+function makeLabel(
+  nodeId: NodeId | null,
+  text: string,
+  x: number,
+  y: number,
+  fontSize: number,
+): SceneLabel {
+  const direction: TextDirection = detectDirection(text);
+  // x が文字列のどちらの端か（物理的な向き）。右から左は右端、左から右は左端。
+  return {
+    nodeId,
+    text,
+    x,
+    y,
+    fontSize,
+    direction,
+    anchor: direction === 'rtl' ? 'right' : 'left',
+  };
+}
+
+function shiftLabel(l: SceneLabel, dx: number, dy: number): SceneLabel {
+  return { ...l, x: l.x + dx, y: l.y + dy };
+}
+
+/**
+ * グラフ、位置、割り当ての結果から、シーンを作る。
+ *
+ * 図の範囲は、位置のあるすべてのノードを収める（画面の拡大やパンには左右されない。D-31）。
+ * 位置が無い（または有限でない）ノードは、シーンに入れず `omitted.nodesWithoutPosition` に報告する。
+ * 端点がシーンに無いエッジも入れない。ノードの位置は、レイアウト（T1-13 以降）の結果をそのまま渡す。
+ * 文字の幅の関数が渡されたときは、ラベルと凡例も範囲に収める。
+ *
+ * 計算量: ノード数 n、エッジ数 m として O(n log n + m)（「大きいノード」の並べ替え）。
+ *
+ * @param graph - グラフ
+ * @param positions - ノードの位置
+ * @param encoding - 割り当ての結果
+ * @param options - 選択肢
+ * @returns シーン
+ */
+export function buildScene(
+  graph: RelataGraph,
+  positions: ReadonlyMap<NodeId, { readonly x: number; readonly y: number }>,
+  encoding: SceneEncoding = {},
+  options: BuildSceneOptions = {},
+): Scene {
+  const margin = nonNeg(options.margin, 24);
+  const fontSize = nonNeg(options.labelFontSize, 12);
+  const fontFamily = options.fontFamily ?? 'sans-serif';
+  const font = `${String(fontSize)}px ${fontFamily}`;
+  const measure = options.measureText;
+  // 測定の結果が使えないときは、文字数からの見積もりにする（凡例と同じ）。
+  const textWidth = (t: string): number => {
+    const w = measure?.(t, font);
+    return nonNeg(w, t.length * fontSize * 0.6);
+  };
+  const selected = options.selected ?? new Set<NodeId>();
+  const showSel = options.includeSelection === true;
+  const labelMode = options.labels ?? 'all';
+
+  // 1. ノード（位置の無いものは除く）。ノードの ID は、graphology では文字列。
+  const rawNodes: SceneNode[] = [];
+  const missingPos: NodeId[] = [];
+  graph.forEachNode((key, attrs) => {
+    // 【TS】graphology のキーは string。Relata ではノード ID と同じ値を使う（buildGraph が `addNode(n.id, …)`）。
+    //       ブランド型への変換は型の上だけの約束で、実行時の検査は要らない（`as` を使う理由）。
+    const id = key as NodeId;
+    const pos = positions.get(id);
+    if (!finitePoint(pos)) {
+      missingPos.push(id);
+      return;
+    }
+    const size = encoding.sizes?.get(id);
+    const color = encoding.colors?.get(id);
+    const fill =
+      normalizeColor(color?.color) ??
+      normalizeColor(encoding.typeColors?.get(attrs.type)) ??
+      (color?.missing === true ? MISSING_COLOR : OTHER_COLOR);
+    const isSel = showSel && selected.has(id);
+    rawNodes.push({
+      id,
+      x: pos.x,
+      y: pos.y,
+      r: size !== undefined && Number.isFinite(size.size) ? Math.max(0, size.size) : DEFAULT_RADIUS,
+      shape: encoding.shapes?.get(attrs.type) ?? 'circle',
+      fill,
+      stroke: isSel ? SELECTED_STROKE : NODE_STROKE,
+      strokeWidth: isSel ? 3 : 1,
+      dashed: size?.missing === true || color?.missing === true,
+      selected: isSel,
+    });
+  });
+  const byId = new Map(rawNodes.map((n) => [n.id, n]));
+
+  // 2. エッジ（今は直線だけ。矢印と曲線は T1-12）。
+  const rawEdges: SceneEdge[] = [];
+  let edgesWithoutEndpoint = 0;
+  let widthMatched = 0;
+  let selfLoops = 0;
+  graph.forEachEdge((key, attrs, source, target) => {
+    const s = byId.get(source as NodeId);
+    const t = byId.get(target as NodeId);
+    if (s === undefined || t === undefined) {
+      edgesWithoutEndpoint += 1;
+      return;
+    }
+    if (s.id === t.id) {
+      selfLoops += 1;
+      return;
+    }
+    const w = encoding.widths?.get(key);
+    if (w !== undefined) widthMatched += 1;
+    const path: PathCommand[] = [
+      { type: 'M', x: s.x, y: s.y },
+      { type: 'L', x: t.x, y: t.y },
+    ];
+    rawEdges.push({
+      id: key,
+      source: s.id,
+      target: t.id,
+      path,
+      width:
+        w !== undefined && Number.isFinite(w.width) ? Math.max(0, w.width) : DEFAULT_EDGE_WIDTH,
+      color: DEFAULT_EDGE_COLOR,
+      opacity: 0.6,
+      directed: attrs.directed,
+      dashed: w?.missing === true,
+    });
+  });
+
+  // 3. ラベル。表示する候補を決める。重なりの解消は T1-13。
+  const labelNodes = pickLabelNodes(rawNodes, labelMode, selected, options.largeLabelCount ?? 20);
+  const rawLabels: SceneLabel[] = [];
+  for (const n of labelNodes) {
+    const text = graph.getNodeAttribute(n.id, 'label');
+    if (text.trim() === '') continue; // 空のラベルは出さない
+    const ext = shapeExtent(n.shape, n.r) + n.strokeWidth / 2 + LABEL_GAP;
+    const dir = detectDirection(text);
+    // 右から左のラベルは、ノードの左側に置き、文字は左へ伸ばす（text-anchor=end）。
+    const x = dir === 'rtl' ? n.x - ext : n.x + ext;
+    rawLabels.push(makeLabel(n.id, text, x, n.y + fontSize * 0.35, fontSize));
+  }
+
+  // 4. 範囲。ノード（外接円と線の太さ）を必ず収め、幅の関数があればラベルも収める。
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  const grow = (x0: number, y0: number, x1: number, y1: number): void => {
+    minX = Math.min(minX, x0);
+    minY = Math.min(minY, y0);
+    maxX = Math.max(maxX, x1);
+    maxY = Math.max(maxY, y1);
+  };
+  for (const n of rawNodes) {
+    const e = shapeExtent(n.shape, n.r) + n.strokeWidth / 2;
+    grow(n.x - e, n.y - e, n.x + e, n.y + e);
+  }
+  for (const l of rawLabels) {
+    const w = textWidth(l.text);
+    const x0 = l.anchor === 'right' ? l.x - w : l.x;
+    grow(x0, l.y - fontSize, x0 + w, l.y + fontSize * 0.3);
+  }
+  if (!Number.isFinite(minX)) {
+    // ノードが 1 つも無い
+    minX = 0;
+    minY = 0;
+    maxX = 0;
+    maxY = 0;
+  }
+  const dx = margin - minX;
+  const dy = margin - minY;
+  const nodes = rawNodes.map((n) => ({ ...n, x: n.x + dx, y: n.y + dy }));
+  const edges = rawEdges.map((e) => ({
+    ...e,
+    path: e.path.map((c): PathCommand => {
+      switch (c.type) {
+        case 'M':
+        case 'L':
+          return { ...c, x: c.x + dx, y: c.y + dy };
+        case 'Q':
+          return { ...c, cx: c.cx + dx, cy: c.cy + dy, x: c.x + dx, y: c.y + dy };
+        default:
+          return assertNever(c, 'PathCommand');
+      }
+    }),
+  }));
+  const labels = rawLabels.map((l) => shiftLabel(l, dx, dy));
+  const graphWidth = maxX - minX + margin * 2;
+  let width = graphWidth;
+  let height = maxY - minY + margin * 2;
+
+  // 5. 凡例は図の右側に置き、図の幅を広げる。
+  // 【TS】`SceneLegend | undefined` は「凡例があるか、無いか」の共用体。下の if で代入するので、型を明示する。
+  let legend: SceneLegend | undefined;
+  if (options.legend !== undefined && options.legend.items.length > 0) {
+    legend = layoutLegend(
+      options.legend,
+      graphWidth - margin + LEGEND_GAP,
+      margin,
+      fontSize,
+      textWidth,
+    );
+    width = legend.x + legend.width + margin;
+    height = Math.max(height, legend.y + legend.height + margin);
+  }
+
+  return {
+    width,
+    height,
+    nodes,
+    edges,
+    labels,
+    // 【なぜ】exactOptionalPropertyTypes のため、`legend: undefined` と書けない。あるときだけ足す。
+    ...(legend === undefined ? {} : { legend }),
+    fontFamily,
+    omitted: {
+      nodesWithoutPosition: missingPos,
+      edgesWithoutEndpoint,
+      selfLoops,
+      widthsUnmatched:
+        encoding.widths !== undefined &&
+        encoding.widths.size > 0 &&
+        widthMatched === 0 &&
+        rawEdges.length > 0,
+    },
+  };
+}
+
+// ラベルを出すノードを決める。'large' は半径の大きい順（同じなら入力順）に count 個。
+function pickLabelNodes(
+  nodes: readonly SceneNode[],
+  mode: LabelMode,
+  selected: ReadonlySet<NodeId>,
+  count: number,
+): readonly SceneNode[] {
+  switch (mode) {
+    case 'all':
+      return nodes;
+    case 'selected':
+      return nodes.filter((n) => selected.has(n.id));
+    case 'large': {
+      // 【TS】`sort` は配列を書き換えるので、先に `slice` でコピーする。安定ソートなので同じ半径は入力順が残る。
+      const sorted = nodes.slice().sort((a, b) => b.r - a.r);
+      const keep = new Set(sorted.slice(0, Math.max(0, count)).map((n) => n.id));
+      return nodes.filter((n) => keep.has(n.id));
+    }
+    default:
+      return assertNever(mode, 'LabelMode');
+  }
+}
+
+// 凡例の配置。1 列に並べる。右から左の文字は、凡例の右端にそろえる。
+function layoutLegend(
+  spec: LegendSpec,
+  x: number,
+  y: number,
+  fontSize: number,
+  textWidth: (t: string) => number,
+): SceneLegend {
+  const rOf = (i: LegendItemSpec): number => nonNeg(i.r, DEFAULT_RADIUS);
+  const maxR = Math.max(...spec.items.map(rOf));
+  const rowH = Math.max(fontSize + 6, maxR * 2 + 4);
+  const swatchCol = maxR * 2 + 6;
+  const texts = [spec.title ?? '', ...spec.items.map((i) => i.label)];
+  const textW = Math.max(...texts.map(textWidth));
+  const width = LEGEND_PAD * 2 + swatchCol + textW;
+  const titleH = spec.title !== undefined ? rowH : 0;
+  const height = LEGEND_PAD * 2 + titleH + rowH * spec.items.length;
+  const labelAt = (text: string, rowY: number): SceneLabel => {
+    const dir = detectDirection(text);
+    const lx = dir === 'rtl' ? x + width - LEGEND_PAD : x + LEGEND_PAD + swatchCol;
+    return makeLabel(null, text, lx, rowY + fontSize * 0.35, fontSize);
+  };
+  const items: SceneLegendItem[] = spec.items.map((it, i) => {
+    const cy = y + LEGEND_PAD + titleH + rowH * i + rowH / 2;
+    return {
+      swatch: {
+        x: x + LEGEND_PAD + maxR,
+        y: cy,
+        r: rOf(it),
+        shape: it.shape ?? 'circle',
+        fill: normalizeColor(it.fill) ?? OTHER_COLOR,
+        dashed: it.dashed === true,
+      },
+      label: labelAt(it.label, cy),
+    };
+  });
+  const title =
+    spec.title !== undefined ? labelAt(spec.title, y + LEGEND_PAD + rowH / 2) : undefined;
+  // 【なぜ】exactOptionalPropertyTypes のため、title も条件つきのスプレッドで足す。
+  return { x, y, width, height, ...(title === undefined ? {} : { title }), items };
+}
