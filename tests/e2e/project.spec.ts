@@ -24,6 +24,7 @@ import {
   seedAutosave,
   startApp,
   startAppWithPausedClock,
+  advanceClockUntilLoaded,
   waitForAutosave,
   type SavedProject,
 } from './support';
@@ -249,9 +250,8 @@ test.describe('FR-PJ-02: 自動保存', () => {
   }) => {
     await startAppWithPausedClock(page);
     await page.getByTestId('project-file-input').setInputFiles(fixturePath('maghrib.relata.json'));
-    // 読み込みの内部の待ち（描画の合間）を少し進める。
-    await page.clock.runFor(100);
-    await expect(loadedNotice(page)).toBeVisible();
+    // 読み込みの内部の待ち（描画の合間）を、読み込みが終わるまで少しずつ進める。
+    await advanceClockUntilLoaded(page);
     // 期待: 900 ミリ秒後（変更から 1 秒に届かない）では、まだ保存されない。
     await page.clock.runFor(800);
     expect(await readAutosave(page)).toBeNull();
@@ -361,8 +361,7 @@ test.describe('FR-PJ-02: 自動保存', () => {
       await page
         .getByTestId('project-file-input')
         .setInputFiles(fixturePath('maghrib.relata.json'));
-      await page.clock.runFor(100);
-      await expect(loadedNotice(page)).toBeVisible();
+      await advanceClockUntilLoaded(page);
       const box = await openAttr(page, '地名');
       await facetValue(box, 'مكناس').check();
       await page.clock.runFor(1500);

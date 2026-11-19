@@ -243,3 +243,20 @@ export async function startAppWithPausedClock(page: Page): Promise<void> {
   await startApp(page);
   await page.clock.pauseAt(new Date('2026-06-01T00:01:00Z'));
 }
+
+/**
+ * 時計を止めたまま、ファイルの読み込みが終わって「読み込みました」が出るまで、時計を少しずつ進める。
+ *
+ * 【なぜ】ファイルの中身を読む処理（`Blob.text()`）は、偽の時計と関係なく実時間で終わる。
+ *       読み込みの内部の待ち（`setTimeout`）は偽の時計で動くので、中身を読み終える前に
+ *       `runFor(100)` を済ませてしまうと、その待ちが進まず、知らせが出ない（負荷が高いときに起きる）。
+ *       そこで、知らせが出るまで 50 ミリ秒ずつ進める。進めすぎは 50 ミリ秒以内に収まる。
+ *
+ * @param page - Playwright のページ
+ */
+export async function advanceClockUntilLoaded(page: Page): Promise<void> {
+  await expect(async () => {
+    await page.clock.runFor(50);
+    await expect(loadedNotice(page)).toBeVisible({ timeout: 100 });
+  }).toPass({ timeout: 10_000 });
+}

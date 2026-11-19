@@ -150,6 +150,27 @@ test.describe('FR-FL-06 / UC-4: 範囲と欠損の扱い', () => {
     await expect(appliedRegion(page)).toContainText('適用中のフィルタはありません。');
   });
 
+  test('FR-FL-02 / FR-FL-06: 不正な下書きのまま欠損の扱いだけ切り替えても、誤りの表示は残る', async ({
+    page,
+  }) => {
+    const year = await openAttr(page, '年');
+    const min = year.getByRole('textbox', { name: '最小' });
+    await min.fill('900');
+    await min.press('Enter');
+    await expectCounts(page, [10, 15], [10, 17]);
+    // 操作: 最小を読めない値にして適用し、誤りを出す。
+    await min.fill('abc');
+    await year.getByRole('button', { name: '適用' }).click();
+    await expect(year.getByRole('alert')).toHaveText('数値を入力してください。');
+    // 操作: 欠損の扱いだけ切り替える（適用中なので即時に反映される）。
+    await year.getByRole('combobox', { name: '欠損の扱い' }).selectOption('include');
+    // 期待: 欠損の扱いは反映され（範囲は 900 以上のまま）、入力欄の「abc」と誤りの表示は残る。
+    await expectCounts(page, [13, 15], [14, 17]);
+    await expect(appliedRegion(page)).toContainText('年: 900 以上');
+    await expect(min).toHaveValue('abc');
+    await expect(year.getByRole('alert')).toHaveText('数値を入力してください。');
+  });
+
   test('FR-FL-02: 最小が最大より大きいと適用できない', async ({ page }) => {
     const year = await openAttr(page, '年');
     await year.getByRole('textbox', { name: '最小' }).fill('950');
