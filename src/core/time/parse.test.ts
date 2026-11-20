@@ -593,6 +593,40 @@ describe('読まずに失敗する書式（D-29 補足 13）', () => {
   });
 });
 
+describe('en ダッシュの略記と / の組み合わせ（D-29 補足 3、4）', () => {
+  it('FR-DM-05: 1 桁の略記も上位の桁を補い、/ の桁数の判定には関わらない', () => {
+    // 略記の展開（1640–5 ＝ 1640〜1645）
+    expect(range('1640–5')).toEqual(range('1640–1645'));
+    expect(range('1640–45')).toEqual(range('1640–1645'));
+    // / の片側が略記つきの範囲なら、/ の桁数の判定（補足 3）は使わない（両側が 1 つの年のときだけ）。
+    // 略記の範囲とヒジュラ暦の年は、これまでどおり併記として読む。
+    const p = parseDate('1640–5 / 1050 AH');
+    expect(p.ok && p.value.calendar).toBe('hijri');
+    expect(p.warnings.map((w) => w.code)).toEqual(['parallel-inferred']);
+    // / の片側が 1〜2 桁の数で、もう片側が略記つきの範囲なら、範囲の記号が多すぎるとして失敗
+    // （展開した 4 桁の年を使って「月/年」と読んだりしない）。
+    for (const x of ['10/1640–5', '5/1640–5', '1640/1641–2']) {
+      expect(failure(x).code, x).toBe('too-many-ranges');
+    }
+  });
+});
+
+describe('末尾の「頃」と「?」の繰り返し（D-29 補足 14）', () => {
+  it('FR-DM-05: 末尾の ? や 頃 の繰り返しは 1 つと同じに読む', () => {
+    expect(range('1650??')).toEqual(range('1650?'));
+    expect(range('1650 ? ?')).toEqual(range('1650?'));
+    expect(ok('1650??').value.certainty).toBe('possible');
+    expect(range('1650頃頃')).toEqual(range('1650頃'));
+    expect(ok('1650頃頃').value.certainty).toBe('probable');
+    // 頃 と ? の両方があれば、幅を広げて、確からしさは弱い方（possible）
+    expect(range('1650?頃')).toEqual(range('1650頃'));
+    expect(ok('1650?頃').value.certainty).toBe('possible');
+  });
+  it('FR-DM-05: 先頭の「頃」の印の繰り返しは読まずに失敗する', () => {
+    for (const x of ['c. c. 1650', '~~1650']) expect(failure(x).code, x).toBe('unrecognized');
+  });
+});
+
 describe('ハイフンの異体（D-29 補足 12）', () => {
   // 【なぜ】Word や Excel の貼り付けでは、ハイフンが似た別の文字になることがある。
   // 照合キーのあと、U+2010〜2012、U+2212、U+FF0D（NFKC で U+002D になる）、U+FE63 は
