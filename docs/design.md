@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 2.9（2026-11-19） |
+| 版 | 3.1（2026-11-20） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -486,6 +486,12 @@ interface SceneEdge { id: string; path: PathCommand[]; width: number | TaperedWi
 - **層状**: 型ごとに縦の列に分け、列の中の順序は交差が減るように並べる（重心法）。
 - **地理座標**: 緯度・経度をメルカトル図法で平面に写す。
 - **手動での固定**: ドラッグしたノードを固定し、その位置をプロジェクトに保存する。
+
+**T1-10 の実装**（2026-11-20）: `core/layout` の `createLayoutSession(job)` と Worker の `start(job)`、`step(n)` が、型・ID の固定順、Mulberry32 の seed、保存した初期位置から計算する。ForceAtlas2 は graphology-layout-forceatlas2 **0.10.1（MIT、版を固定）** の `iterate.js` を薄い型宣言で使い、行列の速度・収束値を Worker 内で保持する。通常の同期 API を step ごとに呼ぶと速度が初期化され、反復の分割の仕方で結果が変わるためである。参照: [Graphology の ForceAtlas2](https://graphology.github.io/standard-library/layout-forceatlas2.html)。
+
+円形では型ごと・ID 順に並べ、固定点は動かさない。固定モードは全ノードの座標を必要とする。seed は 0〜2^32-1、入力座標の絶対値は 10^9 以下、step は 0〜10000 回。Barnes-Hut は 2000 ノード超で既定で有効。client の `run` は古い計算を中止し、`step` は初期化の成功後に呼ぶ。cancel/error/messageerror は保留中の Promise を reject し Worker を捨てる。
+
+`LayoutResult` は種・方式・反復回数・全座標と固定フラグを含み、JSON で保存できる。ただし、**ProjectView と viewStore への保存の接続およびドラッグの UI は T1-19/保存統合で行う**。T1-10 は Worker と純粋な計算の API まで。保存した座標をそのまま表示するときは固定モードで再現し、力学モデルを続ける操作は明示的に開始する。
 
 ### 8.6 ラベル（FR-VG-10）
 - 表示する候補を、表示方法の設定に従って決める。

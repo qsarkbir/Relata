@@ -1,7 +1,7 @@
 import { AboutDialog } from '../views/AboutDialog';
 import { FilterPanel } from '../views/FilterPanel';
 import { ProjectMenu } from '../views/ProjectMenu';
-import { ProjectNotice } from '../views/ProjectNotice';
+import { ProjectNotice } from '../views/ProjectNoticePanel';
 import { TaskPanel } from '../views/TaskPanel';
 import { useData, useT, useUi } from '../views/hooks';
 import { LOCALES, LOCALE_NAMES } from '../i18n';
