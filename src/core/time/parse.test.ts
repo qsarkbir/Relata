@@ -527,6 +527,22 @@ describe('月名と年の書き方（D-29 補足 9）', () => {
     expect(hijriMonthFromName('\uE0009\uE001')).toBeUndefined();
     // 印の文字があっても、本物の月名はこれまでどおり読む
     expect(range('Ramadan\uE000 1050 AH')).toEqual([h(1050, 9, 1), h(1050, 9, 30)]);
+    // 内部の印すべて（月名 U+E000/E001、括弧の併記 U+E002、結合 U+E003）と、私用領域の他の文字は、
+    // 空白と同じに扱われる（読み取った範囲が、空白を入れたときと一致する。label は元の文字列のまま）。
+    const outcome = (text: string) => {
+      const r = parseDate(text);
+      return r.ok ? [r.value.earliest, r.value.latest, r.value.calendar] : r.reason.code;
+    };
+    for (const pua of ['\uE000', '\uE001', '\uE002', '\uE003', '\uF8FF']) {
+      for (const [a, b] of [
+        ['1050', '1640'],
+        ['15', 'Ramadan 1050 AH'],
+        ['1050 AH', '(1640)'],
+      ] as const) {
+        const at = `${a} + U+${pua.codePointAt(0)?.toString(16) ?? ''} + ${b}`;
+        expect(outcome(`${a}${pua}${b}`), at).toEqual(outcome(`${a} ${b}`));
+      }
+    }
   });
 
   it('FR-TM-06: 月名の後ろに a〜z 以外の文字（ß、ø、œ、ł、キリル文字、ギリシア文字）が続けば、月名とみなさない', () => {
