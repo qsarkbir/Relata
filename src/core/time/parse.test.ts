@@ -385,6 +385,33 @@ describe('parseTimeSpan（FR-DM-05、D-19）', () => {
     expect(same.warnings).toEqual([]);
   });
 
+  it('FR-DM-05: 始点が空や空白だけなら empty の失敗（終点の空とは扱いが違う）', () => {
+    for (const x of ['', '   ']) {
+      const r = parseTimeSpan(x, '1650');
+      expect(!r.ok && r.reason.code, JSON.stringify(x)).toBe('empty');
+      expect(!r.ok && r.reason.field, JSON.stringify(x)).toBe('start');
+    }
+  });
+
+  it('FR-TM-06: 始点と終点の暦が違っても、JDN で前後を判定する', () => {
+    // 1050 AH は 1640-04-23〜1641-04-11。終点 1640 年（〜1640-12-31）は始点の最初の日より後なので警告なし。
+    const ok1 = parseTimeSpan('1050 AH', '1640');
+    if (!ok1.ok) throw new Error('失敗');
+    expect(ok1.value.start.calendar).toBe('hijri');
+    const end1 = ok1.value.end;
+    expect(end1 !== undefined && 'calendar' in end1 && end1.calendar).toBe('gregorian');
+    expect(ok1.warnings).toEqual([]);
+    // 1060 AH（1649〜1650 年）の後に 1640 年は来ないので警告する。値は作る。
+    const rev = parseTimeSpan('1060 AH', '1640');
+    if (!rev.ok) throw new Error('失敗');
+    expect(rev.warnings.map((w) => w.code)).toEqual(['span-reversed']);
+    expect(rev.warnings[0]?.message).toContain('1060 AH');
+    // 逆向き（始点が西暦、終点がヒジュラ暦）でも同じ
+    const rev2 = parseTimeSpan('1650', '1050 AH');
+    if (!rev2.ok) throw new Error('失敗');
+    expect(rev2.warnings.map((w) => w.code)).toEqual(['span-reversed']);
+  });
+
   it('FR-TM-06: ヒジュラ暦の列の期間（暦の選択肢が両端に効く）', () => {
     const r = parseTimeSpan('1050', '1060', { calendar: 'hijri' });
     if (!r.ok) throw new Error('失敗');
