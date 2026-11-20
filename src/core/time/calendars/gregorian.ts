@@ -11,7 +11,7 @@
  */
 import type { CalendarId, DayNumber } from '../../model';
 import type { CalendarDate, CalendarSystem } from './types';
-import { floorDiv, mod } from './types';
+import { assertIntegerYear, floorDiv, mod } from './types';
 
 /**
  * R&D の「RD」（西暦 1 年 1 月 1 日 ＝ 1 の通し番号）を JDN にするための差。
@@ -22,21 +22,24 @@ const RD_TO_JDN = 1721425;
 /**
  * 閏年か（4 で割れて、100 で割れない。ただし 400 で割れれば閏年）。
  *
- * @param year - 年（天文学的な数え方）
+ * @param year - 年（天文学的な数え方。整数）
  * @returns 閏年なら true
+ * @throws RangeError 年が整数でない（NaN、Infinity、小数）とき
  */
 export function isGregorianLeapYear(year: number): boolean {
+  assertIntegerYear(year, 'グレゴリオ暦');
   return mod(year, 4) === 0 && (mod(year, 100) !== 0 || mod(year, 400) === 0);
 }
 
 /**
  * その月の日数。
  *
- * @param year - 年
+ * @param year - 年（整数。でなければ RangeError）
  * @param month - 月（1〜12。外なら RangeError）
  * @returns 28〜31
  */
 export function gregorianMonthLength(year: number, month: number): number {
+  assertIntegerYear(year, 'グレゴリオ暦');
   switch (month) {
     case 2:
       return isGregorianLeapYear(year) ? 29 : 28;

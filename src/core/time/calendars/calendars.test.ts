@@ -72,6 +72,26 @@ describe('グレゴリオ暦の換算', () => {
   });
 });
 
+describe('暦の年の検査', () => {
+  // 【なぜ】閏年の式は剰余なので、整数でない年では黙って false になる。誤りとして止まることを確かめる。
+  it.each([NaN, Infinity, -Infinity, 1640.5])(
+    'FR-DM-05 / FR-TM-06: 年が整数でない（%s）と、閏年の判定と月の日数は RangeError',
+    (year) => {
+      expect(() => GREGORIAN.isLeapYear(year)).toThrow(RangeError);
+      expect(() => HIJRI.isLeapYear(year)).toThrow(RangeError);
+      expect(() => GREGORIAN.monthLength(year, 2)).toThrow(RangeError);
+      expect(() => HIJRI.monthLength(year, 12)).toThrow(RangeError);
+      // 閏年に関わらない月でも同じ
+      expect(() => GREGORIAN.monthLength(year, 1)).toThrow(RangeError);
+      expect(() => HIJRI.monthLength(year, 1)).toThrow(RangeError);
+    },
+  );
+  it('FR-DM-05: 整数でない年でも、isValidDate は例外を投げず false を返す', () => {
+    expect(isValidDate(GREGORIAN, 1640.5, 2, 29)).toBe(false);
+    expect(isValidDate(HIJRI, NaN, 12, 30)).toBe(false);
+  });
+});
+
 describe('ヒジュラ暦の換算', () => {
   it('FR-TM-06: 正解値のすべてで、暦の日付 → JDN と JDN → 暦の日付が一致する', () => {
     expect(hijriRows.length).toBeGreaterThan(3000);

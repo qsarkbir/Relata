@@ -25,14 +25,29 @@ export interface CalendarSystem {
   readonly id: CalendarId;
   /** 1 年の月数（グレゴリオ暦もヒジュラ暦も 12） */
   readonly monthsPerYear: number;
-  /** 閏年か。 */
+  /** 閏年か。年が整数でなければ RangeError。 */
   isLeapYear(year: number): boolean;
-  /** その月の日数。月が 1〜monthsPerYear の外なら RangeError。 */
+  /** その月の日数。年が整数でないか、月が 1〜monthsPerYear の外なら RangeError。 */
   monthLength(year: number, month: number): number;
   /** 暦の日付 → JDN。日付が存在するかは検査しない（isValidDate を使う）。 */
   toJdn(year: number, month: number, day: number): DayNumber;
   /** JDN → 暦の日付。 */
   fromJdn(jdn: DayNumber): CalendarDate;
+}
+
+/**
+ * 年が整数であることを確かめる。整数でなければ RangeError を投げる。
+ *
+ * @param year - 年
+ * @param calendar - 暦の名前（誤りの文に入れる）
+ * @throws RangeError 年が整数でない（NaN、Infinity、小数）とき
+ */
+// 【なぜ】閏年の式は剰余で書いているので、NaN や小数を渡すと例外も出さずに false を返す。
+//       「閏年でない」と区別がつかず、誤りが黙って先へ流れるため、入り口で止める。
+export function assertIntegerYear(year: number, calendar: string): void {
+  if (!Number.isInteger(year)) {
+    throw new RangeError(`${calendar}の年は整数です: ${String(year)}`);
+  }
 }
 
 /**

@@ -12,7 +12,7 @@
  */
 import type { CalendarId, DayNumber } from '../../model';
 import type { CalendarDate, CalendarSystem } from './types';
-import { floorDiv, mod } from './types';
+import { assertIntegerYear, floorDiv, mod } from './types';
 
 /** ヒジュラ暦の紀元（1 年 1 月 1 日）の JDN。 */
 export const HIJRI_EPOCH_JDN = 1948440;
@@ -20,21 +20,24 @@ export const HIJRI_EPOCH_JDN = 1948440;
 /**
  * 閏年か。(14 + 11 × 年) を 30 で割った余りが 11 未満の年（負の年でも成り立つ）。
  *
- * @param year - ヒジュラ暦の年
+ * @param year - ヒジュラ暦の年（整数）
  * @returns 閏年なら true
+ * @throws RangeError 年が整数でない（NaN、Infinity、小数）とき
  */
 export function isHijriLeapYear(year: number): boolean {
+  assertIntegerYear(year, 'ヒジュラ暦');
   return mod(14 + 11 * year, 30) < 11;
 }
 
 /**
  * その月の日数。奇数月は 30 日、偶数月は 29 日、閏年の 12 月だけ 30 日。
  *
- * @param year - ヒジュラ暦の年
+ * @param year - ヒジュラ暦の年（整数。でなければ RangeError）
  * @param month - 月（1〜12。外なら RangeError）
  * @returns 29 または 30
  */
 export function hijriMonthLength(year: number, month: number): number {
+  assertIntegerYear(year, 'ヒジュラ暦');
   if (!Number.isInteger(month) || month < 1 || month > 12) {
     throw new RangeError(`ヒジュラ暦の月は 1〜12 です: ${String(month)}`);
   }
