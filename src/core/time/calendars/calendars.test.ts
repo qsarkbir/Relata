@@ -47,8 +47,9 @@ describe('グレゴリオ暦の換算', () => {
   it('FR-DM-05: 正解値のすべてで、暦の日付 → JDN と JDN → 暦の日付が一致する', () => {
     expect(gregRows.length).toBeGreaterThan(3000);
     for (const [jdn, y, m, d] of gregRows) {
-      expect(gregorianToJdn(y, m, d)).toBe(jdn);
-      expect(jdnToGregorian(jdn)).toEqual({ year: y, month: m, day: d });
+      // 【なぜ】数千件のうちどの行で落ちたか分かるよう、行の値を失敗の文に添える。
+      expect(gregorianToJdn(y, m, d), `y=${String(y)}, m=${String(m)}, d=${String(d)}`).toBe(jdn);
+      expect(jdnToGregorian(jdn), `jdn=${String(jdn)}`).toEqual({ year: y, month: m, day: d });
     }
   });
 
@@ -114,8 +115,9 @@ describe('ヒジュラ暦の紀元の前後（0 年以下）', () => {
     let prev = jdnToHijri(start - 1);
     for (let jdn = start; jdn <= end; jdn++) {
       const d = jdnToHijri(jdn);
-      expect(isValidDate(HIJRI, d.year, d.month, d.day)).toBe(true);
-      expect(hijriToJdn(d.year, d.month, d.day)).toBe(jdn);
+      const at = `jdn=${String(jdn)}`;
+      expect(isValidDate(HIJRI, d.year, d.month, d.day), at).toBe(true);
+      expect(hijriToJdn(d.year, d.month, d.day), at).toBe(jdn);
       // 前の日の翌日であること（日、月、年のどれかが 1 つ進む）
       const next =
         prev.day < HIJRI.monthLength(prev.year, prev.month)
@@ -123,7 +125,7 @@ describe('ヒジュラ暦の紀元の前後（0 年以下）', () => {
           : prev.month < 12
             ? { year: prev.year, month: prev.month + 1, day: 1 }
             : { year: prev.year + 1, month: 1, day: 1 };
-      expect(d).toEqual(next);
+      expect(d, at).toEqual(next);
       prev = d;
     }
     // 5 年分（-2〜2 年）。閏年は -1 年と 2 年の 2 つ（(14 + 11 × 年) mod 30 < 11）。
@@ -135,8 +137,8 @@ describe('ヒジュラ暦の換算', () => {
   it('FR-TM-06: 正解値のすべてで、暦の日付 → JDN と JDN → 暦の日付が一致する', () => {
     expect(hijriRows.length).toBeGreaterThan(3000);
     for (const [jdn, y, m, d] of hijriRows) {
-      expect(hijriToJdn(y, m, d)).toBe(jdn);
-      expect(jdnToHijri(jdn)).toEqual({ year: y, month: m, day: d });
+      expect(hijriToJdn(y, m, d), `y=${String(y)}, m=${String(m)}, d=${String(d)}`).toBe(jdn);
+      expect(jdnToHijri(jdn), `jdn=${String(jdn)}`).toEqual({ year: y, month: m, day: d });
     }
   });
 
@@ -148,9 +150,10 @@ describe('ヒジュラ暦の換算', () => {
 
   it('FR-TM-06: 閏年と月の日数が convertdate と一致する', () => {
     const leap = new Set(golden.hijriLeapYears);
-    for (let y = -50; y <= 100; y++) expect(HIJRI.isLeapYear(y)).toBe(leap.has(y));
+    for (let y = -50; y <= 100; y++)
+      expect(HIJRI.isLeapYear(y), `y=${String(y)}`).toBe(leap.has(y));
     for (const [y = 0, m = 0, len] of golden.hijriMonthLengths) {
-      expect(HIJRI.monthLength(y, m)).toBe(len);
+      expect(HIJRI.monthLength(y, m), `y=${String(y)}, m=${String(m)}`).toBe(len);
     }
     expect(() => HIJRI.monthLength(1050, 0)).toThrow(RangeError);
   });
