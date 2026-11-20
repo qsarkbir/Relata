@@ -86,9 +86,48 @@ describe('暦の年の検査', () => {
       expect(() => HIJRI.monthLength(year, 1)).toThrow(RangeError);
     },
   );
+  it.each([NaN, Infinity, 2451545.5])(
+    'FR-DM-05 / FR-TM-06: JDN が整数でない（%s）と、暦の日付への換算は RangeError',
+    (jdn) => {
+      expect(() => jdnToGregorian(jdn)).toThrow(RangeError);
+      expect(() => jdnToHijri(jdn)).toThrow(RangeError);
+      expect(() => shiftYears(GREGORIAN, jdn, 1)).toThrow(RangeError);
+    },
+  );
   it('FR-DM-05: 整数でない年でも、isValidDate は例外を投げず false を返す', () => {
     expect(isValidDate(GREGORIAN, 1640.5, 2, 29)).toBe(false);
     expect(isValidDate(HIJRI, NaN, 12, 30)).toBe(false);
+  });
+});
+
+describe('ヒジュラ暦の紀元の前後（0 年以下）', () => {
+  it('FR-TM-06: 0 年の最後の日（12 月 29 日。0 年は平年）の翌日が、紀元の 1 年 1 月 1 日', () => {
+    expect(HIJRI.isLeapYear(0)).toBe(false);
+    expect(HIJRI.monthLength(0, 12)).toBe(29);
+    expect(hijriToJdn(0, 12, 29) + 1).toBe(HIJRI_EPOCH_JDN);
+    expect(jdnToHijri(HIJRI_EPOCH_JDN - 1)).toEqual({ year: 0, month: 12, day: 29 });
+  });
+  it('FR-TM-06: -2 年 1 月 1 日から 2 年の終わりまで、1 日ずつ往復が一致し、日付が途切れない', () => {
+    // 【なぜ】正解値（convertdate）は飛び飛びの日なので、紀元をまたぐ範囲は 1 日ずつも確かめる。
+    const start = hijriToJdn(-2, 1, 1);
+    const end = hijriToJdn(2, 12, HIJRI.monthLength(2, 12));
+    let prev = jdnToHijri(start - 1);
+    for (let jdn = start; jdn <= end; jdn++) {
+      const d = jdnToHijri(jdn);
+      expect(isValidDate(HIJRI, d.year, d.month, d.day)).toBe(true);
+      expect(hijriToJdn(d.year, d.month, d.day)).toBe(jdn);
+      // 前の日の翌日であること（日、月、年のどれかが 1 つ進む）
+      const next =
+        prev.day < HIJRI.monthLength(prev.year, prev.month)
+          ? { year: prev.year, month: prev.month, day: prev.day + 1 }
+          : prev.month < 12
+            ? { year: prev.year, month: prev.month + 1, day: 1 }
+            : { year: prev.year + 1, month: 1, day: 1 };
+      expect(d).toEqual(next);
+      prev = d;
+    }
+    // 5 年分（-2〜2 年）。閏年は -1 年と 2 年の 2 つ（(14 + 11 × 年) mod 30 < 11）。
+    expect(end - start + 1).toBe(354 * 5 + 2);
   });
 });
 

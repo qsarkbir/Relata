@@ -31,7 +31,7 @@ export interface CalendarSystem {
   monthLength(year: number, month: number): number;
   /** 暦の日付 → JDN。日付が存在するかは検査しない（isValidDate を使う）。 */
   toJdn(year: number, month: number, day: number): DayNumber;
-  /** JDN → 暦の日付。 */
+  /** JDN → 暦の日付。JDN が整数でなければ RangeError。 */
   fromJdn(jdn: DayNumber): CalendarDate;
 }
 
@@ -47,6 +47,20 @@ export interface CalendarSystem {
 export function assertIntegerYear(year: number, calendar: string): void {
   if (!Number.isInteger(year)) {
     throw new RangeError(`${calendar}の年は整数です: ${String(year)}`);
+  }
+}
+
+/**
+ * JDN が整数であることを確かめる。整数でなければ RangeError を投げる。
+ *
+ * @param jdn - ユリウス通日
+ * @throws RangeError JDN が整数でない（NaN、Infinity、小数）とき
+ */
+// 【なぜ】内部の日付は JDN の整数で持つ（設計書 §5.1）。小数（天文学の「正午からの日の端数」など）を
+//       渡すと、日が小数になり、そこから戻した JDN もずれる。誤りを黙って先へ流さないため止める。
+export function assertIntegerJdn(jdn: DayNumber): void {
+  if (!Number.isInteger(jdn)) {
+    throw new RangeError(`JDN は整数です: ${String(jdn)}`);
   }
 }
 

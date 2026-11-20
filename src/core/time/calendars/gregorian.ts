@@ -11,7 +11,7 @@
  */
 import type { CalendarId, DayNumber } from '../../model';
 import type { CalendarDate, CalendarSystem } from './types';
-import { assertIntegerYear, floorDiv, mod } from './types';
+import { assertIntegerJdn, assertIntegerYear, floorDiv, mod } from './types';
 
 /**
  * R&D の「RD」（西暦 1 年 1 月 1 日 ＝ 1 の通し番号）を JDN にするための差。
@@ -106,10 +106,12 @@ export function gregorianToJdn(year: number, month: number, day: number): DayNum
  *
  * 400 年（146097 日）、100 年（36524 日）、4 年（1461 日）、1 年の周期で分けて年を求める。
  *
- * @param jdn - JDN
+ * @param jdn - JDN（整数）
  * @returns 暦の日付（年は天文学的な数え方）
+ * @throws RangeError JDN が整数でないとき
  */
 export function jdnToGregorian(jdn: DayNumber): CalendarDate {
+  assertIntegerJdn(jdn);
   const d0 = jdn - RD_TO_JDN - 1;
   const n400 = floorDiv(d0, 146097);
   const d1 = mod(d0, 146097);

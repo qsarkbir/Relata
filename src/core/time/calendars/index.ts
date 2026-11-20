@@ -72,8 +72,8 @@ function monthSpan(cal: CalendarSystem, year: number, first: number, last: numbe
  * その月にその日が無ければ（閏日など）月末に寄せる。
  *
  * @param cal - 暦
- * @param jdn - もとの日
- * @param years - ずらす年数（負なら過去）
+ * @param jdn - もとの日（整数。でなければ RangeError）
+ * @param years - ずらす年数（負なら過去。整数）
  * @returns ずらした JDN
  */
 export function shiftYears(cal: CalendarSystem, jdn: DayNumber, years: number): DayNumber {

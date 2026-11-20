@@ -12,13 +12,16 @@
  */
 import type { CalendarId, DayNumber } from '../../model';
 import type { CalendarDate, CalendarSystem } from './types';
-import { assertIntegerYear, floorDiv, mod } from './types';
+import { assertIntegerJdn, assertIntegerYear, floorDiv, mod } from './types';
 
 /** ヒジュラ暦の紀元（1 年 1 月 1 日）の JDN。 */
 export const HIJRI_EPOCH_JDN = 1948440;
 
 /**
- * 閏年か。(14 + 11 × 年) を 30 で割った余りが 11 未満の年（負の年でも成り立つ）。
+ * 閏年か。(14 + 11 × 年) を 30 で割った余りが 11 未満の年（0 年と負の年でも成り立つ）。
+ *
+ * 【歴史の事情】0 年以下は、紀元（622 年 7 月 16 日、1 年 1 月 1 日）より前を、同じ規則で
+ * さかのぼって数えたもの（先発の暦）。史料には現れないが、範囲の端の計算で使うことがある。
  *
  * @param year - ヒジュラ暦の年（整数）
  * @returns 閏年なら true
@@ -74,10 +77,12 @@ export function hijriToJdn(year: number, month: number, day: number): DayNumber 
  *
  * 30 年周期（10631 日）から年を求め、年内の通し日から月を求める。
  *
- * @param jdn - JDN
+ * @param jdn - JDN（整数）
  * @returns 暦の日付
+ * @throws RangeError JDN が整数でないとき
  */
 export function jdnToHijri(jdn: DayNumber): CalendarDate {
+  assertIntegerJdn(jdn);
   const year = floorDiv(30 * (jdn - HIJRI_EPOCH_JDN) + 10646, 10631);
   const prior = jdn - hijriToJdn(year, 1, 1);
   const month = floorDiv(11 * prior + 330, 325);
