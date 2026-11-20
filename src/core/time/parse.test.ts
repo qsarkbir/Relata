@@ -627,6 +627,72 @@ describe('末尾の「頃」と「?」の繰り返し（D-29 補足 14）', () =
   });
 });
 
+describe('末尾の暦・紀元の印と終止符（D-29 補足 15）', () => {
+  it('FR-TM-06: 印の後ろの終止符は 0 個か 1 個で、どの印でも同じに読み、年の桁は欠けない', () => {
+    const y1050 = range('1050 AH');
+    for (const x of [
+      '1050 A.H.',
+      '1050 a.h',
+      '1050 A.H. ',
+      '1050 AH.',
+      '1050AH',
+      '1050 H',
+      '1050 H.',
+    ]) {
+      expect(range(x), x).toEqual(y1050);
+    }
+    for (const x of ['1050 ه', '1050 هـ', '1050 ه.ق', '1050 ه.ق.', '١٠٥٠ هـ']) {
+      expect(range(x), x).toEqual(y1050);
+    }
+    const bc44 = range('44 BC');
+    for (const x of ['44 B.C.', '44 b.c', '44 BCE', '44 BCE.', '44 B.C.E.']) {
+      expect(range(x), x).toEqual(bc44);
+    }
+    const ce1640 = range('1640');
+    for (const x of ['1640 CE', '1640 CE.', '1640 C.E.', '1640 c.e', '1640 AD', '1640 A.D.']) {
+      expect(range(x), x).toEqual(ce1640);
+    }
+    // 年の桁が欠けない（3 桁の年と 4 桁の年を取り違えない）
+    expect(range('105 AH')).toEqual([h(105, 1, 1), h(106, 1, 1) - 1]);
+    expect(range('105 A.H.')).toEqual([h(105, 1, 1), h(106, 1, 1) - 1]);
+  });
+  it('FR-TM-06: 終止符が 2 個以上、印の重なり、未対応のアラビア語の印は失敗する', () => {
+    for (const x of [
+      '1050 A.H..',
+      '1050 H..',
+      '44 B.C..',
+      '1050 ه.ق..',
+      '1050 ah ah',
+      '1050 bc ah',
+      '1050 هجري',
+      '1050 هجرية',
+      '1050 للهجرة',
+      '1050 ق',
+    ]) {
+      expect(failure(x).code, x).toBe('unrecognized');
+    }
+  });
+});
+
+describe('選択肢の値（D-29 補足 8）', () => {
+  it('FR-DM-05: 整数でない、負、上限を超える幅は既定値に戻す（切り捨てない）', () => {
+    const width = (circaYears: number) => {
+      const r = parseDate('c. 1650', { circaYears });
+      return r.ok ? r.value.latest - r.value.earliest : NaN;
+    };
+    const margin = (hijriDayMargin: number) => {
+      const r = parseDate('15 Ramadan 1050 AH', { hijriDayMargin });
+      return r.ok ? r.value.latest - r.value.earliest : NaN;
+    };
+    const defaultWidth = width(5);
+    for (const v of [2.5, 2.9, -1, NaN, Infinity, 1001])
+      expect(width(v), String(v)).toBe(defaultWidth);
+    expect(width(2)).toBeLessThan(defaultWidth);
+    for (const v of [0.5, -1, NaN, 367]) expect(margin(v), String(v)).toBe(4);
+    expect(margin(0)).toBe(0);
+  });
+});
+
 describe('ハイフンの異体（D-29 補足 12）', () => {
   // 【なぜ】Word や Excel の貼り付けでは、ハイフンが似た別の文字になることがある。
   // 照合キーのあと、U+2010〜2012、U+2212、U+FF0D（NFKC で U+002D になる）、U+FE63 は

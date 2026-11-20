@@ -324,8 +324,11 @@ function scanSingle(part: string): ScanResult {
 
   // 末尾の「年」と、紀元前・紀元後・ヒジュラ暦の印（H.、ه.ق も）
   s = s.replace(/(\d)\s*年$/u, '$1');
+  // 【なぜ】印の後ろの終止符は、0 個か 1 個だけ受け付ける（`A.H.`、`a.h`、`AH.`、`CE.`、`B.C.` は同じ）。
+  //       印ごとに終止符の扱いが違うと、`A.H.` は読めて `CE.` は読めない、のような食い違いが出るため。
+  //       2 個以上（`H..`）は書き間違いとして失敗。印の前の数字（`(\d)`）は残すので、年の桁は欠けない。
   const tail =
-    /(\d)\s*(?:(bce|bc|b\.c\.)|(ce|ad|a\.d\.|c\.e\.)|(ah|a\.h\.|h|ه(?:\.?ق)?)\.?)$/u.exec(s);
+    /(\d)\s*(?:(bce|bc|b\.c\.e|b\.c)|(ce|ad|a\.d|c\.e)|(ah|a\.h|h|ه(?:\.?ق)?))\.?$/u.exec(s);
   if (tail) {
     if (era !== undefined || hijriMark) {
       return fail('unrecognized', '紀元や暦の印が重なっています');
@@ -504,7 +507,10 @@ function weaker(a: Certainty, b: Certainty): Certainty {
 }
 
 /**
- * 選択肢の数値を、使える値にそろえる（負、非数、上限超えは既定に戻す）。例外は投げない。
+ * 選択肢の数値を、使える値にそろえる（負、整数でない値、上限超えは既定に戻す）。例外は投げない。
+ *
+ * 【なぜ】小数（2.5 年）を切り捨てて通すと、指定と違う幅で黙って計算される。年や日の幅は整数で
+ * 指定するものなので、整数でなければ指定が無いのと同じに扱う（D-29 補足 (8)）。
  *
  * @param v - 利用者の指定（省略可）
  * @param max - 上限
@@ -512,7 +518,7 @@ function weaker(a: Certainty, b: Certainty): Certainty {
  * @returns 0 以上 max 以下の整数
  */
 function boundedInt(v: number | undefined, max: number, fallback: number): number {
-  return v !== undefined && Number.isFinite(v) && v >= 0 && v <= max ? Math.trunc(v) : fallback;
+  return v !== undefined && Number.isInteger(v) && v >= 0 && v <= max ? v : fallback;
 }
 
 /**
