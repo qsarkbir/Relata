@@ -14,15 +14,15 @@
 
 | 項目 | 内容 |
 |---|---|
-| フェーズ | **1 MVP**（26 タスク中 13 完了）。フェーズ 0 は完了 |
-| 直近の完了 | T1-06 表の読み込み（2026-11-20）。独立レビューの必須指摘を修正、単体 620 件・既存 E2E 50 件が成功 |
-| 作業中 | T1-06 をコミット・PR 提出。独立 worktree で T1-10 レイアウト Worker、T1-14 SVG 書き出しを並行実装中 |
+| フェーズ | **1 MVP**（26 タスク中 15 実装・レビュー完了。下記 3 PR は未統合）。フェーズ 0 は完了 |
+| 直近の完了 | T1-06 表の読み込み、T1-10 レイアウト Worker、T1-14 SVG 書き出し（2026-11-20）。独立レビューとローカルの全体検証が成功 |
+| 作業中 | [T1-06 PR #15](https://github.com/qsarkbir/relata/pull/15)、[T1-14 PR #16](https://github.com/qsarkbir/relata/pull/16)、[T1-10 PR #17](https://github.com/qsarkbir/relata/pull/17) を提出。CI 確認後、利用者による統合待ち |
 | 待っていること | 利用者: (1) 統合済みのリモートのブランチの削除（クラウドのセッションからはブランチを消せないため）。|
 | メモ | GitHub リポジトリ `qsarkbir/relata`（非公開）。公開サイト https://qsarkbir.github.io/relata/ 。2026-11-19 から、統括役は Claude Code のクラウドのセッションで作業する（下の「クラウドで作業するときの手順」） |
 
 ### 次にやること
 
-**T1-06 はレビュー済み**。次は T1-07（Palladio 式 1 表）。T1-10 と T1-14 は独立 worktree で先行する。画面のウィザードとシート選択の画面は T1-17。以後、タスクごとにコミット・PR を作成し、main の統合は利用者が行う（2026-11-20 の指示）。
+**次は T1-07（Palladio 式 1 表）**。T1-06・T1-10・T1-14 は上記の個別 PR に提出済み。読み込みウィザードとシート選択の画面は T1-17、レイアウト・SVG 書き出しの画面接続と座標の保存統合は T1-19 に残る。以後、タスクごとにコミット・PR を作成し、main の統合は利用者が行う（2026-11-20 の指示）。
 
 1. 次の 1 巡目（並行できる）:
    - **T1-06**（表の読み込み。io。T1-02 の日付の解析を使う。文字コードは D-27 に従う）。続いて T1-07、T1-22（サンプルは承認済みの題名と説明で作る）
@@ -80,7 +80,7 @@
 | フェーズ | 目標 | 状態 | 進み具合 |
 |---|---|---|---|
 | 0 準備 | 開発の土台。空のアプリが GitHub Pages で表示される | ✅ | 13 / 13 |
-| 1 MVP | 読み込み（ヒジュラ暦を含む）、絞り込み、指標、有向グラフの表示、SVG 出力（v0.1） | 🔄 | 13 / 26 |
+| 1 MVP | 読み込み（ヒジュラ暦を含む）、絞り込み、指標、有向グラフの表示、SVG 出力（v0.1） | 🔄 | 15 / 26（PR 提出済みを含む） |
 | 2 研究機能 | k-partite と射影、欠損の可視化、時間、表ビュー、PDF（v0.2） | ⬜ | 0 / 10 |
 | 3 地図と bundling | 地図上の時間アニメーション、edge bundling（v0.3） | ⬜ | 0 / 8 |
 | 4 拡張 | 出典、同定、ユリウス暦・太陽ヒジュラ暦・ルーミー暦、各形式の取り込みなど | ⬜ | 未分割 |
@@ -133,11 +133,11 @@
 | T1-07 | Palladio 式の 1 表からの変換 | io | T1-06 | FR-IN-04、要件 §6.3 | ⬜ | | |
 | T1-08 | プロジェクトファイルの形式、保存と読み込み、往復テスト | io | T1-01 | FR-IN-08、FR-PJ-01 | ✅ | 2026-11-19 | io が `src/io/project/`（`serializeProject`、`parseProject`、版の移行、`ImportSettings`、欠損の記号の照合 `compileMissingTokens`/`matchMissingToken`）を実装。FR-PJ-01 はデータとフィルタの部分（見た目、配置、時間は後のタスクで `view` に足す）。reviewer の指摘を受けて D-24 を補足（`savedAt` は任意、見えない書式文字、列挙に要素を足すときは版を上げる）。要件定義書 §6.6 の図を D-18、D-24 に合わせた（要件定義書 1.2） |
 | T1-09 | 指標の Worker と networkx の正解値 | graph-algo | T1-04 | FR-MT-01〜03 | ✅ | 2026-11-19 | graph-algo が `src/core/metrics/`（全指標。HITS は自作）、`src/workers/metrics.worker.ts`、`metrics.client.ts`（cancel、Worker の異常で reject）、`tests/golden/metrics/`（networkx 3.7 の正解値 12 ケース）を実装。graphology-metrics 2.4.2（MIT）、comlink 4.4.2（Apache-2.0）を追加。qa-tester が `tsconfig.worker.json` と Worker の ESLint 規則を追加（R-13）。reviewer の必須の指摘（重み 0 で PageRank が失敗）を直し、D-30 を補足。実測: ノード 1,000、エッジ 5,000 で全指標 約 0.5 秒、5,000／20,000 で約 5 秒（Worker で進行を表示）。Louvain はフェーズ 4 |
-| T1-10 | レイアウトの Worker（ForceAtlas2、円形、固定） | graph-algo | T1-04 | FR-VG-01、NFR-08 | ⬜ | | 乱数の種を保存 |
+| T1-10 | レイアウトの Worker（ForceAtlas2、円形、固定） | graph-algo | T1-04 | FR-VG-01、NFR-08 | ✅ | 2026-11-20 | `core/layout` と layout Worker/client を実装。seed と座標は JSON 保存可能。step の分割に依存しない継続反復、固定点、型ごとの円形、中止と異常処理を検証。ProjectView/viewStore への保存接続とドラッグ UI は T1-19/保存統合で行う。独立レビュー必須指摘なし。型検査・lint・整形・単体608件・build・既存E2E50件成功 |
 | T1-11 | シーン層と SVG 描画（右から左へ書くラベルを含む） | renderer | T1-05 | FR-VG-03、08、NFR-09 | ✅ | 2026-11-19 | renderer が `src/render/`（`buildScene`、`renderSvg`、エスケープと色の検証、右から左のラベルの判定）を実装。reviewer の必須の指摘（右から左のラベルがノードに重なる）を直し、Chrome の getBBox で確認。Illustrator と Inkscape での見え方は利用者の目視が要る |
 | T1-12 | 有向エッジ（矢印［既定］／先細り／濃淡、往復エッジ、縁で止める） | renderer | T1-11 | FR-VG-05〜07 | ⬜ | | |
 | T1-13 | ラベルの配置 | renderer | T1-11 | FR-VG-10 | ⬜ | | |
-| T1-14 | SVG の書き出し | renderer | T1-11 | FR-OUT-01 | ⬜ | | |
+| T1-14 | SVG の書き出し | renderer | T1-11 | FR-OUT-01 | ✅ | 2026-11-20 | `src/io/export/` に全体を収めた SVG Blob とローカル保存の API を実装。選択の強調は既定で含めず指定式。グループ・RTL・凡例を保持、欠落要素を報告。reviewer の必須指摘（太いエッジが SVG の範囲外に切れる）を scene の経路・線幅を含む bounds で修正し回帰テストを追加。保存リンク生成失敗時も URL を解放。全601単体テスト・型検査・lint・整形・build成功。画面接続は T1-19 |
 | T1-15 | CSV の書き出し（ノード、エッジ、指標） | io | T1-04、T1-09 | FR-OUT-02、FR-MT-04 | ⬜ | | |
 | T1-16 | アプリの骨格、ストア、多言語対応、進行表示、「このツールについて」 | ui | フェーズ 0 | FR-UI-01、03、05 | ✅ | 2026-11-19 | ui が `src/state/`（Zustand の vanilla ストア: uiStore、dataStore）、`src/app/`、`src/views/` を実装。zustand 5.1.0（MIT）を追加。qa-tester が E2E 7 件と state の層の境界の ESLint 規則を追加。reviewer の指摘を受けて D-26（部品とフックは views、state → i18n を許す）を追加 |
 | T1-17 | 読み込みウィザード | ui | T1-06、T1-07、T1-16 | FR-IN-04〜06、09 | ⬜ | | |
