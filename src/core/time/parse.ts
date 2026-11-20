@@ -809,6 +809,22 @@ function success(r: Resolved, label: string, warnings: readonly DateWarning[]): 
 }
 
 /**
+ * 失敗の理由に、どちらの入力（始点か終点か）で失敗したかを付ける。
+ *
+ * @param failure - parseDate の失敗
+ * @param field - 始点（`start`）か終点（`end`）か
+ * @returns `reason.field` を付けた失敗
+ */
+// 【TS】`DateFailure['field']` は「インデックスアクセス型」。型の中の 1 つのプロパティの型を取り出す。
+//       ここでは `'start' | 'end' | undefined` になり、undefined を除くため `NonNullable` で包む。
+function withField(
+  failure: DateParseFailure,
+  field: NonNullable<DateFailure['field']>,
+): DateParseFailure {
+  return { ...failure, reason: { ...failure.reason, field } };
+}
+
+/**
  * 始点と終点の 2 つの文字列から、期間（`TimeSpan`）を作る（要件 §6.4「共通」、D-19）。
  *
  * - `endText` が `undefined`（終点の列が無い）: 終点なしの 1 点（または 1 つの幅）。
@@ -831,7 +847,7 @@ export function parseTimeSpan(
   options: ParseDateOptions = {},
 ): TimeSpanParseResult {
   const start = parseDate(startText, options);
-  if (!start.ok) return { ...start, reason: { ...start.reason, field: 'start' } };
+  if (!start.ok) return withField(start, 'start');
   if (endText === undefined) {
     return { ok: true, value: { kind: 'span', start: start.value }, warnings: start.warnings };
   }
@@ -843,7 +859,7 @@ export function parseTimeSpan(
     };
   }
   const end = parseDate(endText, options);
-  if (!end.ok) return { ...end, reason: { ...end.reason, field: 'end' } };
+  if (!end.ok) return withField(end, 'end');
   const warnings: DateWarning[] = [...start.warnings, ...end.warnings];
   if (end.value.latest < start.value.earliest) {
     warnings.push({
