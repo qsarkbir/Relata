@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { gregorianToJdn as g, hijriToJdn as h } from './calendars';
-import { hijriMonthFromName, HIJRI_MONTH_LABELS } from './months';
+import { hijriMonthFromName, HIJRI_MONTH_LABELS, replaceHijriMonthNames } from './months';
+import { matchKey } from '../text';
 import { parseDate, parseTimeSpan } from './index';
 import type { DateParseResult } from './index';
 
@@ -516,6 +517,34 @@ describe('月名と年の書き方（D-29 補足 9）', () => {
 
   it('FR-DM-05: 利用者の入力の #9# は月名の印と衝突しない', () => {
     expect(failure('#9# 1050').code).toBe('unrecognized');
+  });
+
+  it('FR-DM-05: 入力の私用領域の文字（内部の印に使う U+E000〜）は、月名や併記の印と取り違えない', () => {
+    // 【なぜ】解析は U+E000〜U+E003 を月名や括弧の併記の印に使う。入力にあれば空白に替えて無効にする。
+    expect(failure('\uE0009\uE001 1050 AH').code).toBe('unrecognized');
+    expect(failure('15 \uE0009\uE001 1050 AH').code).toBe('unrecognized');
+    expect(failure('1050 \uE002 1640').code).toBe('unrecognized');
+    expect(hijriMonthFromName('\uE0009\uE001')).toBeUndefined();
+    // 印の文字があっても、本物の月名はこれまでどおり読む
+    expect(range('Ramadan\uE000 1050 AH')).toEqual([h(1050, 9, 1), h(1050, 9, 30)]);
+  });
+
+  it('FR-TM-06: 月名の後ろに a〜z 以外の文字（ß、ø、œ、ł、キリル文字、ギリシア文字）が続けば、月名とみなさない', () => {
+    // 【なぜ】照合キーは ü、ş、ç、ı などを a〜z にそろえるが、これらの文字はそのまま残る。
+    for (const tail of ['ß', 'ø', 'œ', 'ł', 'ж', 'ψ']) {
+      // 単語の途中を境界とみなして、月名の印に置き換えたりしない（文字列はそのまま）
+      for (const word of [`Ramazan${tail}`, `${tail}Ramazan`]) {
+        expect(replaceHijriMonthNames(matchKey(word)), word).toBe(matchKey(word));
+      }
+      expect(hijriMonthFromName(`Ramazan${tail}`), tail).toBeUndefined();
+      expect(hijriMonthFromName(`${tail}Ramazan`), tail).toBeUndefined();
+      expect(failure(`Ramazan${tail} 1050 AH`).code, tail).toBe('unrecognized');
+    }
+    // トルコ語の文字は a〜z にそろうので、その綴りの月名として読む（Şaban ＝ 8 月）
+    expect(hijriMonthFromName('Şaban')).toBe(8);
+    expect(hijriMonthFromName('Ramazanı')).toBeUndefined();
+    // 数字は文字に含めない（月名の直後の年は、これまでどおり読む）
+    expect(range('Ramadan1050 AH')).toEqual([h(1050, 9, 1), h(1050, 9, 30)]);
   });
 });
 

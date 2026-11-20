@@ -186,10 +186,14 @@ function otherCalendar(c: CalendarId): CalendarId {
  * @returns 照合キーにして、記号をそろえた文字列
  */
 function normalizeInput(label: string): string {
+  // 【なぜ】解析は、私用領域の文字（U+E000〜U+F8FF）を内部の印（月名、括弧の併記など）に使う。
+  //       利用者の入力にもともとあると印と取り違えるので、最初に空白に替える。日付の書き方に
+  //       私用領域の文字が要ることはない。
+  const text = label.replace(/[\uE000-\uF8FF]/gu, ' ');
   // 【なぜ】末尾が括弧のときだけ併記の括弧とみなす（計算量を抑え、途中の括弧は他の書式に任せる）。
-  const paren = /[)）]$/u.test(label)
-    ? label.replace(/\s*[(（]([^()（）]*)[)）]$/u, ` ${PAREN} $1`)
-    : label;
+  const paren = /[)）]$/u.test(text)
+    ? text.replace(/\s*[(（]([^()（）]*)[)）]$/u, ` ${PAREN} $1`)
+    : text;
   const key = matchKey(paren.replace(/[〜～]/gu, EM));
   return (
     key

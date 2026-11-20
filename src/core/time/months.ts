@@ -170,8 +170,16 @@ const PATTERNS: readonly MonthPattern[] = SPELLINGS.flatMap((names, i) =>
   }),
 ).sort((a, b) => b.length - a.length);
 
-/** 文字（ラテン文字とアラビア文字）の境界。月名の前後に文字が続く場合は、別の単語の一部とみなす。 */
-const LETTER = 'a-z\\u0600-\\u06ff';
+/**
+ * 文字の境界。月名の前後に文字（どの文字体系でも）か結合記号が続く場合は、別の単語の一部とみなす。
+ *
+ * 【なぜ】照合キーは ü、ş、ç、ı などを a〜z にそろえるが、ß、ø、œ、ł や、キリル文字、ギリシア文字は
+ * そのまま残る。a〜z とアラビア文字だけを文字とみなすと、「Ramazanß」の途中を境界と取り違える。
+ * Unicode の文字（`\p{L}`）と結合記号（`\p{M}`）で判定する。数字は含めない（「Ramadan1050」は読む）。
+ */
+const LETTER = '\\p{L}\\p{M}';
+
+const MARKER_IN_INPUT = new RegExp(`[${MONTH_OPEN}${MONTH_CLOSE}]`, 'gu');
 
 const COMPILED: readonly { readonly month: number; readonly re: RegExp }[] = PATTERNS.map((p) => {
   // 【なぜ】「Rabi 1」のように数字で終わる綴りは、後ろに数字が続くとき（「Rabi 1050」）は月名ではない。
@@ -197,7 +205,8 @@ const COMPILED: readonly { readonly month: number; readonly re: RegExp }[] = PAT
  * @returns 月名を印に置き換えた文字列（前後に空白を足す）
  */
 export function replaceHijriMonthNames(key: string): string {
-  let s = key;
+  // 【なぜ】印に使う私用領域の文字が入力にもともとあると、月名の印と取り違える。空白に替えて無効にする。
+  let s = key.replace(MARKER_IN_INPUT, ' ');
   for (const { month, re } of COMPILED)
     s = s.replace(re, ` ${MONTH_OPEN}${String(month)}${MONTH_CLOSE} `);
   return s.replace(/\s+/gu, ' ').trim();
