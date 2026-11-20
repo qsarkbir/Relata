@@ -127,7 +127,7 @@
 | T1-11 | シーン層と SVG 描画（右から左へ書くラベルを含む） | renderer | T1-05 | FR-VG-03、08、NFR-09 | ✅ | 2026-11-19 | renderer が `src/render/`（`buildScene`、`renderSvg`、エスケープと色の検証、右から左のラベルの判定）を実装。reviewer の必須の指摘（右から左のラベルがノードに重なる）を直し、Chrome の getBBox で確認。Illustrator と Inkscape での見え方は利用者の目視が要る |
 | T1-12 | 有向エッジ（矢印［既定］／先細り／濃淡、往復エッジ、縁で止める） | renderer | T1-11 | FR-VG-05〜07 | ⬜ | | |
 | T1-13 | ラベルの配置 | renderer | T1-11 | FR-VG-10 | ⬜ | | |
-| T1-14 | SVG の書き出し | renderer | T1-11 | FR-OUT-01 | ⬜ | | |
+| T1-14 | SVG の書き出し | renderer | T1-11 | FR-OUT-01 | ✅ | 2026-11-20 | `src/io/export/` に全体を収めた SVG Blob とローカル保存の API を実装。選択の強調は既定で含めず指定式。グループ・RTL・凡例を保持、欠落要素を報告。reviewer の必須指摘（太いエッジが SVG の範囲外に切れる）を scene の経路・線幅を含む bounds で修正し回帰テストを追加。保存リンク生成失敗時も URL を解放。全601単体テスト・型検査・lint・整形・build成功。画面接続は T1-19 |
 | T1-15 | CSV の書き出し（ノード、エッジ、指標） | io | T1-04、T1-09 | FR-OUT-02、FR-MT-04 | ⬜ | | |
 | T1-16 | アプリの骨格、ストア、多言語対応、進行表示、「このツールについて」 | ui | フェーズ 0 | FR-UI-01、03、05 | ✅ | 2026-11-19 | ui が `src/state/`（Zustand の vanilla ストア: uiStore、dataStore）、`src/app/`、`src/views/` を実装。zustand 5.1.0（MIT）を追加。qa-tester が E2E 7 件と state の層の境界の ESLint 規則を追加。reviewer の指摘を受けて D-26（部品とフックは views、state → i18n を許す）を追加 |
 | T1-17 | 読み込みウィザード | ui | T1-06、T1-07、T1-16 | FR-IN-04〜06、09 | ⬜ | | |
