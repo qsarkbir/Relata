@@ -244,6 +244,15 @@ function splitDash(s: string): SplitResult {
       const rightIsPart = new RegExp(`^\\d{1,2}(?!\\d)(?!\\s*${MONTH_OPEN})`, 'u').test(
         s.slice(i + 1),
       );
+      // 【なぜ】年-月-日 の直後に、さらに「-」と 1〜2 桁の数字が続く（`1640-12-3-5`）のは、日付の
+      //       区切りが多すぎる書き間違い。範囲と読むと「1640-12-03 から 5 年まで」の逆転した範囲になり、
+      //       紀元前の書き方を勧める見当違いの説明が出るので、読めない書式として失敗にする（D-29 補足 (13)）。
+      if (rightIsPart && /\d{3,}-\d{1,2}-\d{1,2}$/u.test(s.slice(0, i))) {
+        return fail(
+          'unrecognized',
+          '年-月-日 の後に、さらに「-」と数字が続いています（範囲は「—」か「–」で区切ってください）',
+        );
+      }
       if (!(leftIsYear && rightIsPart)) cuts.push({ index: i, char: ch });
     }
   }

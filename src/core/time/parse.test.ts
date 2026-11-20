@@ -564,6 +564,35 @@ describe('月名と年の書き方（D-29 補足 9）', () => {
   });
 });
 
+describe('読まずに失敗する書式（D-29 補足 13）', () => {
+  it('FR-DM-05: 年-月-日 の後にさらに「-」と数字が続くと、範囲と読まず unrecognized で失敗する', () => {
+    for (const x of ['1640-12-3-5', '1640-12-03-05', '1050-9-15-2 AH']) {
+      const r = failure(x);
+      expect(r.code, x).toBe('unrecognized');
+      expect(r.message, x).toContain('年-月-日 の後に');
+    }
+    // 年-月-日 の後の 3 桁以上の年は、これまでどおり範囲（補足 (2)）
+    expect(range('1640-12-31-1641')).toEqual([g(1640, 12, 31), g(1641, 12, 31)]);
+    // 範囲の記号が 2 つ以上なら、これまでどおり too-many-ranges
+    expect(failure('1640-1650-1660').code).toBe('too-many-ranges');
+  });
+
+  it('FR-TM-06: 括弧の併記は末尾の 1 組だけ。入れ子、後ろの補足の括弧、先頭の括弧は読まずに失敗する', () => {
+    // 末尾の 1 組は併記として読む（補足 (1)）
+    expect(ok('1050 AH (1640)').value.calendar).toBe('hijri');
+    for (const x of [
+      '1050 AH (1640 (CE))',
+      '1050 AH ((1640))',
+      '1050 AH (1640) (uncertain)',
+      '1050 AH (1640) ?',
+      '(1640) 1050 AH',
+      '1050 (AH) (1640)',
+    ]) {
+      expect(failure(x).code, x).toBe('unrecognized');
+    }
+  });
+});
+
 describe('ハイフンの異体（D-29 補足 12）', () => {
   // 【なぜ】Word や Excel の貼り付けでは、ハイフンが似た別の文字になることがある。
   // 照合キーのあと、U+2010〜2012、U+2212、U+FF0D（NFKC で U+002D になる）、U+FE63 は
