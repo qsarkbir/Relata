@@ -1,21 +1,16 @@
+import { parseGraphView, type ProjectWarning } from '../../core/project';
 /**
  * プロジェクトファイルの保存と読み込み（FR-PJ-01、FR-IN-08、D-24、設計書 §11.3）。
  *
  * 読み込みの手順: JSON の解析 → `app` の確認 → 版の移行 → 各部の parse → 不変条件の検査（警告）。
  */
-import {
-  checkFilterState,
-  DEFAULT_FILTER_STATE,
-  parseFilterState,
-  type FilterIssue,
-} from '../../core/filter';
+import { checkFilterState, DEFAULT_FILTER_STATE, parseFilterState } from '../../core/filter';
 import {
   CALENDAR_IDS,
   checkDataset,
   isMissingReason,
   isPlainObject,
   parseDataset,
-  type DatasetIssue,
   type ParseResult,
 } from '../../core/model';
 import { compileMissingTokens } from './missing';
@@ -30,17 +25,7 @@ import {
   PROJECT_VIEW_KEYS,
 } from './types';
 
-/** 読み込みで見つかった問題（読めはしたが、データに不整合がある）。 */
-// 【TS】判別共用体。`source` で、問題の型が決まる。
-export type ProjectWarning =
-  | { readonly source: 'dataset'; readonly issue: DatasetIssue }
-  | { readonly source: 'filter'; readonly issue: FilterIssue }
-  /** 読み込みで落とした未知の項目（新しいアプリが足した任意の項目など）。 */
-  | {
-      readonly source: 'project';
-      readonly issue: { readonly kind: 'unknown-field'; readonly path: string };
-    };
-
+export type { ProjectWarning } from '../../core/project';
 /** 読み込みの失敗の種類。 */
 export type ProjectFailureKind =
   | 'not-json' // JSON として解析できない
@@ -98,7 +83,10 @@ export function serializeProject(parts: ProjectParts, savedAt: string): string {
     // 【なぜ】`view` は項目を 1 つずつ書く（`parts.view` をそのまま入れない）。呼ぶ側のオブジェクトに
     //   余計な項目があっても、ファイルの形が変わらないようにするため。
     //   `ProjectView` に項目を足したら、ここにも足すこと（往復テストが PROJECT_VIEW_KEYS で検出する）。
-    view: { filter: parts.view.filter },
+    view: {
+      filter: parts.view.filter,
+      ...(parts.view.graph === undefined ? {} : { graph: parts.view.graph }),
+    },
   };
   return JSON.stringify(file);
 }
@@ -310,6 +298,25 @@ export function parseProject(
     filter = f.value;
   }
 
+  const graphRaw = viewRaw === undefined ? undefined : get(viewRaw, 'graph');
+  const graphParsed = graphRaw === undefined ? undefined : parseGraphView(graphRaw);
+  if (graphParsed !== undefined && !graphParsed.ok)
+    return failure(
+      'broken',
+      'view.graph' + (graphParsed.path === '' ? '' : '.' + graphParsed.path),
+      graphParsed.reason,
+    );
+  const graph = graphParsed?.ok === true ? graphParsed.value : undefined;
+  if (graph !== undefined) {
+    const nodeIds = new Set(dataset.value.nodes.map((n) => n.id));
+    const unknown = graph.positions.findIndex((p) => !nodeIds.has(p.id));
+    if (unknown >= 0)
+      return failure(
+        'broken',
+        'view.graph.positions[' + String(unknown) + '].id',
+        '存在しないノードの位置です',
+      );
+  }
   const savedAt = get(data, 'savedAt');
   if (savedAt !== undefined && typeof savedAt !== 'string')
     return failure('broken', 'savedAt', '文字列が必要です');
@@ -319,6 +326,23 @@ export function parseProject(
     ...(viewRaw === undefined ? [] : unknownFields(viewRaw, PROJECT_VIEW_KEYS, 'view.')),
     // 【TS】`.map((issue): ProjectWarning => …)` の `: ProjectWarning` は、アロー関数の戻り値の型の注釈。
     //       書かないと `source: 'dataset'` が `string` に広がり、判別共用体に代入できなくなる。
+    ...(isPlainObject(graphRaw)
+      ? unknownFields(
+          graphRaw,
+          [
+            'graphOptions',
+            'encoding',
+            'layout',
+            'seed',
+            'positions',
+            'labels',
+            'largeLabelCount',
+            'direction',
+            'viewport',
+          ],
+          'view.graph.',
+        )
+      : []),
     ...checkDataset(dataset.value).map((issue): ProjectWarning => ({ source: 'dataset', issue })),
     ...checkFilterState(dataset.value, filter).map((issue): ProjectWarning => ({
       source: 'filter',
@@ -334,7 +358,7 @@ export function parseProject(
       ...(savedAt !== undefined && { savedAt }),
       dataset: dataset.value,
       importSettings: settings.value,
-      view: { filter },
+      view: { filter, ...(graph === undefined ? {} : { graph }) },
     },
     warnings,
   };

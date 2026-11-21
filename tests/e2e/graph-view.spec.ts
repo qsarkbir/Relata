@@ -1,0 +1,226 @@
+import { test, expect } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { startApp, openProject, saveButton, readAutosave, waitForAutosave } from './support';
+
+test.use({ locale: 'ja-JP' });
+
+test('FR-VG-09/11: Workerで表示し検索・選択・向きの強調と拡大・SVG保存を操作できる', async ({
+  page,
+}) => {
+  await startApp(page);
+  await openProject(page, 'maghrib.relata.json');
+  const nodes = page.locator('.graph-canvas #graph-view-nodes > [data-id]');
+  await expect(nodes).toHaveCount(14);
+  const figure = page.getByRole('img', { name: 'ネットワーク図' });
+  const initial = await figure.getAttribute('data-zoom');
+  await page.getByRole('button', { name: '拡大', exact: true }).click();
+  await expect(figure).not.toHaveAttribute('data-zoom', initial ?? '');
+  await page.getByLabel('ノードを検索', { exact: true }).fill('ابن');
+  await expect(page.locator('.graph-search-results button').first()).toBeVisible();
+  await page.locator('.graph-search-results button').first().click();
+  await expect(page.getByRole('region', { name: '選択したノードの詳細' })).toBeVisible();
+  await page.getByLabel('関係の強調').selectOption('out');
+  await page.getByRole('button', { name: '位置を固定', exact: true }).click();
+  await expect(page.getByRole('button', { name: '固定を解除', exact: true })).toBeVisible();
+  await page.getByLabel('ラベル', { exact: true }).selectOption('selected');
+  const selectedLabel = await page
+    .locator('.graph-canvas #graph-view-labels text')
+    .allTextContents();
+  expect(selectedLabel.length).toBeGreaterThan(0);
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'SVGを保存' }).click();
+  const file = await download;
+  const path = await file.path();
+  const svg = readFileSync(path, 'utf8');
+  expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
+  expect(svg).not.toContain('class="selected"');
+  for (const label of selectedLabel) expect(svg).toContain(label);
+});
+
+test('FR-PJ-01/02 / NFR-08: 配置・固定点・拡大と表示設定をファイルと自動保存から復元する', async ({
+  page,
+}) => {
+  await startApp(page);
+  await openProject(page, 'maghrib.relata.json');
+  await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]')).toHaveCount(14);
+  await page.getByLabel('ノードを選択', { exact: true }).selectOption('p6');
+  await page.getByRole('button', { name: '位置を固定', exact: true }).click();
+  await page.getByLabel('向きの表現').selectOption('gradient');
+  await page.getByLabel('ラベル', { exact: true }).selectOption('selected');
+  await page.getByRole('button', { name: '拡大', exact: true }).click();
+  const transform = await page.locator('.graph-canvas svg > g').getAttribute('transform');
+  const download = page.waitForEvent('download');
+  await saveButton(page).click();
+  const file = await download;
+  const path = await file.path();
+  const text = readFileSync(path, 'utf8');
+  expect(text).toContain('"fixed":true');
+  expect(text).toContain('"graphOptions"');
+  await waitForAutosave(page);
+  await expect.poll(() => readAutosave(page)).toContain('"direction":"gradient"');
+  await page.reload();
+  await expect(page.getByLabel('向きの表現')).toHaveValue('gradient');
+  await expect(page.locator('.graph-canvas svg > g')).toHaveAttribute('transform', transform ?? '');
+  await openProject(page, {
+    name: 'saved.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(text),
+  });
+  await expect(page.getByLabel('ラベル', { exact: true })).toHaveValue('selected');
+  await expect(page.locator('.graph-canvas svg > g')).toHaveAttribute('transform', transform ?? '');
+});
+
+test('FR-VG-11 / NFR-08: ドラッグした位置を固定し、ファイルと再配置で保つ', async ({ page }) => {
+  await startApp(page);
+  await openProject(page, 'maghrib.relata.json');
+  const nodes = page.locator('.graph-canvas #graph-view-nodes > [data-id]');
+  await expect(nodes).toHaveCount(14);
+  const node = nodes.first();
+  const id = await node.getAttribute('data-id');
+  if (id === null) throw new Error('node');
+  const saveGraph = async () => {
+    const download = page.waitForEvent('download');
+    await saveButton(page).click();
+    const path = await (await download).path();
+    const text = readFileSync(path, 'utf8');
+    // 【なぜ】アプリ自身が保存したJSONから、このテストが比較する項目だけを読む。
+    const saved = JSON.parse(text) as {
+      view: { graph: { positions: { id: string; x: number; y: number; fixed: boolean }[] } };
+    };
+    const position = saved.view.graph.positions.find((p) => p.id === id);
+    if (position === undefined) throw new Error('saved position');
+    return { text, position };
+  };
+  const initial = await saveGraph();
+  // 【なぜ】設定欄が増えても、画面外の座標へmouse操作を送らない。
+  await node.scrollIntoViewIfNeeded();
+  const box = await node.boundingBox();
+  if (box === null) throw new Error('box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 35, box.y + box.height / 2 + 20, { steps: 4 });
+  await page.mouse.up();
+  await page.getByLabel('ノードを選択', { exact: true }).selectOption(id);
+  await expect(page.getByRole('button', { name: '固定を解除', exact: true })).toBeVisible();
+  const before = await saveGraph();
+  expect(before.position.fixed).toBe(true);
+  expect(
+    Math.abs(before.position.x - initial.position.x) +
+      Math.abs(before.position.y - initial.position.y),
+  ).toBeGreaterThan(0);
+  await page.getByRole('button', { name: '再配置する', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'ノードを表示' })).toBeVisible();
+  const after = await saveGraph();
+  // 【なぜ】画面のスクロール量ではなく、保存されるworld座標と固定フラグを比較する。
+  expect(after.position).toEqual(before.position);
+  await openProject(page, {
+    name: 'dragged.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(after.text),
+  });
+  await expect(page.locator('.task-panel')).toBeHidden();
+  await page.getByLabel('ノードを選択', { exact: true }).selectOption(id);
+  await expect(page.getByRole('button', { name: '固定を解除', exact: true })).toBeVisible();
+});
+
+test('FR-VG-03/04/08/09: 次数サイズ・属性色・型形・スケールとpxを選び、入出を異色で描いて保存する', async ({
+  page,
+}) => {
+  await startApp(page);
+  await openProject(page, 'maghrib.relata.json');
+  await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]')).toHaveCount(14);
+  await page.getByText('見た目の設定', { exact: true }).click();
+  await page.getByLabel('ノードサイズの元', { exact: true }).selectOption('metric:degree');
+  await page.getByLabel('サイズのスケール', { exact: true }).selectOption('log');
+  await page.getByLabel('ノード最小半径', { exact: true }).fill('5');
+  await page.getByLabel('ノード最大半径', { exact: true }).fill('20');
+  await page.getByLabel('ノード色の元', { exact: true }).selectOption('attr:地名');
+  await page.getByLabel('ノード形の元', { exact: true }).selectOption('nodeType');
+  await page.getByLabel('線幅のスケール', { exact: true }).selectOption('linear');
+  await page.getByLabel('エッジ最小幅', { exact: true }).fill('0.5');
+  await page.getByLabel('エッジ最大幅', { exact: true }).fill('5');
+  await page.getByLabel('ノードを選択', { exact: true }).selectOption('p6');
+  const edges = page.locator('.graph-canvas #graph-view-edges');
+  await expect(edges.locator('[stroke="#d55e00"]')).not.toHaveCount(0);
+  await expect(edges.locator('[stroke="#0072b2"]')).not.toHaveCount(0);
+  await expect(edges.locator('[stroke="#7b3294"]')).not.toHaveCount(0);
+  const download = page.waitForEvent('download');
+  await saveButton(page).click();
+  const path = await (await download).path();
+  const saved = readFileSync(path, 'utf8');
+  expect(saved).toContain('"metric":"degree"');
+  expect(saved).toContain('"attr":"地名"');
+  expect(saved).toContain('"scale":"log"');
+  await openProject(page, {
+    name: 'appearance.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(saved),
+  });
+  await expect(page.locator('.task-panel')).toBeHidden();
+  await expect(page.getByLabel('ノードサイズの元', { exact: true })).toHaveValue('metric:degree');
+  await expect(page.getByLabel('ノード最大半径', { exact: true })).toHaveValue('20');
+  await page.getByLabel('ノード最小半径', { exact: true }).fill('30');
+  await expect(page.getByRole('alert').filter({ hasText: '最小を最大以下' })).toBeVisible();
+});
+
+test('FR-VG-11: 再配置の応答待ち中でも固定・解除を失わず、進行表示を残さない', async ({ page }) => {
+  // 【なぜ】Worker要求を明示的に保留する。計算速度に依存せず、固定操作との競合を再現する。
+  await page.addInitScript(`
+    const NativeWorker = window.Worker;
+    let hold = false;
+    let pending = [];
+    window.addEventListener('relata-test-hold-layout', () => { hold = true; });
+    window.addEventListener('relata-test-release-layout', () => {
+      hold = false;
+      const calls = pending;
+      pending = [];
+      calls.forEach(call => call());
+    });
+    window.Worker = class extends NativeWorker {
+      constructor(...args) {
+        super(...args);
+        const send = this.postMessage.bind(this);
+        this.postMessage = (...message) => {
+          if (hold) pending.push(() => send(...message));
+          else send(...message);
+        };
+      }
+    };
+  `);
+  await startApp(page);
+  await openProject(page, 'maghrib.relata.json');
+  await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]')).toHaveCount(14);
+  await page.getByLabel('ノードを選択', { exact: true }).selectOption('p6');
+  for (const fixed of [true, false]) {
+    await page.evaluate(() => window.dispatchEvent(new Event('relata-test-hold-layout')));
+    await page.getByRole('button', { name: '再配置する', exact: true }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: '配置を計算しています' }),
+    ).toBeVisible();
+    await page
+      .getByRole('button', {
+        name: fixed ? '位置を固定' : '固定を解除',
+        exact: true,
+      })
+      .click();
+    await page.evaluate(() => window.dispatchEvent(new Event('relata-test-release-layout')));
+    await expect(page.locator('.task-panel')).toBeHidden();
+    await expect(
+      page.getByRole('button', {
+        name: fixed ? '固定を解除' : '位置を固定',
+        exact: true,
+      }),
+    ).toBeVisible();
+    const download = page.waitForEvent('download');
+    await saveButton(page).click();
+    const path = await (await download).path();
+    const saved: unknown = JSON.parse(readFileSync(path, 'utf8'));
+    expect(saved).toMatchObject({
+      view: {
+        graph: {
+          positions: expect.arrayContaining([expect.objectContaining({ id: 'p6', fixed })]),
+        },
+      },
+    });
+  }
+});

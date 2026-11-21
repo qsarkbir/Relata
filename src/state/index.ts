@@ -14,3 +14,5 @@ export {
 } from './filterStore';
 export type { FilterStoreState } from './filterStore';
 export { getFacetCounts, getFilterIssues, getFilterResult } from './filterView';
+export { createGraphViewStore, graphViewStore, bindGraphViewToData } from './graphViewStore';
+export type { GraphViewState } from './graphViewStore';

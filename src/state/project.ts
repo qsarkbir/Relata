@@ -1,29 +1,22 @@
 import type { StoreApi } from 'zustand/vanilla';
-import type { FilterState } from '../core/filter';
-import type { Dataset } from '../core/model';
-import type { DataState, StoredImportSettings } from './dataStore';
+
+import type { DataState } from './dataStore';
 import type { FilterStoreState } from './filterStore';
 import { selectFilterState } from './filterStore';
 
-/** プロジェクトの表示状態。`io/project` の `ProjectView` と同じ形（D-33 (8)）。 */
-export interface ProjectSnapshotView {
-  readonly filter: FilterState;
-}
-
-/**
- * プロジェクトとして保存する中身。`io/project` の `ProjectParts` と同じ形（state は io を import できない。D-26）。
- */
-export interface ProjectSnapshot {
-  readonly dataset: Dataset;
-  readonly importSettings: StoredImportSettings;
-  readonly view: ProjectSnapshotView;
-}
-
+import type { ProjectView, ProjectParts } from '../core/project';
+import type { GraphViewState } from './graphViewStore';
+/** 保存用表示状態の共通型。 */
+export type ProjectSnapshotView = ProjectView;
+/** 保存する中身の共通型。 */
+export type ProjectSnapshot = ProjectParts;
 // 【TS】`[K in keyof T]-?` は、T の全キーについて「任意」の印（?）を外した表を作る。
 //       `ProjectSnapshotView` に任意の項目を足すと、この表にも書かないと型エラーになる（書き忘れの防止）。
 /** `view` の各項目を、ストアから取り出す関数の表。 */
 const VIEW_PROJECTORS: {
-  readonly [K in keyof ProjectSnapshotView]-?: (f: FilterStoreState) => ProjectSnapshotView[K];
+  readonly [K in keyof Pick<ProjectSnapshotView, 'filter'>]-?: (
+    f: FilterStoreState,
+  ) => ProjectSnapshotView[K];
 } = {
   filter: selectFilterState,
 };
@@ -33,16 +26,26 @@ const VIEW_PROJECTORS: {
  *
  * @param data - dataStore
  * @param filter - filterStore
+ * @param graph - 任意のグラフ表示ストア
  * @returns 保存する中身。データが無ければ null（保存するものが無い）
  */
 export function takeSnapshot(
   data: StoreApi<DataState>,
   filter: StoreApi<FilterStoreState>,
+  graph?: StoreApi<GraphViewState>,
 ): ProjectSnapshot | null {
   const { dataset, importSettings } = data.getState();
   if (dataset === null) return null;
   const f = filter.getState();
-  return { dataset, importSettings, view: { filter: VIEW_PROJECTORS.filter(f) } };
+  const graphView = graph?.getState().view;
+  return {
+    dataset,
+    importSettings,
+    view: {
+      filter: VIEW_PROJECTORS.filter(f),
+      ...(graphView == null ? {} : { graph: graphView }),
+    },
+  };
 }
 
 /**
@@ -54,12 +57,15 @@ export function takeSnapshot(
  * @param snapshot - 読み込んだ中身
  * @param data - dataStore
  * @param filter - filterStore
+ * @param graph - 任意のグラフ表示ストア
  */
 export function applySnapshot(
   snapshot: ProjectSnapshot,
   data: StoreApi<DataState>,
   filter: StoreApi<FilterStoreState>,
+  graph?: StoreApi<GraphViewState>,
 ): void {
   data.getState().loadDataset(snapshot.dataset, snapshot.importSettings);
   filter.getState().reset(snapshot.view.filter);
+  graph?.getState().setView(snapshot.view.graph ?? null);
 }
