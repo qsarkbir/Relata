@@ -23,7 +23,7 @@ import { parseDate } from '../../core/time';
 import { matchMissingToken } from '../project/missing';
 import type { ColumnOptions } from './columns';
 import type { MissingToken } from '../project/types';
-import { convertCell } from './columns';
+import { convertCell, createCellConverter } from './columns';
 import type { TableWarning, TextTable } from './text';
 
 /** 属性への対応。列番号は 0 起点なので、同名の列も指定できる。 */
@@ -174,6 +174,10 @@ export function importTables(
       });
     for (const warning of table.warnings)
       warnings.push({ table: target, ...warning, severity: 'error' });
+    // 【なぜ】欠損記号は列ごとに準備し、行数に比例した再コンパイルを避ける。
+    const attributeConverters = mapping.attributes.map((attr) =>
+      createCellConverter({ missingTokens: mapping.missingTokens ?? [], ...attr }),
+    );
     for (const [index, row] of table.rows.entries()) {
       const rowNumber = index + 2;
       const warn = (
@@ -198,11 +202,10 @@ export function importTables(
       if (row.length !== table.headers.length && !columnCountRows.has(rowNumber))
         warn('column-count', 'ヘッダと列数が異なります。');
       const entries: [string, AttrValue][] = [];
-      for (const attr of mapping.attributes) {
-        const result = convertCell(row[attr.column] ?? '', {
-          missingTokens: mapping.missingTokens ?? [],
-          ...attr,
-        });
+      for (const [attributeIndex, attr] of mapping.attributes.entries()) {
+        const convert = attributeConverters[attributeIndex];
+        if (convert === undefined) throw new RangeError('属性の変換設定がありません。');
+        const result = convert(row[attr.column] ?? '');
         entries.push([attr.key, result.value]);
         for (const message of result.warnings)
           warn(
@@ -234,7 +237,9 @@ export function importTables(
               'invalid-date',
               parsed.reason.message,
               'error',
-              table.headers[mapping.fields[field] ?? 0],
+              mapping.fields[field] === undefined
+                ? undefined
+                : table.headers[mapping.fields[field]],
             );
             return undefined;
           }
@@ -258,39 +263,6 @@ export function importTables(
       }
       const timePart = time === undefined ? {} : { time };
       if (target === 'node') {
-        const label = cell('label');
-        if (label.trim() === '') {
-          warn('invalid-value', 'ノードのラベルが空です。');
-          continue;
-        }
-        const typeText = cell('type').trim() || 'default';
-        const type = toNodeTypeId(typeText);
-        types.set(typeText, type);
-        const key = cell('id').trim();
-        const generated = mapping.fields.id === undefined;
-        if (!generated && key === '') {
-          warn('invalid-value', 'ID 列の値が空です。');
-          continue;
-        }
-        const id = generated
-          ? makeNodeIdFromTypeAndLabel(type, label)
-          : makeNodeIdFromTypeAndKey(type, key);
-        if (nodeIds.has(id)) {
-          warn(
-            generated ? 'merged-label' : 'duplicate-id',
-            generated
-              ? '同じ型とラベルのノードを合流しました。同名異人には ID 列を指定してください。先の行を保持します。'
-              : 'ID が重複しています。',
-            generated ? 'warning' : 'error',
-          );
-          continue;
-        }
-        nodeIds.add(id);
-        const reference = generated ? label.normalize('NFC') : key;
-        const matches = references.get(reference) ?? [];
-        matches.push(id);
-        references.set(reference, matches);
-        typedReferences.set(JSON.stringify([typeText, reference]), id);
         let geo: GeoValue | undefined;
         if (mapping.fields.lat !== undefined || mapping.fields.lon !== undefined) {
           const latText = cell('lat');
@@ -324,13 +296,43 @@ export function importTables(
             else geo = { kind: 'point', lat, lon };
           }
         }
+        const label = cell('label');
+        const emptyLabel = label.trim() === '';
+        if (emptyLabel) warn('invalid-value', 'ノードのラベルが空です。');
+        const typeText = cell('type').trim() || 'default';
+        const type = toNodeTypeId(typeText);
+        types.set(typeText, type);
+        const key = cell('id').trim();
+        const generated = mapping.fields.id === undefined;
+        const emptyId = !generated && key === '';
+        if (emptyId) warn('invalid-value', 'ID 列の値が空です。');
+        if (emptyLabel || emptyId) continue;
+        const id = generated
+          ? makeNodeIdFromTypeAndLabel(type, label)
+          : makeNodeIdFromTypeAndKey(type, key);
+        if (nodeIds.has(id)) {
+          warn(
+            generated ? 'merged-label' : 'duplicate-id',
+            generated
+              ? '同じ型とラベルのノードを合流しました。同名異人には ID 列を指定してください。先の行を保持します。'
+              : 'ID が重複しています。',
+            generated ? 'warning' : 'error',
+          );
+          continue;
+        }
+        nodeIds.add(id);
+        const reference = generated ? label.normalize('NFC') : key;
+        const matches = references.get(reference) ?? [];
+        matches.push(id);
+        references.set(reference, matches);
+        typedReferences.set(JSON.stringify([typeText, reference]), id);
         nodes.push({ id, type, label, attrs, ...timePart, ...(geo === undefined ? {} : { geo }) });
       } else {
         const resolve = (field: 'source' | 'target'): NodeId | undefined => {
           const key =
             nodeMapping.fields.id === undefined ? cell(field).normalize('NFC') : cell(field).trim();
           const typeColumn = field === 'source' ? 'sourceType' : 'targetType';
-          const type = cell(typeColumn).trim();
+          const type = cell(typeColumn).trim() || 'default';
           const typed = typedReferences.get(JSON.stringify([type, key]));
           const matches =
             mapping.fields[typeColumn] === undefined
@@ -371,7 +373,10 @@ export function importTables(
         }
         let weight = 1;
         if (mapping.fields.weight !== undefined && cell('weight').trim() !== '') {
-          const parsed = convertCell(cell('weight'), { type: 'number' });
+          const parsed = convertCell(cell('weight'), {
+            type: 'number',
+            missingTokens: mapping.missingTokens ?? [],
+          });
           if (
             !parsed.ok ||
             parsed.value.kind !== 'value' ||
