@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 3.1（2026-11-20） |
+| 版 | 3.3（2026-11-21） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -554,6 +554,7 @@ interface TimeState {
 ## 11. 入出力と保存
 
 ### 11.1 読み込み
+- T1-22 のサンプルは `public/samples/maghrib.relata.json`。承認済みの全219人物・204関係を `npm run sample:generate` で元の fixture から再生成する。型番号1〜4の意味や Year の生没年の区別は推測しない。D-28 に従い Year をヒジュラ暦の幅のある年として解析し、原文（年40を含む）を保持する。1クリック操作は空の画面に置き、取得・解析失敗は現在のデータを変更せず知らせ、取消または別プロジェクトの読み込み後は遅いサンプルを適用しない。英語の承認済み題名・説明と日本語表示時の和訳を添える。
 - **D-34（T1-06、R-03〜05）**: 警告は `ImportWarning`（表、任意のレコード番号と列、code、severity、message）。コードの一覧は `src/io/table/dataset.ts` と `text.ts` を正とする。構造や型に error があれば `dataset: null` と元表の全行を返す。黙って行を捨てたり、型の合わない属性を Dataset に入れたりしない。修正は元表を使って再実行する。警告だけなら Dataset を返す。
 - ID 列がない表は「型＋ラベル（NFC のみ）」で合流する。追加で合流した各行に `merged-label` の警告を出し（この件数が合流した追加行の数）、ID 列を勧める。先の行を保持する。ID 列があるのに値が空、または同じ型の ID が重複する場合は error。エッジの source/target は元の ID 列（ID 列がなければラベル）で照合する。複数型に一致する場合は sourceType/targetType の対応を指定するまで error にする。
 - Excel は [公式配布元](https://docs.sheetjs.com/docs/getting-started/installation/frameworks/) の SheetJS CE 0.20.3 を採用し、`openExcel` 内で動的 import する。read-excel-file 9.3.20 を調べたが、公開 Options は trim、parseNumber、dateFormat のみで、日付をシリアル値で取得する設定がないため採用しない。SheetJS は `cellDates: false`、`cellNF: true` で読み、日付書式のセルを core/time で換算する。1904 年起点を区別し、1900 年方式のシリアル 60（架空の日）、整数日でない時刻つきセル、エラーセル、計算結果のない数式は元の値と問題を残す。これらがある間は Dataset を生成しない。数式を実行・再計算しない。シート選択の画面は T1-17 で接続する。

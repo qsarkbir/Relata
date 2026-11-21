@@ -1,5 +1,6 @@
 import { AboutDialog } from '../views/AboutDialog';
 import { FilterPanel } from '../views/FilterPanel';
+import { SampleCard } from '../views/SampleCard';
 import { ProjectMenu } from '../views/ProjectMenu';
 import { ProjectNotice } from '../views/ProjectNoticePanel';
 import { TaskPanel } from '../views/TaskPanel';
@@ -71,6 +72,7 @@ export function App() {
             <div className="empty">
               <h2>{t('app.empty.title')}</h2>
               <p>{t('app.empty.body')}</p>
+              <SampleCard />
             </div>
           ) : null}
         </main>
