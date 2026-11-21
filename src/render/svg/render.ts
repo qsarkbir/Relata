@@ -82,15 +82,75 @@ function nodeSvg(n: SceneNode, index: number, prefix: string): string {
 }
 
 function edgeSvg(e: SceneEdge, index: number, prefix: string): string {
-  return (
-    `<path id="${prefix}edge-${String(index)}" data-id="${escapeXml(e.id)}" d="${pathData(e.path)}" fill="none"` +
-    ` stroke="${safeColor(e.color, '#999999')}" stroke-width="${num(e.width)}"` +
-    ` stroke-opacity="${num(Math.min(1, Math.max(0, e.opacity)))}"` +
+  const key = prefix + 'edge-' + String(index);
+  const color = safeColor(e.color, '#999999');
+  const opacity = num(Math.min(1, Math.max(0, e.opacity)));
+  const points = (ps: readonly { readonly x: number; readonly y: number }[]) =>
+    ps.map((p) => num(p.x) + ',' + num(p.y)).join(' ');
+  const attrs = ' id="' + key + '" data-id="' + escapeXml(e.id) + '"';
+  if (e.ribbon !== undefined)
+    return (
+      '<polygon' +
+      attrs +
+      ' points="' +
+      points(e.ribbon) +
+      '" fill="' +
+      color +
+      '" fill-opacity="' +
+      opacity +
+      '"/>'
+    );
+  let defs = '';
+  let stroke = color;
+  if (e.gradient !== undefined) {
+    const g = e.gradient;
+    const id = key + '-gradient';
+    defs =
+      '<defs><linearGradient id="' +
+      id +
+      '" gradientUnits="userSpaceOnUse" x1="' +
+      num(g.start.x) +
+      '" y1="' +
+      num(g.start.y) +
+      '" x2="' +
+      num(g.end.x) +
+      '" y2="' +
+      num(g.end.y) +
+      '"><stop offset="0" stop-color="' +
+      color +
+      '" stop-opacity="0.15"/><stop offset="1" stop-color="' +
+      color +
+      '" stop-opacity="1"/></linearGradient></defs>';
+    stroke = 'url(#' + id + ')';
+  }
+  const shaft =
+    '<path' +
+    attrs +
+    ' d="' +
+    pathData(e.path) +
+    '" fill="none" stroke="' +
+    stroke +
+    '" stroke-width="' +
+    num(e.width) +
+    '" stroke-opacity="' +
+    opacity +
+    '"' +
     (e.dashed ? ' stroke-dasharray="4 3"' : '') +
-    '/>'
-  );
+    '/>';
+  const head =
+    e.head === undefined
+      ? ''
+      : '<polygon id="' +
+        key +
+        '-head" points="' +
+        points(e.head) +
+        '" fill="' +
+        color +
+        '" fill-opacity="' +
+        opacity +
+        '"/>';
+  return defs + shaft + head;
 }
-
 function textSvg(l: SceneLabel, extra: string): string {
   // 右から左のラベルには direction と unicode-bidi を付ける（NFR-09）。text-anchor は基準点の側を決める。
   const rtl = l.direction === 'rtl' ? ' direction="rtl" unicode-bidi="embed"' : '';

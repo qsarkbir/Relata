@@ -5,6 +5,7 @@
  */
 import type { NodeId, NodeShape } from '../../core/model';
 import type { TextDirection } from '../text/direction';
+import type { EdgeGeometry } from '../edges/geometry';
 
 /**
  * 経路の命令。T1-11 は `M` と `L`（直線）だけを使い、`Q`（2 次ベジェ）は T1-12 の往復エッジの弧のために持っておく。
@@ -43,9 +44,9 @@ export interface SceneNode {
 
 /**
  * シーンのエッジ 1 本。まとめた後のエッジ（グラフのエッジ）に対応する。
- * 矢じり（`head`）と先細りは T1-12 で足す。
+ * 矢じり・先細り・濃淡の幾何は EdgeGeometry にまとめる。
  */
-export interface SceneEdge {
+export interface SceneEdge extends EdgeGeometry {
   /** グラフのエッジのキー。 */
   readonly id: string;
   readonly source: NodeId;
@@ -106,7 +107,7 @@ export interface SceneOmitted {
   readonly nodesWithoutPosition: readonly NodeId[];
   /** 端点のノードがシーンに無いので入れなかったエッジの数。 */
   readonly edgesWithoutEndpoint: number;
-  /** 自己ループの数。描き方は T1-12 で決める（R-09）ので、今は入れていない。 */
+  /** 描けなかった自己ループの数。T1-12 以降は輪で描くため通常 0。 */
   readonly selfLoops: number;
   /** `widths` に値があるのに、グラフのエッジのキーと 1 件も一致しなかった（元の EdgeId で引いた Map を渡した誤りの疑い）。 */
   readonly widthsUnmatched: boolean;

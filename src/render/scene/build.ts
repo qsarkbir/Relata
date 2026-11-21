@@ -1,3 +1,4 @@
+import { edgeGeometry, type DirectedEdgeStyle } from '../edges/geometry';
 /**
  * シーンの組み立て（設計書 §8.1、D-31）。
  */
@@ -68,6 +69,8 @@ export type LabelMode = 'all' | 'selected' | 'large';
 
 /** `buildScene` の選択肢。 */
 export interface BuildSceneOptions {
+  /** 有向エッジの表現。既定は arrow。 */
+  readonly directedStyle?: DirectedEdgeStyle;
   /** 図の余白（px）。既定 24。 */
   readonly margin?: number;
   /** 選択中のノード。 */
@@ -243,11 +246,21 @@ export function buildScene(
   });
   const byId = new Map(rawNodes.map((n) => [n.id, n]));
 
-  // 2. エッジ（今は直線だけ。矢印と曲線は T1-12）。
+  // 2. 集約後の有向エッジを、方向ごとの組で索引化する。無向エッジは逆辺に数えない。
+  const directedWidths = new Map<string, number>();
+  graph.forEachEdge((key, attrs, source, target) => {
+    if (attrs.directed) {
+      const width = encoding.widths?.get(key)?.width ?? DEFAULT_EDGE_WIDTH;
+      directedWidths.set(
+        JSON.stringify([source, target]),
+        Number.isFinite(width) ? Math.max(0, width) : DEFAULT_EDGE_WIDTH,
+      );
+    }
+  });
   const rawEdges: SceneEdge[] = [];
   let edgesWithoutEndpoint = 0;
   let widthMatched = 0;
-  let selfLoops = 0;
+  const selfLoops = 0;
   graph.forEachEdge((key, attrs, source, target) => {
     const s = byId.get(source as NodeId);
     const t = byId.get(target as NodeId);
@@ -255,21 +268,30 @@ export function buildScene(
       edgesWithoutEndpoint += 1;
       return;
     }
-    if (s.id === t.id) {
-      selfLoops += 1;
-      return;
-    }
+
     const w = encoding.widths?.get(key);
     if (w !== undefined) widthMatched += 1;
-    const path: PathCommand[] = [
-      { type: 'M', x: s.x, y: s.y },
-      { type: 'L', x: t.x, y: t.y },
-    ];
+    const width =
+      w !== undefined && Number.isFinite(w.width) ? Math.max(0, w.width) : DEFAULT_EDGE_WIDTH;
+    const reverseWidth = directedWidths.get(JSON.stringify([target, source]));
+    const bend =
+      attrs.directed && source !== target && reverseWidth !== undefined
+        ? Math.max(24, Math.hypot(t.x - s.x, t.y - s.y) * 0.2, (width + reverseWidth) * 2)
+        : 0;
+    const geometry = edgeGeometry(
+      s,
+      t,
+      shapeExtent(s.shape, s.r) + s.strokeWidth / 2,
+      shapeExtent(t.shape, t.r) + t.strokeWidth / 2,
+      width,
+      bend,
+      attrs.directed ? (options.directedStyle ?? 'arrow') : undefined,
+    );
     rawEdges.push({
       id: key,
       source: s.id,
       target: t.id,
-      path,
+      ...geometry,
       width:
         w !== undefined && Number.isFinite(w.width) ? Math.max(0, w.width) : DEFAULT_EDGE_WIDTH,
       color: DEFAULT_EDGE_COLOR,
@@ -329,6 +351,10 @@ export function buildScene(
       }
     }
   }
+  // 矢じりや帯は線の中心から離れるので、それぞれの頂点も範囲に含める。
+  for (const edge of rawEdges) {
+    for (const p of [...(edge.head ?? []), ...(edge.ribbon ?? [])]) grow(p.x, p.y, p.x, p.y);
+  }
   for (const l of rawLabels) {
     const w = textWidth(l.text);
     const x0 = l.anchor === 'right' ? l.x - w : l.x;
@@ -346,6 +372,18 @@ export function buildScene(
   const nodes = rawNodes.map((n) => ({ ...n, x: n.x + dx, y: n.y + dy }));
   const edges = rawEdges.map((e) => ({
     ...e,
+    ...(e.head === undefined ? {} : { head: e.head.map((p) => ({ x: p.x + dx, y: p.y + dy })) }),
+    ...(e.ribbon === undefined
+      ? {}
+      : { ribbon: e.ribbon.map((p) => ({ x: p.x + dx, y: p.y + dy })) }),
+    ...(e.gradient === undefined
+      ? {}
+      : {
+          gradient: {
+            start: { x: e.gradient.start.x + dx, y: e.gradient.start.y + dy },
+            end: { x: e.gradient.end.x + dx, y: e.gradient.end.y + dy },
+          },
+        }),
     path: e.path.map((c): PathCommand => {
       switch (c.type) {
         case 'M':
