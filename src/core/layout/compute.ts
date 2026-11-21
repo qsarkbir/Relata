@@ -139,6 +139,10 @@ export function createLayoutSession(job: LayoutJob): LayoutSession {
           ? radius * Math.sin(angle)
           : radius * (random() - 0.5);
     const fixed = kind === 'fixed' || (saved?.fixed ?? false);
+    // 【なぜ】0.10.1 の helpers.js は index[node] = j として j を PPN=10 ずつ進め、
+    // iterate.js もエッジ端点をノード番号ではなく配列上のオフセットとして読む。
+    // したがってここは index そのものではなく index * 10。matrix-contract.test.ts で
+    // helpers.graphToByteArrays の実出力と比較し、依存更新時の列契約のずれを検出する。
     const offset = index * 10;
     indices.set(id, offset);
     // ライブラリ 0.10.1 の列: x,y,dx,dy,old_dx,old_dy,mass,convergence,size,fixed。
@@ -157,6 +161,9 @@ export function createLayoutSession(job: LayoutJob): LayoutSession {
       const weight = graph.getEdgeAttribute(edge, 'weight');
       if (!Number.isFinite(weight) || weight < 0 || weight > 1e9)
         throw new RangeError('レイアウトの重みが不正です。');
+      // helpers.js と同じく mass は 1 + weighted degree。自己ループでは source と
+      // target が同じオフセットなので、2 つの加算を両方行う（1 + 2*weight）。
+      // 片側だけにまとめるとライブラリの自己ループの質量と異なってしまう。
       nodeMatrix[source + 6] = (nodeMatrix[source + 6] ?? 1) + weight;
       nodeMatrix[target + 6] = (nodeMatrix[target + 6] ?? 1) + weight;
       edgeMatrix.set([source, target, weight], index * 3);
