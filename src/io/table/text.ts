@@ -1,3 +1,4 @@
+import { unprotectFormula } from './formula';
 /** CSV/TSV の文字コードとレコードの解析（FR-IN-01、FR-IN-06、D-27）。 */
 
 /** 手動で選べる文字コード。追加時は表示名も同じ場所で定義する。 */
@@ -90,16 +91,21 @@ export interface TextTable {
  * 壊れた引用は位置つき SyntaxError、列数の違いは行を残して警告にする。
  * @param text - 復号済みの表
  * @param delimiter - カンマまたはタブ
+ * @param options - Relataの式保護を明示して読む場合だけformulaProtectionをtrueにする
  * @returns ヘッダ、データ行、レコード単位の警告
  */
-export function parseTextTable(text: string, delimiter: ',' | '\t' = ','): TextTable {
+export function parseTextTable(
+  text: string,
+  delimiter: ',' | '\t' = ',',
+  options: { readonly formulaProtection?: boolean } = {},
+): TextTable {
   const records: string[][] = [];
   let record: string[] = [];
   let cell = '';
   // 【TS】文字列リテラルの共用体で、引用の前後を区別する。
   let state: 'plain' | 'quoted' | 'closed' = 'plain';
   const finishCell = () => {
-    record.push(cell);
+    record.push(options.formulaProtection === true ? unprotectFormula(cell) : cell);
     cell = '';
     state = 'plain';
   };

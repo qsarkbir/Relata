@@ -165,6 +165,16 @@ export const ja = {
   'project.failure.newerVersionUnknown':
     'このファイルは新しい版で保存されています。アプリを更新してから開いてください。',
   'project.failure.migrationUnknown': '古い版のファイルを、今の版へ変換できませんでした。',
+  'csv.bom': 'UTF-8 BOMを付ける',
+  'csv.edges': 'エッジCSV',
+  'csv.failed': 'CSVを保存できませんでした。もう一度お試しください。',
+  'csv.global': '全体指標CSV',
+  'csv.hint':
+    '現在の絞り込み対象を全件出力します。保護した文字列を戻すには、読み込み時にRelataの式保護を指定してください。',
+  'csv.metrics': 'ノード指標CSV',
+  'csv.nodes': 'ノードCSV',
+  'csv.protection': '式として解釈されうる文字列を保護する',
+  'csv.title': 'CSV出力',
   'metrics.title': 'ネットワーク指標',
   'metrics.empty': 'データを読み込むと指標が表示されます。',
   'metrics.waiting': '変更を待ってから計算します…',
