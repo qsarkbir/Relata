@@ -136,8 +136,9 @@ test.describe('NFR-07: キーボード操作', () => {
     await page.locator('body').click({ position: { x: 1, y: 1 } });
 
     // 操作: Tab だけで「About this tool」へ進む。順序はヘッダの左から:
-    //   「Open project」「Clear autosave」（データが無いので「Save」は無効で飛ばされる）、日本語、English、About。
+    //   「Import tables」「Open project」「Clear autosave」（データが無いので「Save」は無効で飛ばされる）、日本語、English、About。
     const order = [
+      page.getByRole('button', { name: 'Import tables' }),
       page.getByRole('button', { name: 'Open project' }),
       page.getByRole('button', { name: 'Clear autosave' }),
       page.getByRole('button', { name: '日本語' }),

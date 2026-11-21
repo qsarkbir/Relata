@@ -388,7 +388,11 @@ test.describe('NFR-07: プロジェクトの 3 つのボタンのキーボード
     await openProject(page, 'maghrib.relata.json');
     await page.locator('body').click({ position: { x: 1, y: 1 } });
 
-    // 操作: Tab で順に「保存」「プロジェクトを開く」「自動保存を消す」へ。
+    // 操作: Tab で順に「表データを読み込む」「保存」「プロジェクトを開く」「自動保存を消す」へ。
+    await page.keyboard.press('Tab');
+    await expect(
+      page.getByRole('button', { name: '表データを読み込む', exact: true }),
+    ).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(saveButton(page)).toBeFocused();
     await page.keyboard.press('Tab');

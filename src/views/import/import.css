@@ -1,0 +1,65 @@
+.import-dialog {
+  inline-size: min(90vw, 80rem);
+  max-block-size: 90vh;
+  overflow: auto;
+}
+.import-dialog label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block: 0.5rem;
+}
+.import-dialog textarea {
+  inline-size: 100%;
+  direction: ltr;
+}
+.import-dialog fieldset {
+  margin-block: 1rem;
+  min-inline-size: 0;
+}
+.import-dialog button {
+  margin-inline-end: 0.5rem;
+  margin-block: 0.25rem;
+}
+.import-dialog select,
+.import-dialog input {
+  max-inline-size: 100%;
+}
+.import-table-wrap {
+  overflow: auto;
+  max-block-size: 26rem;
+}
+.import-table-wrap table {
+  border-collapse: collapse;
+  inline-size: 100%;
+}
+.import-table-wrap th,
+.import-table-wrap td {
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  text-align: start;
+  vertical-align: top;
+}
+.import-table-wrap input {
+  inline-size: 10rem;
+}
+.import-warning {
+  border-inline-start: 4px solid #9a6800;
+  padding-inline: 0.75rem;
+}
+.import-warning-list {
+  max-block-size: 24rem;
+  overflow: auto;
+}
+.import-warning-list li {
+  margin-block: 0.5rem;
+}
+.import-missing-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.import-report {
+  margin: 0.5rem;
+}

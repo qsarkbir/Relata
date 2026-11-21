@@ -2,6 +2,7 @@ import { AboutDialog } from '../views/AboutDialog';
 import { FilterPanel } from '../views/FilterPanel';
 import { SampleCard } from '../views/SampleCard';
 import { ProjectMenu } from '../views/ProjectMenu';
+import { ImportWizard } from '../views/ImportWizard';
 import { ProjectNotice } from '../views/ProjectNoticePanel';
 import { TaskPanel } from '../views/TaskPanel';
 import { MetricsPanel } from '../views/MetricsPanel';
@@ -33,6 +34,7 @@ export function App() {
         <h1>{t('app.title')}</h1>
         <p className="tagline">{t('app.tagline')}</p>
         <div className="header-actions">
+          <ImportWizard />
           <ProjectMenu
             onClearAutosave={() => {
               void clearAutosave();
