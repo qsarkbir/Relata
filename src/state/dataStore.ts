@@ -1,31 +1,13 @@
 import { createStore } from 'zustand/vanilla';
-import type { CalendarId, Dataset, MissingReason } from '../core/model';
+import type { Dataset } from '../core/model';
 
-/** 欠損の記号と理由の対応 1 件（FR-IN-07）。`io/project` の `MissingToken` と同じ形。 */
-export interface StoredMissingToken {
-  readonly token: string;
-  readonly reason: MissingReason;
-}
-
-/** 列ごとの暦の指定 1 件。`io/project` の `ColumnCalendar` と同じ形。 */
-export interface StoredColumnCalendar {
-  readonly column: string;
-  readonly calendar: CalendarId;
-}
-
-/**
- * 読み込みの設定。プロジェクトファイルに保存する（D-24）。
- *
- * 【なぜ】`io/project` の `ImportSettings` と同じ形を、ここで別に宣言する。state は io を import できない
- * （D-26）ため。形が同じなので、views と app では `ImportSettings` と相互に代入できる
- * （型の一致は `src/views/projectLoad.test.ts` が検査する。D-33 (8)）。
- */
-export interface StoredImportSettings {
-  readonly missingTokens: readonly StoredMissingToken[];
-  readonly encoding?: string;
-  readonly columnCalendars: readonly StoredColumnCalendar[];
-}
-
+import type { ImportSettings, MissingToken, ColumnCalendar } from '../core/project';
+/** 既存APIを保つための別名（共通型の所有者はcore/project）。 */
+export type StoredImportSettings = ImportSettings;
+/** 既存APIを保つための欠損記号型。 */
+export type StoredMissingToken = MissingToken;
+/** 既存APIを保つための暦型。 */
+export type StoredColumnCalendar = ColumnCalendar;
 /** 既定の読み込み設定（`io/project` の `DEFAULT_IMPORT_SETTINGS` と同じ値）。 */
 export const EMPTY_IMPORT_SETTINGS: StoredImportSettings = {
   missingTokens: [],

@@ -1,4 +1,4 @@
-import { dataStore, filterStore, uiStore } from '../state';
+import { dataStore, filterStore, uiStore, graphViewStore } from '../state';
 import { projectNoticeStore } from '../views/projectNotice';
 import type { ProjectNotice } from '../views/projectNotice';
 import { createAutosave } from './autosave';
@@ -19,7 +19,12 @@ const PROBLEM_NOTICE: Readonly<Record<AutosaveProblem, ProjectNotice>> = {
  * 【なぜ】`indexedDB` が未定義の環境でも例外にせず、保存先の失敗として扱う（`typeof` で調べる）。
  */
 export const autosave = createAutosave({
-  targets: { data: dataStore, filter: filterStore, notice: projectNoticeStore },
+  targets: {
+    graph: graphViewStore,
+    data: dataStore,
+    filter: filterStore,
+    notice: projectNoticeStore,
+  },
   storage: createIdbStorage(typeof indexedDB === 'undefined' ? undefined : indexedDB),
   now: () => new Date().toISOString(),
   onProblem: (p) => {

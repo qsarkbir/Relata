@@ -1,3 +1,4 @@
+import { GraphView } from '../views/GraphView';
 import { AboutDialog } from '../views/AboutDialog';
 import { FilterPanel } from '../views/FilterPanel';
 import { SampleCard } from '../views/SampleCard';
@@ -71,6 +72,7 @@ export function App() {
           <FilterPanel />
         </aside>
         <main className="region-main" aria-label={t('app.region.main')}>
+          <GraphView />
           {dataset === null ? (
             <div className="empty">
               <h2>{t('app.empty.title')}</h2>

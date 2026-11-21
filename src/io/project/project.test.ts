@@ -5,6 +5,8 @@ import { cleanDataset, cleanFilter, sampleSettings } from './fixtures/projectFix
 import { parseProject, serializeProject, type Migrations } from './project';
 import { DEFAULT_IMPORT_SETTINGS, PROJECT_VIEW_KEYS, type ProjectParts } from './types';
 
+import { DEFAULT_GRAPH_VIEW } from '../../core/project';
+
 const AT = '2026-11-18T00:00:00Z';
 const parts: ProjectParts = {
   dataset: cleanDataset(),
@@ -63,8 +65,9 @@ describe('プロジェクトの往復', () => {
     expect(ok(serializeProject(r.value, AT)).value).toEqual(r.value);
   });
   it('FR-PJ-01: ProjectView のすべてのキーが保存され、読み込み後も残る', () => {
-    const saved = sub(obj(serializeProject(parts, AT)), 'view');
-    const loaded = ok(serializeProject(parts, AT)).value.view;
+    const full = { ...parts, view: { ...parts.view, graph: DEFAULT_GRAPH_VIEW } };
+    const saved = sub(obj(serializeProject(full, AT)), 'view');
+    const loaded = ok(serializeProject(full, AT)).value.view;
     for (const key of PROJECT_VIEW_KEYS) {
       expect(Object.hasOwn(saved, key)).toBe(true);
       expect(Object.hasOwn(loaded, key)).toBe(true);

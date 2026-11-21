@@ -252,12 +252,18 @@ test.describe('FR-PJ-02: 自動保存', () => {
     await page.getByTestId('project-file-input').setInputFiles(fixturePath('maghrib.relata.json'));
     // 読み込みの内部の待ち（描画の合間）を、読み込みが終わるまで少しずつ進める。
     await advanceClockUntilLoaded(page);
-    // 期待: 900 ミリ秒後（変更から 1 秒に届かない）では、まだ保存されない。
-    await page.clock.runFor(800);
-    expect(await readAutosave(page)).toBeNull();
-    // 期待: 1 秒を過ぎると保存される。
-    await page.clock.runFor(300);
-    const saved = await waitForAutosave(page);
+    // 【なぜ】初回のWorker結果も保存対象。配置完了まで待ってから保存の基準を作る。
+    await expect(page.getByRole('status').filter({ hasText: 'ノードを表示' })).toBeVisible();
+    await expect(page.locator('.task-panel')).toBeHidden();
+    await page.clock.runFor(1100);
+    await waitForAutosave(page);
+    const initial = await readAutosave(page);
+    // 配置済みノードの絞り込みなら座標更新は起きない。この明示操作から1秒を測る。
+    await page.getByRole('checkbox', { name: 'タイプ 1', exact: true }).check();
+    await page.clock.runFor(900);
+    expect(await readAutosave(page)).toBe(initial);
+    await page.clock.runFor(200);
+    const saved = await waitForAutosave(page, (value) => value.view.filter.filters.length === 1);
     expect(saved.dataset.nodes).toHaveLength(15);
   });
 
