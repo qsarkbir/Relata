@@ -1,3 +1,4 @@
+import { CsvExportControls } from './metrics/CsvExportControls';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { MessageKey } from '../i18n';
 import {
@@ -115,6 +116,7 @@ export function MetricsPanel() {
           <bdi>{view.error}</bdi>
         </div>
       )}
+      {dataset !== null && <CsvExportControls dataset={dataset} filter={filter} result={result} />}
       {result !== null && <MetricResults result={result} />}
     </section>
   );

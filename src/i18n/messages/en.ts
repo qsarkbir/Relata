@@ -164,6 +164,16 @@ export const en = {
     'This file was saved by a newer version. Update the app and open it again.',
   'project.failure.migrationUnknown':
     'Could not convert the old-format file to the current format.',
+  'csv.bom': 'Include UTF-8 BOM',
+  'csv.edges': 'Edges CSV',
+  'csv.failed': 'Could not save CSV. Please try again.',
+  'csv.global': 'Global metrics CSV',
+  'csv.hint':
+    'Exports every currently filtered record. Select Relata formula protection when importing a protected CSV to restore the original strings.',
+  'csv.metrics': 'Node metrics CSV',
+  'csv.nodes': 'Nodes CSV',
+  'csv.protection': 'Protect strings that may be interpreted as formulas',
+  'csv.title': 'CSV export',
   'metrics.title': 'Network metrics',
   'metrics.empty': 'Load data to see network metrics.',
   'metrics.waiting': 'Waiting for recent changes…',
