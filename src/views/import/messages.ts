@@ -1,0 +1,45 @@
+import type { MessageKey } from '../../i18n';
+import type { ColumnRole } from './model';
+/** 用途と翻訳キーの対応。 */
+export const ROLE_NAMES: Record<ColumnRole, MessageKey> = {
+  ignore: 'import.role.ignore',
+  attr: 'import.role.attr',
+  id: 'import.role.id',
+  label: 'import.role.label',
+  type: 'import.role.type',
+  source: 'import.role.source',
+  target: 'import.role.target',
+  sourceType: 'import.role.sourceType',
+  targetType: 'import.role.targetType',
+  directed: 'import.role.directed',
+  relation: 'import.role.relation',
+  weight: 'import.role.weight',
+  lat: 'import.role.lat',
+  lon: 'import.role.lon',
+  date: 'import.role.date',
+  start: 'import.role.start',
+  end: 'import.role.end',
+  sourceId: 'import.role.sourceId',
+  targetId: 'import.role.targetId',
+  sourceAttr: 'import.role.sourceAttr',
+  targetAttr: 'import.role.targetAttr',
+  edgeAttr: 'import.role.edgeAttr',
+};
+/** 読み込みコードを、画面の言語で表示するための対応。 */
+export const WARNING_NAMES: Readonly<Record<string, MessageKey>> = {
+  'column-count': 'import.warning.column-count',
+  'invalid-value': 'import.warning.invalid-value',
+  'duplicate-id': 'import.warning.duplicate-id',
+  'merged-label': 'import.warning.merged-label',
+  'unknown-node': 'import.warning.unknown-node',
+  'ambiguous-node': 'import.warning.ambiguous-node',
+  'invalid-date': 'import.warning.invalid-date',
+  'invalid-coordinate': 'import.warning.invalid-coordinate',
+  'date-warning': 'import.warning.date-warning',
+  'excel-cell': 'import.warning.excel-cell',
+  'attribute-conflict': 'import.warning.attribute-conflict',
+  'label-conflict': 'import.warning.label-conflict',
+  'generated-ids': 'import.warning.generated-ids',
+  replacement: 'import.warning.replacement',
+  'suspect-encoding': 'import.warning.suspect-encoding',
+};
