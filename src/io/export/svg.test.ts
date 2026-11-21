@@ -134,3 +134,22 @@ it('FR-OUT-01 / NFR-02: 保存リンクの生成に失敗しても Blob URL を�
   vi.advanceTimersByTime(10_000);
   expect(revoke).toHaveBeenCalledWith('blob:failed-svg');
 });
+
+it.each([
+  [undefined, 'relata.svg'],
+  ['', 'relata.svg'],
+  [' \t\n ', 'relata.svg'],
+  [' figure ', 'figure.svg'],
+  [' figure.SVG ', 'figure.SVG'],
+])('FR-OUT-01: 保存名の前後の空白を除き空なら既定名を使う (%s)', (fileName, expected) => {
+  vi.useFakeTimers();
+  vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:named-svg');
+  vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+  const anchor = { href: '', download: '', click: vi.fn(), remove: vi.fn() };
+  vi.stubGlobal('document', { createElement: () => anchor, body: { append: vi.fn() } });
+  downloadSvg(createSvgExport(graph(), positions), fileName);
+  expect(anchor.download).toBe(expected);
+  expect(anchor.click).toHaveBeenCalledOnce();
+  expect(anchor.remove).toHaveBeenCalledOnce();
+  vi.advanceTimersByTime(10_000);
+});
