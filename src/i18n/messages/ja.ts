@@ -10,6 +10,12 @@ export const ja = {
   'app.documentTitle': 'Relata',
   'app.tagline': '歴史研究のためのネットワーク可視化ツール',
   'app.empty.title': 'データがまだ読み込まれていません',
+  'sample.title': 'サンプルデータ',
+  'sample.open': 'サンプルを読み込む',
+  'sample.task': 'サンプルデータを読み込み中',
+  'sample.error': 'サンプルを読み込めませんでした。もう一度お試しください。',
+  'sample.description.ja':
+    '15〜16世紀のマグリブの学者とスーフィーの社会的ネットワークを記録したデータです。イブン・アスカル・シャフシャーワーニー（986/1578年没）の『Dawḥat al-nāshir li-maḥāsin man kāna bi-l-Maghrib min mashāyikh al-qarn al-ʿāshir』に基づき、当初はPalladioで地図上にネットワークを可視化するために作成されました。',
   'app.empty.body':
     '表データ（CSV、Excel など）を読み込むと、ここにグラフや指標が表示されます。読み込みの機能は準備中です。',
   'app.region.filters': '絞り込み',
