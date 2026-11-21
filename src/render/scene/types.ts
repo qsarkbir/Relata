@@ -122,6 +122,8 @@ export interface Scene {
   readonly nodes: readonly SceneNode[];
   readonly edges: readonly SceneEdge[];
   readonly labels: readonly SceneLabel[];
+  /** 重なりのために隠したラベルのノード ID。データを除外した意味ではない。 */
+  readonly hiddenLabels?: readonly NodeId[];
   readonly legend?: SceneLegend;
   readonly omitted: SceneOmitted;
 }

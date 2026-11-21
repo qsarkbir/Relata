@@ -1,3 +1,4 @@
+import { placeLabels } from '../labels/layout';
 import { edgeGeometry, type DirectedEdgeStyle } from '../edges/geometry';
 /**
  * シーンの組み立て（設計書 §8.1、D-31）。
@@ -64,7 +65,7 @@ export interface LegendSpec {
   readonly items: readonly LegendItemSpec[];
 }
 
-/** ラベルの表示方法。重なりの解消は T1-13。 */
+/** ラベル候補の表示方法。候補の中から重なりを減らして描く（FR-VG-10）。 */
 export type LabelMode = 'all' | 'selected' | 'large';
 
 /** `buildScene` の選択肢。 */
@@ -204,9 +205,14 @@ export function buildScene(
   const font = `${String(fontSize)}px ${fontFamily}`;
   const measure = options.measureText;
   // 測定の結果が使えないときは、文字数からの見積もりにする（凡例と同じ）。
+  const measuredWidths = new Map<string, number>();
   const textWidth = (t: string): number => {
+    const cached = measuredWidths.get(t);
+    if (cached !== undefined) return cached;
     const w = measure?.(t, font);
-    return nonNeg(w, t.length * fontSize * 0.6);
+    const width = nonNeg(w, t.length * fontSize * 0.6);
+    measuredWidths.set(t, width);
+    return width;
   };
   const selected = options.selected ?? new Set<NodeId>();
   const showSel = options.includeSelection === true;
@@ -301,9 +307,9 @@ export function buildScene(
     });
   });
 
-  // 3. ラベル。表示する候補を決める。重なりの解消は T1-13。
+  // 3. 表示設定で候補を決め、大きいノードを優先して重なりを減らす。
   const labelNodes = pickLabelNodes(rawNodes, labelMode, selected, options.largeLabelCount ?? 20);
-  const rawLabels: SceneLabel[] = [];
+  const labelCandidates: SceneLabel[] = [];
   for (const n of labelNodes) {
     const text = graph.getNodeAttribute(n.id, 'label');
     if (text.trim() === '') continue; // 空のラベルは出さない
@@ -311,8 +317,14 @@ export function buildScene(
     const dir = detectDirection(text);
     // 右から左のラベルは、ノードの左側に置き、文字は左へ伸ばす（text-anchor=end）。
     const x = dir === 'rtl' ? n.x - ext : n.x + ext;
-    rawLabels.push(makeLabel(n.id, text, x, n.y + fontSize * 0.35, fontSize));
+    labelCandidates.push(makeLabel(n.id, text, x, n.y + fontSize * 0.35, fontSize));
   }
+
+  const { visible: rawLabels, hidden: hiddenLabels } = placeLabels(
+    labelCandidates,
+    rawNodes,
+    textWidth,
+  );
 
   // 4. 範囲。ノード・エッジの線幅とラベルを収める。
   let minX = Infinity;
@@ -425,6 +437,7 @@ export function buildScene(
     // 【なぜ】exactOptionalPropertyTypes のため、`legend: undefined` と書けない。あるときだけ足す。
     ...(legend === undefined ? {} : { legend }),
     fontFamily,
+    hiddenLabels,
     omitted: {
       nodesWithoutPosition: missingPos,
       edgesWithoutEndpoint,
