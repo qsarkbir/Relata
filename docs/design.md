@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 3.1（2026-11-20） |
+| 版 | 3.2（2026-11-21） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -598,6 +598,8 @@ interface ProjectFile {
 ## 13. 旧 Palladio の問題への対応
 
 [filter-audit.md](filter-audit.md) の項目番号に対応する。各項目に回帰テストを書く。
+
+T1-23 は MVP で利用できる #1〜10 と関連 issue の回帰を確認する。#11（地図の範囲選択、FR-MP-04）は要件のフェーズ 3・T3-06 で実装と回帰テストを行い、MVP の確認で実装済みとは扱わない。対応するテストと保留範囲は [回帰テスト対応表](regression-coverage.md) に記録する。
 
 | # | 旧版の問題 | 対応 | 関連要件 |
 |---|---|---|---|
