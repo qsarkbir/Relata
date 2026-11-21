@@ -6,3 +6,11 @@ export { openExcel, excelSerialDate } from './excel';
 export type { ExcelWorkbook } from './excel';
 export { importTables } from './dataset';
 export type { AttributeColumn, ImportWarning, TableImportResult, TableMapping } from './dataset';
+export { importSingleTable } from './single';
+export type {
+  SingleTableEndpoint,
+  SingleTableEdge,
+  SingleTableMapping,
+  SingleTableWarning,
+  SingleTableResult,
+} from './single';
