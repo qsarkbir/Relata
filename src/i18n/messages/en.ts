@@ -164,4 +164,82 @@ export const en = {
     'This file was saved by a newer version. Update the app and open it again.',
   'project.failure.migrationUnknown':
     'Could not convert the old-format file to the current format.',
+  'metrics.title': 'Network metrics',
+  'metrics.empty': 'Load data to see network metrics.',
+  'metrics.waiting': 'Waiting for recent changes…',
+  'metrics.running': 'Computing metrics for the filtered graph…',
+  'metrics.cancel': 'Cancel metrics calculation',
+  'metrics.cancelled': 'Calculation cancelled.',
+  'metrics.recalculate': 'Recalculate metrics',
+  'metrics.failed': 'Could not calculate metrics. Try calculating again.',
+  'metrics.global': 'Global metrics',
+  'metrics.nodes': 'Node metrics',
+  'metrics.label': 'Label',
+  'metrics.id': 'ID',
+  'metrics.sortBy': 'Sort by {label}',
+  'metrics.previous': 'Previous 50 rows',
+  'metrics.next': 'Next 50 rows',
+  'metrics.page': 'Rows {from}–{to} of {total}',
+  'metrics.explanations': 'Read metric explanations',
+  'metrics.degree': 'Degree (total)',
+  'metrics.inDegree': 'In-degree',
+  'metrics.outDegree': 'Out-degree',
+  'metrics.weightedDegree': 'Weighted degree (total)',
+  'metrics.inWeight': 'Weighted in-degree',
+  'metrics.outWeight': 'Weighted out-degree',
+  'metrics.betweenness': 'Betweenness',
+  'metrics.closeness': 'Closeness',
+  'metrics.inCloseness': 'Closeness (incoming)',
+  'metrics.outCloseness': 'Closeness (outgoing)',
+  'metrics.pagerank': 'PageRank',
+  'metrics.eigenvector': 'Eigenvector centrality',
+  'metrics.hubs': 'HITS (hub)',
+  'metrics.authorities': 'HITS (authority)',
+  'metrics.kCore': 'k-core',
+  'metrics.clustering': 'Clustering coefficient',
+  'metrics.nodeCount': 'Node count',
+  'metrics.edgeCount': 'Edge count',
+  'metrics.density': 'Density',
+  'metrics.averageDegree': 'Average degree',
+  'metrics.components': 'Components',
+  'metrics.transitivity': 'Transitivity',
+  'metrics.reciprocity': 'Reciprocity',
+  'metrics.help.degree':
+    'Number of incident edges. Directed graphs separate incoming, outgoing and total degree; an undirected self-loop counts twice.',
+  'metrics.help.weightedDegree':
+    'Sum of incident edge weights, with incoming and outgoing values for directed graphs.',
+  'metrics.help.betweenness':
+    'How often a node lies on shortest paths between others. Distances use hops, not edge weights.',
+  'metrics.help.closeness':
+    'Closeness to other nodes, corrected by the reachable fraction. Directed graphs distinguish incoming and outgoing distances.',
+  'metrics.help.pagerank':
+    'Importance from links received from other important nodes. Weights represent connection strength.',
+  'metrics.help.eigenvector':
+    'Importance of connected neighbors. Directed graphs use HITS hubs (linking to authorities) and authorities (linked by hubs).',
+  'metrics.help.kCore':
+    'Largest k for which a node belongs to a subgraph where each node has degree at least k. Direction is ignored.',
+  'metrics.help.clustering':
+    'How often a node’s neighbors are linked to each other. Direction is ignored.',
+  'metrics.help.nodeCount': 'Number of nodes after filters and the isolated-node setting.',
+  'metrics.help.edgeCount': 'Number of edges after aggregation between the same endpoints.',
+  'metrics.help.density':
+    'Fraction of possible links that exist. Self-loops count in the numerator, so density can exceed 1.',
+  'metrics.help.averageDegree':
+    '2 × edges / nodes for undirected graphs; arcs / nodes for directed graphs. Mixed undirected edges become two arcs.',
+  'metrics.help.components':
+    'Number of connected pieces; weakly connected components for directed graphs.',
+  'metrics.help.transitivity':
+    'Fraction of connected triples that form triangles. Direction is ignored.',
+  'metrics.help.reciprocity':
+    'Fraction of directed links with a reverse link. Undirected edges are excluded; self-loops do not form reciprocal pairs.',
+  'metrics.failure.notApplicable': 'Not applicable',
+  'metrics.failure.notDefined': 'Not defined',
+  'metrics.failure.noConvergence': 'Did not converge',
+  'metrics.failure.unexpected': 'Calculation error',
+  'metrics.failure.notComputed': 'Not calculated',
+  'metrics.note.mixedAsBidirectional':
+    'Undirected edges in the mixed graph were treated as links in both directions.',
+  'metrics.note.directedAsUndirected': 'These metrics were calculated ignoring direction.',
+  'metrics.note.multipleNodeTypes':
+    'Multiple node types are present. Interpret these metrics carefully because they assume a single node type.',
 } satisfies Record<MessageKey, string>;

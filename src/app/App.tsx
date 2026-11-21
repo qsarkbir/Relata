@@ -3,6 +3,7 @@ import { FilterPanel } from '../views/FilterPanel';
 import { ProjectMenu } from '../views/ProjectMenu';
 import { ProjectNotice } from '../views/ProjectNoticePanel';
 import { TaskPanel } from '../views/TaskPanel';
+import { MetricsPanel } from '../views/MetricsPanel';
 import { useData, useT, useUi } from '../views/hooks';
 import { LOCALES, LOCALE_NAMES } from '../i18n';
 import { clearAutosave } from './autosaveService';
@@ -75,7 +76,7 @@ export function App() {
           ) : null}
         </main>
         <aside className="region-metrics" aria-label={t('app.region.metrics')}>
-          <p className="placeholder">{t('app.region.metrics.placeholder')}</p>
+          <MetricsPanel />
         </aside>
       </div>
       <TaskPanel />

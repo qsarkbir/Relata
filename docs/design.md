@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 3.1（2026-11-20） |
+| 版 | 3.3（2026-11-21） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -419,6 +419,8 @@ export interface FilterState {
   - `src/workers/metrics.client.ts`: `new Worker(new URL(...), { type: 'module' })` で起動し、Comlink で包む。公開する API は `run(req): Promise<Result>` と `cancel()`。`cancel()` は保留中の Promise を `AbortError` で reject してから Worker を terminate し、次の `run` のために作り直す（terminate すると Comlink の Promise は決して終わらないため）。
   - `src/state/`: 版番号を採番し、古い結果を捨てる。**中止は Worker を terminate して作り直す**（同期の計算は途中で止められないため）。
 - **グラフの受け渡し**: graphology のグラフはクラスのインスタンスなので、Worker へそのまま送れない（structured clone できない）。`core/graph` が graphology の書き出し形式（`graph.export()`）を `GraphSnapshot` として作り、Worker の中で `Graph.from()` で組み立て直す。レイアウトも同じ。bundling の入力はグラフではなく、レイアウト後のエッジの座標（§4.3）。
+- **T1-20 の指標パネル**: 絞り込み後の `buildGraph` を 200 ms 待って Worker に渡す。state の指標 controller が入力の版を管理し、入力変更・中止・再試行のたびに古い計算と待ち時間を破棄する。結果は保存対象のストアに置かず、購読できる controller の一時キャッシュとして保持する。入力が替わったら古い値はすぐ隠す。手動中止後は再計算ボタンで再開できる。割合の進捗は得られないので不定の progress を使う。
+- ノード表はラベル・ID・各指標で並べ替え、50 行ずつ表示する。欠けた値や計算失敗は 0 と区別し、並び順にかかわらず末尾へ置く。同点は ID 順にして再現する。全体指標、計算の注意、短い日英の用語説明（列見出しの title と開閉できる説明一覧）も表示する。グラフ構築の設定は現時点では既定値（重み合計、自己ループ含む）で、T1-19 で viewStore を接続するとき同じ GraphOptions を controller へ渡す。CSV 書き出しは T1-15 の指標 CSV と後続で接続する（FR-MT-04 の CSV 部分は残件）。
 - **注意表示**（FR-MT-05）: ノード型が 2 種類以上あるとき、中心性の欄に注意を出す。
 - **検証**: `tests/golden/` に、小さなグラフ（有向、無向、二部、非連結、自己ループあり）と networkx で求めた正解値を置き、相対誤差 1e-6 以内で一致することを確かめる。
 
