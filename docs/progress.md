@@ -130,7 +130,7 @@
 | T1-05 | 見た目への割り当てとスケール（線形／平方根／対数） | core-model | T1-01 | FR-VG-03、04、08 | ✅ | 2026-11-19 | core-model が `src/core/encode/`（スケール、Okabe-Ito と viridis の配色、`EncodingSettings` と `parseEncodingSettings`、大きさ・太さ・色・形の割り当て、凡例の情報、型の色と形の衝突の報告）を実装。既定は平方根（D-08）。R-08 は D-23 で決定。reviewer の指摘を受けて D-23 を補足 |
 | T1-26 | 文字の正規化（アラビア文字の揺れ、転写の補助記号、数字）と照合キー | core-model | T1-01 | FR-FL-12、設計 §5.2 | ✅ | 2026-11-19 | core-model が `src/core/text/`（`matchKey`、`matchIncludes`、7 つの設定）を実装。reviewer が全 Unicode の文字で正規化の形による食い違いがないことを確認し、指摘を受けて D-20 を改訂（`compat`、`invisibles` の独立、ؤ・ئ、単独の補助記号） |
 | T1-06 | CSV/TSV/Excel の読み込み、文字コード、列の型、警告、欠損の記号 | io | T1-01、T1-02 | FR-IN-01〜03、05〜07 | ✅ | 2026-11-20 | `src/io/table/` に UTF-8/Shift_JIS、CSV/TSV、列変換、Excel と 2 表→Dataset を実装。SheetJS CE 0.20.3（D-34）。独立レビューの必須2件（特殊列ごとの暦・座標の欠損記号）と警告の二重登録を修正し再レビューで必須指摘なし。型・lint・整形・単体620件・build・既存E2E50件が成功 |
-| T1-07 | Palladio 式の 1 表からの変換 | io | T1-06 | FR-IN-04、要件 §6.3 | ⬜ | | |
+| T1-07 | Palladio 式の 1 表からの変換 | io | T1-06 | FR-IN-04、要件 §6.3 | ✅ | 2026-11-21 | `importSingleTable` を追加。同型/異型、任意の ID 列、両端/エッジの属性、競合警告と元表保持。型検査・lint・整形・全単体633件・build成功。独立レビューの属性キー一意性の指摘を修正し、再レビュー必須指摘なし。画面接続は T1-17 |
 | T1-08 | プロジェクトファイルの形式、保存と読み込み、往復テスト | io | T1-01 | FR-IN-08、FR-PJ-01 | ✅ | 2026-11-19 | io が `src/io/project/`（`serializeProject`、`parseProject`、版の移行、`ImportSettings`、欠損の記号の照合 `compileMissingTokens`/`matchMissingToken`）を実装。FR-PJ-01 はデータとフィルタの部分（見た目、配置、時間は後のタスクで `view` に足す）。reviewer の指摘を受けて D-24 を補足（`savedAt` は任意、見えない書式文字、列挙に要素を足すときは版を上げる）。要件定義書 §6.6 の図を D-18、D-24 に合わせた（要件定義書 1.2） |
 | T1-09 | 指標の Worker と networkx の正解値 | graph-algo | T1-04 | FR-MT-01〜03 | ✅ | 2026-11-19 | graph-algo が `src/core/metrics/`（全指標。HITS は自作）、`src/workers/metrics.worker.ts`、`metrics.client.ts`（cancel、Worker の異常で reject）、`tests/golden/metrics/`（networkx 3.7 の正解値 12 ケース）を実装。graphology-metrics 2.4.2（MIT）、comlink 4.4.2（Apache-2.0）を追加。qa-tester が `tsconfig.worker.json` と Worker の ESLint 規則を追加（R-13）。reviewer の必須の指摘（重み 0 で PageRank が失敗）を直し、D-30 を補足。実測: ノード 1,000、エッジ 5,000 で全指標 約 0.5 秒、5,000／20,000 で約 5 秒（Worker で進行を表示）。Louvain はフェーズ 4 |
 | T1-10 | レイアウトの Worker（ForceAtlas2、円形、固定） | graph-algo | T1-04 | FR-VG-01、NFR-08 | ✅ | 2026-11-20 | `core/layout` と layout Worker/client を実装。seed と座標は JSON 保存可能。step の分割に依存しない継続反復、固定点、型ごとの円形、中止と異常処理を検証。ProjectView/viewStore への保存接続とドラッグ UI は T1-19/保存統合で行う。独立レビュー必須指摘なし。型検査・lint・整形・単体608件・build・既存E2E50件成功 |
@@ -221,6 +221,7 @@ T0-13 の試運転で、各エージェントが挙げた未決の点。利用�
 
 | 日付 | 内容 |
 |---|---|
+| 2026-11-21 | T1-07 を完了。独立レビューで異型間の属性キー重複を明示的に拒否する修正を反映し、633件の単体テスト・型検査・lint・整形・build成功。設計書3.2 §11.1に1表の属性競合・識別規則を記録。T1-06から分岐し、元表保持と共通の列・エッジ変換を再利用 |
 | 2026-11-20 | T1-06 の Excel と 2 表→Dataset を実装しレビュー待ちへ。設計書 3.1（D-34）で R-03〜05、エラー時の元表保持と公開の停止を決定。型検査・lint・整形・単体 618 件・build・既存 E2E 50 件が成功。画面への接続は T1-17 |
 | 2026-11-20 | T1-06 を開始。設計書 3.0: 警告のレコード番号とファイル全体の警告、列の推定・失敗時の原文保持を記録。CSV/TSV と列変換の解析層を実装 |
 | 2026-11-20 | Codex がローカルで引き継ぎ。Windows の通知画面の import 衝突を修正し、全体検証に成功。次の実装対象を T1-06 と確認（MVP の完了数は変更なし） |
