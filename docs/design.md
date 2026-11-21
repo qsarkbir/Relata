@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 2.9（2026-11-19） |
+| 版 | 3.1（2026-11-20） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -67,6 +67,8 @@
 
 ---
 
+決定事項 **D-34**（2026-11-20）: T1-06 の警告、同名ノード、Excel ライブラリとエラー時のデータ保持は §11.1 に記録（R-03〜05）。
+
 ## 3. 技術スタック
 
 | 領域 | 採用 | 理由 |
@@ -80,7 +82,7 @@
 | 地図 | MapLibre GL JS ＋ deck.gl | オープンソースで、時間アニメーション（TripsLayer）が得意 |
 | 地図の SVG 出力 | d3-geo | WebGL の画面はそのまま SVG にできないため |
 | Worker との通信 | Comlink | Worker の関数を普通の非同期関数として呼べる |
-| 表データの読み込み | Papa Parse（CSV）、Excel は未定（進行表の R-05）。文字コードの変換は標準の `TextDecoder`（§11.1） | Papa Parse は定番。npm の SheetJS は版が古いため見直す |
+| 表データの読み込み | CSV/TSV は `src/io/table/text.ts` の引用規則の解析。Excel は SheetJS CE 0.20.3（Apache-2.0、公式 tgz）。文字コードは標準の `TextDecoder` | CSV/TSV はレコードを保持して警告を出す。Excel はシリアル日付と起点を取得できる公開 API が必要（D-34） |
 | PDF | jsPDF ＋ svg2pdf.js、Noto Sans JP と Noto Naskh Arabic（サブセット） | SVG からベクター PDF を作る。日本語とアラビア文字のフォントを埋め込む |
 | 文字の整形 | harfbuzzjs | PDF に書き出すとき、アラビア文字の連結形を正しく作るため（§11.2） |
 | テスト | Vitest（単体）、Playwright（E2E） | Vite と相性がよい |
@@ -552,9 +554,15 @@ interface TimeState {
 ## 11. 入出力と保存
 
 ### 11.1 読み込み
+- **D-34（T1-06、R-03〜05）**: 警告は `ImportWarning`（表、任意のレコード番号と列、code、severity、message）。コードの一覧は `src/io/table/dataset.ts` と `text.ts` を正とする。構造や型に error があれば `dataset: null` と元表の全行を返す。黙って行を捨てたり、型の合わない属性を Dataset に入れたりしない。修正は元表を使って再実行する。警告だけなら Dataset を返す。
+- ID 列がない表は「型＋ラベル（NFC のみ）」で合流する。追加で合流した各行に `merged-label` の警告を出し（この件数が合流した追加行の数）、ID 列を勧める。先の行を保持する。ID 列があるのに値が空、または同じ型の ID が重複する場合は error。エッジの source/target は元の ID 列（ID 列がなければラベル）で照合する。複数型に一致する場合は sourceType/targetType の対応を指定するまで error にする。
+- Excel は [公式配布元](https://docs.sheetjs.com/docs/getting-started/installation/frameworks/) の SheetJS CE 0.20.3 を採用し、`openExcel` 内で動的 import する。read-excel-file 9.3.20 を調べたが、公開 Options は trim、parseNumber、dateFormat のみで、日付をシリアル値で取得する設定がないため採用しない。SheetJS は `cellDates: false`、`cellNF: true` で読み、日付書式のセルを core/time で換算する。1904 年起点を区別し、1900 年方式のシリアル 60（架空の日）、整数日でない時刻つきセル、エラーセル、計算結果のない数式は元の値と問題を残す。これらがある間は Dataset を生成しない。数式を実行・再計算しない。シート選択の画面は T1-17 で接続する。
+- T1-06 の解析層（2026-11-20）: 警告の行番号は、ヘッダを 1 とするレコード番号。引用内の改行は番号を増やさない。ファイル全体の文字コード警告では `row` を省略する（R-03 の行番号を確定）。CSV/TSV は引用内の区切り・改行と二重引用符を保持する。列数の違う行は残して警告し、壊れた引用はレコード番号つきの構文エラーにする。
+- 列の推定は欠損を除く全セルを検査し、真偽・数値・日付・文字列の順に提案する。年だけの数値を日付にするか、カテゴリにするかは利用者が変更する。型変換に失敗したセルは原文と失敗の状態を返し、Dataset の生成側で警告にする。複数値の一部だけが欠損のときも、黙って削らずセル全体を修正対象にする。
+- レビュー補足: `fieldOptions` で date/start/end の暦と欠損記号を列ごとに指定できる。`missingTokens` は表共通の既定で、属性列と座標列にも適用する。座標は両列が同じ理由の欠損なら GeoValue の Missing、片側だけの欠損または理由が違う場合は修正が必要な error とする。列数警告は同じレコードに重複して付けない。
 - 手順: ファイル選択 → 形式と文字コードの判定 → 表の解析 → 列の対応づけ（ウィザード）→ `Dataset` の生成 → 警告の一覧の表示。
 - 文字コードの判定: (1) BOM があればそれに従う。(2) ファイル**全体**を UTF-8 として厳密に（`TextDecoder` の `fatal: true` で）復号できれば UTF-8。(3) できなければ Shift_JIS（CP932）で同様に試す。(4) どれも通らなければ UTF-8 で読み、置換文字が出た旨を警告する。(5) Shift_JIS と判定したときは、半角カナの割合などから疑わしさを調べて警告し、試し読みを見せる（アラビア語の Windows-1256 のバイト列は、Shift_JIS の半角カナとして誤りなく復号できてしまうため）。フェーズ 1 では UTF-8 と Shift_JIS だけを扱い、後から広げられる形にする（D-27）。判定結果は画面に出し、利用者が変更できる。【なぜ】先頭の一部だけを見ると、切れ目が多バイト文字の途中に当たって誤判定する（T0-13 の io の指摘）。変換は標準の `TextDecoder` で行えるので、encoding-japanese は必要になるまで入れない。
-- 警告（FR-IN-06）は `ImportWarning { row: number; column?: string; code: WarningCode; message: string }` の配列として返す。
+- 警告（FR-IN-06）は `ImportWarning { row?: number; column?: string; code: WarningCode; message: string }` の配列として返す。
 
 ### 11.2 書き出し
 - 図: §8.1（SVG、PNG、PDF）、§9.4（地図）
