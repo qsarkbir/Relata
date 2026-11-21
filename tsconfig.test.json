@@ -28,5 +28,11 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["tests/**/*.ts", "vitest.config.ts", "playwright.config.ts"]
+  // 性能テストがcore/project経由でlayoutの型を読むため、境界の宣言も含める。
+  "include": [
+    "tests/**/*.ts",
+    "src/core/layout/forceatlas2.d.ts",
+    "vitest.config.ts",
+    "playwright*.config.ts"
+  ]
 }

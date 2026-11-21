@@ -8,7 +8,19 @@
 
 **Relata**（ラテン語で「関係づけられたもの」）は、歴史研究のためのネットワーク可視化ツールです。表データ（CSV、Excel など）を読み込み、絞り込み、ネットワーク指標を計算し、グラフ・地図・年表・表で見られるようにします。サーバーを持たない静的なブラウザアプリで、**読み込んだデータはブラウザの外に送りません**。
 
-> **開発中です。** 現在はフェーズ 0（開発の土台づくり）の段階で、まだ使える機能はありません。進み具合は [docs/progress.md](docs/progress.md) を見てください。
+> **開発中です。** フェーズ1のMVPを統合検証中です。以下の操作案内は統合版に対応します。公開サイトへの反映状況と未完了事項は [進行表](docs/progress.md) と [公開前チェック](docs/release-v0.1.md) を確認してください。
+
+### 統合版でできること
+
+1. 「表データを読み込む」からCSV/TSV/Excel（xlsx）を選ぶか、CSV/TSVを貼り付けます。差出人・受取人が並ぶ1表と、ノード表・エッジ表の2表に対応します。
+2. プレビューで文字コードとシートを確かめ、列の用途・型・暦・複数値の区切り・欠損記号を設定します。警告を確認してから読み込みを確定します。
+3. ファセット・数値範囲・検索で絞り込み、グラフと指標を確認します。グラフではレイアウト、サイズ・色・形、向きの表現を選び、検索・拡大・移動・ドラッグ固定ができます。
+4. 図は「SVGを保存」、データと指標は各CSVボタンで保存できます。CSV式保護を有効にして書き出した値は、読み込み時にも保護解除を明示すると元へ戻せます。
+5. 「保存」で配置・フィルタ・表示設定を含むRelataプロジェクトを保存します。「プロジェクトを開く」で再開できます。自動保存は同じブラウザ内に残ります。
+
+最初は空画面のサンプルから試せます。配置と指標の計算中は進行表示から取り消せます。公開先は [GitHub Pages](https://qsarkbir.github.io/relata/) です。
+
+地図・時間軸の再生・射影・旧Palladioファイルの直接読み込み・PDF/PNG出力は後続フェーズの対象です。v0.1の性能目標とChromium以外のブラウザ確認は公開前チェックに残しています。
 
 ### Palladio との関係
 
@@ -54,7 +66,19 @@ npm run test:e2e  # E2E テスト（Playwright）
 
 **Relata** (Latin for "things related") is a network visualization tool for historical research. It loads tabular data (CSV, Excel, etc.), lets you filter it, computes network metrics, and shows the result as graphs, maps, timelines, and tables. It is a static, serverless browser app: **your data never leaves your browser**.
 
-> **Under development.** The project is in Phase 0 (development groundwork) and has no usable features yet. See [docs/progress.md](docs/progress.md) (in Japanese) for status.
+> **Under development.** The Phase 1 MVP is undergoing integration checks. The guide below describes that integrated build. See [progress](docs/progress.md) and the [release checklist](docs/release-v0.1.md) (in Japanese) for deployment status and remaining checks.
+
+### Using the integrated build
+
+1. Choose **Import tables** to open CSV/TSV/Excel (xlsx), or paste CSV/TSV. Use one relationship table with sender/recipient columns, or separate node and edge tables.
+2. Check the encoding and worksheet preview, map columns, and set types, calendars, multiple-value separators and missing tokens. Review warnings before applying the import.
+3. Filter by facets, numeric ranges or text. Inspect the graph and metrics, choose layout and appearance, search, zoom, pan, and drag nodes to pin them.
+4. Save SVG figures or export data and metrics as CSV. To restore values protected against spreadsheet formulas, explicitly select formula-protection removal during import.
+5. Save a Relata project to preserve positions, filters and display settings, and reopen it with **Open project**. Autosave stays in the same browser.
+
+Try the sample on the empty screen. Layout and metric jobs can be cancelled from the progress panel. The deployment URL is [GitHub Pages](https://qsarkbir.github.io/relata/).
+
+Maps, timeline playback, projection, direct import of legacy Palladio projects, and PDF/PNG export belong to later phases. Performance targets and browser coverage beyond Chromium remain on the release checklist.
 
 ### Relationship to Palladio
 
