@@ -52,17 +52,20 @@ export function createSvgExport(
 }
 
 /**
- * SVG をブラウザ内でダウンロードする。利用者のデータは外部に送らない。
+ * SVG をDOMが使えるブラウザ内でダウンロードする。利用者のデータは外部に送らない。
+ *
+ * document と URL.createObjectURL を利用するため、DOMのないNode.jsやWorkerからは呼ばない。
  * @param exported - createSvgExport の結果
- * @param fileName - 保存名（省略時 relata.svg）。拡張子が無ければ .svg を付ける
+ * @param fileName - 保存名。前後の空白を除き、省略・空白のみなら relata.svg。拡張子が無ければ .svg を付ける
  */
 export function downloadSvg(exported: SvgExport, fileName = 'relata.svg'): void {
+  const trimmedName = fileName.trim() || 'relata.svg';
   const url = URL.createObjectURL(exported.blob);
   let anchor: HTMLAnchorElement | undefined;
   try {
     anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = /\.svg$/iu.test(fileName) ? fileName : fileName + '.svg';
+    anchor.download = /\.svg$/iu.test(trimmedName) ? trimmedName : trimmedName + '.svg';
     document.body.append(anchor);
     anchor.click();
   } finally {
