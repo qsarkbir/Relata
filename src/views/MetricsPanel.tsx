@@ -1,5 +1,6 @@
 import { CsvExportControls } from './metrics/CsvExportControls';
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useStore } from 'zustand';
 import type { MessageKey } from '../i18n';
 import {
   GLOBAL_METRIC_IDS,
@@ -8,7 +9,7 @@ import {
   type MetricsNote,
   type MetricsResult,
 } from '../core/metrics/types';
-import { selectFilterState } from '../state';
+import { selectFilterState, graphViewStore, selectGraphOptions } from '../state';
 import { useData, useFilter, useT, useUi } from './hooks';
 import { getCollator } from './intl';
 import {
@@ -60,15 +61,19 @@ export function MetricsPanel() {
   const t = useT();
   const dataset = useData((s) => s.dataset);
   const filter = useFilter(selectFilterState);
+  const graphOptions = useStore(graphViewStore, selectGraphOptions);
   const view = useSyncExternalStore(metricsController.subscribe, metricsController.getSnapshot);
   useEffect(() => {
-    metricsController.update(dataset, filter);
+    metricsController.update(dataset, filter, graphOptions);
     return () => {
       metricsController.cancel();
     };
-  }, [dataset, filter]);
+  }, [dataset, filter, graphOptions]);
   // 【なぜ】effect が次の入力を渡す前の描画でも、前のデータ・フィルタの数値を見せない。
-  const current = view.input?.dataset === dataset && view.input.filter === filter;
+  const current =
+    view.input?.dataset === dataset &&
+    view.input.filter === filter &&
+    view.input.graphOptions === graphOptions;
   const phase = dataset === null ? 'empty' : current ? view.phase : 'waiting';
   const result = current && phase === 'ready' ? view.result : null;
   const busy = phase === 'waiting' || phase === 'running';
@@ -102,7 +107,7 @@ export function MetricsPanel() {
             <button
               type="button"
               onClick={() => {
-                metricsController.update(dataset, filter);
+                metricsController.update(dataset, filter, graphOptions);
               }}
             >
               {t('metrics.recalculate')}

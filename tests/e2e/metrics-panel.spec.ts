@@ -38,7 +38,9 @@ test.describe('FR-MT-02/03/04 / FR-UI-04: 指標パネル', () => {
   test.use({ locale: 'ja-JP' });
   test('実Workerで全体・入出次数・HITSを計算し、並べ替えと用語説明を表示する', async ({ page }) => {
     await startApp(page);
-    const workerStarted = page.waitForEvent('worker');
+    const workerStarted = page.waitForEvent('worker', (worker) =>
+      worker.url().includes('metrics.worker'),
+    );
     await openProject(page, projectFile());
     const worker = await workerStarted;
     expect(worker.url()).toContain('metrics.worker');
