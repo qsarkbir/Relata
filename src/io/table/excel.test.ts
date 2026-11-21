@@ -7,7 +7,9 @@ it('FR-IN-02: シリアル値の起点、架空の閏日、時刻を検査する
   expect(excelSerialDate(59)).toBe('1900/02/28');
   expect(excelSerialDate(61)).toBe('1900/03/01');
   expect(excelSerialDate(0, true)).toBe('1904/01/01');
-  for (const value of [60, 1.5, Infinity]) expect(() => excelSerialDate(value)).toThrow(RangeError);
+  expect(() => excelSerialDate(-1, true)).toThrow(RangeError);
+  for (const value of [-1, 0, 60, 1.5, Infinity])
+    expect(() => excelSerialDate(value)).toThrow(RangeError);
 });
 
 it('FR-IN-02: 実際の xlsx バイトからシートを選び、文字・空欄・日付を保つ', async () => {

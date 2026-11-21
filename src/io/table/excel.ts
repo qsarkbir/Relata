@@ -15,10 +15,10 @@ export interface ExcelWorkbook {
  * Date を介さないので、タイムゾーンや夏時間による日付のずれもない。
  * @param serial - Excel の日付シリアル（整数の日）
  * @param date1904 - 1904 年方式か
- * @returns YYYY/MM/DD。存在しない日や時刻つきには RangeError
+ * @returns YYYY/MM/DD。方式の起点より前、存在しない日や時刻つきには RangeError
  */
 export function excelSerialDate(serial: number, date1904 = false): string {
-  if (!Number.isSafeInteger(serial) || (!date1904 && serial === 60))
+  if (!Number.isSafeInteger(serial) || serial < (date1904 ? 0 : 1) || (!date1904 && serial === 60))
     throw new RangeError('Excel の日付が整数の日でないか、実在しない 1900-02-29 です。');
   const base = date1904 ? gregorianToJdn(1904, 1, 1) : gregorianToJdn(1899, 12, 31);
   const date = jdnToGregorian(base + serial - (!date1904 && serial > 60 ? 1 : 0));

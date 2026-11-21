@@ -1,6 +1,7 @@
 import type { AttrValue, CalendarId, FuzzyDate, Scalar, ValueType } from '../../core/model';
 import { parseDate } from '../../core/time';
 import { compileMissingTokens, matchMissingToken } from '../project/missing';
+import type { CompiledMissingTokens } from '../project/missing';
 import type { MissingToken } from '../project/types';
 
 /** 列の型と、複数値・暦の利用者による指定。 */
@@ -19,9 +20,10 @@ export interface CellResult {
 }
 
 function numberValue(text: string): number | undefined {
+  const trimmed = text.trim();
   // 空文字、16 進数、Infinity などを意図せず数値にしない。
-  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/iu.test(text.trim())) return undefined;
-  const value = Number(text);
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/iu.test(trimmed)) return undefined;
+  const value = Number(trimmed);
   return Number.isFinite(value) ? value : undefined;
 }
 
@@ -32,9 +34,26 @@ function numberValue(text: string): number | undefined {
  * @returns 値と警告。型に合わない場合は原文と ok=false
  */
 export function convertCell(text: string, options: ColumnOptions): CellResult {
+  return createCellConverter(options)(text);
+}
+
+/**
+ * 列の設定を一度検査し、欠損記号の照合表を再利用する変換関数を作る。
+ * @param options - 同じ列の全セルに使う設定
+ * @returns セルの原文を値と警告へ変換する関数
+ */
+export function createCellConverter(options: ColumnOptions): (text: string) => CellResult {
   const tokens = compileMissingTokens(options.missingTokens ?? []);
   if (tokens.problems.length > 0) throw new RangeError('欠損の記号に空欄または重複があります。');
   if (options.separator === '') throw new RangeError('複数値の区切りは空にできません。');
+  return (text) => convertWithTokens(text, options, tokens);
+}
+
+function convertWithTokens(
+  text: string,
+  options: ColumnOptions,
+  tokens: CompiledMissingTokens,
+): CellResult {
   const reason = matchMissingToken(text, tokens);
   if (reason !== undefined) return { ok: true, value: { kind: 'missing', reason }, warnings: [] };
   const pieces = options.separator === undefined ? [text] : text.split(options.separator);
@@ -112,7 +131,7 @@ export function inferColumnType(
   const values = cells.filter((c) => matchMissingToken(c, tokens) === undefined);
   if (values.length === 0) return 'string';
   for (const type of ['boolean', 'number', 'date'] as const) {
-    if (values.every((c) => convertCell(c, { type }).ok)) return type;
+    if (values.every((c) => convertWithTokens(c, { type }, tokens).ok)) return type;
   }
   return 'string';
 }
