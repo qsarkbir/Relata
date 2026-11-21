@@ -155,11 +155,11 @@ describe('FR-VG-03: シーンの範囲', () => {
     ]);
     const sc = buildScene(g3, p);
     expect(sc.nodes.map((n) => n.id)).toEqual([id('a'), id('b')]);
-    expect(sc.edges.map((e) => e.id)).toEqual(['e1']);
+    expect(sc.edges.map((e) => e.id)).toEqual(['e1', 'e3']);
     expect(sc.omitted).toEqual({
       nodesWithoutPosition: [id('c')],
       edgesWithoutEndpoint: 1,
-      selfLoops: 1,
+      selfLoops: 0,
       widthsUnmatched: false,
     });
   });

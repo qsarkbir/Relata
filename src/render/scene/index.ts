@@ -18,3 +18,5 @@ export type {
   BuildSceneOptions,
 } from './build';
 export { buildScene, shapeExtent } from './build';
+
+export type { DirectedEdgeStyle, EdgePoint } from '../edges/geometry';
