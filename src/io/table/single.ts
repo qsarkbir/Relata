@@ -13,6 +13,7 @@ import {
   makeNodeIdFromTypeAndKey,
   makeNodeIdFromTypeAndLabel,
   toNodeTypeId,
+  parseNodeId,
 } from '../../core/model';
 import type { MissingToken } from '../project/types';
 import { compileMissingTokens, matchMissingToken } from '../project/missing';
@@ -102,13 +103,25 @@ export function importSingleTable(
     if (!Number.isInteger(column) || column < 0 || column >= table.headers.length)
       throw new RangeError('列の対応が表の範囲外です。');
   };
+  // 【なぜ】空表・属性なしでも、指定された各範囲の欠損設定を検査する。
+  // convertCell 自体も欠損判定より先に設定を検査するが、未使用列では呼ばれないため。
+  const missingSettings = [
+    globalMissing,
+    mapping.edge?.missingTokens,
+    mapping.edge?.timeOptions?.missingTokens,
+    // 【TS】as constで既知の列名を保持し、任意プロパティはundefinedも受け付ける。
+    ...(['date', 'start', 'end', 'lat', 'lon'] as const).map(
+      (field) => mapping.edge?.fieldOptions?.[field]?.missingTokens,
+    ),
+  ];
+  for (const tokens of missingSettings)
+    if (tokens !== undefined && compileMissingTokens(tokens).problems.length > 0)
+      throw new RangeError('欠損の記号に空欄または重複があります。');
   for (const column of Object.values(mapping.edge?.fields ?? {})) checkColumn(column);
   for (const attr of mapping.edge?.attributes ?? []) {
     checkColumn(attr.column);
     convertCell('', { missingTokens: mapping.edge?.missingTokens ?? globalMissing, ...attr });
   }
-  if (compileMissingTokens(globalMissing).problems.length > 0)
-    throw new RangeError('欠損の記号に空欄または重複があります。');
   for (const endpoint of endpoints) {
     checkColumn(endpoint.column);
     if (endpoint.idColumn !== undefined) checkColumn(endpoint.idColumn);
@@ -169,6 +182,7 @@ export function importSingleTable(
         message,
       });
     };
+    // 【なぜ】IDやラベルが不正でも、その行の属性の問題を隠さず、一度に修正できるよう集める。
     const values = endpoint.attributes.map((attr) => {
       const result = convertCell(row[attr.column] ?? '', { missingTokens: globalMissing, ...attr });
       for (const message of result.warnings)
@@ -206,6 +220,7 @@ export function importSingleTable(
       );
     for (const { attr, value } of values) {
       const existing = node.attrs.get(attr.key);
+      // 欠損理由・複数値の順序も原文情報として比較する。後の有効値で欠損を自動補完しない。
       if (existing !== undefined && JSON.stringify(existing) !== JSON.stringify(value))
         warn(
           'attribute-conflict',
@@ -284,10 +299,16 @@ export function importSingleTable(
   for (const warning of converted.warnings) warnings.push({ ...warning, table: 'single' });
   if (converted.dataset === null || warnings.some((warning) => warning.severity === 'error'))
     return { dataset: null, warnings, table };
-  const originalIds = new Map(converted.dataset.nodes.map((node, i) => [node.id, nodes[i]?.id]));
+  // 【なぜ】2表APIの出力ノード順には依存しない。一時IDのキーを公開parserで読み戻す。
+  // node.id は "0" そのものではなく、型の名前空間が付いたcanonical IDなのでNumberには渡さない。
+  const originalIds = new Map(nodes.map((node, index) => [String(index), node.id]));
+  const restoreId = (temporaryId: NodeId): NodeId | undefined => {
+    const parsed = parseNodeId(temporaryId);
+    return parsed?.source === 'key' ? originalIds.get(parsed.text) : undefined;
+  };
   const edges = converted.dataset.edges.map((edge) => {
-    const source = originalIds.get(edge.source);
-    const target = originalIds.get(edge.target);
+    const source = restoreId(edge.source);
+    const target = restoreId(edge.target);
     if (source === undefined || target === undefined)
       throw new Error('内部のノード参照を復元できません。');
     return { ...edge, source, target };

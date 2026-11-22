@@ -291,3 +291,130 @@ describe('FR-IN-04: Palladio 式の 1 表', () => {
     ).toThrow(RangeError);
   });
 });
+
+it('FR-IN-04 / FR-IN-06: 無効な端点でも同じ行の属性の問題をすべて報告する', () => {
+  const table = parseTextTable('source,target,sid,tid,n\n,B,,b,bad');
+  const result = importSingleTable(table, {
+    source: {
+      column: 0,
+      idColumn: 2,
+      type: 'p',
+      attributes: [{ column: 4, key: 'n', label: 'n', type: 'number' }],
+    },
+    target: { column: 1, idColumn: 3, type: 'p', attributes: [] },
+  });
+  expect(result.dataset).toBeNull();
+  expect(result.table).toBe(table);
+  expect(result.warnings).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ code: 'invalid-value', column: 'n', row: 2, severity: 'error' }),
+      expect.objectContaining({
+        code: 'invalid-value',
+        column: 'source',
+        row: 2,
+        severity: 'error',
+      }),
+    ]),
+  );
+});
+
+it.each([
+  { first: 'a;b', second: 'b;a', expected: ['a', 'b'] },
+  { first: 'b;a', second: 'a;b', expected: ['b', 'a'] },
+])(
+  'FR-IN-04 / FR-DM-07: 複数値は原文の順序を保持し順序違いも競合として知らせる ($first)',
+  ({ first, second, expected }) => {
+    const result = importSingleTable(
+      parseTextTable(`source,target,tags\nA,B,${first}\nA,B,${second}`),
+      {
+        source: {
+          column: 0,
+          type: 'p',
+          attributes: [{ column: 2, key: 'tags', label: 'tags', type: 'category', separator: ';' }],
+        },
+        target: { column: 1, type: 'p', attributes: [] },
+      },
+    );
+    expect(result.dataset?.nodes[0]?.attrs.tags).toEqual({ kind: 'value', value: expected });
+    expect(result.warnings.filter((w) => w.code === 'attribute-conflict')).toMatchObject([
+      { row: 3, column: 'tags' },
+    ]);
+  },
+);
+
+it('FR-IN-04 / FR-IN-07: 最初の欠損理由を後の値で自動補完せず逆順でも先頭値を保つ', () => {
+  for (const firstMissing of [true, false]) {
+    const first = firstMissing ? '□' : '20';
+    const second = firstMissing ? '20' : '□';
+    const result = importSingleTable(
+      parseTextTable(`source,target,n\nA,B,${first}\nA,B,${second}`),
+      {
+        source: {
+          column: 0,
+          type: 'p',
+          attributes: [{ column: 2, key: 'n', label: 'n', type: 'number' }],
+        },
+        target: { column: 1, type: 'p', attributes: [] },
+        missingTokens: [{ token: '□', reason: 'lost' }],
+      },
+    );
+    expect(result.dataset?.nodes[0]?.attrs.n).toEqual(
+      firstMissing ? { kind: 'missing', reason: 'lost' } : { kind: 'value', value: 20 },
+    );
+    expect(result.warnings.filter((w) => w.code === 'attribute-conflict')).toHaveLength(1);
+  }
+});
+
+it('FR-IN-07: 空表・属性なしでも各範囲の空欠損記号を拒否する', () => {
+  const invalid = [{ token: '', reason: 'lost' }] as const; // 【TS】欠損理由を文字列リテラルに保つ。
+  const configs: readonly SingleTableMapping[] = [
+    { ...mapping, missingTokens: invalid },
+    { ...mapping, edge: { fields: {}, attributes: [], missingTokens: invalid } },
+    {
+      ...mapping,
+      edge: { fields: {}, attributes: [], timeOptions: { type: 'date', missingTokens: invalid } },
+    },
+    {
+      ...mapping,
+      edge: {
+        fields: {},
+        attributes: [],
+        fieldOptions: { date: { type: 'date', missingTokens: invalid } },
+      },
+    },
+    {
+      ...mapping,
+      source: {
+        ...mapping.source,
+        attributes: [{ column: 2, key: 'n', label: 'n', type: 'number', missingTokens: invalid }],
+      },
+    },
+  ];
+  for (const config of configs)
+    expect(() => importSingleTable(parseTextTable('source,target,n'), config)).toThrow(RangeError);
+});
+
+it('FR-IN-05: 空欄セルより先に区切り設定を検査し、通常の空欄は欠損として読む', () => {
+  const config: SingleTableMapping = {
+    ...mapping,
+    source: {
+      ...mapping.source,
+      attributes: [{ column: 2, key: 'n', label: 'n', type: 'number', separator: '' }],
+    },
+  };
+  expect(() => importSingleTable(parseTextTable('source,target,n'), config)).toThrow(RangeError);
+  const result = importSingleTable(parseTextTable('source,target,n\nA,B,'), {
+    ...config,
+    source: { ...config.source, attributes: [{ column: 2, key: 'n', label: 'n', type: 'number' }] },
+  });
+  expect(result.dataset?.nodes[0]?.attrs.n).toEqual({ kind: 'missing', reason: 'unrecorded' });
+});
+
+it('FR-IN-04: 明示的undefinedの任意列設定でも空表を受け付ける', () => {
+  const result = importSingleTable(parseTextTable('source,target'), {
+    ...mapping,
+    edge: { fields: {}, attributes: [], fieldOptions: { date: undefined } },
+  });
+  expect(result.dataset?.nodes).toEqual([]);
+  expect(result.warnings).toEqual([]);
+});
