@@ -292,7 +292,7 @@ export function buildScene(
     rawLabels.push(makeLabel(n.id, text, x, n.y + fontSize * 0.35, fontSize));
   }
 
-  // 4. 範囲。ノード（外接円と線の太さ）を必ず収め、幅の関数があればラベルも収める。
+  // 4. 範囲。ノード・エッジの線幅とラベルを収める。
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -306,6 +306,28 @@ export function buildScene(
   for (const n of rawNodes) {
     const e = shapeExtent(n.shape, n.r) + n.strokeWidth / 2;
     grow(n.x - e, n.y - e, n.x + e, n.y + e);
+  }
+  // 【なぜ】ノードだけで範囲を決めると、ノードより太いエッジの両端が SVG の外に切れる。
+  // 直線・曲線の制御点の外接矩形を線幅の半分だけ広げる。ベジェ曲線は制御点の凸包内にあるので、
+  // Q の場合も安全な上限になる（曲線に対しては少し広いが、図を切らない）。時間 O(E)。
+  for (const edge of rawEdges) {
+    const halfWidth = edge.width / 2;
+    for (const command of edge.path) {
+      grow(
+        command.x - halfWidth,
+        command.y - halfWidth,
+        command.x + halfWidth,
+        command.y + halfWidth,
+      );
+      if (command.type === 'Q') {
+        grow(
+          command.cx - halfWidth,
+          command.cy - halfWidth,
+          command.cx + halfWidth,
+          command.cy + halfWidth,
+        );
+      }
+    }
   }
   for (const l of rawLabels) {
     const w = textWidth(l.text);

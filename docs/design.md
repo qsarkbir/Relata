@@ -491,6 +491,12 @@ interface SceneEdge { id: string; path: PathCommand[]; width: number | TaperedWi
 - **地理座標**: 緯度・経度をメルカトル図法で平面に写す。
 - **手動での固定**: ドラッグしたノードを固定し、その位置をプロジェクトに保存する。
 
+**T1-10 の実装**（2026-11-20）: `core/layout` の `createLayoutSession(job)` と Worker の `start(job)`、`step(n)` が、型・ID の固定順、Mulberry32 の seed、保存した初期位置から計算する。ForceAtlas2 は graphology-layout-forceatlas2 **0.10.1（MIT、版を固定）** の `iterate.js` を薄い型宣言で使い、行列の速度・収束値を Worker 内で保持する。通常の同期 API を step ごとに呼ぶと速度が初期化され、反復の分割の仕方で結果が変わるためである。参照: [Graphology の ForceAtlas2](https://graphology.github.io/standard-library/layout-forceatlas2.html)。
+
+円形では型ごと・ID 順に並べ、固定点は動かさない。固定モードは全ノードの座標を必要とする。seed は 0〜2^32-1、入力座標の絶対値は 10^9 以下、step は 0〜10000 回。Barnes-Hut は 2000 ノード超で既定で有効。client の `run` は古い計算を中止し、`step` は初期化の成功後に呼ぶ。cancel/error/messageerror は保留中の Promise を reject し Worker を捨てる。
+
+`LayoutResult` は種・方式・反復回数・全座標と固定フラグを含み、JSON で保存できる。ただし、**ProjectView と viewStore への保存の接続およびドラッグの UI は T1-19/保存統合で行う**。T1-10 は Worker と純粋な計算の API まで。保存した座標をそのまま表示するときは固定モードで再現し、力学モデルを続ける操作は明示的に開始する。
+
 ### 8.6 ラベル（FR-VG-10）
 - 表示する候補を、表示方法の設定に従って決める。
 - 大きいノードのラベルから順に置き、すでに置いたラベルと重なるものは表示しない（貪欲法）。
@@ -600,6 +606,8 @@ interface ProjectFile {
 ## 13. 旧 Palladio の問題への対応
 
 [filter-audit.md](filter-audit.md) の項目番号に対応する。各項目に回帰テストを書く。
+
+T1-23 は MVP で利用できる #1〜10 と関連 issue の回帰を確認する。#11（地図の範囲選択、FR-MP-04）は要件のフェーズ 3・T3-06 で実装と回帰テストを行い、MVP の確認で実装済みとは扱わない。対応するテストと保留範囲は [回帰テスト対応表](regression-coverage.md) に記録する。
 
 | # | 旧版の問題 | 対応 | 関連要件 |
 |---|---|---|---|
