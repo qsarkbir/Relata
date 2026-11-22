@@ -22,6 +22,8 @@
 
 地図・時間軸の再生・射影・旧Palladioファイルの直接読み込み・PDF/PNG出力は後続フェーズの対象です。性能測定の条件とブラウザごとの確認状況は、公開前チェックに記録しています。
 
+> **Safari について:** 実機の Safari（Mac、iPhone、iPad）での動作は、まだ確かめていません。Chrome、Edge、Firefox と、Safari と同じ描画エンジン（WebKit）での自動テストは通っています。
+
 ### Palladio との関係
 
 Relata は、Stanford 大学 Humanities + Design の [Palladio](https://github.com/humanitiesplusdesign/palladio)（BSD-3-Clause）の機能を引き継ぎ、TypeScript で作り直したものです。Palladio の開発者の皆さんに感謝します。Palladio から引き継ぐ主な点と、新たに加える主な点は次のとおりです。
@@ -79,6 +81,8 @@ npm run test:e2e  # E2E テスト（Playwright）
 Try the sample on the empty screen. Layout and metric jobs can be cancelled from the progress panel. The deployment URL is [GitHub Pages](https://qsarkbir.github.io/Relata/).
 
 Maps, timeline playback, projection, direct import of legacy Palladio projects, and PDF/PNG export belong to later phases. The release checklist records performance measurement conditions and verification status for each browser.
+
+> **About Safari:** Relata has not yet been tested in Safari on a real device (Mac, iPhone, iPad). Automated tests pass in Chrome, Edge, Firefox and WebKit, the engine Safari uses.
 
 ### Relationship to Palladio
 
