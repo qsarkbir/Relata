@@ -80,6 +80,10 @@ export function GraphView() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [iteration, setIteration] = useState(0);
+  // 【なぜ】ドラッグや固定の切り替えで計算を中止したかを覚えておく。中止の後に位置の無いノードが
+  // 残っていたら、操作が終わった時点で計算をやり直す（レビューの推奨。そのままだと、利用者が
+  // 「再配置する」を押すまで、位置の決まらないノードが図に出ない）。
+  const interrupted = useRef(false);
   const handledIteration = useRef(0);
   const svg = useRef<SVGSVGElement>(null);
   const frame = useRef<HTMLDivElement>(null);
@@ -157,6 +161,21 @@ export function GraphView() {
         y: canvas.height / 2 - (scene.height / 2 - offset.y) * zoom,
       },
     });
+  };
+  /** 操作のために計算を中止する。計算中だったら、後でやり直す印を付ける。 */
+  const interruptLayout = () => {
+    if (busy) interrupted.current = true;
+    layoutController.cancel();
+    setBusy(false);
+  };
+  /** 中止した計算で位置が欠けたままなら、計算をやり直す。 */
+  const resumeLayout = () => {
+    if (!interrupted.current || graph === null) return;
+    interrupted.current = false;
+    const saved = new Set(
+      (graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW).positions.map((p) => p.id),
+    );
+    if (graph.nodes().some((id) => !saved.has(toNodeId(id)))) setIteration((v) => v + 1);
   };
   const [previousDataset, setPreviousDataset] = useState(dataset);
   if (previousDataset !== dataset) {
@@ -636,10 +655,7 @@ export function GraphView() {
               moved: false,
             };
             svg.current?.setPointerCapture(e.pointerId);
-            if (id !== undefined) {
-              layoutController.cancel();
-              setBusy(false);
-            }
+            if (id !== undefined) interruptLayout();
           }}
           onPointerMove={(e) => {
             const start = drag.current;
@@ -684,9 +700,11 @@ export function GraphView() {
             if (start !== null && !start.moved) choose(start.id ?? '');
             if (svg.current?.hasPointerCapture(e.pointerId))
               svg.current.releasePointerCapture(e.pointerId);
+            resumeLayout();
           }}
           onPointerCancel={() => {
             drag.current = null;
+            resumeLayout();
           }}
         >
           <g
@@ -712,13 +730,13 @@ export function GraphView() {
             onClick={() => {
               // 【なぜ】計算開始時の固定状態を持つWorker結果で、直後の固定操作を上書きしない。
               // ドラッグと同じく世代を進め、待機中の結果も失敗も無効にする。
-              layoutController.cancel();
-              setBusy(false);
+              interruptLayout();
               patch({
                 positions: (graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW).positions.map(
                   (p) => (p.id === selectedId ? { ...p, fixed: !p.fixed } : p),
                 ),
               });
+              resumeLayout();
             }}
           >
             {positions.get(selectedId)?.fixed ? t('graph.unpin') : t('graph.pin')}
