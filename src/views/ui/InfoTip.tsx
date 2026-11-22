@@ -61,7 +61,20 @@ export function InfoTip({ topic, children, count }: InfoTipProps) {
           ref={ref}
           className="modal-dialog info-dialog"
           aria-labelledby={titleId}
+          // 【なぜ】portal で描いても、React のイベントは部品の親（読み込みのウィザードなど）へ伝わる。
+          // そのままだと、このダイアログを Esc で閉じたとき、親のダイアログの close や cancel の
+          // 処理まで動き、親も閉じてしまう。ここで止める。
+          onCancel={(event) => {
+            event.stopPropagation();
+          }}
+          onKeyDown={(event) => {
+            event.stopPropagation();
+          }}
+          onClick={(event) => {
+            event.stopPropagation();
+          }}
           onClose={(event) => {
+            event.stopPropagation();
             // 【なぜ】close イベントは遅れて届く。開き直した後の古い close では本文を消さない。
             if (!event.currentTarget.open) setOpen(false);
           }}

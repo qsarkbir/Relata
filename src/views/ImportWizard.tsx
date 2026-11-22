@@ -14,6 +14,7 @@ import { Warnings } from './import/Warnings';
 import { previewImport } from './import/model';
 import type { ImportDraft, ImportMode, ImportPreview, WizardWarning } from './import/model';
 import './import/import.css';
+import { InfoTip } from './ui/InfoTip';
 
 const reasonNames = {
   unrecorded: 'filter.missing.unrecorded',
@@ -211,7 +212,11 @@ export function ImportWizard() {
                   <option value="single">{t('import.single')}</option>
                   <option value="pair">{t('import.pair')}</option>
                 </select>
-              </label>
+              </label>{' '}
+              <InfoTip topic={t('import.mode')}>
+                <p>{t('import.mode.hint.single')}</p>
+                <p>{t('import.mode.hint.pair')}</p>
+              </InfoTip>
               <label>
                 {t('import.projectTitle')}
                 <input
@@ -266,7 +271,12 @@ export function ImportWizard() {
               <fieldset disabled={busy} aria-label={t('import.step.columns')}>
                 {mode === 'single' && (
                   <fieldset>
-                    <legend>{t('import.endpointTypes')}</legend>
+                    <legend>
+                      {t('import.endpointTypes')}{' '}
+                      <InfoTip topic={t('import.endpointTypes')}>
+                        <p>{t('import.sameTypeHint')}</p>
+                      </InfoTip>
+                    </legend>
                     <label>
                       {t('import.sourceType')}
                       <input
@@ -287,12 +297,15 @@ export function ImportWizard() {
                         }}
                       />
                     </label>
-                    <p>{t('import.sameTypeHint')}</p>
                   </fieldset>
                 )}
                 <fieldset>
-                  <legend>{t('import.missing')}</legend>
-                  <p>{t('import.missingHint')}</p>
+                  <legend>
+                    {t('import.missing')}{' '}
+                    <InfoTip topic={t('import.missing')}>
+                      <p>{t('import.missingHint')}</p>
+                    </InfoTip>
+                  </legend>
                   {missing.map((entry, index) => (
                     <div key={index} className="import-missing-row">
                       <label>

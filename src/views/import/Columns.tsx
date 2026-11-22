@@ -4,6 +4,7 @@ import { useT } from '../hooks';
 import type { ColumnDraft, ImportDraft, TableTarget } from './model';
 import { columnRoles, columnType } from './model';
 import { ROLE_NAMES } from './messages';
+import { InfoTip } from '../ui/InfoTip';
 /** 列の型・暦・区切り・用途の編集。 */
 interface ColumnsProps {
   readonly draft: ImportDraft;
@@ -28,8 +29,12 @@ export function Columns({ draft, target, label, onChange }: ColumnsProps) {
   };
   return (
     <fieldset>
-      <legend>{label}</legend>
-      <p>{t('import.columnsHint')}</p>
+      <legend>
+        {label}{' '}
+        <InfoTip topic={t('import.columns.topic')}>
+          <p>{t('import.columnsHint')}</p>
+        </InfoTip>
+      </legend>
       <div className="import-table-wrap">
         <table>
           <thead>

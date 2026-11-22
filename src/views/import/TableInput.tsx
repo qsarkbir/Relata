@@ -6,6 +6,7 @@ import { useT } from '../hooks';
 import type { ImportDraft, TableTarget } from './model';
 import { draftTable } from './model';
 import { WARNING_NAMES } from './messages';
+import { InfoTip } from '../ui/InfoTip';
 
 /** ファイルまたは貼り付けの表を、確定前のプレビューとして読み込む。 */
 interface TableInputProps {
@@ -236,6 +237,15 @@ export function TableInput({ target, label, onReady }: TableInputProps) {
           />
           {t('import.protected')}
         </label>
+      )}
+      {format !== 'xlsx' && (
+        <>
+          {' '}
+          {/* 【なぜ】ラベルの外に置く。ラベルの中のボタンを押すと、チェックも切り替わるため。 */}
+          <InfoTip topic={t('import.protected')}>
+            <p>{t('import.protected.hint')}</p>
+          </InfoTip>
+        </>
       )}
       <button
         type="button"

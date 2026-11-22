@@ -89,7 +89,7 @@ export const en = {
   'sample.description.ja':
     '15〜16世紀のマグリブの学者とスーフィーの社会的ネットワークを記録したデータです。イブン・アスカル・シャフシャーワーニー（986/1578年没）の『Dawḥat al-nāshir li-maḥāsin man kāna bi-l-Maghrib min mashāyikh al-qarn al-ʿāshir』に基づき、当初はPalladioで地図上にネットワークを可視化するために作成されました。',
   'app.empty.body':
-    'Once you load tabular data (CSV, Excel, etc.), graphs and metrics will appear here. Loading is not available yet.',
+    'Once you load tabular data (CSV, Excel, etc.), graphs and metrics will appear here. Start with Import tables above, or try the sample below.',
   'app.region.filters': 'Filters',
   'app.region.main': 'Main display',
   'app.region.metrics': 'Metrics',
@@ -102,6 +102,13 @@ export const en = {
   'import.open': 'Import tables',
   'import.title': 'Import tabular data',
   'import.cancel': 'Cancel',
+  'import.mode.hint.single':
+    'Single table: each row is one relation. Nodes and edges are built from a source column and a target column (for example, sender and recipient).',
+  'import.mode.hint.pair':
+    'Two tables: a list of nodes (node table) and a list of relations (edge table) are imported separately. Use this when nodes have attributes such as dates of birth and death or places of origin.',
+  'import.protected.hint':
+    'Choose this when importing a CSV that Relata exported with formula protection. To keep spreadsheet software from running text that starts with = and similar characters as a formula, Relata adds a leading apostrophe on export. This option removes it and restores the original text.',
+  'import.columns.topic': 'Column mapping and types',
   'import.mode': 'Table structure',
   'import.single': 'Single table (source and target columns)',
   'import.pair': 'Node table and edge table',
@@ -137,9 +144,10 @@ export const en = {
   'import.sourceType': 'Source node type',
   'import.targetType': 'Target node type',
   'import.sameTypeHint':
-    'Use the same type for nodes of the same kind. Without ID columns, nodes of the same type and name are merged.',
+    'These are the types given to nodes from the source and target columns. Use the same type when both are the same kind of node, such as letter senders and recipients. Without an ID column, nodes with the same type and label are merged (people with the same name cannot be told apart).',
   'import.missing': 'Missing tokens and reasons',
-  'import.missingHint': 'Blank cells mean unrecorded. Added tokens use exact matching.',
+  'import.missingHint':
+    'Empty cells are treated as missing (not recorded). If your sources use marks such as 〔欠〕 or □ for lost or illegible text, add each mark with its reason (lost, illegible, etc.). A mark counts as missing only on an exact match. A mark in a label, ID, source or target column makes that row an error.',
   'import.token': 'Token',
   'import.reason': 'Reason',
   'import.remove': 'Remove',
@@ -147,7 +155,7 @@ export const en = {
   'import.addToken': 'Add missing token',
   'import.reinfer': 'Infer types again using missing tokens',
   'import.columnsHint':
-    'Types are inferred from every column. Change roles, attribute keys, types, per-column calendars and separators for multiple values. Special columns are mapped by their role.',
+    'The type of every column (text, number, date, etc.) is inferred from its contents. You can change the role (source, label, attribute, etc.), the attribute key and name, the type, the calendar of date columns (Gregorian, Hijri) and the separator for multiple values. Special columns such as source, target and date are chosen by role, not by column name.',
   'import.column': 'Original column',
   'import.use': 'Role',
   'import.key': 'Attribute key',
@@ -178,7 +186,7 @@ export const en = {
   'import.wholeFile': 'Whole file',
   'import.row': 'Record {row}',
   'import.details': 'Original parser message',
-  'import.protected': 'Read CSV protected by Relata (restore the leading protection apostrophe)',
+  'import.protected': 'Remove formula protection',
   'import.role.ignore': 'Ignore',
   'import.role.attr': 'Attribute',
   'import.role.id': 'ID',
