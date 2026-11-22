@@ -82,4 +82,13 @@ export type ProjectWarning =
   | {
       readonly source: 'project';
       readonly issue: { readonly kind: 'unknown-field'; readonly path: string };
+    }
+  /**
+   * 読み込みで落とした、Dataset に無いノードの位置。
+   *
+   * 【なぜ】見た目の設定 1 件のために、データを含むファイル全体を開けなくしないため（D-24）。
+   */
+  | {
+      readonly source: 'project';
+      readonly issue: { readonly kind: 'unknown-node-position'; readonly path: string };
     };

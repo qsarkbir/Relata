@@ -336,6 +336,8 @@ export const en = {
   'project.warning.filter': 'Filter problem ({kind}, filter {id})',
   'project.warning.unknownField':
     'Skipped an unknown field ({path}). The file may have been saved by a newer version of the app.',
+  'project.warning.unknownNodePosition':
+    'Skipped the position of a node that is not in the data ({path}).',
   'project.failed.file': 'Could not open the project. Your current work is unchanged.',
   'project.failed.autosave': 'Could not restore the previous autosave. Starting fresh.',
   'project.failed.read': 'Could not read the file.',

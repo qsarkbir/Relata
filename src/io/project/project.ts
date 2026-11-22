@@ -306,16 +306,25 @@ export function parseProject(
       'view.graph' + (graphParsed.path === '' ? '' : '.' + graphParsed.path),
       graphParsed.reason,
     );
-  const graph = graphParsed?.ok === true ? graphParsed.value : undefined;
-  if (graph !== undefined) {
+  const parsedGraph = graphParsed?.ok === true ? graphParsed.value : undefined;
+  // 【なぜ】Dataset に無いノードの位置は、落として警告にする（D-24「問題は警告として返す」）。
+  // 位置は見た目の設定なので、これを理由に自動保存を含むファイル全体を拒むと、データまで失う。
+  const positionWarnings: ProjectWarning[] = [];
+  let graph = parsedGraph;
+  if (parsedGraph !== undefined) {
     const nodeIds = new Set(dataset.value.nodes.map((n) => n.id));
-    const unknown = graph.positions.findIndex((p) => !nodeIds.has(p.id));
-    if (unknown >= 0)
-      return failure(
-        'broken',
-        'view.graph.positions[' + String(unknown) + '].id',
-        '存在しないノードの位置です',
-      );
+    parsedGraph.positions.forEach((p, i) => {
+      if (!nodeIds.has(p.id))
+        positionWarnings.push({
+          source: 'project',
+          issue: { kind: 'unknown-node-position', path: `view.graph.positions[${String(i)}].id` },
+        });
+    });
+    if (positionWarnings.length > 0)
+      graph = {
+        ...parsedGraph,
+        positions: parsedGraph.positions.filter((p) => nodeIds.has(p.id)),
+      };
   }
   const savedAt = get(data, 'savedAt');
   if (savedAt !== undefined && typeof savedAt !== 'string')
@@ -343,6 +352,7 @@ export function parseProject(
           'view.graph.',
         )
       : []),
+    ...positionWarnings,
     ...checkDataset(dataset.value).map((issue): ProjectWarning => ({ source: 'dataset', issue })),
     ...checkFilterState(dataset.value, filter).map((issue): ProjectWarning => ({
       source: 'filter',

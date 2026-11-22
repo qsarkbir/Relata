@@ -327,6 +327,7 @@ export const ja = {
   'project.warning.filter': 'フィルタの問題（{kind}、フィルタ {id}）',
   'project.warning.unknownField':
     '知らない項目を読み飛ばしました（{path}）。新しい版のアプリで保存されたファイルかもしれません。',
+  'project.warning.unknownNodePosition': 'データに無いノードの位置を読み飛ばしました（{path}）。',
   'project.failed.file': 'プロジェクトを開けませんでした。今の作業はそのままです。',
   'project.failed.autosave': '前回の自動保存を復元できませんでした。新しく始めます。',
   'project.failed.read': 'ファイルを読み取れませんでした。',

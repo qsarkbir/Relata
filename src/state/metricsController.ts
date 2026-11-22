@@ -3,7 +3,7 @@ import { buildGraph, toSnapshot, DEFAULT_GRAPH_OPTIONS, type GraphOptions } from
 import type { Dataset } from '../core/model';
 import type { FilterState } from '../core/filter';
 import type { MetricsResult } from '../core/metrics';
-import type { MetricsClient } from '../workers/metrics.client';
+import { metricsClient, type MetricsClient } from '../workers/metrics.client';
 import { getFilterResult } from './filterView';
 
 /** 計算の入力。参照が替わった時点で古い結果を表示しないため、結果と組にする。 */
@@ -19,7 +19,7 @@ export interface MetricsView {
   readonly result: MetricsResult | null;
   readonly error: string | null;
 }
-/** 時計は views 側から渡す。state がブラウザのタイマーに依存しないため。 */
+/** 時計は引数で受け取る。テストで偽の時計に差し替えるため。 */
 export interface MetricsScheduler {
   delay(callback: () => void, milliseconds: number): () => void;
 }
@@ -117,3 +117,17 @@ export function createMetricsController(
     },
   };
 }
+/**
+ * アプリ全体で共有する指標の一時キャッシュ。
+ *
+ * 【なぜ】views が Worker の client を直接 import しないため、組み立てを state に置く（§4.1、D-17）。
+ * `setTimeout` は Node でも使えるタイマーで、DOM の API ではない。
+ */
+export const metricsController: MetricsController = createMetricsController(metricsClient, {
+  delay: (callback, milliseconds) => {
+    const timer = setTimeout(callback, milliseconds);
+    return () => {
+      clearTimeout(timer);
+    };
+  },
+});

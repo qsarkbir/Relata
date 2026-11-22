@@ -9,7 +9,7 @@ import {
   type MetricsNote,
   type MetricsResult,
 } from '../core/metrics/types';
-import { selectFilterState, graphViewStore, selectGraphOptions } from '../state';
+import { selectFilterState, graphViewStore, metricsController, selectGraphOptions } from '../state';
 import { useData, useFilter, useT, useUi } from './hooks';
 import { getCollator } from './intl';
 import {
@@ -19,7 +19,6 @@ import {
   type MetricColumn,
   type MetricSort,
 } from './metrics/columns';
-import { metricsController } from './metrics/controller';
 import './metrics/metrics.css';
 
 const globalNames: Record<GlobalMetricId, MessageKey> = {

@@ -272,6 +272,7 @@ export default defineConfig(
       'src/workers/**/*.{ts,tsx}',
       'src/i18n/**/*.{ts,tsx}',
       'src/state/**/*.{ts,tsx}',
+      'src/views/**/*.{ts,tsx}',
     ],
     plugins: { 'import-x': importX },
     settings: {
@@ -413,6 +414,24 @@ export default defineConfig(
         },
       ],
       'no-restricted-syntax': ['error', ...noImplicitDependencySyntax],
+    },
+  },
+  // 【なぜ】views は Worker の client を直接呼ばず、state の controller を通す（設計書 §4.1、D-17）。
+  // 版番号と古い結果の破棄を 1 か所にまとめ、画面ごとに作り直さないため（PR #31 のレビュー）。
+  {
+    files: ['src/views/**/*.{ts,tsx}'],
+    rules: {
+      'import-x/no-restricted-paths': [
+        'error',
+        {
+          basePath: import.meta.dirname,
+          zones: zones(
+            './src/views',
+            [workers, app],
+            'src/views/ は workers と app を import しません。Worker は src/state/ の controller を通して使います（設計書 §4.1、D-17、D-26）。',
+          ),
+        },
+      ],
     },
   },
   {

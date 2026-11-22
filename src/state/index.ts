@@ -21,3 +21,12 @@ export {
   selectGraphOptions,
 } from './graphViewStore';
 export type { GraphViewState } from './graphViewStore';
+export { createMetricsController, metricsController } from './metricsController';
+export type {
+  MetricsController,
+  MetricsInput,
+  MetricsScheduler,
+  MetricsView,
+} from './metricsController';
+export { createLayoutController, layoutController } from './layoutController';
+export type { LayoutController, LayoutOutcome, LayoutRequest } from './layoutController';

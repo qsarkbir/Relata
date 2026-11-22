@@ -56,7 +56,7 @@ describe('FR-PJ-01 / NFR-08: グラフ表示の保存', () => {
     ])
       expect(parseGraphView(value).ok).toBe(false);
   });
-  it('存在しないノード位置をプロジェクトに混ぜない', () => {
+  it('FR-PJ-01: 存在しないノードの位置は落とし、警告にしてファイルは開く', () => {
     const result = parseProject(
       serializeProject(
         {
@@ -73,6 +73,15 @@ describe('FR-PJ-01 / NFR-08: グラフ表示の保存', () => {
         '2026-11-21',
       ),
     );
-    expect(result).toMatchObject({ ok: false, kind: 'broken', path: 'view.graph.positions[0].id' });
+    expect(result).toMatchObject({
+      ok: true,
+      value: { view: { graph: { positions: [] } } },
+      warnings: [
+        {
+          source: 'project',
+          issue: { kind: 'unknown-node-position', path: 'view.graph.positions[0].id' },
+        },
+      ],
+    });
   });
 });

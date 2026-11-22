@@ -13,8 +13,7 @@ import { toNodeId } from '../core/model';
 import { matchIncludes, LOOSE_MATCH } from '../core/text';
 import { buildScene, renderSvg } from '../render';
 import { createSvgExport, downloadSvg } from '../io/export';
-import { graphViewStore, uiStore } from '../state';
-import { layoutClient } from '../workers/layout.client';
+import { graphViewStore, layoutController, uiStore } from '../state';
 import { useData, useFilter, useT } from './hooks';
 import './graph.css';
 
@@ -34,7 +33,6 @@ export function GraphView() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
   const [iteration, setIteration] = useState(0);
-  const version = useRef(0);
   const handledIteration = useRef(0);
   const svg = useRef<SVGSVGElement>(null);
   const drag = useRef<{
@@ -117,9 +115,10 @@ export function GraphView() {
 
   useEffect(() => {
     if (graph === null) return;
-    const token = ++version.current;
     const lifetime = { cancelled: false };
-    const isStale = () => lifetime.cancelled || version.current !== token;
+    // 【なぜ】版番号と古い結果の破棄は state の layoutController が持つ（D-17）。
+    // ここでは効果の後片付けが済んだかだけを見る。
+    const isStale = () => lifetime.cancelled;
     const current = graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW;
     const savedIds = new Set(current.positions.map((p) => p.id));
     const allSaved = graph.nodes().every((id) => savedIds.has(toNodeId(id)));
@@ -136,8 +135,7 @@ export function GraphView() {
     }
     handledIteration.current = iteration;
     const task = uiStore.getState().startTask({ key: 'graph.layoutTask' }, () => {
-      version.current++;
-      layoutClient.cancel();
+      layoutController.cancel();
       setBusy(false);
     });
     const run = async () => {
@@ -145,59 +143,54 @@ export function GraphView() {
       if (isStale()) return;
       setBusy(true);
       setError(false);
-      try {
-        const kind = current.layout === 'fixed' && !allSaved ? 'circular' : current.layout;
-        let result = await layoutClient.run({
+      const kind = current.layout === 'fixed' && !allSaved ? 'circular' : current.layout;
+      const outcome = await layoutController.run({
+        job: {
           snapshot: toSnapshot(graph),
           options: { kind, seed: current.seed, positions: current.positions },
-        });
-        if (kind === 'forceatlas2') {
-          for (let n = 0; n < 10; n++) {
-            if (isStale()) return;
-            result = await layoutClient.step(10);
-            uiStore.getState().updateTask(task, (n + 1) / 10);
-          }
-        }
-        if (isStale()) return;
-        const merged = new Map(current.positions.map((p) => [p.id, p]));
-        for (const p of result.positions) merged.set(p.id, p);
-        const nextPositions = [...merged.values()];
-        // 保存された全座標は再開時にそのまま使う。初回だけ全体を収める。
-        const raw = new Map(nextPositions.map((p) => [p.id, p]));
-        const built = buildScene(graph, raw, encoding, { measureText });
-        const first = built.nodes[0];
-        const delta =
-          first === undefined
-            ? { x: 0, y: 0 }
-            : {
-                x: first.x - (raw.get(first.id)?.x ?? 0),
-                y: first.y - (raw.get(first.id)?.y ?? 0),
-              };
-        const zoom = Math.max(0.1, Math.min(10, 760 / built.width, 460 / built.height));
-        patch({
-          positions: nextPositions,
-          ...(current.positions.length === 0
-            ? {
-                viewport: {
-                  zoom,
-                  x: 400 - (built.width / 2 - delta.x) * zoom,
-                  y: 250 - (built.height / 2 - delta.y) * zoom,
-                },
-              }
-            : {}),
-        });
-      } catch (failure: unknown) {
-        if (!isStale() && !(failure instanceof DOMException && failure.name === 'AbortError'))
-          setError(true);
-      } finally {
-        uiStore.getState().endTask(task);
-        if (!isStale()) setBusy(false);
-      }
+        },
+        rounds: kind === 'forceatlas2' ? 10 : 0,
+        onProgress: (fraction) => {
+          uiStore.getState().updateTask(task, fraction);
+        },
+        apply: (positions) => {
+          const merged = new Map(current.positions.map((p) => [p.id, p]));
+          for (const p of positions) merged.set(p.id, p);
+          const nextPositions = [...merged.values()];
+          // 保存された全座標は再開時にそのまま使う。初回だけ全体を収める。
+          const raw = new Map(nextPositions.map((p) => [p.id, p]));
+          const built = buildScene(graph, raw, encoding, { measureText });
+          const first = built.nodes[0];
+          const delta =
+            first === undefined
+              ? { x: 0, y: 0 }
+              : {
+                  x: first.x - (raw.get(first.id)?.x ?? 0),
+                  y: first.y - (raw.get(first.id)?.y ?? 0),
+                };
+          const zoom = Math.max(0.1, Math.min(10, 760 / built.width, 460 / built.height));
+          patch({
+            positions: nextPositions,
+            ...(current.positions.length === 0
+              ? {
+                  viewport: {
+                    zoom,
+                    x: 400 - (built.width / 2 - delta.x) * zoom,
+                    y: 250 - (built.height / 2 - delta.y) * zoom,
+                  },
+                }
+              : {}),
+          });
+        },
+      });
+      uiStore.getState().endTask(task);
+      if (outcome === 'error' && !isStale()) setError(true);
+      if (!isStale()) setBusy(false);
     };
     void run();
     return () => {
       lifetime.cancelled = true;
-      layoutClient.cancel();
+      layoutController.cancel();
       uiStore.getState().endTask(task);
     };
     // 位置・viewportの保存更新では反復を再開しない。入力グラフと方式/seed、明示再計算だけを監視する。
@@ -547,8 +540,7 @@ export function GraphView() {
             };
             svg.current?.setPointerCapture(e.pointerId);
             if (id !== undefined) {
-              version.current++;
-              layoutClient.cancel();
+              layoutController.cancel();
               setBusy(false);
             }
           }}
@@ -623,8 +615,7 @@ export function GraphView() {
             onClick={() => {
               // 【なぜ】計算開始時の固定状態を持つWorker結果で、直後の固定操作を上書きしない。
               // ドラッグと同じく世代を進め、待機中の結果も失敗も無効にする。
-              version.current++;
-              layoutClient.cancel();
+              layoutController.cancel();
               setBusy(false);
               patch({
                 positions: (graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW).positions.map(
