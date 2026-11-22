@@ -1,5 +1,6 @@
 import { GraphView } from '../views/GraphView';
 import { AboutDialog } from '../views/AboutDialog';
+import { CsvExportMenu } from '../views/metrics/CsvExportMenu';
 import { FilterPanel } from '../views/FilterPanel';
 import { SampleCard } from '../views/SampleCard';
 import { ProjectMenu } from '../views/ProjectMenu';
@@ -41,6 +42,7 @@ export function App() {
               void clearAutosave();
             }}
           />
+          <CsvExportMenu />
           <div role="group" aria-label={t('locale.label')} className="locale-switch">
             {LOCALES.map((l) => (
               <button

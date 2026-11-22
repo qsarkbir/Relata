@@ -2,12 +2,31 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { counts, openProject, saveButton, startApp } from './support';
+import { counts, openCsvDialog, openProject, saveButton, startApp } from './support';
 
 async function downloadText(page: Page, name: string): Promise<string> {
   const pending = page.waitForEvent('download');
   await page.getByRole('button', { name, exact: true }).click();
   return readFileSync(await (await pending).path(), 'utf8');
+}
+
+/**
+ * 上部の「CSV出力」のダイアログから CSV を保存し、ダイアログを閉じて中身を返す。
+ *
+ * @param page - ページ
+ * @param name - ダイアログ内のボタンの名前
+ * @returns 保存された CSV の文字列
+ */
+async function csvText(page: Page, name: string): Promise<string> {
+  const dialog = await openCsvDialog(page);
+  // 【なぜ】古い入力の指標は保存させないので、計算が終わってボタンが使えるまで待つ。
+  await expect(dialog.getByRole('button', { name, exact: true })).toBeEnabled();
+  const pending = page.waitForEvent('download');
+  await dialog.getByRole('button', { name, exact: true }).click();
+  const text = readFileSync(await (await pending).path(), 'utf8');
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  return text;
 }
 
 test.use({ locale: 'ja-JP' });
@@ -31,18 +50,15 @@ test('UC-1 / FR-IN-04 / FR-VG-03 / FR-MT-04 / FR-OUT-01/02 / FR-PJ-01: 書簡を
   await page.getByText('見た目の設定', { exact: true }).click();
   await page.getByLabel('ノードサイズの元', { exact: true }).selectOption('metric:degree');
   await page.getByLabel('自己ループを含む', { exact: true }).uncheck();
-  const globalButton = page.getByRole('button', { name: '全体指標CSV', exact: true });
-  await expect(globalButton).toBeEnabled();
   // 【なぜ】図の自己ループ設定を指標・CSVも使うことを確認する（元表には4件ある）。
-  expect(await downloadText(page, '全体指標CSV')).toContain('edgeCount,3,ok,directed');
+  expect(await csvText(page, '全体指標CSV')).toContain('edgeCount,3,ok,directed');
   const search = page.getByRole('search', { name: 'ノードのテキスト検索' });
   await search.getByRole('searchbox').fill('Group A');
   await search.getByRole('button', { name: '検索', exact: true }).click();
   await expect(counts(page)).toContainText('ノード 2 / 3');
   await expect(nodes).toHaveCount(2);
-  await expect(globalButton).toBeEnabled();
-  expect(await downloadText(page, '全体指標CSV')).toContain('edgeCount,2,ok,directed');
-  const metricCsv = await downloadText(page, 'ノード指標CSV');
+  expect(await csvText(page, '全体指標CSV')).toContain('edgeCount,2,ok,directed');
+  const metricCsv = await csvText(page, 'ノード指標CSV');
   expect(metricCsv).toContain('Group A1');
   expect(metricCsv).toContain('Group A2');
   expect(metricCsv).not.toMatch(/,C,/u);
@@ -67,6 +83,5 @@ test('UC-1 / FR-IN-04 / FR-VG-03 / FR-MT-04 / FR-OUT-01/02 / FR-PJ-01: 書簡を
   await expect(page.getByLabel('ノードサイズの元', { exact: true })).toHaveValue('metric:degree');
   await expect(page.getByLabel('自己ループを含む', { exact: true })).not.toBeChecked();
   await expect(page.locator('.graph-canvas svg > g')).toHaveAttribute('transform', transform ?? '');
-  await expect(globalButton).toBeEnabled();
-  expect(await downloadText(page, '全体指標CSV')).toContain('edgeCount,2,ok,directed');
+  expect(await csvText(page, '全体指標CSV')).toContain('edgeCount,2,ok,directed');
 });

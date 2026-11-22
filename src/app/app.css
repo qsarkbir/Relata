@@ -31,7 +31,9 @@ body {
 }
 .header-actions {
   display: flex;
-  gap: 0.75rem;
+  /* 【なぜ】英語ではボタンの文字が長い。折り返さないと、ページが横にはみ出す。 */
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
   margin-inline-start: auto;
 }
 .locale-switch {
@@ -53,7 +55,9 @@ button {
 }
 .app-body {
   display: grid;
-  grid-template-columns: minmax(12rem, 18rem) 1fr minmax(12rem, 18rem);
+  /* 【なぜ】中央の列の最小幅を 0 にする。1fr の既定の最小幅は中身の幅なので、長い設定の行や
+     図が中央の列を押し広げ、右の指標パネルが画面の外へはみ出していた。 */
+  grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr) minmax(12rem, 18rem);
   flex: 1;
 }
 .region-filters {
@@ -66,6 +70,7 @@ button {
 }
 .region-main {
   padding: 1rem;
+  min-inline-size: 0;
 }
 .placeholder {
   color: #555;
@@ -93,8 +98,16 @@ button {
   align-items: center;
   gap: 0.5rem;
 }
-.about-dialog {
+.about-dialog,
+.modal-dialog {
   max-inline-size: 40rem;
+}
+.modal-dialog h3 {
+  margin-block: 1rem 0.25rem;
+  font-size: 1rem;
+}
+.modal-dialog p {
+  line-height: 1.6;
 }
 .about-dialog table {
   border-collapse: collapse;

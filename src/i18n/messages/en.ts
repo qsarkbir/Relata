@@ -374,6 +374,10 @@ export const en = {
     'This file was saved by a newer version. Update the app and open it again.',
   'project.failure.migrationUnknown':
     'Could not convert the old-format file to the current format.',
+  'csv.open': 'Export CSV',
+  'csv.options': 'Export options',
+  'csv.metricsPending':
+    'Node metrics and global metrics CSVs become available once the metrics have been calculated.',
   'csv.bom': 'Include UTF-8 BOM',
   'csv.edges': 'Edges CSV',
   'csv.failed': 'Could not save CSV. Please try again.',
@@ -457,6 +461,17 @@ export const en = {
   'metrics.failure.noConvergence': 'Did not converge',
   'metrics.failure.unexpected': 'Calculation error',
   'metrics.failure.notComputed': 'Not calculated',
+  'metrics.notes.open': 'Calculation notes ({count})',
+  'metrics.notes.title': 'Notes on how the metrics were calculated',
+  'metrics.notes.affected': 'Affected metrics:',
+  'metrics.notes.docs':
+    'A detailed explanation, including formulas, will be provided in the user documentation that is being prepared.',
+  'metrics.noteDetail.mixedAsBidirectional':
+    'In a graph that mixes directed and undirected edges, each undirected edge is counted as two edges, A→B and B→A. Undirected edges therefore contribute to degree and centrality in both directions. If your data mixes relations that should and should not have a direction, recalculating with the edges made consistent lets you compare the results.',
+  'metrics.noteDetail.directedAsUndirected':
+    'These metrics were calculated ignoring edge direction, even though the graph is directed. k-core and the clustering coefficient use their undirected definitions. Components counts weakly connected components (parts that are connected when direction is ignored). Transitivity is the share of closed triangles with direction ignored. In a correspondence network, for example, A and B count as connected when A wrote to B even if B never wrote back. To tell one-way from two-way relations, look at reciprocity (the share of edges that go both ways) and at in-degree and out-degree as well.',
+  'metrics.noteDetail.multipleNodeTypes':
+    'These metrics assume that all nodes are of the same kind (for example, all people). When the graph mixes kinds, such as people and books or people and places, the values mean something different. In a graph linking people to places, for example, a place with high betweenness is simply a place that many people visited; it is not a broker in a network of people. Density is also low because nodes of the same kind are never linked directly. To study one kind of node, narrow the node types in the filter panel before reading the metrics (relations that pass through other types will no longer be counted). Projection, which builds a one-kind network from a two-kind network, is planned for a later version.',
   'metrics.note.mixedAsBidirectional':
     'Undirected edges in the mixed graph were treated as links in both directions.',
   'metrics.note.directedAsUndirected': 'These metrics were calculated ignoring direction.',
