@@ -17,6 +17,50 @@ import { graphViewStore, layoutController, uiStore } from '../state';
 import { useData, useFilter, useT } from './hooks';
 import './graph.css';
 
+/** 図の枠の既定の大きさ（CSS ピクセル）。枠の大きさを測るまでと、測れない環境で使う。 */
+const DEFAULT_CANVAS = { width: 800, height: 500 } as const;
+/** 全体を収めるときに、枠の上下左右に残す余白（CSS ピクセル）。 */
+const FIT_MARGIN = 20;
+
+/**
+ * 図の中の点 (x, y) を動かさずに、拡大率を factor 倍にする。
+ *
+ * 【なぜ】部品の外に置き、ストアから今の値を読む。ホイールの処理を一度だけ登録しても、
+ * 古い表示の値を使わずに済むため。
+ * @param factor - 拡大率に掛ける倍率
+ * @param x - 固定する点の x（SVG の座標）
+ * @param y - 固定する点の y（SVG の座標）
+ */
+function zoomAround(factor: number, x: number, y: number): void {
+  const current = graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW;
+  const zoom = Math.max(0.1, Math.min(10, current.viewport.zoom * factor));
+  graphViewStore.getState().setView({
+    ...current,
+    viewport: {
+      zoom,
+      x: x - ((x - current.viewport.x) * zoom) / current.viewport.zoom,
+      y: y - ((y - current.viewport.y) * zoom) / current.viewport.zoom,
+    },
+  });
+}
+
+/**
+ * 図の全体を、余白を残して枠に収める拡大率を求める。
+ *
+ * @param width - 図の幅
+ * @param height - 図の高さ
+ * @param size - 枠の大きさ
+ * @returns 0.1〜10 に収めた拡大率
+ */
+function fitZoom(
+  width: number,
+  height: number,
+  size: { readonly width: number; readonly height: number },
+): number {
+  const room = (length: number) => Math.max(1, length - FIT_MARGIN * 2);
+  return Math.max(0.1, Math.min(10, room(size.width) / width, room(size.height) / height));
+}
+
 /**
  * Workerの位置をSVGへ描き、選択・検索・固定・保存・SVG出力を操作する。
  * @returns データがない場合はnull、それ以外はグラフの操作領域
@@ -35,6 +79,11 @@ export function GraphView() {
   const [iteration, setIteration] = useState(0);
   const handledIteration = useRef(0);
   const svg = useRef<SVGSVGElement>(null);
+  const frame = useRef<HTMLDivElement>(null);
+  // 【なぜ】枠の大きさは利用者がつまみで変えられる。SVG の座標を CSS ピクセルと 1 対 1 にするため、
+  // 測った大きさを viewBox に使う。レイアウトの効果は大きさの変化で動かしたくないので、ref にも写す。
+  const [canvas, setCanvas] = useState<{ width: number; height: number }>(DEFAULT_CANVAS);
+  const canvasRef = useRef<{ width: number; height: number }>(DEFAULT_CANVAS);
   const drag = useRef<{
     id?: NodeId;
     x: number;
@@ -97,12 +146,12 @@ export function GraphView() {
         };
   const fit = () => {
     if (scene === null) return;
-    const zoom = Math.max(0.1, Math.min(10, 760 / scene.width, 460 / scene.height));
+    const zoom = fitZoom(scene.width, scene.height, canvas);
     patch({
       viewport: {
         zoom,
-        x: 400 - (scene.width / 2 - offset.x) * zoom,
-        y: 250 - (scene.height / 2 - offset.y) * zoom,
+        x: canvas.width / 2 - (scene.width / 2 - offset.x) * zoom,
+        y: canvas.height / 2 - (scene.height / 2 - offset.y) * zoom,
       },
     });
   };
@@ -168,15 +217,16 @@ export function GraphView() {
                   x: first.x - (raw.get(first.id)?.x ?? 0),
                   y: first.y - (raw.get(first.id)?.y ?? 0),
                 };
-          const zoom = Math.max(0.1, Math.min(10, 760 / built.width, 460 / built.height));
+          const size = canvasRef.current;
+          const zoom = fitZoom(built.width, built.height, size);
           patch({
             positions: nextPositions,
             ...(current.positions.length === 0
               ? {
                   viewport: {
                     zoom,
-                    x: 400 - (built.width / 2 - delta.x) * zoom,
-                    y: 250 - (built.height / 2 - delta.y) * zoom,
+                    x: size.width / 2 - (built.width / 2 - delta.x) * zoom,
+                    y: size.height / 2 - (built.height / 2 - delta.y) * zoom,
                   },
                 }
               : {}),
@@ -195,6 +245,43 @@ export function GraphView() {
     };
     // 位置・viewportの保存更新では反復を再開しない。入力グラフと方式/seed、明示再計算だけを監視する。
   }, [graph, view.layout, view.seed, iteration, measureText, encoding]);
+  const hasFigure = dataset !== null && graph !== null && scene !== null;
+  useEffect(() => {
+    const element = svg.current;
+    if (!hasFigure || element === null) return;
+    // 【なぜ】React の onWheel は passive で登録されるので、preventDefault が効かず、拡大・縮小と同時に
+    // ページもスクロールしてしまう。DOM に直接 passive: false で登録して、ページのスクロールを止める。
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      const matrix = element.getScreenCTM();
+      const p =
+        matrix === null
+          ? { x: event.clientX, y: event.clientY }
+          : new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
+      zoomAround(event.deltaY < 0 ? 1.1 : 1 / 1.1, p.x, p.y);
+    };
+    element.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      element.removeEventListener('wheel', onWheel);
+    };
+  }, [hasFigure]);
+  useEffect(() => {
+    const element = frame.current;
+    if (!hasFigure || element === null || typeof ResizeObserver === 'undefined') return;
+    // 【なぜ】枠の大きさ（利用者のつまみ操作、窓の幅の変化）を測り、viewBox と全体表示に使う。
+    const observer = new ResizeObserver(() => {
+      const width = Math.max(1, Math.round(element.clientWidth));
+      const height = Math.max(1, Math.round(element.clientHeight));
+      canvasRef.current = { width, height };
+      setCanvas((previous) =>
+        previous.width === width && previous.height === height ? previous : { width, height },
+      );
+    });
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasFigure]);
   if (dataset === null || graph === null || scene === null) return null;
   const matches = graph
     .nodes()
@@ -239,16 +326,8 @@ export function GraphView() {
       ? { x: clientX, y: clientY }
       : new DOMPoint(clientX, clientY).matrixTransform(matrix.inverse());
   };
-  const zoomBy = (factor: number, x = 400, y = 250) => {
-    const current = (graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW).viewport;
-    const zoom = Math.max(0.1, Math.min(10, current.zoom * factor));
-    patch({
-      viewport: {
-        zoom,
-        x: x - ((x - current.x) * zoom) / current.zoom,
-        y: y - ((y - current.y) * zoom) / current.zoom,
-      },
-    });
+  const zoomBy = (factor: number) => {
+    zoomAround(factor, canvas.width / 2, canvas.height / 2);
   };
   const choose = (id: string) => {
     setSelected(id === '' ? new Set() : new Set([toNodeId(id)]));
@@ -256,243 +335,249 @@ export function GraphView() {
   return (
     <section className="graph-view" aria-labelledby="graph-title">
       <h2 id="graph-title">{t('graph.title')}</h2>
-      <div className="graph-controls">
-        <label>
-          {t('graph.layout')}{' '}
-          <select
-            aria-label={t('graph.layout')}
-            value={view.layout}
-            onChange={(e) => {
-              const value = e.currentTarget.value;
-              if (value === 'forceatlas2' || value === 'circular' || value === 'fixed') {
-                patch({ layout: value });
-                setIteration((v) => v + 1);
+      {/* 【なぜ】図を広く使えるよう、図の上の設定と操作をまとめて折りたためるようにする。既定は開く。 */}
+      <details className="graph-settings" open>
+        <summary>{t('graph.settings')}</summary>
+        <div className="graph-controls">
+          <label>
+            {t('graph.layout')}{' '}
+            <select
+              aria-label={t('graph.layout')}
+              value={view.layout}
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                if (value === 'forceatlas2' || value === 'circular' || value === 'fixed') {
+                  patch({ layout: value });
+                  setIteration((v) => v + 1);
+                }
+              }}
+            >
+              <option value="forceatlas2">ForceAtlas2</option>
+              <option value="circular">{t('graph.circular')}</option>
+              <option value="fixed">{t('graph.fixed')}</option>
+            </select>
+          </label>
+          <label>
+            {t('graph.seed')}{' '}
+            <input
+              type="number"
+              min="0"
+              max="4294967295"
+              value={view.seed}
+              onChange={(e) => {
+                const value = e.currentTarget.valueAsNumber;
+                if (Number.isInteger(value) && value >= 0 && value <= 0xffffffff) {
+                  patch({ seed: value, positions: view.positions.filter((p) => p.fixed) });
+                  setIteration((v) => v + 1);
+                }
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => {
+              setIteration((v) => v + 1);
+            }}
+          >
+            {t('graph.relayout')}
+          </button>
+          <label>
+            {t('graph.labels')}{' '}
+            <select
+              aria-label={t('graph.labels')}
+              value={view.labels}
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                if (value === 'all' || value === 'selected' || value === 'large')
+                  patch({ labels: value });
+              }}
+            >
+              <option value="all">{t('graph.all')}</option>
+              <option value="selected">{t('graph.selected')}</option>
+              <option value="large">{t('graph.large')}</option>
+            </select>
+          </label>
+          <label>
+            {t('graph.direction')}{' '}
+            <select
+              aria-label={t('graph.direction')}
+              value={view.direction}
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                if (value === 'arrow' || value === 'taper' || value === 'gradient')
+                  patch({ direction: value });
+              }}
+            >
+              <option value="arrow">{t('graph.arrow')}</option>
+              <option value="taper">{t('graph.taper')}</option>
+              <option value="gradient">{t('graph.gradient')}</option>
+            </select>
+          </label>
+          <label>
+            {t('graph.weight')}{' '}
+            <select
+              value={
+                typeof view.graphOptions.weight === 'string'
+                  ? view.graphOptions.weight
+                  : 'attr:' + view.graphOptions.weight.attr
               }
-            }}
-          >
-            <option value="forceatlas2">ForceAtlas2</option>
-            <option value="circular">{t('graph.circular')}</option>
-            <option value="fixed">{t('graph.fixed')}</option>
-          </select>
-        </label>
-        <label>
-          {t('graph.seed')}{' '}
-          <input
-            type="number"
-            min="0"
-            max="4294967295"
-            value={view.seed}
-            onChange={(e) => {
-              const value = e.currentTarget.valueAsNumber;
-              if (Number.isInteger(value) && value >= 0 && value <= 0xffffffff) {
-                patch({ seed: value, positions: view.positions.filter((p) => p.fixed) });
-                setIteration((v) => v + 1);
-              }
-            }}
-          />
-        </label>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => {
-            setIteration((v) => v + 1);
-          }}
-        >
-          {t('graph.relayout')}
-        </button>
-        <label>
-          {t('graph.labels')}{' '}
-          <select
-            aria-label={t('graph.labels')}
-            value={view.labels}
-            onChange={(e) => {
-              const value = e.currentTarget.value;
-              if (value === 'all' || value === 'selected' || value === 'large')
-                patch({ labels: value });
-            }}
-          >
-            <option value="all">{t('graph.all')}</option>
-            <option value="selected">{t('graph.selected')}</option>
-            <option value="large">{t('graph.large')}</option>
-          </select>
-        </label>
-        <label>
-          {t('graph.direction')}{' '}
-          <select
-            aria-label={t('graph.direction')}
-            value={view.direction}
-            onChange={(e) => {
-              const value = e.currentTarget.value;
-              if (value === 'arrow' || value === 'taper' || value === 'gradient')
-                patch({ direction: value });
-            }}
-          >
-            <option value="arrow">{t('graph.arrow')}</option>
-            <option value="taper">{t('graph.taper')}</option>
-            <option value="gradient">{t('graph.gradient')}</option>
-          </select>
-        </label>
-        <label>
-          {t('graph.weight')}{' '}
-          <select
-            value={
-              typeof view.graphOptions.weight === 'string'
-                ? view.graphOptions.weight
-                : 'attr:' + view.graphOptions.weight.attr
-            }
-            onChange={(e) => {
-              const value = e.currentTarget.value;
-              patch({
-                graphOptions: {
-                  ...view.graphOptions,
-                  weight:
-                    value === 'count' || value === 'weight' ? value : { attr: value.slice(5) },
-                },
-              });
-            }}
-          >
-            <option value="weight">{t('graph.weightValue')}</option>
-            <option value="count">{t('graph.count')}</option>
-            {dataset.schema
-              .filter((a) => a.appliesTo === 'edge' && a.valueType === 'number')
-              .map((a) => (
-                <option key={a.key} value={'attr:' + a.key}>
-                  {a.label}
-                </option>
-              ))}
-          </select>
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={view.graphOptions.selfLoops}
-            onChange={(e) => {
-              patch({ graphOptions: { ...view.graphOptions, selfLoops: e.currentTarget.checked } });
-            }}
-          />
-          {t('graph.selfLoops')}
-        </label>
-      </div>
-      <EncodingControls
-        dataset={dataset}
-        settings={view.encoding}
-        onChange={(value) => {
-          patch({ encoding: value });
-        }}
-      />
-      <div className="graph-controls">
-        <button
-          type="button"
-          onClick={() => {
-            zoomBy(1.25);
-          }}
-        >
-          {t('graph.zoomIn')}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            zoomBy(0.8);
-          }}
-        >
-          {t('graph.zoomOut')}
-        </button>
-        <button type="button" onClick={fit}>
-          {t('graph.fit')}
-        </button>
-        <button
-          type="button"
-          disabled={scene.nodes.length === 0}
-          onClick={() => {
-            downloadSvg(
-              createSvgExport(graph, positions, encoding, {
-                labels: view.labels,
-                largeLabelCount: view.largeLabelCount,
-                // 【なぜ】選択ラベルの候補は渡し、選択の輪郭だけを保存から除く。
-                selected: visibleSelected,
-                includeSelection: false,
-                directedStyle: view.direction,
-                measureText,
-                title: dataset.meta.title,
-              }),
-            );
-          }}
-        >
-          {t('graph.export')}
-        </button>
-      </div>
-      <label>
-        {t('graph.search')}{' '}
-        <input
-          type="search"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.currentTarget.value);
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                patch({
+                  graphOptions: {
+                    ...view.graphOptions,
+                    weight:
+                      value === 'count' || value === 'weight' ? value : { attr: value.slice(5) },
+                  },
+                });
+              }}
+            >
+              <option value="weight">{t('graph.weightValue')}</option>
+              <option value="count">{t('graph.count')}</option>
+              {dataset.schema
+                .filter((a) => a.appliesTo === 'edge' && a.valueType === 'number')
+                .map((a) => (
+                  <option key={a.key} value={'attr:' + a.key}>
+                    {a.label}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={view.graphOptions.selfLoops}
+              onChange={(e) => {
+                patch({
+                  graphOptions: { ...view.graphOptions, selfLoops: e.currentTarget.checked },
+                });
+              }}
+            />
+            {t('graph.selfLoops')}
+          </label>
+        </div>
+        <EncodingControls
+          dataset={dataset}
+          settings={view.encoding}
+          onChange={(value) => {
+            patch({ encoding: value });
           }}
         />
-      </label>
-      {query !== '' && (
-        <ul className="graph-search-results">
-          {matches.map((id) => (
-            <li key={id}>
-              <button
-                type="button"
-                onClick={() => {
-                  choose(id);
-                  const p = positions.get(toNodeId(id));
-                  if (p !== undefined)
-                    patch({
-                      viewport: {
-                        ...view.viewport,
-                        x: 400 - p.x * view.viewport.zoom,
-                        y: 250 - p.y * view.viewport.zoom,
-                      },
-                    });
-                }}
-              >
-                <bdi>{graph.getNodeAttribute(id, 'label')}</bdi> <bdi>{id}</bdi>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <label>
-        {t('graph.selectNode')}{' '}
-        <select
-          aria-label={t('graph.selectNode')}
-          value={selectedId ?? ''}
-          onChange={(e) => {
-            choose(e.currentTarget.value);
-          }}
-        >
-          <option value="">{t('graph.none')}</option>
-          {graph.nodes().map((id) => (
-            <option key={id} value={id} dir="auto">
-              {graph.getNodeAttribute(id, 'label')} ({id})
-            </option>
-          ))}
-        </select>
-      </label>
-      <p>{t('graph.highlightLegend')}</p>
-      <label>
-        {t('graph.highlight')}{' '}
-        <select
-          aria-label={t('graph.highlight')}
-          value={highlight}
-          onChange={(e) => {
-            const v = e.currentTarget.value;
-            if (v === 'both' || v === 'in' || v === 'out') setHighlight(v);
-          }}
-        >
-          <option value="both">{t('graph.both')}</option>
-          <option value="in">{t('graph.in')}</option>
-          <option value="out">{t('graph.out')}</option>
-        </select>
-      </label>
-      <div className="graph-canvas">
+        <div className="graph-controls">
+          <button
+            type="button"
+            onClick={() => {
+              zoomBy(1.25);
+            }}
+          >
+            {t('graph.zoomIn')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              zoomBy(0.8);
+            }}
+          >
+            {t('graph.zoomOut')}
+          </button>
+          <button type="button" onClick={fit}>
+            {t('graph.fit')}
+          </button>
+          <button
+            type="button"
+            disabled={scene.nodes.length === 0}
+            onClick={() => {
+              downloadSvg(
+                createSvgExport(graph, positions, encoding, {
+                  labels: view.labels,
+                  largeLabelCount: view.largeLabelCount,
+                  // 【なぜ】選択ラベルの候補は渡し、選択の輪郭だけを保存から除く。
+                  selected: visibleSelected,
+                  includeSelection: false,
+                  directedStyle: view.direction,
+                  measureText,
+                  title: dataset.meta.title,
+                }),
+              );
+            }}
+          >
+            {t('graph.export')}
+          </button>
+        </div>
+        <label>
+          {t('graph.search')}{' '}
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.currentTarget.value);
+            }}
+          />
+        </label>
+        {query !== '' && (
+          <ul className="graph-search-results">
+            {matches.map((id) => (
+              <li key={id}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    choose(id);
+                    const p = positions.get(toNodeId(id));
+                    if (p !== undefined)
+                      patch({
+                        viewport: {
+                          ...view.viewport,
+                          x: canvas.width / 2 - p.x * view.viewport.zoom,
+                          y: canvas.height / 2 - p.y * view.viewport.zoom,
+                        },
+                      });
+                  }}
+                >
+                  <bdi>{graph.getNodeAttribute(id, 'label')}</bdi> <bdi>{id}</bdi>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <label>
+          {t('graph.selectNode')}{' '}
+          <select
+            aria-label={t('graph.selectNode')}
+            value={selectedId ?? ''}
+            onChange={(e) => {
+              choose(e.currentTarget.value);
+            }}
+          >
+            <option value="">{t('graph.none')}</option>
+            {graph.nodes().map((id) => (
+              <option key={id} value={id} dir="auto">
+                {graph.getNodeAttribute(id, 'label')} ({id})
+              </option>
+            ))}
+          </select>
+        </label>
+        <p>{t('graph.highlightLegend')}</p>
+        <label>
+          {t('graph.highlight')}{' '}
+          <select
+            aria-label={t('graph.highlight')}
+            value={highlight}
+            onChange={(e) => {
+              const v = e.currentTarget.value;
+              if (v === 'both' || v === 'in' || v === 'out') setHighlight(v);
+            }}
+          >
+            <option value="both">{t('graph.both')}</option>
+            <option value="in">{t('graph.in')}</option>
+            <option value="out">{t('graph.out')}</option>
+          </select>
+        </label>
+      </details>
+      <div className="graph-canvas" ref={frame}>
         <svg
           ref={svg}
-          viewBox="0 0 800 500"
+          viewBox={`0 0 ${String(canvas.width)} ${String(canvas.height)}`}
           role="img"
           tabIndex={0}
           onKeyDown={(e) => {
@@ -516,11 +601,6 @@ export function GraphView() {
           }}
           aria-label={t('graph.figure')}
           data-zoom={view.viewport.zoom}
-          onWheel={(e) => {
-            e.preventDefault();
-            const p = point(e.clientX, e.clientY);
-            zoomBy(e.deltaY < 0 ? 1.1 : 1 / 1.1, p.x, p.y);
-          }}
           onPointerDown={(e) => {
             if (e.button !== 0) return;
             const p = point(e.clientX, e.clientY);

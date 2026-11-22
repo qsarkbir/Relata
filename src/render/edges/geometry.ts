@@ -91,8 +91,19 @@ export function edgeGeometry(
   style?: DirectedEdgeStyle,
 ): EdgeGeometry {
   const d = distance(source, target);
+  // 【なぜ】異なるノードが重なっているときは、輪で外へ迂回させず、中心どうしを直線で結ぶ。
+  // 線はノードの下に隠れる。輪にすると、ノードが密集した図で大きな迂回が多数生じて読みにくい
+  // （公開版での利用者の指摘、2026-11-22）。矢じりなどの向きの表現は、置き場所が無いので付けない。
+  if (source.id !== target.id && d <= sourceExtent + targetExtent + 1)
+    return {
+      path: [
+        { type: 'M', x: source.x, y: source.y },
+        { type: 'L', x: target.x, y: target.y },
+      ],
+    };
   let quads: Quad[];
   if (d <= sourceExtent + targetExtent + 1) {
+    // ここに来るのは自己ループだけ（異なるノードの重なりは上で直線にした）。
     // 近接していても、位置が違えば進行方向の法線を使う。
     // 【なぜ】向きが定まらない同一座標だけは、IDの辞書順で再現可能な上下を補う。
     const radius = Math.max(24, sourceExtent * 2, targetExtent * 2, width * 3, Math.abs(bend));
