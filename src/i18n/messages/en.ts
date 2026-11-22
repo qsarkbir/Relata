@@ -42,6 +42,7 @@ export const en = {
   'graph.invalidEncoding': 'Use finite nonnegative values with minimum no greater than maximum.',
   'graph.highlightLegend':
     'Incoming edges are vermilion, outgoing edges blue, and loops, undirected or two-selected-end edges purple.',
+  'graph.settings': 'Display settings and controls',
   'graph.title': 'Graph',
   'graph.layout': 'Layout',
   'graph.circular': 'Circular',

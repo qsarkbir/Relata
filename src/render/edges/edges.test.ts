@@ -138,7 +138,7 @@ describe('FR-VG-05〜07: 有向エッジ', () => {
   });
 });
 
-it('FR-VG-06: 同じ位置のノードの往復も上下の別の輪へ分ける', () => {
+it('FR-VG-06: 位置の重なる異なるノードの間は、往復でも輪にせず中心どうしの直線にする', () => {
   const scene = buildScene(
     fixture(true),
     new Map([
@@ -146,12 +146,11 @@ it('FR-VG-06: 同じ位置のノードの往復も上下の別の輪へ分ける
       [b, { x: 0, y: 0 }],
     ]),
   );
-  const first = scene.edges[0]?.path[1];
-  const second = scene.edges[1]?.path[1];
-  const y = scene.nodes[0]?.y ?? 0;
-  if (first?.type !== 'Q' || second?.type !== 'Q') throw new Error('curves');
-  expect(first.cy).toBeLessThan(y);
-  expect(second.cy).toBeGreaterThan(y);
+  // 【なぜ】線はノードの下に隠れる。外へ迂回する輪は、密集した図を読みにくくした（利用者の指摘）。
+  for (const edge of scene.edges) {
+    expect(edge.path.map((command) => command.type)).toEqual(['M', 'L']);
+    expect(edge.head).toBeUndefined();
+  }
 });
 
 function geometryNode(id: string, x: number, y: number): SceneNode {
@@ -198,27 +197,7 @@ function hasCrossing(polygon: readonly EdgePoint[], closed = true): boolean {
   return false;
 }
 
-it('FR-VG-06: 近接ノードの往復はID名で上下を変えず、混在無向辺も別経路にする', () => {
-  for (const secondX of [0, 5]) {
-    const graph = fixture(true);
-    graph.addUndirectedEdgeWithKey('u', a, b, {
-      weight: 1,
-      count: 1,
-      edgeIds: [],
-      directed: false,
-      missingWeightCount: 0,
-    });
-    const scene = buildScene(
-      graph,
-      new Map([
-        [a, { x: 0, y: 0 }],
-        [b, { x: secondX, y: 0 }],
-      ]),
-      {},
-      { directedStyle: 'gradient' },
-    );
-    expect(new Set(scene.edges.map((edge) => JSON.stringify(edge.path))).size).toBe(3);
-  }
+it('FR-VG-05/06: 外接円が重なるほど近い異なるノードは、どの表現でも直線で結び、向きの飾りを付けない', () => {
   for (const names of [
     ['node-10', 'node-2'],
     ['node-2', 'node-10'],
@@ -226,18 +205,22 @@ it('FR-VG-06: 近接ノードの往復はID名で上下を変えず、混在無�
     const first = names[0];
     const second = names[1];
     if (first === undefined || second === undefined) throw new Error('names');
-    const edge = edgeGeometry(
-      geometryNode(first, 0, 0),
-      geometryNode(second, 5, 0),
-      4,
-      4,
-      2,
-      24,
-      'gradient',
-    );
-    const bend = edge.path[1];
-    if (bend?.type !== 'Q') throw new Error('curve');
-    expect(bend.cy).toBeGreaterThan(0);
+    for (const style of [undefined, 'arrow', 'taper', 'gradient'] as const) {
+      const edge = edgeGeometry(
+        geometryNode(first, 0, 0),
+        geometryNode(second, 5, 0),
+        4,
+        4,
+        2,
+        24,
+        style,
+      );
+      expect(edge.path).toEqual([
+        { type: 'M', x: 0, y: 0 },
+        { type: 'L', x: 5, y: 0 },
+      ]);
+      expect(edge.head ?? edge.ribbon ?? edge.gradient).toBeUndefined();
+    }
   }
 });
 
@@ -327,13 +310,4 @@ it('FR-VG-05/06: 近接上限・逆向き・負のbendでも中心線と先細�
       }
     }
   }
-  const first = geometryNode('a', 0, 0);
-  const second = geometryNode('b', 3, 0);
-  const mixed = [
-    edgeGeometry(first, second, 1, 1, 1, 24, 'gradient'),
-    edgeGeometry(second, first, 1, 1, 1, 24, 'gradient'),
-    edgeGeometry(first, second, 1, 1, 1, 0),
-  ];
-  expect(new Set(mixed.map((edge) => JSON.stringify(edge.path))).size).toBe(3);
-  for (const edge of mixed) expect(hasCrossing(pathSamples(edge.path), false)).toBe(false);
 });

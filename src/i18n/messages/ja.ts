@@ -40,6 +40,7 @@ export const ja = {
   'graph.invalidEncoding': '0以上の有限な値で、最小を最大以下にしてください。',
   'graph.highlightLegend':
     '入る辺は朱色、出る辺は青、自己ループ・無向・両端選択の辺は紫で強調します。',
+  'graph.settings': '表示の設定と操作',
   'graph.title': 'グラフ',
   'graph.layout': '配置方法',
   'graph.circular': '円形',

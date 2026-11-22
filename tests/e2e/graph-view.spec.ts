@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { startApp, openProject, saveButton, readAutosave, waitForAutosave } from './support';
 
@@ -37,6 +37,25 @@ test('FR-VG-09/11: Workerで表示し検索・選択・向きの強調と拡大�
   for (const label of selectedLabel) expect(svg).toContain(label);
 });
 
+/**
+ * ノードが図の枠のどこに描かれているか（外接矩形の中心）を返す。
+ *
+ * 【なぜ】transform の文字列は、ラベルの有無などで図の範囲が変わると、補正のために値が変わる。
+ * 利用者に見える位置そのものを比べる。
+ * @param page - ページ
+ * @param id - ノードの ID
+ * @returns 枠の左上を原点とする中心
+ */
+async function nodeCenter(page: Page, id: string): Promise<{ x: number; y: number }> {
+  const box = await page
+    .locator(`.graph-canvas #graph-view-nodes > [data-id="${id}"]`)
+    .boundingBox();
+  const frame = await page.getByRole('img', { name: 'ネットワーク図' }).boundingBox();
+  if (box === null || frame === null) throw new Error('node box');
+  // 【なぜ】周りのパネルの幅で図の枠ごと動くことがあるので、枠の左上からの位置で比べる。
+  return { x: box.x + box.width / 2 - frame.x, y: box.y + box.height / 2 - frame.y };
+}
+
 test('FR-PJ-01/02 / NFR-08: 配置・固定点・拡大と表示設定をファイルと自動保存から復元する', async ({
   page,
 }) => {
@@ -48,7 +67,8 @@ test('FR-PJ-01/02 / NFR-08: 配置・固定点・拡大と表示設定をファ�
   await page.getByLabel('向きの表現').selectOption('gradient');
   await page.getByLabel('ラベル', { exact: true }).selectOption('selected');
   await page.getByRole('button', { name: '拡大', exact: true }).click();
-  const transform = await page.locator('.graph-canvas svg > g').getAttribute('transform');
+  const zoom = await page.getByRole('img', { name: 'ネットワーク図' }).getAttribute('data-zoom');
+  const center = await nodeCenter(page, 'p1');
   const download = page.waitForEvent('download');
   await saveButton(page).click();
   const file = await download;
@@ -60,14 +80,24 @@ test('FR-PJ-01/02 / NFR-08: 配置・固定点・拡大と表示設定をファ�
   await expect.poll(() => readAutosave(page)).toContain('"direction":"gradient"');
   await page.reload();
   await expect(page.getByLabel('向きの表現')).toHaveValue('gradient');
-  await expect(page.locator('.graph-canvas svg > g')).toHaveAttribute('transform', transform ?? '');
+  await expect(page.getByRole('img', { name: 'ネットワーク図' })).toHaveAttribute(
+    'data-zoom',
+    zoom ?? '',
+  );
+  await expect.poll(async () => (await nodeCenter(page, 'p1')).x).toBeCloseTo(center.x, 1);
+  await expect.poll(async () => (await nodeCenter(page, 'p1')).y).toBeCloseTo(center.y, 1);
   await openProject(page, {
     name: 'saved.json',
     mimeType: 'application/json',
     buffer: Buffer.from(text),
   });
   await expect(page.getByLabel('ラベル', { exact: true })).toHaveValue('selected');
-  await expect(page.locator('.graph-canvas svg > g')).toHaveAttribute('transform', transform ?? '');
+  await expect(page.getByRole('img', { name: 'ネットワーク図' })).toHaveAttribute(
+    'data-zoom',
+    zoom ?? '',
+  );
+  await expect.poll(async () => (await nodeCenter(page, 'p1')).x).toBeCloseTo(center.x, 1);
+  await expect.poll(async () => (await nodeCenter(page, 'p1')).y).toBeCloseTo(center.y, 1);
 });
 
 test('FR-VG-11 / NFR-08: ドラッグした位置を固定し、ファイルと再配置で保つ', async ({ page }) => {
@@ -223,4 +253,39 @@ test('FR-VG-11: 再配置の応答待ち中でも固定・解除を失わず、�
       },
     });
   }
+});
+
+test('FR-VG-11: ホイールで拡大してもページはスクロールしない', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await startApp(page);
+  await openProject(page, 'maghrib.relata.json');
+  const figure = page.getByRole('img', { name: 'ネットワーク図' });
+  await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]')).toHaveCount(14);
+  await figure.scrollIntoViewIfNeeded();
+  const before = await page.evaluate(() => window.scrollY);
+  const zoom = await figure.getAttribute('data-zoom');
+  const box = await figure.boundingBox();
+  if (box === null) throw new Error('figure box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.wheel(0, -300);
+  await expect(figure).not.toHaveAttribute('data-zoom', zoom ?? '');
+  // 【なぜ】React の onWheel は passive なので、以前は拡大と同時にページもスクロールしていた。
+  expect(await page.evaluate(() => window.scrollY)).toBe(before);
+});
+
+test('FR-VG-11: 図の枠の高さを変えると描画範囲が追従し、設定を折りたためる', async ({ page }) => {
+  await startApp(page);
+  await openProject(page, 'maghrib.relata.json');
+  const figure = page.getByRole('img', { name: 'ネットワーク図' });
+  await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]')).toHaveCount(14);
+  // 利用者が右下のつまみで高さを変えた状態を、スタイルの変更で作る。
+  await page.locator('.graph-canvas').evaluate((element) => {
+    if (element instanceof HTMLElement) element.style.height = '640px';
+  });
+  await expect(figure).toHaveAttribute('viewBox', /^0 0 \d+ 64\d$/u);
+  const settings = page.locator('details.graph-settings');
+  await expect(settings).toHaveAttribute('open', '');
+  await settings.locator('> summary').click();
+  await expect(page.getByRole('button', { name: '全体を表示', exact: true })).toBeHidden();
+  await expect(figure).toBeVisible();
 });
