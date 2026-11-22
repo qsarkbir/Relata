@@ -310,3 +310,78 @@ fieldset {
   display: flex;
   gap: 0.75rem;
 }
+
+/* アイコンのボタンと説明のアイコン（利用者の指摘で、文字の多いボタンと説明文を減らした）。 */
+.icon {
+  display: block;
+}
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem;
+  min-inline-size: 2rem;
+  min-block-size: 2rem;
+}
+.info-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #0b57d0;
+  cursor: pointer;
+  vertical-align: middle;
+  font-size: 1rem;
+  font-weight: normal;
+}
+.info-tip:hover {
+  background: #e8f0fe;
+}
+.info-count {
+  min-inline-size: 1.1rem;
+  padding-inline: 0.25rem;
+  border-radius: 999px;
+  background: #b3261e;
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: bold;
+  line-height: 1.1rem;
+  text-align: center;
+}
+.info-row {
+  display: flex;
+  justify-content: flex-end;
+}
+.info-dialog .info-body {
+  max-block-size: 70vh;
+  overflow-y: auto;
+}
+.info-dialog dt {
+  font-weight: bold;
+  margin-block-start: 0.6rem;
+}
+.info-dialog dd {
+  margin-inline-start: 0;
+  margin-block-start: 0.2rem;
+}
+.save-choices {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.save-choices li {
+  margin-block-end: 0.75rem;
+}
+.save-choices p {
+  margin-block: 0.25rem 0;
+  color: #444;
+}
+/* ラベルと説明のアイコンを 1 行に並べる。 */
+.label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}

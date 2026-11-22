@@ -40,8 +40,10 @@ export function ModalDialog({ id, title, className, children }: ModalDialogProps
       ref={ref}
       className={['modal-dialog', className].filter(Boolean).join(' ')}
       aria-labelledby={titleId}
-      onClose={() => {
-        setOpenDialog(null);
+      onClose={(event) => {
+        // 【なぜ】close イベントは閉じた後に遅れて届く。その間にもう一度開いていたら、閉じ直さない
+        // （素早く開き直すと、古い close で新しいダイアログまで閉じてしまうため）。
+        if (!event.currentTarget.open) setOpenDialog(null);
       }}
     >
       <h2 id={titleId}>{title}</h2>

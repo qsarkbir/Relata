@@ -40,8 +40,9 @@ export function AboutDialog() {
       ref={ref}
       className="about-dialog"
       aria-labelledby="about-title"
-      onClose={() => {
-        setOpenDialog(null);
+      onClose={(event) => {
+        // 【なぜ】close イベントは遅れて届く。開き直した後の古い close では閉じない（ModalDialog と同じ）。
+        if (!event.currentTarget.open) setOpenDialog(null);
       }}
     >
       <h2 id="about-title">{t('about.title')}</h2>

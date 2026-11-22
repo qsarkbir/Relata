@@ -18,6 +18,8 @@ import { TextSearch } from './filter/TextSearch';
 import { useFilterShortcuts } from './filter/useFilterShortcuts';
 import { useData, useFilter, useT, useUi } from './hooks';
 import { getNumberFormat } from './intl';
+import { Icon } from './ui/icons';
+import { InfoTip } from './ui/InfoTip';
 
 /**
  * フィルタパネル全体（FR-FL-01〜10、FR-FL-12）。データが無いときは案内だけを出す。
@@ -45,21 +47,25 @@ export function FilterPanel() {
         <h2>{t('filter.title')}</h2>
         <button
           type="button"
+          className="icon-button"
           disabled={!canUndo}
           onClick={undo}
-          title={t('filter.shortcuts')}
+          aria-label={t('filter.undo')}
+          title={`${t('filter.undo')}（${t('filter.shortcuts')}）`}
           aria-keyshortcuts="Control+Z Meta+Z"
         >
-          {t('filter.undo')}
+          <Icon name="undo" />
         </button>
         <button
           type="button"
+          className="icon-button"
           disabled={!canRedo}
           onClick={redo}
-          title={t('filter.shortcuts')}
+          aria-label={t('filter.redo')}
+          title={`${t('filter.redo')}（${t('filter.shortcuts')}）`}
           aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y"
         >
-          {t('filter.redo')}
+          <Icon name="redo" />
         </button>
       </div>
       {/* 【なぜ】key にデータの識別番号を渡す。データが替わったら、部品の下書きと開閉の状態を捨てる。 */}
@@ -145,7 +151,17 @@ function PanelBody({ dataset }: PanelBodyProps) {
               />
             )}
             <TextSearch target={target} active={texts[0]} duplicates={texts.length - 1} />
-            <h4>{t('filter.attrs')}</h4>
+            <h4>
+              {t('filter.attrs')}
+              {defs.some((d) => d.valueType === 'date') && (
+                <>
+                  {' '}
+                  <InfoTip topic={t('filter.attrs')}>
+                    <p>{t('filter.attrs.dateSkipped')}</p>
+                  </InfoTip>
+                </>
+              )}
+            </h4>
             {defs.length === 0 && <p className="hint">{t('filter.attrs.none')}</p>}
             {defs.map((def) => (
               <AttrControl
@@ -157,9 +173,6 @@ function PanelBody({ dataset }: PanelBodyProps) {
                 missingExcluded={result.missingExcluded}
               />
             ))}
-            {defs.some((d) => d.valueType === 'date') && (
-              <p className="hint">{t('filter.attrs.dateSkipped')}</p>
-            )}
           </section>
         );
       })}
@@ -200,7 +213,11 @@ function PanelBody({ dataset }: PanelBodyProps) {
             }}
           />
           {t('filter.showIsolated')}
-        </label>
+        </label>{' '}
+        {/* 【なぜ】ラベルの外に置く。ラベルの中のボタンを押すと、チェックも切り替わってしまうため。 */}
+        <InfoTip topic={t('filter.showIsolated')}>
+          <p>{t('filter.showIsolated.hint')}</p>
+        </InfoTip>
       </fieldset>
     </>
   );

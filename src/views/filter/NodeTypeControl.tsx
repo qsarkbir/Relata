@@ -3,6 +3,7 @@ import { useFilter, useT } from '../hooks';
 import type { FilterOfKind } from './activeFilters';
 import { DuplicateNotice } from './DuplicateNotice';
 import { NODE_TYPE_FILTER_ID } from './filterIds';
+import { InfoTip } from '../ui/InfoTip';
 
 /** ノード型の部品の入力。 */
 interface NodeTypeControlProps {
@@ -40,8 +41,12 @@ export function NodeTypeControl({ nodeTypes, active, duplicates }: NodeTypeContr
 
   return (
     <fieldset className="node-types">
-      <legend>{t('filter.nodeTypes')}</legend>
-      <p className="hint">{t('filter.nodeTypes.hint')}</p>
+      <legend>
+        {t('filter.nodeTypes')}{' '}
+        <InfoTip topic={t('filter.nodeTypes')}>
+          <p>{t('filter.nodeTypes.hint')}</p>
+        </InfoTip>
+      </legend>
       <DuplicateNotice count={duplicates} />
       <ul className="facet-list">
         {nodeTypes.map((nt) => (

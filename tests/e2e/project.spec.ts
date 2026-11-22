@@ -27,6 +27,9 @@ import {
   advanceClockUntilLoaded,
   waitForAutosave,
   type SavedProject,
+  saveProjectFile,
+  csvButton,
+  saveDialog,
 } from './support';
 
 test.use({ locale: 'ja-JP' });
@@ -59,7 +62,7 @@ test.describe('UC-6 / FR-PJ-01: 保存と読み込みの往復', () => {
 
     // 操作: 保存を押してダウンロードする。
     const downloading = page.waitForEvent('download');
-    await saveButton(page).click();
+    await saveProjectFile(page);
     const download = await downloading;
     // 期待: ファイル名は題名（ASCII の英数字と空白）と日付、拡張子 .relata.json。
     expect(download.suggestedFilename()).toMatch(
@@ -243,7 +246,7 @@ test.describe('FR-UI-03: 進行表示', () => {
       (window as unknown as { __releaseRead: () => void }).__releaseRead();
     });
     // 期待: データは入らず、空の表示のまま（「保存」は押せない）。
-    await expect(saveButton(page)).toBeDisabled();
+    await expect(csvButton(page)).toBeDisabled();
     await expect(
       page.getByRole('heading', { name: 'データがまだ読み込まれていません' }),
     ).toBeVisible();
@@ -324,7 +327,9 @@ test.describe('FR-PJ-02: 自動保存', () => {
     await startApp(page);
     await openProject(page, 'maghrib.relata.json');
     await waitForAutosave(page);
-    await page.getByRole('button', { name: '自動保存を消す' }).click();
+    // 操作: 「保存」のダイアログの中の「自動保存を消す」を押す。
+    await saveButton(page).click();
+    await saveDialog(page).getByRole('button', { name: '自動保存を消す' }).click();
     await expect(
       page.getByRole('status').filter({ hasText: '保存してある分を消しました' }),
     ).toBeVisible();
@@ -335,7 +340,7 @@ test.describe('FR-PJ-02: 自動保存', () => {
     await expect(
       page.getByRole('heading', { name: 'データがまだ読み込まれていません' }),
     ).toBeVisible();
-    await expect(saveButton(page)).toBeDisabled();
+    await expect(csvButton(page)).toBeDisabled();
     await expect(loadedNotice(page)).toHaveCount(0);
     expect(await readAutosave(page)).toBeNull();
   });
@@ -386,56 +391,64 @@ test.describe('FR-PJ-02: 自動保存', () => {
   }
 });
 
-test.describe('NFR-07: プロジェクトの 3 つのボタンのキーボード操作', () => {
-  test('NFR-07: Tab と Enter で「保存」「プロジェクトを開く」「自動保存を消す」が使える', async ({
+test.describe('NFR-07: 保存と開くのキーボード操作', () => {
+  test('NFR-07: Tab と Enter で「保存」のダイアログを使い、「プロジェクトを開く」でファイルを選べる', async ({
     page,
   }) => {
     // 【なぜ】ファイル選択の待ちは、最初に登録する。Playwright は、待ちを登録した時点で、ブラウザの
     //   ファイル選択を横取りする設定を入れる。キーを押す直前に登録すると、設定が間に合わず、選択が
-    //   Playwright に届かないことがある（並列で走らせたとき 20 回に 3 回ほど落ちた。アプリ側は
-    //   input.click() を呼んでいる）。
+    //   Playwright に届かないことがある（アプリ側は input.click() を呼んでいる）。
     const chooserPromise = page.waitForEvent('filechooser');
     chooserPromise.catch(() => undefined);
     await startApp(page);
     await openProject(page, 'maghrib.relata.json');
     await page.locator('body').click({ position: { x: 1, y: 1 } });
 
-    // 操作: Tab で順に「表データを読み込む」「保存」「プロジェクトを開く」「自動保存を消す」へ。
+    // 操作: Tab で順に「表データを読み込む」「保存」へ。
     await page.keyboard.press('Tab');
     await expect(
       page.getByRole('button', { name: '表データを読み込む', exact: true }),
     ).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(saveButton(page)).toBeFocused();
+    // 操作: Enter で保存のダイアログを開き、最初の選択肢（プロジェクトを保存）を Enter で押す。
+    await page.keyboard.press('Enter');
+    const dialog = saveDialog(page);
+    await expect(dialog).toBeVisible();
+    const project = dialog.getByRole('button', { name: /^プロジェクトを保存/ });
+    await expect(project).toBeFocused();
+    const downloading = page.waitForEvent('download');
+    await page.keyboard.press('Enter');
+    expect((await downloading).suggestedFilename()).toMatch(/\.relata\.json$/);
+    // 期待: ダイアログは閉じ、フォーカスは「保存」に戻る。
+    await expect(dialog).toBeHidden();
+    await expect(saveButton(page)).toBeFocused();
+
+    // 操作: もう一度開き、Tab で「自動保存を消す」まで進んで Enter。
+    await page.keyboard.press('Enter');
+    await expect(dialog).toBeVisible();
     await page.keyboard.press('Tab');
-    await expect(page.getByRole('button', { name: 'プロジェクトを開く' })).toBeFocused();
     await page.keyboard.press('Tab');
-    await expect(page.getByRole('button', { name: '自動保存を消す' })).toBeFocused();
-    // 操作: Enter で自動保存を消す。
+    await expect(dialog.getByRole('button', { name: '自動保存を消す' })).toBeFocused();
     await page.keyboard.press('Enter');
     await expect(
       page.getByRole('status').filter({ hasText: '保存してある分を消しました' }),
     ).toBeVisible();
 
-    // 操作: Shift+Tab で「プロジェクトを開く」へ戻り、Enter でファイル選択を開く。
-    await page.keyboard.press('Shift+Tab');
+    // 操作: Tab で「プロジェクトを開く」へ進み、Enter でファイル選択を開く。
+    await saveButton(page).focus();
+    await page.keyboard.press('Tab');
     await expect(page.getByRole('button', { name: 'プロジェクトを開く' })).toBeFocused();
     await page.keyboard.press('Enter');
     const chooser = await chooserPromise;
     await chooser.setFiles(fixturePath('other.relata.json'));
     // 期待: 確認のダイアログが出て、既定のフォーカスは「やめる」。Tab で「開く」へ進み Enter で置き換える。
-    const dialog = confirmDialog(page);
-    await expect(dialog.getByRole('button', { name: 'やめる' })).toBeFocused();
+    const confirm = confirmDialog(page);
+    await expect(confirm.getByRole('button', { name: 'やめる' })).toBeFocused();
     await page.keyboard.press('Tab');
-    await expect(dialog.getByRole('button', { name: '開く' })).toBeFocused();
+    await expect(confirm.getByRole('button', { name: '開く' })).toBeFocused();
     await page.keyboard.press('Enter');
     await expectCounts(page, [2, 2], [1, 1]);
-
-    // 操作: 「保存」を Enter で押すとダウンロードが始まる。
-    await saveButton(page).focus();
-    const downloading = page.waitForEvent('download');
-    await page.keyboard.press('Enter');
-    expect((await downloading).suggestedFilename()).toMatch(/^Other data-.*\.relata\.json$/);
   });
 });
 
@@ -447,9 +460,16 @@ test.describe('FR-UI-01: 英語の画面', () => {
   }) => {
     await startApp(page);
     const group = page.getByRole('group', { name: 'Project' });
-    for (const name of ['Save', 'Open project', 'Clear autosave']) {
+    for (const name of ['Save', 'Open project']) {
       await expect(group.getByRole('button', { name, exact: true })).toBeVisible();
     }
+    // 「Clear autosave」は「Save」のダイアログの中にある。
+    await group.getByRole('button', { name: 'Save', exact: true }).click();
+    const save = page.getByRole('dialog', { name: 'Save', exact: true });
+    await expect(save.getByRole('button', { name: 'Clear autosave', exact: true })).toBeVisible();
+    await expect(save.getByRole('button', { name: /^Save project/ })).toBeDisabled();
+    await page.keyboard.press('Escape');
+    await expect(save).toBeHidden();
     await openProject(page, 'maghrib.relata.json');
     await expect(counts(page)).toHaveText('Nodes 14 / 15Edges 17 / 17');
     // 操作: 壊れたファイルを開く。確認は英語の「Open」で答える。

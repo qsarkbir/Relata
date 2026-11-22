@@ -5,6 +5,7 @@ import type { EncodingSettings } from '../core/encode';
 import type { Dataset } from '../core/model';
 import { NODE_SHAPES } from '../core/model';
 import { useT } from './hooks';
+import { InfoTip } from './ui/InfoTip';
 /** 見た目操作の入力。 */
 interface Props {
   readonly dataset: Dataset;
@@ -193,7 +194,11 @@ export function EncodingControls({ dataset, settings, onChange }: Props) {
           <option value="constant">{t('graph.constant')}</option>
         </select>
       </label>
-      <p>{t('graph.numericHint')}</p>
+      <div className="info-row">
+        <InfoTip topic={t('graph.appearance')}>
+          <p>{t('graph.numericHint')}</p>
+        </InfoTip>
+      </div>
       <div role="alert">{invalid ? t('graph.invalidEncoding') : ''}</div>
     </details>
   );

@@ -48,6 +48,42 @@ export function saveButton(page: Page): Locator {
   return page.getByRole('button', { name: /^(保存|Save)$/ });
 }
 
+/** 上部の「CSV出力」ボタン。データが無いときは押せない。 */
+export function csvButton(page: Page): Locator {
+  return page.getByRole('button', { name: /^(CSV出力|Export CSV)$/ });
+}
+
+/** 「保存」を押して開くダイアログ。 */
+export function saveDialog(page: Page): Locator {
+  return page.getByRole('dialog', { name: /^(保存|Save)$/ });
+}
+
+/**
+ * 「保存」のダイアログを開き、プロジェクトの保存を選ぶ（FR-PJ-01）。ダウンロードの待ちは呼ぶ側で登録する。
+ *
+ * @param page - ページ
+ */
+export async function saveProjectFile(page: Page): Promise<void> {
+  await saveButton(page).click();
+  await saveDialog(page)
+    .getByRole('button', { name: /^(プロジェクトを保存|Save project)/ })
+    .click();
+  await expect(saveDialog(page)).toBeHidden();
+}
+
+/**
+ * 「保存」のダイアログを開き、図（SVG）の保存を選ぶ（FR-OUT-01）。ダウンロードの待ちは呼ぶ側で登録する。
+ *
+ * @param page - ページ
+ */
+export async function saveSvgFile(page: Page): Promise<void> {
+  await saveButton(page).click();
+  await saveDialog(page)
+    .getByRole('button', { name: /^(図を保存|Save figure)/ })
+    .click();
+  await expect(saveDialog(page)).toBeHidden();
+}
+
 /** 置き換えの確認のダイアログ（D-33）。 */
 export function confirmDialog(page: Page): Locator {
   return page.getByRole('dialog', { name: /今のデータを置き換えますか|Replace the current data/ });
@@ -69,7 +105,8 @@ export async function openProject(
   file: string | { name: string; mimeType: string; buffer: Buffer },
   expectNotice: Locator = loadedNotice(page),
 ): Promise<void> {
-  const hasData = await saveButton(page).isEnabled();
+  // 【なぜ】「保存」はデータが無くても押せる（自動保存を消すため）。データの有無は「CSV出力」で判断する。
+  const hasData = await csvButton(page).isEnabled();
   await page
     .getByTestId('project-file-input')
     .setInputFiles(typeof file === 'string' ? fixturePath(file) : file);

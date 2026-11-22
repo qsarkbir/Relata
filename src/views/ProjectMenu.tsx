@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react';
 import { serializeProject } from '../io/project';
 import { takeSnapshot, dataStore, filterStore, uiStore, graphViewStore } from '../state';
-import { useData, useT } from './hooks';
+import { useData, useT, useUi } from './hooks';
+import { ModalDialog } from './ModalDialog';
+import { useSvgExporter } from './svgExport';
 import { ConfirmOpenDialog } from './ConfirmOpenDialog';
 import { downloadText, projectFileName } from './projectFile';
 import { openProjectFile } from './projectLoad';
@@ -13,7 +15,11 @@ export interface ProjectMenuProps {
 }
 
 /**
- * プロジェクトの「保存」「開く」「自動保存を消す」ボタン（FR-PJ-01、FR-IN-08、FR-PJ-02）。
+ * プロジェクトの「保存」「開く」ボタンと、保存のダイアログ（FR-PJ-01、FR-IN-08、FR-PJ-02、FR-OUT-01）。
+ *
+ * 「保存」を押すとダイアログが開き、プロジェクト（.relata.json）か図（SVG）かを選ぶ。
+ * 自動保存を消す操作も、このダイアログに置く。
+ * 【なぜ】保存の種類ごとにボタンを並べると、上部と図の上にボタンが増えて間延びする（利用者の指摘、2026-11-22）。
  *
  * @param props - 自動保存を消す操作
  * @returns ボタンの並び
@@ -21,6 +27,8 @@ export interface ProjectMenuProps {
 export function ProjectMenu({ onClearAutosave }: ProjectMenuProps) {
   const t = useT();
   const hasData = useData((s) => s.dataset !== null);
+  const setOpenDialog = useUi((s) => s.setOpenDialog);
+  const exportSvg = useSvgExporter();
   // 【TS】`useRef<HTMLInputElement>(null)` は、型引数で「中身は input 要素」と指定する。描画前は null。
   const input = useRef<HTMLInputElement>(null);
   // 【なぜ】データがあるときは、選んだファイルをいったん持ち、確認の後で読む（D-33 (1)）。
@@ -39,7 +47,14 @@ export function ProjectMenu({ onClearAutosave }: ProjectMenuProps) {
 
   return (
     <div role="group" aria-label={t('project.group')} className="project-menu">
-      <button type="button" disabled={!hasData} onClick={save}>
+      {/* 【なぜ】データが無くても押せる。自動保存を消す操作はデータが無いときにも要るため。 */}
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        onClick={() => {
+          setOpenDialog('save');
+        }}
+      >
         {t('project.save')}
       </button>
       <button
@@ -50,9 +65,47 @@ export function ProjectMenu({ onClearAutosave }: ProjectMenuProps) {
       >
         {t('project.open')}
       </button>
-      <button type="button" onClick={onClearAutosave}>
-        {t('project.clearAutosave')}
-      </button>
+      <ModalDialog id="save" title={t('save.title')} className="save-dialog">
+        <ul className="save-choices">
+          <li>
+            <button
+              type="button"
+              disabled={!hasData}
+              onClick={() => {
+                setOpenDialog(null);
+                save();
+              }}
+            >
+              {t('save.project')}
+            </button>
+            <p>{t('save.project.hint')}</p>
+          </li>
+          <li>
+            <button
+              type="button"
+              disabled={exportSvg === null}
+              onClick={() => {
+                setOpenDialog(null);
+                exportSvg?.();
+              }}
+            >
+              {t('save.svg')}
+            </button>
+            <p>{t('save.svg.hint')}</p>
+          </li>
+        </ul>
+        <h3>{t('save.autosave')}</h3>
+        <p>{t('save.autosave.hint')}</p>
+        <button
+          type="button"
+          onClick={() => {
+            setOpenDialog(null);
+            onClearAutosave();
+          }}
+        >
+          {t('project.clearAutosave')}
+        </button>
+      </ModalDialog>
       {/* 【なぜ】見えない input をボタンから開く。ボタンならキーボードで操作でき、フォーカスも見える。 */}
       <input
         ref={input}

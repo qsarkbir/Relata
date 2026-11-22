@@ -4,6 +4,7 @@ import { useFilter, useT } from '../hooks';
 import type { FilterOfKind } from './activeFilters';
 import { DuplicateNotice } from './DuplicateNotice';
 import { textFilterId } from './filterIds';
+import { InfoTip } from '../ui/InfoTip';
 
 /** テキスト検索の部品の入力。 */
 interface TextSearchProps {
@@ -60,13 +61,17 @@ export function TextSearch({ target, active, duplicates }: TextSearchProps) {
         }
       }}
     >
-      <p className="hint">
-        {t(target === 'node' ? 'filter.search.target.node' : 'filter.search.target.edge')}
-      </p>
       <DuplicateNotice count={duplicates} />
-      <label htmlFor={inputId}>
-        {t(target === 'node' ? 'filter.search.queryNode' : 'filter.search.queryEdge')}
-      </label>
+      <div className="label-row">
+        <label htmlFor={inputId}>
+          {t(target === 'node' ? 'filter.search.queryNode' : 'filter.search.queryEdge')}
+        </label>
+        <InfoTip
+          topic={t(target === 'node' ? 'filter.search.queryNode' : 'filter.search.queryEdge')}
+        >
+          <p>{t(target === 'node' ? 'filter.search.target.node' : 'filter.search.target.edge')}</p>
+        </InfoTip>
+      </div>
       {/* 【なぜ】検索語はアラビア文字などの右から左の文字も入る。dir="auto" で入力の向きを文字から決める。 */}
       <input
         id={inputId}

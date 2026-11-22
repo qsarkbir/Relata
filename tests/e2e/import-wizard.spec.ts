@@ -7,8 +7,8 @@ import {
   openProject,
   confirmDialog,
   loadedNotice,
-  saveButton,
   type SavedProject,
+  saveProjectFile,
 } from './support';
 
 test.use({ locale: 'ja-JP' });
@@ -261,7 +261,7 @@ for (const formulaProtection of [false, true]) {
     await dialog.getByRole('button', { name: 'このデータを読み込む' }).click();
     await expect(dialog).toBeHidden();
     const downloading = page.waitForEvent('download');
-    await saveButton(page).click();
+    await saveProjectFile(page);
     const download = await downloading;
     // 【TS】アプリが書き出したJSONを、既存のE2E用保存型で調べる。
     const saved = JSON.parse(readFileSync(await download.path(), 'utf8')) as SavedProject;
