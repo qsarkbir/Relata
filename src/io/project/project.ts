@@ -153,7 +153,10 @@ export function parseImportSettings(x: unknown): ParseResult<ImportSettings> {
       // 【TS】`find` で一覧の中の値と突き合わせ、型を CalendarId に絞る（as を使わない）。
       const cal = CALENDAR_IDS.find((id) => id === calendar);
       if (cal === undefined) return fail(`${p}.calendar`, '暦の ID が必要です');
-      calendars.push({ column, calendar: cal });
+      const table = get(c, 'table');
+      if (table !== undefined && table !== 'node' && table !== 'edge')
+        return fail(`${p}.table`, "'node' か 'edge' が必要です");
+      calendars.push({ column, ...(table !== undefined && { table }), calendar: cal });
     }
   }
 

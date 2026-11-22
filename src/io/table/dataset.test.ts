@@ -278,3 +278,60 @@ it('FR-IN-07: 数値形式の欠損記号も重みの欠損として検出する
   expect(result.dataset).toBeNull();
   expect(result.warnings).toMatchObject([{ code: 'invalid-value', severity: 'error' }]);
 });
+
+describe('FR-IN-07: 2表のラベル・ID・端点の列の欠損記号', () => {
+  const lost = [{ token: '〔欠〕', reason: 'lost' as const }];
+  it('FR-IN-07: ラベルが欠損記号のノードを実在の名前にせず、行ごとにエラーにする', () => {
+    // 【なぜ】ID 列が無いとラベルから ID を作る。欠損記号を名前とみなすと、不明の人物が 1 つに合流する。
+    const result = importTables(
+      parseTextTable('label,type\n〔欠〕,person\n〔欠〕,person\nA,person'),
+      parseTextTable('source,target\nA,A'),
+      { fields: { label: 0, type: 1 }, attributes: [], missingTokens: lost },
+      { ...edgeMapping, missingTokens: lost },
+    );
+    expect(result.dataset).toBeNull();
+    const labelErrors = result.warnings.filter((w) => w.message === 'ノードのラベルが欠損です。');
+    expect(labelErrors.map((w) => [w.table, w.row, w.severity])).toEqual([
+      ['node', 2, 'error'],
+      ['node', 3, 'error'],
+    ]);
+    expect(result.warnings.some((w) => w.code === 'merged-label')).toBe(false);
+  });
+  it('FR-IN-07: 指定した ID 列の値が欠損記号ならエラーにする', () => {
+    const result = importTables(
+      parseTextTable('id,label,type\n〔欠〕,A,person\n2,B,person'),
+      parseTextTable('source,target\n2,2'),
+      { ...nodeMapping, missingTokens: lost },
+      edgeMapping,
+    );
+    expect(result.dataset).toBeNull();
+    expect(result.warnings).toContainEqual(
+      expect.objectContaining({ table: 'node', row: 2, message: '指定した ID 列の値が欠損です。' }),
+    );
+  });
+  it('FR-IN-07: 端点が欠損記号なら、参照先が無いではなく欠損として報告する', () => {
+    const result = importTables(nodes, parseTextTable('source,target\n1,〔欠〕'), nodeMapping, {
+      ...edgeMapping,
+      missingTokens: lost,
+    });
+    expect(result.dataset).toBeNull();
+    expect(result.warnings).toEqual([
+      expect.objectContaining({
+        table: 'edge',
+        row: 2,
+        code: 'invalid-value',
+        message: 'target の値が欠損です。',
+        severity: 'error',
+      }),
+    ]);
+  });
+  it('FR-IN-07: 欠損記号を指定していなければ、これまでどおり名前として読む', () => {
+    const result = importTables(
+      parseTextTable('label,type\n〔欠〕,person'),
+      parseTextTable('source,target\n〔欠〕,〔欠〕'),
+      { fields: { label: 0, type: 1 }, attributes: [] },
+      edgeMapping,
+    );
+    expect(result.dataset?.nodes.map((n) => n.label)).toEqual(['〔欠〕']);
+  });
+});

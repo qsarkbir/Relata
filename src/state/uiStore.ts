@@ -36,6 +36,9 @@ export interface Task {
   readonly cancel: (() => void) | undefined;
 }
 
+/** 折りたためる横のパネル。 */
+export type SidePanelId = 'filters' | 'metrics';
+
 /** uiStore の状態と操作。 */
 export interface UiState {
   /** 表示言語。 */
@@ -44,6 +47,18 @@ export interface UiState {
   readonly tasks: readonly Task[];
   /** 開いているダイアログ。無ければ null。 */
   readonly openDialog: DialogId | null;
+  /**
+   * 折りたたんでいる横のパネル。
+   * 【なぜ】図を横にも広く使えるよう、左の絞り込みと右の指標のパネルを畳めるようにする（利用者の要望）。
+   * 一時的な見た目の状態なので、プロジェクトには保存しない。
+   */
+  readonly collapsedPanels: Readonly<Record<SidePanelId, boolean>>;
+  /**
+   * 横のパネルの開閉を切り替える。
+   *
+   * @param panel - 切り替えるパネル
+   */
+  readonly togglePanel: (panel: SidePanelId) => void;
   /** 言語を変える。`localStorage` への保存と `<html lang>` の更新は app 側が `subscribe` で行う。 */
   readonly setLocale: (locale: Locale) => void;
   /**
@@ -97,6 +112,12 @@ export function createUiStore(initialLocale: Locale = DEFAULT_LOCALE) {
     locale: initialLocale,
     tasks: [],
     openDialog: null,
+    collapsedPanels: { filters: false, metrics: false },
+    togglePanel: (panel) => {
+      set((s) => ({
+        collapsedPanels: { ...s.collapsedPanels, [panel]: !s.collapsedPanels[panel] },
+      }));
+    },
     setLocale: (locale) => {
       set({ locale });
     },

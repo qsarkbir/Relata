@@ -20,7 +20,7 @@ import {
   toNodeTypeId,
 } from '../../core/model';
 import { parseDate } from '../../core/time';
-import { matchMissingToken } from '../project/missing';
+import { compileMissingTokens, matchMissingToken } from '../project/missing';
 import type { ColumnOptions } from './columns';
 import type { MissingToken } from '../project/types';
 import { convertCell, createCellConverter } from './columns';
@@ -178,6 +178,12 @@ export function importTables(
     const attributeConverters = mapping.attributes.map((attr) =>
       createCellConverter({ missingTokens: mapping.missingTokens ?? [], ...attr }),
     );
+    // 【なぜ】ラベル・ID・端点の列が欠損記号（「〔欠〕」など）なら、実在の名前として扱わない。
+    // 扱うと、不明の人物がすべて「〔欠〕」という 1 つのノードに合流してしまう（1 表の読み込みと同じ扱い）。
+    // 空欄はここでは数えない（空欄は、空のラベルや参照先の無いエッジとして、それぞれ別に報告する）。
+    const compiledMissing = compileMissingTokens(mapping.missingTokens ?? []);
+    const isMissingToken = (text: string): boolean =>
+      text.trim() !== '' && matchMissingToken(text, compiledMissing) !== undefined;
     for (const [index, row] of table.rows.entries()) {
       const rowNumber = index + 2;
       const warn = (
@@ -297,15 +303,19 @@ export function importTables(
           }
         }
         const label = cell('label');
-        const emptyLabel = label.trim() === '';
-        if (emptyLabel) warn('invalid-value', 'ノードのラベルが空です。');
+        const missingLabel = isMissingToken(label);
+        const emptyLabel = label.trim() === '' || missingLabel;
+        if (missingLabel) warn('invalid-value', 'ノードのラベルが欠損です。', 'error', 'label');
+        else if (emptyLabel) warn('invalid-value', 'ノードのラベルが空です。');
         const typeText = cell('type').trim() || 'default';
         const type = toNodeTypeId(typeText);
         types.set(typeText, type);
         const key = cell('id').trim();
         const generated = mapping.fields.id === undefined;
-        const emptyId = !generated && key === '';
-        if (emptyId) warn('invalid-value', 'ID 列の値が空です。');
+        const missingId = !generated && isMissingToken(key);
+        const emptyId = !generated && (key === '' || missingId);
+        if (missingId) warn('invalid-value', '指定した ID 列の値が欠損です。', 'error', 'id');
+        else if (emptyId) warn('invalid-value', 'ID 列の値が空です。');
         if (emptyLabel || emptyId) continue;
         const id = generated
           ? makeNodeIdFromTypeAndLabel(type, label)
@@ -329,6 +339,10 @@ export function importTables(
         nodes.push({ id, type, label, attrs, ...timePart, ...(geo === undefined ? {} : { geo }) });
       } else {
         const resolve = (field: 'source' | 'target'): NodeId | undefined => {
+          if (isMissingToken(cell(field))) {
+            warn('invalid-value', `${field} の値が欠損です。`, 'error', field);
+            return undefined;
+          }
           const key =
             nodeMapping.fields.id === undefined ? cell(field).normalize('NFC') : cell(field).trim();
           const typeColumn = field === 'source' ? 'sourceType' : 'targetType';

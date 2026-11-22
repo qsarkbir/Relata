@@ -57,8 +57,34 @@ button {
   display: grid;
   /* 【なぜ】中央の列の最小幅を 0 にする。1fr の既定の最小幅は中身の幅なので、長い設定の行や
      図が中央の列を押し広げ、右の指標パネルが画面の外へはみ出していた。 */
-  grid-template-columns: minmax(12rem, 18rem) minmax(0, 1fr) minmax(12rem, 18rem);
+  --filters-column: minmax(12rem, 18rem);
+  --metrics-column: minmax(12rem, 18rem);
+  grid-template-columns: var(--filters-column) minmax(0, 1fr) var(--metrics-column);
   flex: 1;
+}
+/* 畳んだパネルは、開くボタンだけの細い列にする。 */
+.app-body[data-filters='collapsed'] {
+  --filters-column: 3rem;
+}
+.app-body[data-metrics='collapsed'] {
+  --metrics-column: 3rem;
+}
+.region-filters[data-collapsed='true'],
+.region-metrics[data-collapsed='true'] {
+  padding-inline: 0.25rem;
+}
+.side-panel-toggle {
+  display: flex;
+  margin-block-end: 0.25rem;
+}
+.region-filters .side-panel-toggle {
+  justify-content: flex-end;
+}
+.region-metrics .side-panel-toggle {
+  justify-content: flex-start;
+}
+[data-collapsed='true'] .side-panel-toggle {
+  justify-content: center;
 }
 .region-filters {
   border-inline-end: 1px solid #ccc;

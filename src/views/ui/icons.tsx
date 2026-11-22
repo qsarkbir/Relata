@@ -8,7 +8,8 @@
 import type { ReactNode } from 'react';
 
 /** アイコンの種類。 */
-export type IconName = 'info' | 'zoomIn' | 'zoomOut' | 'fit' | 'undo' | 'redo';
+export type IconName =
+  'info' | 'zoomIn' | 'zoomOut' | 'fit' | 'undo' | 'redo' | 'collapseStart' | 'collapseEnd';
 
 // 【TS】`Record<IconName, ReactNode>` は、IconName のすべての値をキーに持つことを型で強制する。
 //       種類を足して図を書き忘れると、型検査で分かる。
@@ -40,6 +41,9 @@ const PATHS: Record<IconName, ReactNode> = {
   fit: <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />,
   undo: <path d="M9 14L4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3" />,
   redo: <path d="M15 14l5-5-5-5M20 9H9a5 5 0 0 0 0 10h3" />,
+  // 二重の山括弧。パネルを左（行の始め）へ畳む／右（行の終わり）へ畳む向きを示す。
+  collapseStart: <path d="M12 6l-6 6 6 6M18 6l-6 6 6 6" />,
+  collapseEnd: <path d="M6 6l6 6-6 6M12 6l6 6-6 6" />,
 };
 
 /**

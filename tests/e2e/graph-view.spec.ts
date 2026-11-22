@@ -296,3 +296,86 @@ test('FR-VG-11: 図の枠の高さを変えると描画範囲が追従し、設�
   await expect(page.getByRole('button', { name: '全体を表示', exact: true })).toBeHidden();
   await expect(figure).toBeVisible();
 });
+
+test('FR-VG-11: 位置の欠けたノードの計算中に固定を切り替えても、操作の後に計算をやり直す', async ({
+  page,
+}) => {
+  // 【なぜ】Worker 要求を保留し、計算中に固定の操作が割り込む状況を、速度に依存せず作る。
+  await page.addInitScript(`
+    const NativeWorker = window.Worker;
+    let hold = false;
+    let pending = [];
+    window.addEventListener('relata-test-hold-layout', () => { hold = true; });
+    window.addEventListener('relata-test-release-layout', () => {
+      hold = false;
+      const calls = pending;
+      pending = [];
+      calls.forEach(call => call());
+    });
+    window.Worker = class extends NativeWorker {
+      constructor(...args) {
+        super(...args);
+        const send = this.postMessage.bind(this);
+        this.postMessage = (...message) => {
+          if (hold) pending.push(() => send(...message));
+          else send(...message);
+        };
+      }
+    };
+  `);
+  await startApp(page);
+  await openProject(page, 'maghrib.relata.json');
+  const nodes = page.locator('.graph-canvas #graph-view-nodes > [data-id]');
+  await expect(nodes).toHaveCount(14);
+  // 準備: 配置を保存し、p1 の位置だけを消したファイルを作る。
+  const download = page.waitForEvent('download');
+  await saveProjectFile(page);
+  const saved = JSON.parse(readFileSync(await (await download).path(), 'utf8')) as {
+    view: { graph: { positions: { id: string }[] } };
+  };
+  saved.view.graph.positions = saved.view.graph.positions.filter((p) => p.id !== 'p1');
+  // 操作: 計算を保留した状態で開くと、p1 の位置を求める計算が始まる。
+  await page.evaluate(() => window.dispatchEvent(new Event('relata-test-hold-layout')));
+  await openProject(page, {
+    name: 'partial.relata.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(saved)),
+  });
+  await expect(nodes).toHaveCount(13);
+  await expect(page.getByRole('status').filter({ hasText: '配置を計算しています' })).toBeVisible();
+  // 操作: 計算中に p6 の固定を切り替える（計算は中止される）。
+  await page.getByLabel('ノードを選択', { exact: true }).selectOption('p6');
+  await page.getByRole('button', { name: /^(位置を固定|固定を解除)$/ }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event('relata-test-release-layout')));
+  // 期待: 操作の後に計算をやり直し、p1 にも位置が付いて 14 個すべてが描かれる。
+  await expect(nodes).toHaveCount(14);
+  await expect(page.locator('.task-panel')).toBeHidden();
+});
+
+test('FR-UI-02 / FR-VG-11: 左右のパネルを畳むと図が横に広がり、開き直すと絞り込みの状態が残る', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await startApp(page);
+  await openProject(page, 'maghrib.relata.json');
+  const figure = page.getByRole('img', { name: 'ネットワーク図' });
+  await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]')).toHaveCount(14);
+  const before = (await figure.boundingBox())?.width ?? 0;
+  await page.getByLabel('ノードの検索語', { exact: true }).fill('下書き');
+  await page.getByRole('button', { name: '絞り込みを畳む', exact: true }).click();
+  await page.getByRole('button', { name: '指標を畳む', exact: true }).click();
+  await expect(page.getByLabel('ノードの検索語', { exact: true })).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'ネットワーク指標' })).toBeHidden();
+  await expect
+    .poll(async () => (await figure.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(before + 300);
+  // 期待: viewBox も枠の実寸に追従する。
+  const width = Math.round((await figure.boundingBox())?.width ?? 0);
+  await expect(figure).toHaveAttribute(
+    'viewBox',
+    new RegExp(`^0 0 (${String(width - 1)}|${String(width)}|${String(width + 1)}) `),
+  );
+  // 操作: 開き直すと、畳む前の入力が残っている（中身を外さずに隠しているため）。
+  await page.getByRole('button', { name: '絞り込みを開く', exact: true }).click();
+  await expect(page.getByLabel('ノードの検索語', { exact: true })).toHaveValue('下書き');
+});

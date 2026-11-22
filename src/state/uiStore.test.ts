@@ -71,6 +71,16 @@ describe('uiStore', () => {
     s.getState().setOpenDialog(null);
     expect(s.getState().openDialog).toBeNull();
   });
+
+  it('FR-UI-02: 左右のパネルをそれぞれ畳んで開ける', () => {
+    const s = createUiStore();
+    expect(s.getState().collapsedPanels).toEqual({ filters: false, metrics: false });
+    s.getState().togglePanel('filters');
+    expect(s.getState().collapsedPanels).toEqual({ filters: true, metrics: false });
+    s.getState().togglePanel('metrics');
+    s.getState().togglePanel('filters');
+    expect(s.getState().collapsedPanels).toEqual({ filters: false, metrics: true });
+  });
 });
 
 describe('dataStore', () => {
