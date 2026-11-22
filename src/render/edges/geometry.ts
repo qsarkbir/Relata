@@ -11,6 +11,8 @@ export interface EdgePoint {
 /** エッジを描くための形。 */
 export interface EdgeGeometry {
   readonly path: readonly PathCommand[];
+  /** 矢じりが縮む場合の幹の実描画幅。省略時は要求した線幅を使う。 */
+  readonly shaftWidth?: number;
   readonly head?: readonly EdgePoint[];
   readonly ribbon?: readonly EdgePoint[];
   readonly gradient?: { readonly start: EdgePoint; readonly end: EdgePoint };
@@ -91,18 +93,43 @@ export function edgeGeometry(
   const d = distance(source, target);
   let quads: Quad[];
   if (d <= sourceExtent + targetExtent + 1) {
-    // 自己ループ・重なるノードは外側の輪。左右に別の接線を持たせ、方向を読めるようにする。
-    const radius = Math.max(24, sourceExtent * 2, targetExtent * 2, width * 3);
-    const side = source.id === target.id || source.id < target.id ? 1 : -1;
+    // 近接していても、位置が違えば進行方向の法線を使う。
+    // 【なぜ】向きが定まらない同一座標だけは、IDの辞書順で再現可能な上下を補う。
+    const radius = Math.max(24, sourceExtent * 2, targetExtent * 2, width * 3, Math.abs(bend));
+    const ux = d > 1e-9 ? (target.x - source.x) / d : source.id <= target.id ? -1 : 1;
+    const uy = d > 1e-9 ? (target.y - source.y) / d : 0;
+    const turn = bend < 0 ? -1 : 1;
+    const canonical = source.id <= target.id ? 1 : -1;
+    // 有向は法線方向、無向は直交する軸方向に輪を作り、混在時の3本を分ける。
+    const away =
+      style === undefined
+        ? { x: d > 1e-9 ? ux * canonical : 1, y: d > 1e-9 ? uy * canonical : 0 }
+        : { x: -uy * turn, y: ux * turn };
+    // 有向の制御点は進行方向の後方/前方へ広げる。法線から回転すると
+    // 向きによって両脚が内側へ向かい、ノード外で8字に交差するため。
+    const across = style === undefined ? { x: -away.y, y: away.x } : { x: ux, y: uy };
+    const offset = Math.max(sourceExtent, targetExtent) + radius * 2;
     const top = {
-      x: (source.x + target.x) / 2,
-      y:
-        (side === 1 ? Math.min(source.y, target.y) : Math.max(source.y, target.y)) -
-        side * (Math.max(sourceExtent, targetExtent) + radius * 2),
+      x: (source.x + target.x) / 2 + away.x * offset,
+      y: (source.y + target.y) / 2 + away.y * offset,
     };
     quads = [
-      { a: source, c: { x: Math.min(source.x, target.x) - radius * 2, y: top.y }, b: top },
-      { a: top, c: { x: Math.max(source.x, target.x) + radius * 2, y: top.y }, b: target },
+      {
+        a: source,
+        c: {
+          x: source.x + away.x * offset - across.x * radius * 2,
+          y: source.y + away.y * offset - across.y * radius * 2,
+        },
+        b: top,
+      },
+      {
+        a: top,
+        c: {
+          x: target.x + away.x * offset + across.x * radius * 2,
+          y: target.y + away.y * offset + across.y * radius * 2,
+        },
+        b: target,
+      },
     ];
   } else {
     const mid = mix(source, target, 0.5);
@@ -136,13 +163,43 @@ export function edgeGeometry(
     const samples: EdgePoint[] = [];
     for (const [j, q] of quads.entries())
       for (let i = j === 0 ? 0 : 1; i <= 32; i++) samples.push(point(q, i / 32));
+    let totalLength = 0;
+    for (let i = 1; i < samples.length; i++) {
+      const previous = samples[i - 1];
+      const current = samples[i];
+      if (previous !== undefined && current !== undefined)
+        totalLength += distance(previous, current);
+    }
+    // 二次曲線の曲率半径R=|q'|³/|q'×q''|。分母は一定なので、速度が最小のtでRも最小。
+    // 中点だけの経験則でなく、極短・強く曲がる弧でもオフセットが曲率半径を超えない幅にする。
+    let minimumRadius = Infinity;
+    for (const q of quads) {
+      const vx = q.c.x - q.a.x;
+      const vy = q.c.y - q.a.y;
+      const ax = q.b.x - 2 * q.c.x + q.a.x;
+      const ay = q.b.y - 2 * q.c.y + q.a.y;
+      const acceleration = ax * ax + ay * ay;
+      const cross = Math.abs(vx * ay - vy * ax);
+      if (cross > 1e-12 && acceleration > 0) {
+        const t = Math.max(0, Math.min(1, -(vx * ax + vy * ay) / acceleration));
+        const radius = (2 * Math.hypot(vx + t * ax, vy + t * ay) ** 3) / cross;
+        minimumRadius = Math.min(minimumRadius, radius);
+      }
+    }
+    const endpointsDistance = distance(start, finish);
+    const maximumHalf = Math.min(
+      width / 2,
+      totalLength / 4,
+      minimumRadius * 0.45,
+      endpointsDistance > 1e-9 ? endpointsDistance / 4 : Infinity,
+    );
     const left: EdgePoint[] = [];
     const right: EdgePoint[] = [];
     for (const [i, p] of samples.entries()) {
       const prev = samples[Math.max(0, i - 1)] ?? p;
       const next = samples[Math.min(samples.length - 1, i + 1)] ?? p;
       const length = distance(prev, next) || 1;
-      const half = (width / 2) * (1 - i / (samples.length - 1));
+      const half = maximumHalf * (1 - i / (samples.length - 1));
       const nx = (-(next.y - prev.y) / length) * half;
       const ny = ((next.x - prev.x) / length) * half;
       left.push({ x: p.x + nx, y: p.y + ny });
@@ -168,5 +225,6 @@ export function edgeGeometry(
   const ny = ((finish.x - base.x) / norm) * half;
   const head = [finish, { x: base.x + nx, y: base.y + ny }, { x: base.x - nx, y: base.y - ny }];
   const shaft = [...quads.slice(0, -1), segment(tail, 0, cut)];
-  return { path: pathOf(shaft), head };
+  // 【なぜ】短い経路で矢じりの底辺だけ縮んだとき、太い幹の角が左右へ出ないようにする。
+  return { path: pathOf(shaft), head, shaftWidth: Math.min(width, half * 2) };
 }

@@ -102,6 +102,8 @@ function edgeSvg(e: SceneEdge, index: number, prefix: string): string {
     );
   let defs = '';
   let stroke = color;
+  // 【なぜ】userSpaceOnUseなら水平/垂直線でもbboxの幅/高さ0に依存しない。
+  // 同一始終点だけが退化であり、水平線へepsilonを足す必要はない（SVG2 §14.2.2）。
   if (e.gradient !== undefined) {
     const g = e.gradient;
     const id = key + '-gradient';
