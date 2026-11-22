@@ -287,8 +287,9 @@ test('FR-IN-06 / FR-UI-03: 変換待機中は列・型名・欠損を変更で�
   await dialog.getByRole('button', { name: '列の対応へ' }).click();
   await dialog.getByRole('button', { name: '欠損記号を追加' }).click();
   // 【なぜ】描画待ちを止め、古い設定を捕捉している時間帯の入力制限を確かめる。
-  await page.clock.install();
-  await page.clock.pauseAt(new Date());
+  // 固定した仮想時刻から未来へ止め、ホスト時刻との前後関係に依存しない。
+  await page.clock.install({ time: new Date('2030-01-01T00:00:00Z') });
+  await page.clock.pauseAt(new Date('2030-01-02T00:00:00Z'));
   await dialog.getByRole('button', { name: '変換して結果を確認' }).click();
   await expect(dialog.getByLabel('1表 3 note 用途', { exact: true })).toBeDisabled();
   await expect(dialog.getByLabel('1表 3 note 列の型', { exact: true })).toBeDisabled();
