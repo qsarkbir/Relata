@@ -8,7 +8,7 @@
 | 個別タスクのレビュー | PR #18〜#30を参照。main同期後の#22〜#25、#31、#33もCI成功 |
 | 旧Palladio精査 | [対応表](regression-coverage.md)のMVP範囲を確認。地図等の後続フェーズは完了扱いにしない |
 | NFR-03〜05 性能 | 下記条件で1000/5000の再描画・指標、2000/8000のパンの診断目標を達成。5000/20000の操作完走。実画面や他条件は未確認 |
-| 公開サイトの確認 | 2026-11-22、main `34ea56d` の配信後、https://qsarkbir.github.io/Relata/ に対し Playwright Chromium で E2E 49 件（起動、サンプル、取込、グラフ、UC-1、保存・復元）成功。実機 Safari は未確認 |
+| 公開サイトの確認 | 2026-11-22、main `34ea56d` の配信後に E2E 49 件、フェーズ 1 の締めくくりとして main `6ce9f13` の配信後に全 E2E 97 件が、https://qsarkbir.github.io/Relata/ に対し Playwright Chromium で成功。実機 Safari は未確認 |
 | NFR-06 対応ブラウザ | 最新公開準備版でChrome/Edge/Firefox/WebKit各91件・計364件成功。バージョンと条件は下記。実機Safariは未確認 |
 | NFR-11 core網羅率 | core網羅率80%以上の閾値を含むnpm test成功。統合CI成功 |
 | 操作案内 | READMEの日英を統合版の操作に更新。配信済みと未統合を区別する |
