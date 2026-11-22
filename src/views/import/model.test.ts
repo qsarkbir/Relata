@@ -50,6 +50,7 @@ it('FR-IN-03 / FR-IN-05: 2表の列を対応づけて方向・重みを保つ', 
   );
   const result = previewImport('pair', nodes, edges, '', '', 'mixed', [], 'Pair');
   expect(result.dataset?.edges[0]).toMatchObject({ weight: 0, directed: false });
+  expect(result.settings.columnCalendars).toEqual([]);
   expect(result.settings.encoding).toBe('shift_jis');
   expect(result.dataset && checkDataset(result.dataset)).toEqual([]);
 });
@@ -87,7 +88,25 @@ it('FR-IN-05 / FR-IN-07: 欠損理由と複数値を保ち、暦指定を保存�
     note: { kind: 'missing', reason: 'illegible' },
   });
   expect(result.dataset?.edges[0]?.time).toMatchObject({ start: { calendar: 'hijri' } });
-  expect(result.settings.columnCalendars).toContainEqual({ column: '1:3:date', calendar: 'hijri' });
+  // 1 表なので table は持たず、列名で保存する（D-24 補足）。
+  expect(result.settings.columnCalendars).toEqual([{ column: 'date', calendar: 'hijri' }]);
+});
+it('FR-IN-05: 2表では、暦の指定に列名とどちらの表かを保存する（D-24 補足）', () => {
+  const nodes = change(
+    draftTable(parseTextTable('id,label,type,date\n1,A,p,800\n2,B,p,801'), 'node', 'n.csv'),
+    'date',
+    { type: 'date', calendar: 'hijri' },
+  );
+  const edges = change(
+    draftTable(parseTextTable('source,target,date\n1,2,1400'), 'edge', 'e.csv'),
+    'date',
+    { type: 'date', calendar: 'gregorian' },
+  );
+  const result = previewImport('pair', nodes, edges, '', '', 'directed', [], 'Pair');
+  expect(result.settings.columnCalendars).toEqual([
+    { column: 'date', table: 'node', calendar: 'hijri' },
+    { column: 'date', table: 'edge', calendar: 'gregorian' },
+  ]);
 });
 it('FR-IN-06: 重複した特殊用途を上書きせず、設定エラーにする', () => {
   let draft = draftTable(parseTextTable('From,To,extra\nA,B,C'), 'single', 'table');

@@ -22,7 +22,16 @@ export interface MissingToken {
 
 /** 列ごとの暦の指定 1 件（例: 列 `born` はヒジュラ暦）。 */
 export interface ColumnCalendar {
+  /**
+   * 列名（表の見出し）。見出しが空なら `column-<列番号>`、同じ見出しが重なれば ` [<列番号>]` を付けた名前。
+   * 【なぜ】列名で持つ。表の何番目かで持つと、列を並べ替えた表を読み直したときに別の列を指してしまう。
+   */
   readonly column: string;
+  /**
+   * 2 表で読み込んだときの、どちらの表の列か。1 表のときは持たない。
+   * 【なぜ】ノード表とエッジ表に同じ列名（`date` など）がありうるため（PR #31 のレビュー）。
+   */
+  readonly table?: 'node' | 'edge';
   readonly calendar: CalendarId;
 }
 

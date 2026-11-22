@@ -162,5 +162,6 @@ export const sampleSettings: ImportSettings = {
   columnCalendars: [
     { column: 'born', calendar: 'hijri' },
     { column: '__proto__', calendar: 'gregorian' },
+    { column: 'date', table: 'edge', calendar: 'gregorian' },
   ],
 };

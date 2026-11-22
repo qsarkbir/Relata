@@ -2,7 +2,7 @@
 import type { CalendarId, Dataset, GraphMode, ValueType } from '../../core/model';
 import { inferColumnType, importSingleTable, importTables } from '../../io/table';
 import type { AttributeColumn, TableMapping, TableWarning, TextTable } from '../../io/table';
-import type { ImportSettings, MissingToken } from '../../io/project';
+import type { ColumnCalendar, ImportSettings, MissingToken } from '../../io/project';
 
 /** 表の構造。 */
 export type ImportMode = 'single' | 'pair';
@@ -257,12 +257,15 @@ export function previewImport(
   missingTokens: readonly MissingToken[],
   title: string,
 ): ImportPreview {
+  // 【なぜ】列名（列の key）で持つ。2 表では、どちらの表の列かを table で区別する（D-24 補足）。
+  //   以前は「表の番号:列の番号:key」の文字列にしていて、同梱サンプルの列名の形と食い違っていた。
   const calendars = [first, ...(second === null ? [] : [second])].flatMap((draft, tableIndex) =>
-    draft.columns.flatMap((column, index) =>
+    draft.columns.flatMap((column): ColumnCalendar[] =>
       column.type === 'date'
         ? [
             {
-              column: String(tableIndex + 1) + ':' + String(index + 1) + ':' + column.key,
+              column: column.key,
+              ...(mode === 'pair' && { table: tableIndex === 0 ? 'node' : 'edge' }),
               calendar: column.calendar,
             },
           ]

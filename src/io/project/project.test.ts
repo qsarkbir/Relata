@@ -154,6 +154,17 @@ describe('プロジェクトの読み込みの失敗', () => {
     });
     expect(failed(t2).path).toBe('importSettings.missingTokens[1].token');
   });
+  it('FR-PJ-01: 列の暦の table が node／edge 以外なら broken', () => {
+    expect(
+      failed(
+        mutated((o) => {
+          const settings = o.importSettings;
+          if (isPlainObject(settings))
+            settings.columnCalendars = [{ column: 'x', table: 'both', calendar: 'hijri' }];
+        }),
+      ).path,
+    ).toBe('importSettings.columnCalendars[0].table');
+  });
   it('FR-PJ-01: savedAt が文字列でなければ broken', () => {
     expect(failed(mutated((o) => (o.savedAt = 5)))).toEqual({ kind: 'broken', path: 'savedAt' });
   });
