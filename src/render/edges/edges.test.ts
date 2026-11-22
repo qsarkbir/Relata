@@ -5,6 +5,8 @@ import { NODE_SHAPES, toNodeId, toNodeTypeId } from '../../core/model';
 import type { NodeShape } from '../../core/model';
 import { buildScene, shapeExtent } from '../scene';
 import { renderSvg } from '../svg';
+import { edgeGeometry, type EdgePoint } from './geometry';
+import type { PathCommand, SceneNode } from '../scene/types';
 
 const a = toNodeId('a');
 const b = toNodeId('b');
@@ -150,4 +152,188 @@ it('FR-VG-06: 同じ位置のノードの往復も上下の別の輪へ分ける
   if (first?.type !== 'Q' || second?.type !== 'Q') throw new Error('curves');
   expect(first.cy).toBeLessThan(y);
   expect(second.cy).toBeGreaterThan(y);
+});
+
+function geometryNode(id: string, x: number, y: number): SceneNode {
+  return {
+    id: toNodeId(id),
+    x,
+    y,
+    r: 1,
+    shape: 'circle',
+    fill: '#000000',
+    stroke: '#000000',
+    strokeWidth: 0,
+    dashed: false,
+    selected: false,
+  };
+}
+
+function hasCrossing(polygon: readonly EdgePoint[], closed = true): boolean {
+  // 先端の左右が同じ点となる隣接重複は辺ではない。交差判定から除く。
+  const points = polygon.filter((p, i) => {
+    const previous = polygon[i - 1];
+    return previous === undefined || Math.hypot(p.x - previous.x, p.y - previous.y) > 1e-8;
+  });
+  const cross = (a: EdgePoint, b: EdgePoint, c: EdgePoint) =>
+    (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  const segmentCount = closed ? points.length : points.length - 1;
+  for (let i = 0; i < segmentCount; i++) {
+    const a = points[i];
+    const b = points[(i + 1) % points.length];
+    if (a === undefined || b === undefined) continue;
+    for (let j = i + 2; j < segmentCount; j++) {
+      if (closed && i === 0 && j === segmentCount - 1) continue;
+      const c = points[j];
+      const d = points[(j + 1) % points.length];
+      if (
+        c !== undefined &&
+        d !== undefined &&
+        cross(a, b, c) * cross(a, b, d) < -1e-8 &&
+        cross(c, d, a) * cross(c, d, b) < -1e-8
+      )
+        return true;
+    }
+  }
+  return false;
+}
+
+it('FR-VG-06: 近接ノードの往復はID名で上下を変えず、混在無向辺も別経路にする', () => {
+  for (const secondX of [0, 5]) {
+    const graph = fixture(true);
+    graph.addUndirectedEdgeWithKey('u', a, b, {
+      weight: 1,
+      count: 1,
+      edgeIds: [],
+      directed: false,
+      missingWeightCount: 0,
+    });
+    const scene = buildScene(
+      graph,
+      new Map([
+        [a, { x: 0, y: 0 }],
+        [b, { x: secondX, y: 0 }],
+      ]),
+      {},
+      { directedStyle: 'gradient' },
+    );
+    expect(new Set(scene.edges.map((edge) => JSON.stringify(edge.path))).size).toBe(3);
+  }
+  for (const names of [
+    ['node-10', 'node-2'],
+    ['node-2', 'node-10'],
+  ]) {
+    const first = names[0];
+    const second = names[1];
+    if (first === undefined || second === undefined) throw new Error('names');
+    const edge = edgeGeometry(
+      geometryNode(first, 0, 0),
+      geometryNode(second, 5, 0),
+      4,
+      4,
+      2,
+      24,
+      'gradient',
+    );
+    const bend = edge.path[1];
+    if (bend?.type !== 'Q') throw new Error('curve');
+    expect(bend.cy).toBeGreaterThan(0);
+  }
+});
+
+it('FR-VG-05: 短く太い曲線の先細りを曲率半径内に収め、帯を自己交差させない', () => {
+  for (const bend of [10, 30, 60, 100]) {
+    for (const width of [40, 80, 200]) {
+      const result = edgeGeometry(
+        geometryNode('s', 0, 0),
+        geometryNode('t', 20, 0),
+        1,
+        1,
+        width,
+        bend,
+        'taper',
+      );
+      if (result.ribbon === undefined) throw new Error('ribbon');
+      expect(result.ribbon.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y))).toBe(true);
+      expect(hasCrossing(result.ribbon)).toBe(false);
+    }
+  }
+});
+
+it('FR-VG-07: 矢じりが縮む短い辺では幹の描画幅も底辺幅以下にする', () => {
+  const result = edgeGeometry(
+    geometryNode('s', 0, 0),
+    geometryNode('t', 20, 0),
+    1,
+    1,
+    40,
+    0,
+    'arrow',
+  );
+  const first = result.head?.[1];
+  const second = result.head?.[2];
+  if (first === undefined || second === undefined || result.shaftWidth === undefined)
+    throw new Error('head');
+  expect(result.shaftWidth).toBeLessThan(40);
+  expect(result.shaftWidth).toBeLessThanOrEqual(Math.hypot(first.x - second.x, first.y - second.y));
+  const scene = buildScene(
+    fixture(),
+    new Map([
+      [a, { x: 0, y: 0 }],
+      [b, { x: 40, y: 0 }],
+    ]),
+    { widths: new Map([['ab', { width: 40, missing: false }]]) },
+  );
+  const edge = scene.edges[0];
+  if (edge === undefined) throw new Error('edge');
+  expect(edge.width).toBe(edge.shaftWidth);
+  const svgWidth = /<path id="edge-0"[^>]*stroke-width="([^"]+)"/u.exec(renderSvg(scene))?.[1];
+  expect(Number(svgWidth)).toBeCloseTo(edge.width, 3);
+});
+
+function pathSamples(path: readonly PathCommand[]): EdgePoint[] {
+  const sampled: EdgePoint[] = [];
+  let from: EdgePoint | undefined;
+  for (const command of path) {
+    if (command.type === 'M') sampled.push(command);
+    else if (command.type === 'L') sampled.push(command);
+    else {
+      if (from === undefined) throw new Error('path');
+      for (let i = 1; i <= 32; i++) {
+        const t = i / 32;
+        sampled.push({
+          x: (1 - t) ** 2 * from.x + 2 * (1 - t) * t * command.cx + t * t * command.x,
+          y: (1 - t) ** 2 * from.y + 2 * (1 - t) * t * command.cy + t * t * command.y,
+        });
+      }
+    }
+    from = command;
+  }
+  return sampled;
+}
+
+it('FR-VG-05/06: 近接上限・逆向き・負のbendでも中心線と先細りを8字にしない', () => {
+  for (const bend of [-24, 24]) {
+    for (const reverse of [false, true]) {
+      for (const gap of [0, 1, 3]) {
+        const first = geometryNode('node-10', reverse ? gap : 0, 0);
+        const second = geometryNode('node-2', reverse ? 0 : gap, 0);
+        // 【TS】as constでスタイルを文字列リテラルの配列に保つ。
+        for (const style of ['gradient', 'taper'] as const) {
+          const result = edgeGeometry(first, second, 1, 1, style === 'taper' ? 40 : 1, bend, style);
+          expect(hasCrossing(pathSamples(result.path), false)).toBe(false);
+          if (result.ribbon !== undefined) expect(hasCrossing(result.ribbon)).toBe(false);
+        }
+      }
+    }
+  }
+  const first = geometryNode('a', 0, 0);
+  const second = geometryNode('b', 3, 0);
+  const mixed = [
+    edgeGeometry(first, second, 1, 1, 1, 24, 'gradient'),
+    edgeGeometry(second, first, 1, 1, 1, 24, 'gradient'),
+    edgeGeometry(first, second, 1, 1, 1, 0),
+  ];
+  expect(new Set(mixed.map((edge) => JSON.stringify(edge.path))).size).toBe(3);
+  for (const edge of mixed) expect(hasCrossing(pathSamples(edge.path), false)).toBe(false);
 });

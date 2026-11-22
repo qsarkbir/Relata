@@ -292,8 +292,7 @@ export function buildScene(
       source: s.id,
       target: t.id,
       ...geometry,
-      width:
-        w !== undefined && Number.isFinite(w.width) ? Math.max(0, w.width) : DEFAULT_EDGE_WIDTH,
+      width: geometry.shaftWidth ?? width,
       color: DEFAULT_EDGE_COLOR,
       opacity: 0.6,
       directed: attrs.directed,

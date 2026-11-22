@@ -63,3 +63,75 @@ for (const directedStyle of ['arrow', 'taper', 'gradient'] as const) {
     },
   );
 }
+
+for (const vertical of [false, true]) {
+  test(
+    'FR-VG-05: 完全な' +
+      (vertical ? '垂直' : '水平') +
+      '線のuserSpaceOnUse濃淡はepsilonなしで描ける',
+    async ({ page }) => {
+      const graph: RelataGraph = new Graph({
+        type: 'directed',
+        multi: false,
+        allowSelfLoops: true,
+      });
+      const a = toNodeId('s');
+      const b = toNodeId('t');
+      const type = toNodeTypeId('person');
+      graph.addNode(a, { label: 's', type });
+      graph.addNode(b, { label: 't', type });
+      graph.addDirectedEdgeWithKey('st', a, b, {
+        weight: 1,
+        count: 1,
+        edgeIds: [],
+        directed: true,
+        missingWeightCount: 0,
+      });
+      const scene = buildScene(
+        graph,
+        new Map([
+          [a, { x: 0, y: 0 }],
+          [b, { x: vertical ? 0 : 200, y: vertical ? 200 : 0 }],
+        ]),
+        {
+          widths: new Map([['st', { width: 8, missing: false }]]),
+        },
+        { directedStyle: 'gradient', labels: 'selected' },
+      );
+      const gradient = scene.edges[0]?.gradient;
+      if (gradient === undefined) throw new Error('gradient');
+      await page.setContent(renderSvg(scene));
+      const element = page.locator('linearGradient');
+      expect(await element.getAttribute(vertical ? 'x1' : 'y1')).toBe(
+        await element.getAttribute(vertical ? 'x2' : 'y2'),
+      );
+      const pixels = await page.evaluate(async ({ start, end }) => {
+        const svg = document.querySelector('svg');
+        if (svg === null) throw new Error('svg');
+        const image = new Image();
+        image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.outerHTML);
+        await image.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.ceil(svg.width.baseVal.value);
+        canvas.height = Math.ceil(svg.height.baseVal.value);
+        const context = canvas.getContext('2d');
+        if (context === null) throw new Error('canvas');
+        context.drawImage(image, 0, 0);
+        return [0.25, 0.75].map(
+          (t) =>
+            context.getImageData(
+              Math.round(start.x + (end.x - start.x) * t),
+              Math.round(start.y + (end.y - start.y) * t),
+              1,
+              1,
+            ).data[3],
+        );
+      }, gradient);
+      const light = pixels[0];
+      const dark = pixels[1];
+      if (light === undefined || dark === undefined) throw new Error('pixels');
+      expect(light).toBeGreaterThan(0);
+      expect(dark).toBeGreaterThan(light + 40);
+    },
+  );
+}
