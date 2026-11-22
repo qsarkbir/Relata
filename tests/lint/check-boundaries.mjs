@@ -329,6 +329,25 @@ const cases = [
     expect: { 'import-x/no-restricted-paths': 3 },
   },
   {
+    // 【なぜ】views は Worker を state の controller 経由で使う（設計書 §4.1、D-17、D-26）。
+    name: 'views は workers と app を import できない（state と core は import できる）',
+    lint: 'src/views/__lint_probe__.ts',
+    files: {
+      'src/views/__lint_probe__.ts': [
+        "import { w } from '../workers/__lint_probe__w';",
+        "import { d } from '../app/__lint_probe__d';",
+        "import { a } from '../state/__lint_probe__a';",
+        "import { c } from '../core/__lint_probe__c';",
+        'export const x = [w, d, a, c];',
+      ],
+      'src/workers/__lint_probe__w.ts': ['export const w = 1;'],
+      'src/app/__lint_probe__d.ts': ['export const d = 1;'],
+      'src/state/__lint_probe__a.ts': ['export const a = 1;'],
+      'src/core/__lint_probe__c.ts': ['export const c = 1;'],
+    },
+    expect: { 'import-x/no-restricted-paths': 2 },
+  },
+  {
     name: 'CLAUDE.md の規約: any、非 null アサーション、switch の網羅漏れ、理由なしの disable',
     lint: 'src/core/__lint_probe__.ts',
     files: {

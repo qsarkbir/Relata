@@ -197,3 +197,84 @@ describe('FR-IN-05 / FR-IN-06 / FR-IN-07: 値と警告', () => {
     ).toThrow(RangeError);
   });
 });
+
+it('FR-IN-03: 空の参照型はノードと同じ default 型を参照する', () => {
+  const result = importTables(
+    parseTextTable('id,label,type\n1,A,\n2,B,person'),
+    parseTextTable('source,target,st,tt\n1,2,,person'),
+    nodeMapping,
+    { fields: { source: 0, target: 1, sourceType: 2, targetType: 3 }, attributes: [] },
+  );
+  expect(result.warnings).toEqual([]);
+  expect(result.dataset?.edges[0]?.source).toBe(result.dataset?.nodes[0]?.id);
+});
+it('FR-IN-06: ラベルとIDが空でも同じ行の属性・日付・座標の問題を収集する', () => {
+  const result = importTables(
+    parseTextTable('id,label,n,date,lat,lon\n,,bad,bad,999,0'),
+    parseTextTable('source,target'),
+    {
+      fields: { id: 0, label: 1, date: 3, lat: 4, lon: 5 },
+      attributes: [{ column: 2, key: 'n', label: 'n', type: 'number' }],
+    },
+    edgeMapping,
+  );
+  expect(result.dataset).toBeNull();
+  expect(result.warnings.map((w) => w.code)).toEqual(
+    expect.arrayContaining(['invalid-value', 'invalid-date', 'invalid-coordinate']),
+  );
+  expect(result.warnings.filter((w) => w.code === 'invalid-value')).toHaveLength(3);
+});
+it('FR-IN-05: 異なる暦の期間をJDNで比較して逆転を警告する', () => {
+  const result = importTables(
+    parseTextTable('name,start,end\nA,1650,1050'),
+    parseTextTable('source,target'),
+    {
+      fields: { label: 0, start: 1, end: 2 },
+      attributes: [],
+      fieldOptions: {
+        start: { type: 'date', calendar: 'gregorian' },
+        end: { type: 'date', calendar: 'hijri' },
+      },
+    },
+    edgeMapping,
+  );
+  expect(result.dataset).not.toBeNull();
+  expect(result.warnings).toMatchObject([{ code: 'date-warning', severity: 'warning' }]);
+});
+it('FR-IN-02 / FR-IN-06: Excelセルの警告があれば元表を保持してDatasetを公開しない', () => {
+  // 【TS】as const で警告コードの文字列リテラルを保つ。
+  const table = {
+    ...nodes,
+    warnings: [{ code: 'excel-cell', row: 2, message: '未計算の数式' }],
+  } as const;
+  const result = importTables(table, parseTextTable('source,target'), nodeMapping, edgeMapping);
+  expect(result.dataset).toBeNull();
+  expect(result.tables.node).toBe(table);
+  expect(result.warnings).toMatchObject([{ code: 'excel-cell', severity: 'error', row: 2 }]);
+});
+it('FR-IN-06: 重みは空欄だけを1に補い、欠損記号を数値として扱わない', () => {
+  for (const weight of ['', '□']) {
+    const result = importTables(
+      nodes,
+      parseTextTable(`source,target,weight\n1,2,${weight}`),
+      nodeMapping,
+      {
+        fields: { ...edgeMapping.fields, weight: 2 },
+        attributes: [],
+        missingTokens: [{ token: '□', reason: 'lost' }],
+      },
+    );
+    if (weight === '') expect(result.dataset?.edges[0]?.weight).toBe(1);
+    else expect(result.dataset).toBeNull();
+  }
+});
+
+it('FR-IN-07: 数値形式の欠損記号も重みの欠損として検出する', () => {
+  const result = importTables(nodes, parseTextTable('source,target,weight\n1,2,0'), nodeMapping, {
+    fields: { ...edgeMapping.fields, weight: 2 },
+    attributes: [],
+    missingTokens: [{ token: '0', reason: 'lost' }],
+  });
+  expect(result.dataset).toBeNull();
+  expect(result.warnings).toMatchObject([{ code: 'invalid-value', severity: 'error' }]);
+});

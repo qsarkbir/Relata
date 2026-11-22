@@ -1,0 +1,89 @@
+.region-metrics {
+  min-inline-size: 0;
+}
+.metrics-panel h2 {
+  margin-block-start: 0;
+}
+.metrics-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-block: 0.5rem;
+}
+.metrics-global {
+  margin-inline: 0;
+}
+.metrics-global > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-block-end: 1px solid #ddd;
+  padding-block: 0.3rem;
+}
+.metrics-global dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.metrics-notes {
+  padding-inline-start: 1.2rem;
+  font-size: 0.9rem;
+}
+.metrics-table-wrap {
+  max-inline-size: 100%;
+  max-block-size: 28rem;
+  overflow: auto;
+  border: 1px solid #bbb;
+}
+.metrics-table {
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.metrics-table caption {
+  text-align: start;
+  font-weight: bold;
+  padding: 0.5rem;
+}
+.metrics-table th,
+.metrics-table td {
+  white-space: nowrap;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #ddd;
+  text-align: start;
+}
+.metrics-table thead th {
+  position: sticky;
+  inset-block-start: 0;
+  background: #f4f6fa;
+}
+.metrics-table td {
+  font-variant-numeric: tabular-nums;
+}
+.metrics-table th button {
+  background: transparent;
+  color: inherit;
+  border: 0;
+  padding: 0.2rem;
+  font: inherit;
+  font-weight: bold;
+}
+.metrics-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-block: 0.75rem;
+}
+.metrics-pagination p {
+  inline-size: 100%;
+  margin: 0;
+  font-size: 0.9rem;
+}
+.metrics-definitions summary {
+  cursor: pointer;
+}
+.metrics-definitions dt {
+  font-weight: bold;
+  margin-block-start: 0.6rem;
+}
+.metrics-definitions dd {
+  margin-inline-start: 0;
+  margin-block-start: 0.2rem;
+}

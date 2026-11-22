@@ -1,8 +1,12 @@
+import { GraphView } from '../views/GraphView';
 import { AboutDialog } from '../views/AboutDialog';
 import { FilterPanel } from '../views/FilterPanel';
+import { SampleCard } from '../views/SampleCard';
 import { ProjectMenu } from '../views/ProjectMenu';
+import { ImportWizard } from '../views/ImportWizard';
 import { ProjectNotice } from '../views/ProjectNoticePanel';
 import { TaskPanel } from '../views/TaskPanel';
+import { MetricsPanel } from '../views/MetricsPanel';
 import { useData, useT, useUi } from '../views/hooks';
 import { LOCALES, LOCALE_NAMES } from '../i18n';
 import { clearAutosave } from './autosaveService';
@@ -31,6 +35,7 @@ export function App() {
         <h1>{t('app.title')}</h1>
         <p className="tagline">{t('app.tagline')}</p>
         <div className="header-actions">
+          <ImportWizard />
           <ProjectMenu
             onClearAutosave={() => {
               void clearAutosave();
@@ -67,15 +72,17 @@ export function App() {
           <FilterPanel />
         </aside>
         <main className="region-main" aria-label={t('app.region.main')}>
+          <GraphView />
           {dataset === null ? (
             <div className="empty">
               <h2>{t('app.empty.title')}</h2>
               <p>{t('app.empty.body')}</p>
+              <SampleCard />
             </div>
           ) : null}
         </main>
         <aside className="region-metrics" aria-label={t('app.region.metrics')}>
-          <p className="placeholder">{t('app.region.metrics.placeholder')}</p>
+          <MetricsPanel />
         </aside>
       </div>
       <TaskPanel />

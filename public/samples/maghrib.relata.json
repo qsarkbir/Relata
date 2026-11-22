@@ -1,0 +1,5828 @@
+{
+  "app": "Relata",
+  "formatVersion": 1,
+  "savedAt": "2026-11-21T00:00:00.000Z",
+  "dataset": {
+    "graphMode": "directed",
+    "nodes": [
+      {
+        "id": "K1:3:1",
+        "type": "3",
+        "label": "ابن عسكر",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "شفشاون" }
+        },
+        "geo": { "kind": "point", "lat": 35.16878, "lon": -5.2636 }
+      },
+      {
+        "id": "K1:1:2",
+        "type": "1",
+        "label": "يوسف بن عيسى الفجيجي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "شفشاون" }
+        },
+        "geo": { "kind": "point", "lat": 35.16878, "lon": -5.2636 }
+      },
+      {
+        "id": "K1:1:3",
+        "type": "1",
+        "label": "ابن عيسى الفهدي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "مكناس" }
+        },
+        "geo": { "kind": "point", "lat": 33.873016, "lon": -5.54073 }
+      },
+      {
+        "id": "K1:1:4",
+        "type": "1",
+        "label": "أبو العباس الحارثي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2267016,
+              "latest": 2267369,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "900"
+            }
+          },
+          "Place": { "kind": "value", "value": "مكناس" }
+        },
+        "geo": { "kind": "point", "lat": 33.873016, "lon": -5.54073 }
+      },
+      {
+        "id": "K1:1:5",
+        "type": "1",
+        "label": "عبد الله الغزواني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "مراكش" }
+        },
+        "geo": { "kind": "point", "lat": 31.629472, "lon": -7.981085 }
+      },
+      {
+        "id": "K1:1:6",
+        "type": "1",
+        "label": "عبد العزيز التباع",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "مراكش" }
+        },
+        "geo": { "kind": "point", "lat": 31.629472, "lon": -7.981085 }
+      },
+      {
+        "id": "K1:1:7",
+        "type": "1",
+        "label": "محمد بن سليمان الجزولي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2252841,
+              "latest": 2253194,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "860"
+            }
+          },
+          "Place": { "kind": "value", "value": "أفوغال" }
+        },
+        "geo": { "kind": "point", "lat": 31.583333, "lon": -9.533333 }
+      },
+      {
+        "id": "K1:1:8",
+        "type": "1",
+        "label": "أبو عبد الله الأمغاري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2242210,
+              "latest": 2242563,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "830"
+            }
+          },
+          "Place": { "kind": "value", "value": "تيط" }
+        },
+        "geo": { "kind": "point", "lat": 33.553333, "lon": -7.482222 }
+      },
+      {
+        "id": "K1:1:15",
+        "type": "1",
+        "label": "أبو الحسن الشاذلي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2178424,
+              "latest": 2178777,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "650"
+            }
+          },
+          "Place": { "kind": "value", "value": "جبل العلم" }
+        },
+        "geo": { "kind": "point", "lat": 35.316666, "lon": -5.516667 }
+      },
+      {
+        "id": "K1:1:16",
+        "type": "1",
+        "label": "عبد السلام بن مشيش",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2167793,
+              "latest": 2168146,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "620"
+            }
+          },
+          "Place": { "kind": "value", "value": "جبل العلم" }
+        },
+        "geo": { "kind": "point", "lat": 35.316666, "lon": -5.516667 }
+      },
+      {
+        "id": "K1:1:17",
+        "type": "1",
+        "label": "أبو العباس المرسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2189055,
+              "latest": 2189408,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "680"
+            }
+          },
+          "Place": { "kind": "value", "value": "إسكندرية" }
+        },
+        "geo": { "kind": "point", "lat": 31.2, "lon": 29.916667 }
+      },
+      {
+        "id": "K1:2:18",
+        "type": "2",
+        "label": "أحمد بن أحمد العبادي التلمساني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "مليانة" }
+        },
+        "geo": { "kind": "point", "lat": 36.310961, "lon": 2.198553 }
+      },
+      {
+        "id": "K1:2:19",
+        "type": "2",
+        "label": "أحمد العبادي التلمساني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:1:20",
+        "type": "1",
+        "label": "عبد الرحمن المدني الزيات",
+        "attrs": {
+          "Year": { "kind": "missing", "reason": "unrecorded" },
+          "Place": { "kind": "value", "value": "المدينة" }
+        },
+        "geo": { "kind": "point", "lat": 24.466667, "lon": 39.6 }
+      },
+      {
+        "id": "K1:4:33",
+        "type": "4",
+        "label": "الحسن بن علي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 1962260,
+              "latest": 1962614,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "40"
+            }
+          },
+          "Place": { "kind": "value", "value": "المكة" }
+        },
+        "geo": { "kind": "point", "lat": 21.435957, "lon": 39.706461 }
+      },
+      {
+        "id": "K1:3:34",
+        "type": "3",
+        "label": "عبد الوارث بن عبد الله اليلصوتي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2291821,
+              "latest": 2292175,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "970"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني دركول" }
+        },
+        "geo": { "kind": "point", "lat": 35.056313, "lon": -5.068753 }
+      },
+      {
+        "id": "K1:3:35",
+        "type": "3",
+        "label": "عبد الله الهبطي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "مواهب" }
+        },
+        "geo": { "kind": "point", "lat": 35.062523, "lon": -5.197964 }
+      },
+      {
+        "id": "K1:2:36",
+        "type": "2",
+        "label": "موسى بن علي الوزاني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "وزان" }
+        },
+        "geo": { "kind": "point", "lat": 34.795373, "lon": -5.567558 }
+      },
+      {
+        "id": "K1:1:37",
+        "type": "1",
+        "label": "أبو علي الحسن بن علي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2298909,
+              "latest": 2299262,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "990"
+            }
+          },
+          "Place": { "kind": "value", "value": "مواهب" }
+        },
+        "geo": { "kind": "point", "lat": 35.062523, "lon": -5.197964 }
+      },
+      {
+        "id": "K1:2:38",
+        "type": "2",
+        "label": "أبو عبد الله محمد الأغزاوي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2298909,
+              "latest": 2299262,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "990"
+            }
+          },
+          "Place": { "kind": "value", "value": "مواهب" }
+        },
+        "geo": { "kind": "point", "lat": 35.062523, "lon": -5.197964 }
+      },
+      {
+        "id": "K1:2:39",
+        "type": "2",
+        "label": "أبو القاسم بن علي ابن خجو",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "جبل بني حسان" }
+        },
+        "geo": { "kind": "point", "lat": 35.317853, "lon": -5.356201 }
+      },
+      {
+        "id": "K1:1:40",
+        "type": "1",
+        "label": "محمد بن علي الحاج الشطيبي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "تازغدرة" }
+        },
+        "geo": { "kind": "point", "lat": 34.628779, "lon": -4.92499 }
+      },
+      {
+        "id": "K1:1:41",
+        "type": "1",
+        "label": "أبو علي منصور البجائي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2298909,
+              "latest": 2299262,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "990"
+            }
+          },
+          "Place": { "kind": "value", "value": "بجاية" }
+        },
+        "geo": { "kind": "point", "lat": 36.751526, "lon": 5.055684 }
+      },
+      {
+        "id": "K1:1:42",
+        "type": "1",
+        "label": "أبو حفص عمر الورياغلي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2298909,
+              "latest": 2299262,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "990"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني ورياغل" }
+        },
+        "geo": { "kind": "point", "lat": 34.797087, "lon": -5.708266 }
+      },
+      {
+        "id": "K1:1:43",
+        "type": "1",
+        "label": "يوسف بن الحسن التليدي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني تليد" }
+        },
+        "geo": { "kind": "point", "lat": 35.116087, "lon": -5.586698 }
+      },
+      {
+        "id": "K1:1:44",
+        "type": "1",
+        "label": "أبو علي الحاج منصور",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني تليد" }
+        },
+        "geo": { "kind": "point", "lat": 35.116087, "lon": -5.586698 }
+      },
+      {
+        "id": "K1:1:45",
+        "type": "1",
+        "label": "أبو الحسن علي الشبلي الريفي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني تليد" }
+        },
+        "geo": { "kind": "point", "lat": 35.116087, "lon": -5.586698 }
+      },
+      {
+        "id": "K1:1:46",
+        "type": "1",
+        "label": "أبو عبد الله محمد بن الحسين الفزنكاري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني تليد" }
+        },
+        "geo": { "kind": "point", "lat": 35.116087, "lon": -5.586698 }
+      },
+      {
+        "id": "K1:1:47",
+        "type": "1",
+        "label": "أبو عبد الله البهجة الأندلسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني تليد" }
+        },
+        "geo": { "kind": "point", "lat": 35.116087, "lon": -5.586698 }
+      },
+      {
+        "id": "K1:1:48",
+        "type": "1",
+        "label": "أبو العباس أحمد بن عمر الأندلسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني تليد" }
+        },
+        "geo": { "kind": "point", "lat": 35.116087, "lon": -5.586698 }
+      },
+      {
+        "id": "K1:4:49",
+        "type": "4",
+        "label": "أبو الحسن ابن عسكر",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "شفشاون" }
+        },
+        "geo": { "kind": "point", "lat": 35.16878, "lon": -5.2636 }
+      },
+      {
+        "id": "K1:2:50",
+        "type": "2",
+        "label": "محمد الكراسي الأندلسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "غرناطة" }
+        },
+        "geo": { "kind": "point", "lat": 37.177461, "lon": -3.598437 }
+      },
+      {
+        "id": "K1:2:51",
+        "type": "2",
+        "label": "أبو الحسن البياضي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "غرناطة" }
+        },
+        "geo": { "kind": "point", "lat": 37.177461, "lon": -3.598437 }
+      },
+      {
+        "id": "K1:3:52",
+        "type": "3",
+        "label": "أحمد الحداد الخمسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني فلواط" }
+        },
+        "geo": { "kind": "point", "lat": 34.661123, "lon": -5.157543 }
+      },
+      {
+        "id": "K1:4:53",
+        "type": "4",
+        "label": "عائشة بن أحمد الإدريسية",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "شفشاون" }
+        },
+        "geo": { "kind": "point", "lat": 35.16878, "lon": -5.2636 }
+      },
+      {
+        "id": "K1:2:56",
+        "type": "2",
+        "label": "محمد ابن غازي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:57",
+        "type": "2",
+        "label": "أبو الحسن ابن هارون",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:58",
+        "type": "2",
+        "label": "أحمد بن يحيى الونشريسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:59",
+        "type": "2",
+        "label": "عبد الواحد الونشريسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:60",
+        "type": "2",
+        "label": "أبو مهدي عيسى الماواسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2263472,
+              "latest": 2263825,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "890"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:61",
+        "type": "2",
+        "label": "القاضي المكناسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "مكناس" }
+        },
+        "geo": { "kind": "point", "lat": 33.873016, "lon": -5.54073 }
+      },
+      {
+        "id": "K1:2:62",
+        "type": "2",
+        "label": "ابن الحباك",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2252841,
+              "latest": 2253194,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "860"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:3:63",
+        "type": "3",
+        "label": "عبد الله القسطلي الأندلسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلانبوط" }
+        },
+        "geo": { "kind": "point", "lat": 35.303695, "lon": -5.1950312 }
+      },
+      {
+        "id": "K1:2:64",
+        "type": "2",
+        "label": "أحمد الزقاق",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:65",
+        "type": "2",
+        "label": "الحاج زروق الزياتي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني زيات" }
+        },
+        "geo": { "kind": "point", "lat": 35.394932, "lon": -5.014345 }
+      },
+      {
+        "id": "K1:1:66",
+        "type": "1",
+        "label": "محمد بن يجبش التازي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "تازة" }
+        },
+        "geo": { "kind": "point", "lat": 34.21056, "lon": -3.998048 }
+      },
+      {
+        "id": "K1:2:67",
+        "type": "2",
+        "label": "أحمد زقاق",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:68",
+        "type": "1",
+        "label": "أبو العباس أحمد الملياني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "مليانة" }
+        },
+        "geo": { "kind": "point", "lat": 36.310961, "lon": 2.198553 }
+      },
+      {
+        "id": "K1:1:69",
+        "type": "1",
+        "label": "عبد الرحمن ابن ريسون",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "تازروت" }
+        },
+        "geo": { "kind": "point", "lat": 35.264392, "lon": -5.545323 }
+      },
+      {
+        "id": "K1:1:70",
+        "type": "1",
+        "label": "علي ابن ريسون",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "تازروت" }
+        },
+        "geo": { "kind": "point", "lat": 35.264392, "lon": -5.545323 }
+      },
+      {
+        "id": "K1:3:71",
+        "type": "3",
+        "label": "أبو القاسم بن عبد الله الشريف الحسني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "تازروت" }
+        },
+        "geo": { "kind": "point", "lat": 35.264392, "lon": -5.545323 }
+      },
+      {
+        "id": "K1:3:72",
+        "type": "3",
+        "label": "أحمد الشاعر اليجمي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني يجم" }
+        },
+        "geo": { "kind": "point", "lat": 35.566667, "lon": -5.366667 }
+      },
+      {
+        "id": "K1:2:73",
+        "type": "2",
+        "label": "المواق",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2263472,
+              "latest": 2263825,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "890"
+            }
+          },
+          "Place": { "kind": "value", "value": "غرناطة" }
+        },
+        "geo": { "kind": "point", "lat": 37.177461, "lon": -3.598437 }
+      },
+      {
+        "id": "K1:2:74",
+        "type": "2",
+        "label": "ابن الجقوالة",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "غرناطة" }
+        },
+        "geo": { "kind": "point", "lat": 37.177461, "lon": -3.598437 }
+      },
+      {
+        "id": "K1:2:75",
+        "type": "2",
+        "label": "ابن الزقاق",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:3:76",
+        "type": "3",
+        "label": "أحمد زروق",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2263472,
+              "latest": 2263825,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "890"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:77",
+        "type": "1",
+        "label": "أبو الحسن عثمان الشاوي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "بنو يروتن" }
+        },
+        "geo": { "kind": "point", "lat": 34.991516, "lon": -5.470189 }
+      },
+      {
+        "id": "K1:1:78",
+        "type": "1",
+        "label": "أبو الحسن الحاج الأغزاوي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "غصاوة" }
+        },
+        "geo": { "kind": "point", "lat": 34.922658, "lon": -5.35078 }
+      },
+      {
+        "id": "K1:1:79",
+        "type": "1",
+        "label": "أبو الحسن السريفي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2291821,
+              "latest": 2292175,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "970"
+            }
+          },
+          "Place": { "kind": "value", "value": "سريف" }
+        },
+        "geo": { "kind": "point", "lat": 35.022909, "lon": -5.728008 }
+      },
+      {
+        "id": "K1:2:80",
+        "type": "2",
+        "label": "علي بن ميمون الغماري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "الشام" }
+        },
+        "geo": { "kind": "point", "lat": 33.5075402, "lon": 36.2416961 }
+      },
+      {
+        "id": "K1:2:81",
+        "type": "2",
+        "label": "عبد الله الورياغلي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2267016,
+              "latest": 2267369,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "900"
+            }
+          },
+          "Place": { "kind": "value", "value": "القصر الكبير" }
+        },
+        "geo": { "kind": "point", "lat": 35.003531, "lon": -5.915537 }
+      },
+      {
+        "id": "K1:2:82",
+        "type": "2",
+        "label": "القوري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2256385,
+              "latest": 2256738,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "870"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:83",
+        "type": "2",
+        "label": "العبدوسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2245754,
+              "latest": 2246107,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "840"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:84",
+        "type": "2",
+        "label": "ابن مرزوق",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2245754,
+              "latest": 2246107,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "840"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:85",
+        "type": "2",
+        "label": "عبد الرحمن ابن إبراهيم الفاسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:86",
+        "type": "1",
+        "label": "واضح",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "القصر الكبير" }
+        },
+        "geo": { "kind": "point", "lat": 35.003531, "lon": -5.915537 }
+      },
+      {
+        "id": "K1:1:87",
+        "type": "1",
+        "label": "برزيز",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "القصر الكبير" }
+        },
+        "geo": { "kind": "point", "lat": 35.003531, "lon": -5.915537 }
+      },
+      {
+        "id": "K1:2:88",
+        "type": "2",
+        "label": "أبو محمد عبد الله الشريف",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني فلواط" }
+        },
+        "geo": { "kind": "point", "lat": 34.661123, "lon": -5.157543 }
+      },
+      {
+        "id": "K1:2:89",
+        "type": "2",
+        "label": "أبو زيد عبد الرحمن القصري الحرار",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "القصر الكبير" }
+        },
+        "geo": { "kind": "point", "lat": 35.003531, "lon": -5.915537 }
+      },
+      {
+        "id": "K1:2:90",
+        "type": "2",
+        "label": "موسى بن العقدة الأغصاوي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2267016,
+              "latest": 2267369,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "900"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:91",
+        "type": "2",
+        "label": "ابن برطال",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2267016,
+              "latest": 2267369,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "900"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:92",
+        "type": "2",
+        "label": "محمد النالي المسفر",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني نال" }
+        },
+        "geo": { "kind": "point", "lat": 35.008981, "lon": -4.726459 }
+      },
+      {
+        "id": "K1:2:93",
+        "type": "2",
+        "label": "الرزيني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "missing", "reason": "unrecorded" }
+        },
+        "geo": { "kind": "missing", "reason": "unrecorded" }
+      },
+      {
+        "id": "K1:1:94",
+        "type": "1",
+        "label": "عبد الله الجابري الرهوني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "رهونة" }
+        },
+        "geo": { "kind": "point", "lat": 35.351957, "lon": -6.061494 }
+      },
+      {
+        "id": "K1:1:95",
+        "type": "1",
+        "label": "أحمد الشويخ السريفي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "سريف" }
+        },
+        "geo": { "kind": "point", "lat": 35.022909, "lon": -5.728008 }
+      },
+      {
+        "id": "K1:1:96",
+        "type": "1",
+        "label": "أبو بكر السريفي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2263472,
+              "latest": 2263825,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "890"
+            }
+          },
+          "Place": { "kind": "value", "value": "سريف" }
+        },
+        "geo": { "kind": "point", "lat": 35.022909, "lon": -5.728008 }
+      },
+      {
+        "id": "K1:2:97",
+        "type": "2",
+        "label": "أحمد بن إبراهيم الجرفطي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "القصر الكبير" }
+        },
+        "geo": { "kind": "point", "lat": 35.003531, "lon": -5.915537 }
+      },
+      {
+        "id": "K1:2:98",
+        "type": "2",
+        "label": "علي بن أبي شيخ اللخمي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "القصر الكبير" }
+        },
+        "geo": { "kind": "point", "lat": 35.003531, "lon": -5.915537 }
+      },
+      {
+        "id": "K1:3:99",
+        "type": "3",
+        "label": "علي الحاج ابن البقال الأغصاوي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "غصاوة" }
+        },
+        "geo": { "kind": "point", "lat": 34.922658, "lon": -5.35078 }
+      },
+      {
+        "id": "K1:1:100",
+        "type": "1",
+        "label": "محمد الخروبي السفاقسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "طرابلس" }
+        },
+        "geo": { "kind": "point", "lat": 32.887209, "lon": 13.191338 }
+      },
+      {
+        "id": "K1:1:101",
+        "type": "1",
+        "label": "عطية الله الشفشاوني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "شفشاون" }
+        },
+        "geo": { "kind": "point", "lat": 35.16878, "lon": -5.2636 }
+      },
+      {
+        "id": "K1:1:102",
+        "type": "1",
+        "label": "علي الفحل التطواني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "تطوان" }
+        },
+        "geo": { "kind": "point", "lat": 35.566667, "lon": -5.366667 }
+      },
+      {
+        "id": "K1:1:103",
+        "type": "1",
+        "label": "الجاسوس",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "تطوان" }
+        },
+        "geo": { "kind": "point", "lat": 35.566667, "lon": -5.366667 }
+      },
+      {
+        "id": "K1:3:104",
+        "type": "3",
+        "label": "الحسين المصمودي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "القصر الكبير" }
+        },
+        "geo": { "kind": "point", "lat": 35.003531, "lon": -5.915537 }
+      },
+      {
+        "id": "K1:3:105",
+        "type": "3",
+        "label": "أبو العباس أحمد بن أبي جيدة",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:3:106",
+        "type": "3",
+        "label": "محمد بن يوسف السنوسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2263472,
+              "latest": 2263825,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "890"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:1:107",
+        "type": "1",
+        "label": "أبو عبد الله محمد الزيتوني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2267016,
+              "latest": 2267369,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "900"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:108",
+        "type": "1",
+        "label": "أبو العباس أحمد بن عقبة الحضرمي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2249297,
+              "latest": 2249651,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "850"
+            }
+          },
+          "Place": { "kind": "value", "value": "مصر" }
+        },
+        "geo": { "kind": "point", "lat": 30.07054, "lon": 31.190513 }
+      },
+      {
+        "id": "K1:3:109",
+        "type": "3",
+        "label": "أبو القاسم بن منصور الغمري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "غمرة" }
+        },
+        "geo": { "kind": "point", "lat": 33.851504, "lon": -4.575178 }
+      },
+      {
+        "id": "K1:2:110",
+        "type": "2",
+        "label": "علي بن قاسم الزقاق",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:111",
+        "type": "2",
+        "label": "عبد الوهاب الزقاق",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:112",
+        "type": "2",
+        "label": "محمد اليسيثني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:113",
+        "type": "2",
+        "label": "عبد الرحمن بن إبراهيم الدكالي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:114",
+        "type": "1",
+        "label": "أبو شامة بن عبد الرحمن بن إبراهيم الدكالي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:115",
+        "type": "2",
+        "label": "أبو القاسم ابن إبراهيم الدكالي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:116",
+        "type": "2",
+        "label": "محمد بن أحمد بن مجبر المساري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:117",
+        "type": "2",
+        "label": "عبد الرحمن سقين",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:118",
+        "type": "2",
+        "label": "أحمد المنجور",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2298909,
+              "latest": 2299262,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "990"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:119",
+        "type": "1",
+        "label": "محمد بن يحيى البهلولي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:120",
+        "type": "2",
+        "label": "أبو العباس أحمد الدغموري القصري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "القصر الكبير" }
+        },
+        "geo": { "kind": "point", "lat": 35.003531, "lon": -5.915537 }
+      },
+      {
+        "id": "K1:1:121",
+        "type": "1",
+        "label": "أبو زكرياء يحيى بن بكار",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "جبل وبلان" }
+        },
+        "geo": { "kind": "point", "lat": 33.663889, "lon": -4.090556 }
+      },
+      {
+        "id": "K1:1:122",
+        "type": "1",
+        "label": "محمد الطالب",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:123",
+        "type": "1",
+        "label": "علي حماموش",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:124",
+        "type": "2",
+        "label": "يحيى الحاج الوامودي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني وامد" }
+        },
+        "geo": { "kind": "point", "lat": 34.288121, "lon": -4.670173 }
+      },
+      {
+        "id": "K1:1:125",
+        "type": "1",
+        "label": "يحيى بن بكار الغمدي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "جبل وبلان" }
+        },
+        "geo": { "kind": "point", "lat": 33.663889, "lon": -4.090556 }
+      },
+      {
+        "id": "K1:3:126",
+        "type": "3",
+        "label": "يحيى بن بكار الكبير",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "جبل وبلان" }
+        },
+        "geo": { "kind": "point", "lat": 33.663889, "lon": -4.090556 }
+      },
+      {
+        "id": "K1:1:127",
+        "type": "1",
+        "label": "محمد بن يحيى بن بكار الأصغر",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2291821,
+              "latest": 2292175,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "970"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:128",
+        "type": "1",
+        "label": "أبو إسحاق إبراهيم التازي الوهراني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2252841,
+              "latest": 2253194,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "860"
+            }
+          },
+          "Place": { "kind": "value", "value": "وهران" }
+        },
+        "geo": { "kind": "point", "lat": 35.7111791, "lon": -0.6793912 }
+      },
+      {
+        "id": "K1:2:129",
+        "type": "2",
+        "label": "أبو الحسن علي بن عبد الواحد اليلصوتي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني جافن" }
+        },
+        "geo": { "kind": "point", "lat": 35.1091, "lon": -5.4577 }
+      },
+      {
+        "id": "K1:1:130",
+        "type": "1",
+        "label": "محمد بن سليمان البقوئي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "بادس" }
+        },
+        "geo": { "kind": "point", "lat": 35.169037, "lon": -4.288794 }
+      },
+      {
+        "id": "K1:1:131",
+        "type": "1",
+        "label": "سعيد بن السائح المالكي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "المرجومة" }
+        },
+        "geo": { "kind": "point", "lat": 34.682192, "lon": -5.993834 }
+      },
+      {
+        "id": "K1:1:132",
+        "type": "1",
+        "label": "أبو عبد الله محمد الصغير",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "واد اللبن" }
+        },
+        "geo": { "kind": "point", "lat": 34.237428, "lon": -4.770374 }
+      },
+      {
+        "id": "K1:1:133",
+        "type": "1",
+        "label": "مالك بن خدة الصبيحي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "ضفة سبو" }
+        },
+        "geo": { "kind": "point", "lat": 34.269282, "lon": -5.432156 }
+      },
+      {
+        "id": "K1:1:134",
+        "type": "1",
+        "label": "حمدان",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "missing", "reason": "unrecorded" }
+        },
+        "geo": { "kind": "missing", "reason": "unrecorded" }
+      },
+      {
+        "id": "K1:1:135",
+        "type": "1",
+        "label": "محمد بن منصور المصباحي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "البسابس" }
+        },
+        "geo": { "kind": "point", "lat": 34.537767, "lon": -6.369148 }
+      },
+      {
+        "id": "K1:1:136",
+        "type": "1",
+        "label": "محمد أبو الرواين",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "مكناس" }
+        },
+        "geo": { "kind": "point", "lat": 33.873016, "lon": -5.54073 }
+      },
+      {
+        "id": "K1:1:137",
+        "type": "1",
+        "label": "سعيد بن أبي بكر المشنزائي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "مكناس" }
+        },
+        "geo": { "kind": "point", "lat": 33.873016, "lon": -5.54073 }
+      },
+      {
+        "id": "K1:1:138",
+        "type": "1",
+        "label": "سعيد الراعي الدغوغي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2267016,
+              "latest": 2267369,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "900"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:139",
+        "type": "1",
+        "label": "فرج الأندلسي المكناسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "مكناس" }
+        },
+        "geo": { "kind": "point", "lat": 33.873016, "lon": -5.54073 }
+      },
+      {
+        "id": "K1:1:140",
+        "type": "1",
+        "label": "علي بن أحمد الدوار الصنهاجي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:141",
+        "type": "1",
+        "label": "يوسف المقيم بحارة الجذماء",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:2:142",
+        "type": "2",
+        "label": "الحسن بن أحمد حرزوز",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "مكناس" }
+        },
+        "geo": { "kind": "point", "lat": 33.873016, "lon": -5.54073 }
+      },
+      {
+        "id": "K1:1:143",
+        "type": "1",
+        "label": "عبد الله الخياط الزرهوني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "جبل زرهون" }
+        },
+        "geo": { "kind": "point", "lat": 34.030067, "lon": -5.544631 }
+      },
+      {
+        "id": "K1:1:144",
+        "type": "1",
+        "label": "محمد بن عمر المختاري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "أكراي" }
+        },
+        "geo": { "kind": "point", "lat": 33.643651, "lon": -5.600109 }
+      },
+      {
+        "id": "K1:3:145",
+        "type": "3",
+        "label": "محمد بن عبد الرحمن بصري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "مكناس" }
+        },
+        "geo": { "kind": "point", "lat": 33.873016, "lon": -5.54073 }
+      },
+      {
+        "id": "K1:1:146",
+        "type": "1",
+        "label": "موسى بن علي الزرهوني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "جبل زرهون" }
+        },
+        "geo": { "kind": "point", "lat": 34.030067, "lon": -5.544631 }
+      },
+      {
+        "id": "K1:1:147",
+        "type": "1",
+        "label": "عمر بن الخطاب الزرهوني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "جبل زرهون" }
+        },
+        "geo": { "kind": "point", "lat": 34.030067, "lon": -5.544631 }
+      },
+      {
+        "id": "K1:1:148",
+        "type": "1",
+        "label": "الحسن بن عيسى المصباحي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "الدعداعة" }
+        },
+        "geo": { "kind": "point", "lat": 34.679256, "lon": -6.002526 }
+      },
+      {
+        "id": "K1:1:149",
+        "type": "1",
+        "label": "عيسى بن الحسن المصباحي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "الدعداعة" }
+        },
+        "geo": { "kind": "point", "lat": 34.679256, "lon": -6.002526 }
+      },
+      {
+        "id": "K1:1:150",
+        "type": "1",
+        "label": "علي الزغاري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني مزكلد" }
+        },
+        "geo": { "kind": "point", "lat": 34.613777, "lon": -5.254146 }
+      },
+      {
+        "id": "K1:2:151",
+        "type": "2",
+        "label": "علي المنصوري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني زروال" }
+        },
+        "geo": { "kind": "point", "lat": 34.686965, "lon": -4.991485 }
+      },
+      {
+        "id": "K1:1:152",
+        "type": "1",
+        "label": "علي الشلي الشدادي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "سريف" }
+        },
+        "geo": { "kind": "point", "lat": 35.022909, "lon": -5.728008 }
+      },
+      {
+        "id": "K1:1:153",
+        "type": "1",
+        "label": "منصور بن عبد المنعم الصنهاجي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2302452,
+              "latest": 2302806,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "1000"
+            }
+          },
+          "Place": { "kind": "value", "value": "بلاد الهبط" }
+        },
+        "geo": { "kind": "point", "lat": 33.929973, "lon": -5.434572 }
+      },
+      {
+        "id": "K1:1:154",
+        "type": "1",
+        "label": "أبو الطيب الميسوري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2302452,
+              "latest": 2302806,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "1000"
+            }
+          },
+          "Place": { "kind": "value", "value": "ميسور" }
+        },
+        "geo": { "kind": "point", "lat": 31.671085, "lon": -4.683394 }
+      },
+      {
+        "id": "K1:3:155",
+        "type": "3",
+        "label": "عبد الله بن عمر المضغري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "سجلماسة" }
+        },
+        "geo": { "kind": "point", "lat": 31.283705, "lon": -4.277196 }
+      },
+      {
+        "id": "K1:1:156",
+        "type": "1",
+        "label": "أبو فارس عبد العزيز القسمطيني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "القسنطينة" }
+        },
+        "geo": { "kind": "point", "lat": 36.354645, "lon": 6.575358 }
+      },
+      {
+        "id": "K1:4:157",
+        "type": "4",
+        "label": "محمد الشيخ السعدي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "درعة" }
+        },
+        "geo": { "kind": "point", "lat": 30.262203, "lon": -5.687129 }
+      },
+      {
+        "id": "K1:4:158",
+        "type": "4",
+        "label": "أبو العباس السعدي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "درعة" }
+        },
+        "geo": { "kind": "point", "lat": 30.262203, "lon": -5.687129 }
+      },
+      {
+        "id": "K1:1:159",
+        "type": "1",
+        "label": "محمد بن عبد الله بن عمر المضغري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2291821,
+              "latest": 2292175,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "970"
+            }
+          },
+          "Place": { "kind": "value", "value": "سجلماسة" }
+        },
+        "geo": { "kind": "point", "lat": 31.283705, "lon": -4.277196 }
+      },
+      {
+        "id": "K1:3:160",
+        "type": "3",
+        "label": "عبد الرحمن بن عبد الله بن عمر المضغري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2291821,
+              "latest": 2292175,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "970"
+            }
+          },
+          "Place": { "kind": "value", "value": "سجلماسة" }
+        },
+        "geo": { "kind": "point", "lat": 31.283705, "lon": -4.277196 }
+      },
+      {
+        "id": "K1:2:161",
+        "type": "2",
+        "label": "إبراهيم بن هلال السجلماسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2267016,
+              "latest": 2267369,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "900"
+            }
+          },
+          "Place": { "kind": "value", "value": "سجلماسة" }
+        },
+        "geo": { "kind": "point", "lat": 31.283705, "lon": -4.277196 }
+      },
+      {
+        "id": "K1:1:162",
+        "type": "1",
+        "label": "عبد الرحمن من لا يخاف السجلماسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2302452,
+              "latest": 2302806,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "1000"
+            }
+          },
+          "Place": { "kind": "value", "value": "سجلماسة" }
+        },
+        "geo": { "kind": "point", "lat": 31.283705, "lon": -4.277196 }
+      },
+      {
+        "id": "K1:2:163",
+        "type": "2",
+        "label": "علي بن عبد العزيز السجلماسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "سجلماسة" }
+        },
+        "geo": { "kind": "point", "lat": 31.283705, "lon": -4.277196 }
+      },
+      {
+        "id": "K1:2:164",
+        "type": "2",
+        "label": "أبو عبد الله البكري المصري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2298909,
+              "latest": 2299262,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "990"
+            }
+          },
+          "Place": { "kind": "value", "value": "مصر" }
+        },
+        "geo": { "kind": "point", "lat": 30.07054, "lon": 31.190513 }
+      },
+      {
+        "id": "K1:4:165",
+        "type": "4",
+        "label": "أبو الحسن علي ولد ابن عسكر",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2302452,
+              "latest": 2302806,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "1000"
+            }
+          },
+          "Place": { "kind": "value", "value": "شفشاون" }
+        },
+        "geo": { "kind": "point", "lat": 35.16878, "lon": -5.2636 }
+      },
+      {
+        "id": "K1:4:166",
+        "type": "4",
+        "label": "أبو محمد عبد الكريم ولد ابن عسكر",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2302452,
+              "latest": 2302806,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "1000"
+            }
+          },
+          "Place": { "kind": "value", "value": "شفشاون" }
+        },
+        "geo": { "kind": "point", "lat": 35.16878, "lon": -5.2636 }
+      },
+      {
+        "id": "K1:3:167",
+        "type": "3",
+        "label": "عبد الله بن محمد العنابي الدرعي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2263472,
+              "latest": 2263825,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "890"
+            }
+          },
+          "Place": { "kind": "value", "value": "درعة" }
+        },
+        "geo": { "kind": "point", "lat": 30.262203, "lon": -5.687129 }
+      },
+      {
+        "id": "K1:3:168",
+        "type": "3",
+        "label": "محمد بن علي الدرعي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "تامكروت" }
+        },
+        "geo": { "kind": "point", "lat": 30.262203, "lon": -5.687129 }
+      },
+      {
+        "id": "K1:2:169",
+        "type": "2",
+        "label": "محمد بن محمد بن علي الدرعي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "تامكروت" }
+        },
+        "geo": { "kind": "point", "lat": 30.262203, "lon": -5.687129 }
+      },
+      {
+        "id": "K1:3:170",
+        "type": "3",
+        "label": "محمد بن مهدي الدرعي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "درعة" }
+        },
+        "geo": { "kind": "point", "lat": 30.262203, "lon": -5.687129 }
+      },
+      {
+        "id": "K1:1:171",
+        "type": "1",
+        "label": "محمد الحساني الدرعي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "مراكش" }
+        },
+        "geo": { "kind": "point", "lat": 31.629472, "lon": -7.981085 }
+      },
+      {
+        "id": "K1:1:172",
+        "type": "1",
+        "label": "علي بن إبراهيم التادلي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "تادلة" }
+        },
+        "geo": { "kind": "point", "lat": 32.330939, "lon": -6.390739 }
+      },
+      {
+        "id": "K1:1:173",
+        "type": "1",
+        "label": "سعيد أمسناو التادلي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "تادلة" }
+        },
+        "geo": { "kind": "point", "lat": 32.330939, "lon": -6.390739 }
+      },
+      {
+        "id": "K1:1:174",
+        "type": "1",
+        "label": "محمد بن داود الشاوي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "تامسنا" }
+        },
+        "geo": { "kind": "point", "lat": 32.768015, "lon": -7.508082 }
+      },
+      {
+        "id": "K1:1:175",
+        "type": "1",
+        "label": "أبو الحسن علي صالح الأندلسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:176",
+        "type": "1",
+        "label": "عبد الله بن حسين الأمغاري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2291821,
+              "latest": 2292175,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "970"
+            }
+          },
+          "Place": { "kind": "value", "value": "تامصلوحت" }
+        },
+        "geo": { "kind": "point", "lat": 31.495954, "lon": -8.10364 }
+      },
+      {
+        "id": "K1:1:177",
+        "type": "1",
+        "label": "عجال الغزواني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "القصر الكبير" }
+        },
+        "geo": { "kind": "point", "lat": 35.003531, "lon": -5.915537 }
+      },
+      {
+        "id": "K1:1:178",
+        "type": "1",
+        "label": "أبو عبد الله الدقاق",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:179",
+        "type": "1",
+        "label": "عبد الكريم الفلاح",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "مراكش" }
+        },
+        "geo": { "kind": "point", "lat": 31.629472, "lon": -7.981085 }
+      },
+      {
+        "id": "K1:3:180",
+        "type": "3",
+        "label": "عمر الحصيني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "مكناس" }
+        },
+        "geo": { "kind": "point", "lat": 33.873016, "lon": -5.54073 }
+      },
+      {
+        "id": "K1:1:181",
+        "type": "1",
+        "label": "رحال الكوش",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "أنماي" }
+        },
+        "geo": { "kind": "point", "lat": 31.666667, "lon": -7.483333 }
+      },
+      {
+        "id": "K1:1:182",
+        "type": "1",
+        "label": "علي بن أبي القاسم السنجائي أبو سجدة",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "مراكش" }
+        },
+        "geo": { "kind": "point", "lat": 31.629472, "lon": -7.981085 }
+      },
+      {
+        "id": "K1:1:183",
+        "type": "1",
+        "label": "أبو يحيى النيار",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني أمغار" }
+        },
+        "geo": { "kind": "point", "lat": 33.206685, "lon": -8.579286 }
+      },
+      {
+        "id": "K1:1:184",
+        "type": "1",
+        "label": "أبو عبد الله محمد الأندلسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "مراكش" }
+        },
+        "geo": { "kind": "point", "lat": 31.629472, "lon": -7.981085 }
+      },
+      {
+        "id": "K1:1:185",
+        "type": "1",
+        "label": "سعيد بن عبد المنعم الحاحي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "حاحة" }
+        },
+        "geo": { "kind": "point", "lat": 31.080002, "lon": -9.344854 }
+      },
+      {
+        "id": "K1:1:186",
+        "type": "1",
+        "label": "عبد الله بن سعيد الحاحي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2305996,
+              "latest": 2306349,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "1010"
+            }
+          },
+          "Place": { "kind": "value", "value": "حاحة" }
+        },
+        "geo": { "kind": "point", "lat": 31.080002, "lon": -9.344854 }
+      },
+      {
+        "id": "K1:2:187",
+        "type": "2",
+        "label": "علي بن أبي بكر السكتاني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "مراكش" }
+        },
+        "geo": { "kind": "point", "lat": 31.629472, "lon": -7.981085 }
+      },
+      {
+        "id": "K1:1:188",
+        "type": "1",
+        "label": "أحمد بن عبد الله بن حسين الأمغاري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "تامصلوحت" }
+        },
+        "geo": { "kind": "point", "lat": 31.495954, "lon": -8.10364 }
+      },
+      {
+        "id": "K1:1:189",
+        "type": "1",
+        "label": "أبو عمر القسطلي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2291821,
+              "latest": 2292175,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "970"
+            }
+          },
+          "Place": { "kind": "value", "value": "مراكش" }
+        },
+        "geo": { "kind": "point", "lat": 31.629472, "lon": -7.981085 }
+      },
+      {
+        "id": "K1:1:190",
+        "type": "1",
+        "label": "عبد الله ساسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "مراكش" }
+        },
+        "geo": { "kind": "point", "lat": 31.629472, "lon": -7.981085 }
+      },
+      {
+        "id": "K1:1:191",
+        "type": "1",
+        "label": "عبد الله الكوش المراكشي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "مراكش" }
+        },
+        "geo": { "kind": "point", "lat": 31.629472, "lon": -7.981085 }
+      },
+      {
+        "id": "K1:3:192",
+        "type": "3",
+        "label": "محمد بن إبراهيم الشيخ التمنارتي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2291821,
+              "latest": 2292175,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "970"
+            }
+          },
+          "Place": { "kind": "value", "value": "تمنارت" }
+        },
+        "geo": { "kind": "point", "lat": 29.160921, "lon": -8.964511 }
+      },
+      {
+        "id": "K1:1:193",
+        "type": "1",
+        "label": "أحمد بن موسى السملالي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "إدا وسملال" }
+        },
+        "geo": { "kind": "point", "lat": 29.524447, "lon": -9.245961 }
+      },
+      {
+        "id": "K1:1:194",
+        "type": "1",
+        "label": "محمد بن ويسعدن",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "تالوين" }
+        },
+        "geo": { "kind": "point", "lat": 30.532407, "lon": -7.919984 }
+      },
+      {
+        "id": "K1:1:195",
+        "type": "1",
+        "label": "محمد بن مبارك",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "ماسة" }
+        },
+        "geo": { "kind": "point", "lat": 29.99823, "lon": -9.672046 }
+      },
+      {
+        "id": "K1:1:196",
+        "type": "1",
+        "label": "خالد بن يحيى المصمودي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2267016,
+              "latest": 2267369,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "900"
+            }
+          },
+          "Place": { "kind": "missing", "reason": "unrecorded" }
+        },
+        "geo": { "kind": "missing", "reason": "unrecorded" }
+      },
+      {
+        "id": "K1:2:197",
+        "type": "2",
+        "label": "محمد شقرون بن هبة الله",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:3:198",
+        "type": "3",
+        "label": "أبو عثمان المنوئي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:199",
+        "type": "2",
+        "label": "أبو العباس بن زكري",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2263472,
+              "latest": 2263825,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "890"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:200",
+        "type": "2",
+        "label": "محمد بن عيسى البطوئي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2252841,
+              "latest": 2253194,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "860"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:201",
+        "type": "2",
+        "label": "محمد بن العباس العبادي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2252841,
+              "latest": 2253194,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "860"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:202",
+        "type": "2",
+        "label": "محمد بن مرزوق",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2245754,
+              "latest": 2246107,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "840"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:203",
+        "type": "2",
+        "label": "ابن عرفة",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2231579,
+              "latest": 2231932,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "800"
+            }
+          },
+          "Place": { "kind": "value", "value": "تونس" }
+        },
+        "geo": { "kind": "point", "lat": 36.795, "lon": 10.073238 }
+      },
+      {
+        "id": "K1:2:204",
+        "type": "2",
+        "label": "القرافي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2189055,
+              "latest": 2189408,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "680"
+            }
+          },
+          "Place": { "kind": "value", "value": "مصر" }
+        },
+        "geo": { "kind": "point", "lat": 30.07054, "lon": 31.190513 }
+      },
+      {
+        "id": "K1:2:205",
+        "type": "2",
+        "label": "ابن الحاجب",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2174880,
+              "latest": 2175234,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "640"
+            }
+          },
+          "Place": { "kind": "value", "value": "مصر" }
+        },
+        "geo": { "kind": "point", "lat": 30.07054, "lon": 31.190513 }
+      },
+      {
+        "id": "K1:2:206",
+        "type": "2",
+        "label": "الأيلي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2252841,
+              "latest": 2253194,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "860"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:207",
+        "type": "2",
+        "label": "أبو عبد الله بن العباس",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2252841,
+              "latest": 2253194,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "860"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:208",
+        "type": "2",
+        "label": "أبو العباس أحمد بن زاغ",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2245754,
+              "latest": 2246107,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "840"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:209",
+        "type": "2",
+        "label": "أبو عبد الله أقرقار",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2252841,
+              "latest": 2253194,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "860"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:210",
+        "type": "2",
+        "label": "أبو عثمان قاسم العقباني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2249297,
+              "latest": 2249651,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "850"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:211",
+        "type": "2",
+        "label": "أبو عبد الله بن جلاب",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2252841,
+              "latest": 2253194,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "860"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:212",
+        "type": "2",
+        "label": "محمد بن عبد الرحمن بن جلال",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2295365,
+              "latest": 2295718,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "980"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:213",
+        "type": "2",
+        "label": "أحمد بن محمد العقباني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2291821,
+              "latest": 2292175,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "970"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:214",
+        "type": "2",
+        "label": "محمد بن أحمد الأنصاري الأندلسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:215",
+        "type": "2",
+        "label": "محمد بن الأزرق الأندلسي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2267016,
+              "latest": 2267369,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "900"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:216",
+        "type": "2",
+        "label": "أحمد شقرون بن أبي جمعة المغراوي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:217",
+        "type": "1",
+        "label": "أحمد بن القاضي الزواوي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "الجزائر" }
+        },
+        "geo": { "kind": "point", "lat": 36.759791, "lon": 3.066514 }
+      },
+      {
+        "id": "K1:1:218",
+        "type": "1",
+        "label": "أحمد بن محمد البجائي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2267016,
+              "latest": 2267369,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "900"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:1:219",
+        "type": "1",
+        "label": "أحمد تاخرسان الراشدي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "جبال بني راشد" }
+        },
+        "geo": { "kind": "point", "lat": 33.231804, "lon": -0.450751 }
+      },
+      {
+        "id": "K1:1:220",
+        "type": "1",
+        "label": "أحمد بن أقدار الراشدي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "جبال بني راشد" }
+        },
+        "geo": { "kind": "point", "lat": 33.231804, "lon": -0.450751 }
+      },
+      {
+        "id": "K1:2:221",
+        "type": "2",
+        "label": "محمد بن موسى التلمساني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:222",
+        "type": "2",
+        "label": "محمد بن عبد الكريم المغيلي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "توات" }
+        },
+        "geo": { "kind": "point", "lat": 27.9656768, "lon": -0.5020343 }
+      },
+      {
+        "id": "K1:2:223",
+        "type": "2",
+        "label": "محمد بن عبد الجبار الفجيجي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "فجيج" }
+        },
+        "geo": { "kind": "point", "lat": 32.105475, "lon": -1.243494 }
+      },
+      {
+        "id": "K1:2:224",
+        "type": "2",
+        "label": "أحمد بن قاسم الحسني البحباح",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:225",
+        "type": "2",
+        "label": "عبد الملك البرجي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:226",
+        "type": "2",
+        "label": "محمد بن أبي مدين التلمساني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:227",
+        "type": "2",
+        "label": "إبراهيم الوجديجي التلمساني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:228",
+        "type": "2",
+        "label": "محمد بن عبد الرحمن التلوتي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:229",
+        "type": "2",
+        "label": "محمد بن الزنداري التلمساني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:230",
+        "type": "2",
+        "label": "محمد بن عيسى التلمساني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:1:231",
+        "type": "1",
+        "label": "أحمد بن ملوكة التلمساني",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2277647,
+              "latest": 2278000,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "930"
+            }
+          },
+          "Place": { "kind": "value", "value": "تلمسان" }
+        },
+        "geo": { "kind": "point", "lat": 34.882886, "lon": -1.316681 }
+      },
+      {
+        "id": "K1:2:232",
+        "type": "2",
+        "label": "أحمد بن مهدي الوجدي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2274103,
+              "latest": 2274456,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "920"
+            }
+          },
+          "Place": { "kind": "value", "value": "وجدة" }
+        },
+        "geo": { "kind": "point", "lat": 34.684551, "lon": -1.977518 }
+      },
+      {
+        "id": "K1:1:233",
+        "type": "1",
+        "label": "حمزة بن عبد الله المراكشي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "مراكش" }
+        },
+        "geo": { "kind": "point", "lat": 31.629472, "lon": -7.981085 }
+      },
+      {
+        "id": "K1:1:234",
+        "type": "1",
+        "label": "الحسن بن عبد الله الجزولي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "فاس" }
+        },
+        "geo": { "kind": "point", "lat": 34.018125, "lon": -5.007845 }
+      },
+      {
+        "id": "K1:1:235",
+        "type": "1",
+        "label": "محمد الغزوي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2291821,
+              "latest": 2292175,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "970"
+            }
+          },
+          "Place": { "kind": "value", "value": "وزان" }
+        },
+        "geo": { "kind": "point", "lat": 34.795373, "lon": -5.567558 }
+      },
+      {
+        "id": "K1:2:236",
+        "type": "2",
+        "label": "محمد بن أحمد الأغصاوي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2270559,
+              "latest": 2270913,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "910"
+            }
+          },
+          "Place": { "kind": "value", "value": "غصاوة" }
+        },
+        "geo": { "kind": "point", "lat": 34.922658, "lon": -5.35078 }
+      },
+      {
+        "id": "K1:1:237",
+        "type": "1",
+        "label": "يحيى بن علال العمري الخلطي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2281190,
+              "latest": 2281544,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "940"
+            }
+          },
+          "Place": { "kind": "value", "value": "تيزغري" }
+        },
+        "geo": { "kind": "point", "lat": 34.234543, "lon": -5.923949 }
+      },
+      {
+        "id": "K1:1:238",
+        "type": "1",
+        "label": "عمر الزياتي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2284734,
+              "latest": 2285087,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "950"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني زيات" }
+        },
+        "geo": { "kind": "point", "lat": 35.394932, "lon": -5.014345 }
+      },
+      {
+        "id": "K1:1:239",
+        "type": "1",
+        "label": "محمد الحداد الزياتي",
+        "attrs": {
+          "Year": {
+            "kind": "date",
+            "value": {
+              "earliest": 2288278,
+              "latest": 2288631,
+              "certainty": "certain",
+              "calendar": "hijri",
+              "label": "960"
+            }
+          },
+          "Place": { "kind": "value", "value": "بني زيات" }
+        },
+        "geo": { "kind": "point", "lat": 35.394932, "lon": -5.014345 }
+      }
+    ],
+    "edges": [
+      {
+        "id": "1",
+        "source": "K1:3:1",
+        "target": "K1:1:2",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "2",
+        "source": "K1:1:2",
+        "target": "K1:1:5",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "3",
+        "source": "K1:1:2",
+        "target": "K1:1:3",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "4",
+        "source": "K1:1:3",
+        "target": "K1:1:4",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "5",
+        "source": "K1:1:4",
+        "target": "K1:1:7",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "6",
+        "source": "K1:1:5",
+        "target": "K1:1:6",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "7",
+        "source": "K1:1:6",
+        "target": "K1:1:7",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "8",
+        "source": "K1:3:1",
+        "target": "K1:2:18",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "9",
+        "source": "K1:2:18",
+        "target": "K1:2:19",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "10",
+        "source": "K1:2:19",
+        "target": "K1:1:7",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "11",
+        "source": "K1:2:39",
+        "target": "K1:3:35",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "12",
+        "source": "K1:3:35",
+        "target": "K1:2:39",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "13",
+        "source": "K1:3:1",
+        "target": "K1:1:40",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "14",
+        "source": "K1:1:40",
+        "target": "K1:1:68",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "15",
+        "source": "K1:1:41",
+        "target": "K1:1:40",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "16",
+        "source": "K1:1:42",
+        "target": "K1:1:40",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "17",
+        "source": "K1:3:1",
+        "target": "K1:1:43",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "18",
+        "source": "K1:1:43",
+        "target": "K1:1:5",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "19",
+        "source": "K1:1:44",
+        "target": "K1:1:43",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "20",
+        "source": "K1:1:45",
+        "target": "K1:1:43",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "21",
+        "source": "K1:1:46",
+        "target": "K1:1:43",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "22",
+        "source": "K1:1:47",
+        "target": "K1:1:43",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "23",
+        "source": "K1:1:48",
+        "target": "K1:1:43",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "24",
+        "source": "K1:3:1",
+        "target": "K1:1:69",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "25",
+        "source": "K1:3:1",
+        "target": "K1:1:70",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "26",
+        "source": "K1:4:49",
+        "target": "K1:1:69",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "27",
+        "source": "K1:3:1",
+        "target": "K1:3:71",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "28",
+        "source": "K1:3:1",
+        "target": "K1:3:72",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "29",
+        "source": "K1:3:1",
+        "target": "K1:2:50",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "30",
+        "source": "K1:2:50",
+        "target": "K1:2:73",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "31",
+        "source": "K1:2:50",
+        "target": "K1:2:74",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "32",
+        "source": "K1:2:50",
+        "target": "K1:2:51",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "33",
+        "source": "K1:2:51",
+        "target": "K1:2:73",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "34",
+        "source": "K1:2:50",
+        "target": "K1:2:58",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "35",
+        "source": "K1:2:50",
+        "target": "K1:2:56",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "36",
+        "source": "K1:2:50",
+        "target": "K1:2:111",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "37",
+        "source": "K1:2:50",
+        "target": "K1:2:57",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "38",
+        "source": "K1:2:50",
+        "target": "K1:3:76",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "39",
+        "source": "K1:3:1",
+        "target": "K1:3:52",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "40",
+        "source": "K1:3:52",
+        "target": "K1:1:2",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "41",
+        "source": "K1:3:52",
+        "target": "K1:1:5",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "42",
+        "source": "K1:3:52",
+        "target": "K1:3:35",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "43",
+        "source": "K1:3:1",
+        "target": "K1:4:53",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "44",
+        "source": "K1:4:53",
+        "target": "K1:1:5",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "45",
+        "source": "K1:4:53",
+        "target": "K1:3:35",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "46",
+        "source": "K1:4:53",
+        "target": "K1:3:34",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "47",
+        "source": "K1:4:53",
+        "target": "K1:1:77",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "48",
+        "source": "K1:4:53",
+        "target": "K1:1:70",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "49",
+        "source": "K1:4:53",
+        "target": "K1:1:69",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "50",
+        "source": "K1:4:53",
+        "target": "K1:1:78",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "51",
+        "source": "K1:4:53",
+        "target": "K1:1:43",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "52",
+        "source": "K1:4:53",
+        "target": "K1:1:2",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "53",
+        "source": "K1:4:53",
+        "target": "K1:2:39",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "54",
+        "source": "K1:3:1",
+        "target": "K1:3:63",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "55",
+        "source": "K1:3:35",
+        "target": "K1:3:63",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "56",
+        "source": "K1:3:34",
+        "target": "K1:2:80",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "57",
+        "source": "K1:2:80",
+        "target": "K1:2:58",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "58",
+        "source": "K1:2:80",
+        "target": "K1:2:111",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "59",
+        "source": "K1:2:81",
+        "target": "K1:2:82",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "60",
+        "source": "K1:2:81",
+        "target": "K1:2:83",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "61",
+        "source": "K1:2:81",
+        "target": "K1:2:202",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "62",
+        "source": "K1:3:1",
+        "target": "K1:2:85",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "63",
+        "source": "K1:1:86",
+        "target": "K1:2:81",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "64",
+        "source": "K1:1:87",
+        "target": "K1:2:81",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "65",
+        "source": "K1:2:88",
+        "target": "K1:2:81",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "66",
+        "source": "K1:2:89",
+        "target": "K1:2:81",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "67",
+        "source": "K1:2:90",
+        "target": "K1:2:82",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "68",
+        "source": "K1:2:90",
+        "target": "K1:2:83",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "69",
+        "source": "K1:2:90",
+        "target": "K1:2:60",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "70",
+        "source": "K1:1:77",
+        "target": "K1:1:5",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "71",
+        "source": "K1:1:79",
+        "target": "K1:1:77",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "72",
+        "source": "K1:1:79",
+        "target": "K1:1:5",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "73",
+        "source": "K1:3:1",
+        "target": "K1:2:97",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "74",
+        "source": "K1:2:98",
+        "target": "K1:3:105",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "75",
+        "source": "K1:3:105",
+        "target": "K1:3:106",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "76",
+        "source": "K1:3:1",
+        "target": "K1:2:98",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "77",
+        "source": "K1:3:99",
+        "target": "K1:3:35",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "78",
+        "source": "K1:3:99",
+        "target": "K1:1:100",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "79",
+        "source": "K1:3:1",
+        "target": "K1:3:99",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "80",
+        "source": "K1:3:1",
+        "target": "K1:1:102",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "81",
+        "source": "K1:1:47",
+        "target": "K1:1:102",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "82",
+        "source": "K1:3:1",
+        "target": "K1:1:103",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "83",
+        "source": "K1:3:104",
+        "target": "K1:3:105",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "84",
+        "source": "K1:3:104",
+        "target": "K1:1:5",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "85",
+        "source": "K1:3:104",
+        "target": "K1:3:35",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "86",
+        "source": "K1:2:56",
+        "target": "K1:2:82",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "87",
+        "source": "K1:3:76",
+        "target": "K1:1:107",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "88",
+        "source": "K1:2:56",
+        "target": "K1:3:76",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "89",
+        "source": "K1:2:57",
+        "target": "K1:2:56",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "90",
+        "source": "K1:3:1",
+        "target": "K1:2:57",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "91",
+        "source": "K1:2:111",
+        "target": "K1:2:59",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "92",
+        "source": "K1:2:112",
+        "target": "K1:2:59",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "93",
+        "source": "K1:3:1",
+        "target": "K1:2:111",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "94",
+        "source": "K1:3:1",
+        "target": "K1:2:113",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "95",
+        "source": "K1:2:118",
+        "target": "K1:2:112",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "96",
+        "source": "K1:1:122",
+        "target": "K1:1:5",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "97",
+        "source": "K1:3:1",
+        "target": "K1:1:122",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "98",
+        "source": "K1:3:1",
+        "target": "K1:1:123",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "99",
+        "source": "K1:3:1",
+        "target": "K1:1:127",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "100",
+        "source": "K1:3:1",
+        "target": "K1:3:109",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "101",
+        "source": "K1:3:35",
+        "target": "K1:1:66",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "102",
+        "source": "K1:1:66",
+        "target": "K1:1:128",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "103",
+        "source": "K1:2:129",
+        "target": "K1:1:66",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "104",
+        "source": "K1:1:130",
+        "target": "K1:1:43",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "105",
+        "source": "K1:1:131",
+        "target": "K1:1:6",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "106",
+        "source": "K1:1:131",
+        "target": "K1:1:132",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "107",
+        "source": "K1:1:131",
+        "target": "K1:1:4",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "108",
+        "source": "K1:4:49",
+        "target": "K1:1:131",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "109",
+        "source": "K1:1:134",
+        "target": "K1:1:133",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "110",
+        "source": "K1:1:134",
+        "target": "K1:1:2",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "111",
+        "source": "K1:1:133",
+        "target": "K1:1:6",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "112",
+        "source": "K1:1:133",
+        "target": "K1:1:132",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "113",
+        "source": "K1:1:133",
+        "target": "K1:1:4",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "114",
+        "source": "K1:1:135",
+        "target": "K1:1:6",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "115",
+        "source": "K1:1:135",
+        "target": "K1:1:132",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "116",
+        "source": "K1:1:135",
+        "target": "K1:1:4",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "117",
+        "source": "K1:1:136",
+        "target": "K1:1:3",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "118",
+        "source": "K1:1:138",
+        "target": "K1:1:7",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "119",
+        "source": "K1:3:1",
+        "target": "K1:2:142",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "120",
+        "source": "K1:1:143",
+        "target": "K1:1:68",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "121",
+        "source": "K1:3:1",
+        "target": "K1:1:144",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "122",
+        "source": "K1:1:146",
+        "target": "K1:1:143",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "123",
+        "source": "K1:1:152",
+        "target": "K1:1:43",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "124",
+        "source": "K1:1:153",
+        "target": "K1:1:43",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "125",
+        "source": "K1:3:155",
+        "target": "K1:3:76",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "126",
+        "source": "K1:3:155",
+        "target": "K1:1:156",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "127",
+        "source": "K1:4:157",
+        "target": "K1:3:155",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "128",
+        "source": "K1:4:158",
+        "target": "K1:3:155",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "129",
+        "source": "K1:2:163",
+        "target": "K1:2:57",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "130",
+        "source": "K1:2:163",
+        "target": "K1:2:164",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "131",
+        "source": "K1:4:165",
+        "target": "K1:2:163",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "132",
+        "source": "K1:4:166",
+        "target": "K1:2:163",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "133",
+        "source": "K1:3:168",
+        "target": "K1:1:156",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "134",
+        "source": "K1:3:170",
+        "target": "K1:3:168",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "135",
+        "source": "K1:1:172",
+        "target": "K1:1:6",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "136",
+        "source": "K1:1:173",
+        "target": "K1:1:6",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "137",
+        "source": "K1:1:174",
+        "target": "K1:1:6",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "138",
+        "source": "K1:1:5",
+        "target": "K1:1:175",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "139",
+        "source": "K1:1:178",
+        "target": "K1:1:5",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "140",
+        "source": "K1:1:176",
+        "target": "K1:1:5",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "141",
+        "source": "K1:3:35",
+        "target": "K1:1:5",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "142",
+        "source": "K1:1:179",
+        "target": "K1:1:6",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "143",
+        "source": "K1:4:157",
+        "target": "K1:1:179",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "144",
+        "source": "K1:4:158",
+        "target": "K1:1:179",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "145",
+        "source": "K1:1:184",
+        "target": "K1:1:182",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "146",
+        "source": "K1:1:182",
+        "target": "K1:1:183",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "147",
+        "source": "K1:1:185",
+        "target": "K1:1:6",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "148",
+        "source": "K1:1:186",
+        "target": "K1:3:35",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "149",
+        "source": "K1:3:1",
+        "target": "K1:1:188",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "150",
+        "source": "K1:3:1",
+        "target": "K1:1:176",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "151",
+        "source": "K1:1:189",
+        "target": "K1:1:179",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "152",
+        "source": "K1:1:190",
+        "target": "K1:1:5",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "153",
+        "source": "K1:1:191",
+        "target": "K1:1:179",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "154",
+        "source": "K1:3:1",
+        "target": "K1:1:191",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "155",
+        "source": "K1:3:1",
+        "target": "K1:3:192",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "156",
+        "source": "K1:1:194",
+        "target": "K1:1:179",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "157",
+        "source": "K1:1:194",
+        "target": "K1:1:6",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "158",
+        "source": "K1:2:197",
+        "target": "K1:3:198",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "159",
+        "source": "K1:3:198",
+        "target": "K1:3:106",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "160",
+        "source": "K1:3:198",
+        "target": "K1:2:199",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "161",
+        "source": "K1:3:1",
+        "target": "K1:2:197",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "162",
+        "source": "K1:2:19",
+        "target": "K1:2:200",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "163",
+        "source": "K1:2:19",
+        "target": "K1:2:199",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "164",
+        "source": "K1:2:199",
+        "target": "K1:2:201",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "165",
+        "source": "K1:2:201",
+        "target": "K1:2:202",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "166",
+        "source": "K1:2:202",
+        "target": "K1:2:203",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "167",
+        "source": "K1:3:106",
+        "target": "K1:2:206",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "168",
+        "source": "K1:3:106",
+        "target": "K1:2:202",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "169",
+        "source": "K1:3:106",
+        "target": "K1:2:207",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "170",
+        "source": "K1:3:106",
+        "target": "K1:2:208",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "171",
+        "source": "K1:3:106",
+        "target": "K1:2:209",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "172",
+        "source": "K1:3:106",
+        "target": "K1:2:210",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "173",
+        "source": "K1:3:106",
+        "target": "K1:2:211",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "174",
+        "source": "K1:2:199",
+        "target": "K1:2:206",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "175",
+        "source": "K1:2:199",
+        "target": "K1:2:202",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "176",
+        "source": "K1:2:199",
+        "target": "K1:2:207",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "177",
+        "source": "K1:2:199",
+        "target": "K1:2:208",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "178",
+        "source": "K1:2:199",
+        "target": "K1:2:209",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "179",
+        "source": "K1:2:199",
+        "target": "K1:2:210",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "180",
+        "source": "K1:2:199",
+        "target": "K1:2:211",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "181",
+        "source": "K1:3:1",
+        "target": "K1:2:212",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "182",
+        "source": "K1:3:1",
+        "target": "K1:2:213",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "183",
+        "source": "K1:2:214",
+        "target": "K1:3:106",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "184",
+        "source": "K1:1:68",
+        "target": "K1:3:76",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "185",
+        "source": "K1:2:197",
+        "target": "K1:1:218",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "186",
+        "source": "K1:2:197",
+        "target": "K1:1:219",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "187",
+        "source": "K1:2:197",
+        "target": "K1:2:221",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "188",
+        "source": "K1:2:212",
+        "target": "K1:2:221",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "189",
+        "source": "K1:2:197",
+        "target": "K1:2:224",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "190",
+        "source": "K1:2:197",
+        "target": "K1:2:225",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "191",
+        "source": "K1:2:197",
+        "target": "K1:2:226",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "192",
+        "source": "K1:2:197",
+        "target": "K1:2:227",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "193",
+        "source": "K1:2:197",
+        "target": "K1:2:228",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "194",
+        "source": "K1:2:197",
+        "target": "K1:2:229",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "195",
+        "source": "K1:2:197",
+        "target": "K1:2:230",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "196",
+        "source": "K1:2:197",
+        "target": "K1:1:231",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "197",
+        "source": "K1:2:232",
+        "target": "K1:3:106",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "198",
+        "source": "K1:2:197",
+        "target": "K1:2:232",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "199",
+        "source": "K1:3:35",
+        "target": "K1:2:65",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "200",
+        "source": "K1:1:234",
+        "target": "K1:1:6",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "201",
+        "source": "K1:1:235",
+        "target": "K1:3:35",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "202",
+        "source": "K1:1:238",
+        "target": "K1:1:5",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "203",
+        "source": "K1:1:238",
+        "target": "K1:3:35",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      },
+      {
+        "id": "204",
+        "source": "K1:1:239",
+        "target": "K1:3:35",
+        "directed": true,
+        "weight": 1,
+        "attrs": {}
+      }
+    ],
+    "nodeTypes": [
+      { "id": "3", "label": "Type 3" },
+      { "id": "1", "label": "Type 1" },
+      { "id": "2", "label": "Type 2" },
+      { "id": "4", "label": "Type 4" }
+    ],
+    "schema": [
+      {
+        "key": "Year",
+        "label": "Year (AH)",
+        "appliesTo": "node",
+        "valueType": "date"
+      },
+      {
+        "key": "Place",
+        "label": "Place",
+        "appliesTo": "node",
+        "valueType": "category"
+      }
+    ],
+    "meta": {
+      "title": "Scholars and Sufis of the Maghrib in the Fifteenth and Sixteenth Centuries",
+      "source": "This dataset records the social network of scholars and Sufis in the Maghrib during the fifteenth and sixteenth centuries. It is derived from Dawḥat al-nāshir li-maḥāsin man kāna bi-l-Maghrib min mashāyikh al-qarn al-ʿāshir by Ibn ʿAskar al-Shafshāwanī (d. 986/1578), and was originally prepared for Palladio to visualize the network on a map."
+    }
+  },
+  "importSettings": {
+    "missingTokens": [],
+    "encoding": "utf-8",
+    "columnCalendars": [{ "column": "Year", "calendar": "hijri" }]
+  },
+  "view": {
+    "filter": { "filters": [], "edgeRule": "both-ends", "showIsolated": false }
+  }
+}

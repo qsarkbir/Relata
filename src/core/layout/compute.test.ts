@@ -48,6 +48,27 @@ describe('FR-VG-01 / NFR-08: レイアウト', () => {
       );
     }
   });
+  it('FR-VG-01 / NFR-08: fixed:false の保存位置は初期位置として使い、反復後は動く', () => {
+    const point = { id: toNodeId('a'), x: 100, y: 50, fixed: false };
+    const session = createLayoutSession({
+      snapshot,
+      options: {
+        kind: 'forceatlas2',
+        seed: 42,
+        positions: [
+          point,
+          { id: toNodeId('b'), x: -10, y: -10, fixed: false },
+          { id: toNodeId('__proto__'), x: 0, y: 0, fixed: false },
+        ],
+      },
+    });
+    expect(session.step(0).positions.find((p) => p.id === point.id)).toEqual(point);
+    const moved = session.step(10).positions.find((p) => p.id === point.id);
+    if (moved === undefined) throw new Error('位置が失われました');
+    expect(moved.fixed).toBe(false);
+    expect([moved.x, moved.y]).not.toEqual([point.x, point.y]);
+    expect(Number.isFinite(moved.x) && Number.isFinite(moved.y)).toBe(true);
+  });
   it('型ごとに円周へ並べ、挿入順と locale に依存しない', () => {
     const circular = { kind: 'circular', seed: 1 } as const;
     const a = createLayoutSession({ snapshot, options: circular }).step(1);

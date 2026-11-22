@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useId, useRef } from 'react';
 import { useT } from './hooks';
 import { tRich } from './richText';
 
@@ -24,6 +24,7 @@ export interface ConfirmOpenDialogProps {
  */
 export function ConfirmOpenDialog({ fileName, onConfirm, onCancel }: ConfirmOpenDialogProps) {
   const t = useT();
+  const titleId = useId();
   const ref = useRef<HTMLDialogElement>(null);
   const open = fileName !== null;
 
@@ -38,7 +39,7 @@ export function ConfirmOpenDialog({ fileName, onConfirm, onCancel }: ConfirmOpen
     <dialog
       ref={ref}
       className="confirm-dialog"
-      aria-labelledby="confirm-open-title"
+      aria-labelledby={titleId}
       onClose={() => {
         // 【なぜ】`close` イベントは、「やめる」や Esc で閉じたときだけでなく、「開く」の後に親が
         //       fileName を null にして、上の effect が `d.close()` を呼んだときにも起きる。
@@ -47,7 +48,7 @@ export function ConfirmOpenDialog({ fileName, onConfirm, onCancel }: ConfirmOpen
         if (open) onCancel();
       }}
     >
-      <h2 id="confirm-open-title">{t('project.confirm.title')}</h2>
+      <h2 id={titleId}>{t('project.confirm.title')}</h2>
       <p>{fileName === null ? '' : tRich(t, 'project.confirm.body', {}, { file: fileName })}</p>
       <p>{t('project.confirm.saveHint')}</p>
       <form method="dialog">

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { serializeProject } from '../io/project';
-import { takeSnapshot, dataStore, filterStore, uiStore } from '../state';
+import { takeSnapshot, dataStore, filterStore, uiStore, graphViewStore } from '../state';
 import { useData, useT } from './hooks';
 import { ConfirmOpenDialog } from './ConfirmOpenDialog';
 import { downloadText, projectFileName } from './projectFile';
@@ -27,7 +27,7 @@ export function ProjectMenu({ onClearAutosave }: ProjectMenuProps) {
   const [pending, setPending] = useState<File | null>(null);
 
   const save = (): void => {
-    const snapshot = takeSnapshot(dataStore, filterStore);
+    const snapshot = takeSnapshot(dataStore, filterStore, graphViewStore);
     if (snapshot === null) return;
     // 【なぜ】日時は呼ぶ側（ここ）で作って渡す。io は Date を使わない（CLAUDE.md）。
     const savedAt = new Date().toISOString();

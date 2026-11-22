@@ -5,6 +5,7 @@ import type { Dataset } from '../../core/model';
 import { useFilter, useT, useUi } from '../hooks';
 import { getNumberFormat } from '../intl';
 import { categoryKeyText } from './labels';
+import { timeText } from './timeText';
 import type { Translate } from './labels';
 
 /** 適用中のフィルタの一覧の入力。 */
@@ -115,14 +116,6 @@ function rangeText(t: Translate, nf: NumberFormatter, min?: number, max?: number
   return '';
 }
 
-// 時間の期間の説明。
-// 【なぜ】本来は西暦の日付にするが、暦の換算は src/core/time の関数だけで行う（設計書 §5.1）。
-//       その関数が入るまでの暫定として、ユリウス通日（JDN）の番号をそのまま示す（時間のフィルタは
-//       フェーズ 2 で画面を作るので、今は読み込んだファイルのフィルタを一覧に出すためだけ）。
-function timeText(t: Translate, nf: NumberFormatter, from: number, to: number): string {
-  return t('filter.summary.time', { from: nf.format(from), to: nf.format(to) });
-}
-
 // 一覧の 1 行の説明（人名などは <bdi> で隔離した要素）。
 // 【TS】`switch (f.kind)` の各 case の中では、TypeScript が f をその種類に絞り込む（判別共用体）。
 //       `default` の `assertNever` は、種類を足して case を書き忘れたときに型エラーにする。
@@ -149,7 +142,7 @@ function summary(t: Translate, nf: NumberFormatter, dataset: Dataset, f: FilterD
         </>
       );
     case 'time':
-      return timeText(t, nf, f.from, f.to);
+      return timeText(t, f.from, f.to);
     case 'text':
       return (
         <>
@@ -185,7 +178,7 @@ function plainSummary(t: Translate, nf: NumberFormatter, dataset: Dataset, f: Fi
     case 'range':
       return `${targetText(t, f)} ${attrLabel(dataset, f.target, f.attr)}: ${rangeText(t, nf, f.min, f.max)}`;
     case 'time':
-      return `${targetText(t, f)} ${timeText(t, nf, f.from, f.to)}`;
+      return `${targetText(t, f)} ${timeText(t, f.from, f.to)}`;
     case 'text':
       return `${targetText(t, f)} ${t('filter.summary.text', { query: f.query })}`;
     case 'nodeType': {

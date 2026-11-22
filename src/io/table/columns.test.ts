@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { convertCell, inferColumnType } from './columns';
+import { convertCell, createCellConverter, inferColumnType } from './columns';
 
 it('FR-IN-05: 列全体を検査し、年だけの列は数値を優先する', () => {
   expect(inferColumnType(['', '1650', '1660'])).toBe('number');
@@ -27,4 +27,25 @@ it('FR-IN-06: 不正な値や複数値中の欠損を捨てず原文を返す', 
     expect(result.value).toEqual({ kind: 'value', value: text });
     expect(result.warnings).not.toHaveLength(0);
   }
+});
+
+it('FR-IN-05: 真偽値は大小文字と空白を許容し、数値表現は受け付けない', () => {
+  expect(convertCell(' TRUE ', { type: 'boolean' }).value).toEqual({ kind: 'value', value: true });
+  expect(convertCell(' false ', { type: 'boolean' }).value).toEqual({
+    kind: 'value',
+    value: false,
+  });
+  for (const text of [' 1 ', '0']) expect(convertCell(text, { type: 'boolean' }).ok).toBe(false);
+  expect(convertCell(' \uFEFF1.5 ', { type: 'number' }).value).toEqual({
+    kind: 'value',
+    value: 1.5,
+  });
+});
+it('FR-IN-05 / FR-IN-07: 準備した変換関数でも欠損と不正値を同じように判定する', () => {
+  // 【TS】as const は列の型と欠損理由を文字列リテラルとして保つ。
+  const options = { type: 'number', missingTokens: [{ token: '□', reason: 'lost' }] } as const;
+  const convert = createCellConverter(options);
+  for (const text of ['□', '', ' 2 ', 'not-number'])
+    expect(convert(text)).toEqual(convertCell(text, options));
+  expect(inferColumnType(['□', 'true', ' FALSE '], options.missingTokens)).toBe('boolean');
 });

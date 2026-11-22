@@ -35,7 +35,14 @@ export function describeWarning(w: ProjectWarning, t: T): ReactNode {
         { id: String(w.issue.filterId) },
       );
     case 'project':
-      return tRich(t, 'project.warning.unknownField', {}, { path: w.issue.path });
+      return tRich(
+        t,
+        w.issue.kind === 'unknown-field'
+          ? 'project.warning.unknownField'
+          : 'project.warning.unknownNodePosition',
+        {},
+        { path: w.issue.path },
+      );
     default:
       return assertNever(w);
   }
