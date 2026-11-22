@@ -650,7 +650,7 @@ T1-23 は MVP で利用できる #1〜10 と関連 issue の回帰を確認す�
 ## 14. 静的ホスティングと CI
 
 - リポジトリ: `https://github.com/qsarkbir/relata`。v0.1 の公開までは非公開（D-11）。
-- 公開先の URL: `https://qsarkbir.github.io/relata/`。Vite の `base` を `/relata/` にする。
+- 公開先の URL: `https://qsarkbir.github.io/Relata/`。Vite の `base` を `/Relata/` にする（パスは大文字と小文字を区別する。リポジトリ名 `Relata` に合わせる。v0.1 の公開前確認で `/relata/` では JS と CSS が 404 になると判明した）。
 - **注意**: リポジトリを非公開にしても、GitHub Pages のサイト自体は、URL を知っていれば誰でも見られる。中身は空のアプリで利用者のデータも含まないので、フェーズ 0 から配信する（D-12）。
 - GitHub Actions のワークフロー:
   - **プルリクエストと push**: `npm ci` → `lint` → `typecheck` → `test` → `build`

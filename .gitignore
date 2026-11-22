@@ -23,3 +23,6 @@ test-results/
 *.log
 .DS_Store
 Thumbs.db
+
+# 性能測定の生成物（通常E2Eのtest-resultsと分離して保持）
+performance-results/

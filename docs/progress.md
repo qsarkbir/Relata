@@ -18,7 +18,7 @@
 | 直近の完了 | T1-17読み込み（PR #29）、T1-19グラフ（PR #30）、T1-24 UC-1統合（PR #31）。ローカル全検証・独立レビュー・GitHub CI成功 |
 | 作業中 | T1-07/12/13のコメント対応と統合検証完了。公開準備版も4ブラウザ構成の全364 E2Eと最新性能診断成功。T1-25は実機Safari・版更新・main配信確認待ち |
 | 待っていること | mainへの統合は利用者が行う。実機Safariと配信後の公開サイト確認は未完了 |
-| メモ | GitHub リポジトリ `qsarkbir/relata`（非公開）。公開サイト https://qsarkbir.github.io/relata/ 。現在はCodexがローカルの独立worktreeで作業し、rootはcodex/mvp-workspaceで統合状態を保持する |
+| メモ | GitHub リポジトリ `qsarkbir/relata`（非公開）。公開サイト https://qsarkbir.github.io/Relata/ 。現在はCodexがローカルの独立worktreeで作業し、rootはcodex/mvp-workspaceで統合状態を保持する |
 
 2026-11-22: 個別PRのmain競合を解消し、検証とCI成功。最新の公開準備は [PR #33](https://github.com/qsarkbir/relata/pull/33)（draft）。Firefoxの検証互換性を修正し、mainは利用者の統合を待つ。
 
@@ -39,7 +39,7 @@ T1-24の統合PR #31へレビュー修正を統合。最新ローカル検証は
 - `../2026_relata-t1-25` / `codex/t1-25-release-prep`: [draft PR #33](https://github.com/qsarkbir/relata/pull/33)として提出・CI成功。統合版基点で日英README、公開チェックリスト、独立した性能/ブラウザ測定設定を追加。`docs/release-v0.1.md`に条件付きの実測値を記録。更新後の測定（2026-11-22、HEAD012af30）は1000/5000再描画229.3ms・指標632.5ms、2000/8000パン53.79回/秒、5000/20000操作完走（同22.13回/秒）。Chrome/Edge/Firefox/WebKitの各91件・計364件成功。Firefox159のTab順差と一括DOM読み出し時のクラッシュに対し、検証内容を保ったテスト取得方法へ変更。Firefox一括取得差の対処も保った最新公開準備版で、全4構成の91件ずつが成功。製品コード変更・skipはなし。固定仮想時計へのテスト修正は各製品で成功。runtime最適化は性能診断目標を満たしたため追加していない。
 - PR #22/#23/#24の最新main競合を専用worktreeで解消。設計書3.3と統合版の進行表を保持し、Lunaで型・lint・整形・単体・build成功（#22:652件、#23:658件、#24:650件、依存更新#25:667件）。統合#31は文書以外の差分なしを確認して同期。
 - Firefox診断と最終再検証は完了（Node24、専用4197・`test-results/firefox-debug`）。一括APIの内部クラッシュ原因まで同定したわけではないが、個別textContent取得と復元後配列比較で同じ検証を保ち、実Workerで保存復元が成功。ブラウザ群の並列検証ではポートだけでなく`--output`も分ける（共有先の削除がEdgeのENOENT2件の原因だった）。
-- T1-25は公開前チェック（PR #33 の `docs/release-v0.1.md`）を正とし、実機Safari・公開時の版更新・main配信と公開サイト動作確認を残す。性能値は固定配置/選択中のみラベル/ヘッドレスの診断であり、他条件の保証ではない。
+- T1-25は[公開前チェック](release-v0.1.md)を正とし、実機Safari・公開時の版更新・main配信と公開サイト動作確認を残す。性能値は固定配置/選択中のみラベル/ヘッドレスの診断であり、他条件の保証ではない。
 - 検証ポートはworktreeごとに分け、`RELATA_E2E_PORT`指定時は既存サーバーを再利用しない。wizard4192、graph4191、統合4193、公開準備4194。
 
 ### ローカルでの引き継ぎ確認（2026-11-20）

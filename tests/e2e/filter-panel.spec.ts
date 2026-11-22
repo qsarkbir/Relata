@@ -373,9 +373,17 @@ test.describe('NFR-07: フィルタのキーボード操作', () => {
     await expect(attrBox(page, '地名')).toHaveAttribute('open', '');
     // 【なぜ】項目の描画は `toggle` イベントの後（React の状態の更新）。項目が見えてから Tab を押す。
     //   `open` 属性の確認だけで進むと、項目が描かれる前に Tab が次の見出しへ進んでしまう。
-    await expect(page.getByRole('checkbox', { name: /^شفشاون/ })).toBeVisible();
-    await page.keyboard.press('Tab');
-    await expect(page.getByRole('checkbox', { name: /^شفشاون/ })).toBeFocused();
+    const firstValue = page.getByRole('checkbox', { name: /^شفشاون/ });
+    await expect(firstValue).toBeVisible();
+    // 【なぜ】Firefoxではスクロール可能なul自体もTab順に入る。
+    // Tab回数を固定せず、上限内で目的のチェックボックスへキーボードだけで到達できるか確かめる。
+    let valueReached = false;
+    for (let i = 0; i < 5 && !valueReached; i++) {
+      await page.keyboard.press('Tab');
+      valueReached = await firstValue.evaluate((el) => el === document.activeElement);
+    }
+    expect(valueReached, '最初の値に Tab で到達できる').toBe(true);
+    await expect(firstValue).toBeFocused();
     await page.keyboard.press('Space');
     // 期待: شفشاون（p1、p2）が選ばれる。p1→p2 の e1 が 1 本。
     await expectCounts(page, [2, 15], [1, 17]);

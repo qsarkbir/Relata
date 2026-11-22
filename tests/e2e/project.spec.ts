@@ -49,7 +49,13 @@ test.describe('UC-6 / FR-PJ-01: 保存と読み込みの往復', () => {
     await page.getByRole('checkbox', { name: 'タイプ 1' }).check();
     await expect(appliedRegion(page).getByRole('listitem')).toHaveCount(3);
     const savedCounts = await counts(page).textContent();
-    const savedApplied = await appliedRegion(page).getByRole('listitem').allTextContents();
+    const appliedItems = appliedRegion(page).getByRole('listitem');
+    const savedApplied: string[] = [];
+    // 【なぜ】Firefoxの検証環境ではallTextContentsの一括取得がページを終了させる。
+    // 各行の同じtextContentは個別取得できるため、順に読み、復元後は配列全体を比較する。
+    for (let i = 0; i < (await appliedItems.count()); i++) {
+      savedApplied.push(await appliedItems.nth(i).evaluate((element) => element.textContent));
+    }
 
     // 操作: 保存を押してダウンロードする。
     const downloading = page.waitForEvent('download');
