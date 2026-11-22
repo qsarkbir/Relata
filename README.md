@@ -20,7 +20,7 @@
 
 最初は空画面のサンプルから試せます。配置と指標の計算中は進行表示から取り消せます。公開先は [GitHub Pages](https://qsarkbir.github.io/relata/) です。
 
-地図・時間軸の再生・射影・旧Palladioファイルの直接読み込み・PDF/PNG出力は後続フェーズの対象です。v0.1の性能目標とChromium以外のブラウザ確認は公開前チェックに残しています。
+地図・時間軸の再生・射影・旧Palladioファイルの直接読み込み・PDF/PNG出力は後続フェーズの対象です。性能測定の条件とブラウザごとの確認状況は、公開前チェックに記録しています。
 
 ### Palladio との関係
 
@@ -78,7 +78,7 @@ npm run test:e2e  # E2E テスト（Playwright）
 
 Try the sample on the empty screen. Layout and metric jobs can be cancelled from the progress panel. The deployment URL is [GitHub Pages](https://qsarkbir.github.io/relata/).
 
-Maps, timeline playback, projection, direct import of legacy Palladio projects, and PDF/PNG export belong to later phases. Performance targets and browser coverage beyond Chromium remain on the release checklist.
+Maps, timeline playback, projection, direct import of legacy Palladio projects, and PDF/PNG export belong to later phases. The release checklist records performance measurement conditions and verification status for each browser.
 
 ### Relationship to Palladio
 
