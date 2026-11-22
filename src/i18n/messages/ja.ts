@@ -363,6 +363,9 @@ export const ja = {
   'project.failure.newerVersionUnknown':
     'このファイルは新しい版で保存されています。アプリを更新してから開いてください。',
   'project.failure.migrationUnknown': '古い版のファイルを、今の版へ変換できませんでした。',
+  'csv.open': 'CSV出力',
+  'csv.options': '書き出しの設定',
+  'csv.metricsPending': 'ノード指標CSVと全体指標CSVは、指標の計算が終わると保存できます。',
   'csv.bom': 'UTF-8 BOMを付ける',
   'csv.edges': 'エッジCSV',
   'csv.failed': 'CSVを保存できませんでした。もう一度お試しください。',
@@ -442,6 +445,16 @@ export const ja = {
   'metrics.failure.noConvergence': '収束しませんでした',
   'metrics.failure.unexpected': '計算エラー',
   'metrics.failure.notComputed': '未計算',
+  'metrics.notes.open': '計算上の注意（{count}件）',
+  'metrics.notes.title': '指標の計算上の注意',
+  'metrics.notes.affected': '対象の指標:',
+  'metrics.notes.docs': '計算式を含む詳しい解説は、今後まとめる利用者向けの文書で案内します。',
+  'metrics.noteDetail.mixedAsBidirectional':
+    '有向のエッジと無向のエッジが混ざったグラフでは、無向のエッジを「A→B と B→A の 2 本」として数えています。そのため、無向のエッジは次数や中心性に両方向から効きます。向きを区別したい関係と区別しない関係が混ざっている場合は、どちらかに揃えたデータで計算し直すと、結果を比べられます。',
+  'metrics.noteDetail.directedAsUndirected':
+    'これらの指標は、向きのあるグラフでも向きを無視して計算しました。k-core とクラスタ係数は、向きを考えない定義を使います。連結成分数は「弱連結成分」（向きを無視したときにつながっている部分）の数です。推移性は、向きを無視した三角形の割合です。たとえば書簡のネットワークでは、A が B に送り B が A に送っていなくても、A と B はつながっているとみなします。一方向の関係と双方向の関係を区別したい場合は、相互性（双方向のエッジの割合）や入次数・出次数を合わせて見てください。',
+  'metrics.noteDetail.multipleNodeTypes':
+    'ここで示した指標は、すべてのノードが同じ種類（たとえば人物どうし）であることを前提に作られています。人物と書物、人物と地名のように種類の違うノードが混ざったグラフでは、値の意味が変わります。たとえば人物と地名を結ぶグラフで媒介中心性が高い地名は、「多くの人物が共通して訪れた場所」であることを示すにすぎず、人物どうしのネットワークでの仲介役とは意味が違います。密度も、同じ種類どうしは結ばれない構造のため、低く出ます。1 種類のノードについて調べたいときは、左の「ノード型」で型を絞り込んでから指標を見てください（ほかの型を経由する関係は数えられなくなります）。2 種類のノードから 1 種類どうしのネットワークを作る「射影」は、後の版で対応する予定です。',
   'metrics.note.mixedAsBidirectional': '混在グラフの無向エッジは両向きの線として計算しました。',
   'metrics.note.directedAsUndirected': '次の指標は向きを無視して計算しました。',
   'metrics.note.multipleNodeTypes':

@@ -102,8 +102,11 @@ test.describe('FR-MT-02/03/04 / FR-UI-04: 指標パネル', () => {
     await startApp(page);
     await openProject(page, 'maghrib.relata.json');
     await expect(page.getByTestId('metric-global-nodeCount')).toHaveText('14');
-    await expect(page.getByText(/ノード型が複数あります/)).toBeVisible();
-    await expect(page.getByText(/次の指標は向きを無視して計算しました/)).toBeVisible();
+    // 【なぜ】注意はボタンの件数で示し、全文はダイアログで読む（利用者の指摘、2026-11-22）。
+    await page.getByRole('button', { name: '計算上の注意（2件）', exact: true }).click();
+    const dialog = page.getByRole('dialog', { name: '指標の計算上の注意', exact: true });
+    await expect(dialog.getByText(/ノード型が複数あります/)).toBeVisible();
+    await expect(dialog.getByText(/次の指標は向きを無視して計算しました/)).toBeVisible();
   });
   test('Worker読込の失敗を表示し、再試行で復旧できる', async ({ page }) => {
     await page.route('**/*metrics.worker*.js', (route) => route.abort());

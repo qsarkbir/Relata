@@ -41,7 +41,7 @@ export function CsvExportControls({ dataset, filter, result }: CsvExportControls
   };
   return (
     <fieldset className="csv-export">
-      <legend>{t('csv.title')}</legend>
+      <legend>{t('csv.options')}</legend>
       <label>
         <input
           type="checkbox"

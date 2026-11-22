@@ -1,6 +1,4 @@
-import { CsvExportControls } from './metrics/CsvExportControls';
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { useStore } from 'zustand';
+import { useEffect, useMemo, useState } from 'react';
 import type { MessageKey } from '../i18n';
 import {
   GLOBAL_METRIC_IDS,
@@ -9,8 +7,9 @@ import {
   type MetricsNote,
   type MetricsResult,
 } from '../core/metrics/types';
-import { selectFilterState, graphViewStore, metricsController, selectGraphOptions } from '../state';
-import { useData, useFilter, useT, useUi } from './hooks';
+import { metricsController } from '../state';
+import { useData, useT, useUi } from './hooks';
+import { ModalDialog } from './ModalDialog';
 import { getCollator } from './intl';
 import {
   NODE_METRIC_LABELS,
@@ -19,6 +18,7 @@ import {
   type MetricColumn,
   type MetricSort,
 } from './metrics/columns';
+import { useCurrentMetrics } from './metrics/useCurrentMetrics';
 import './metrics/metrics.css';
 
 const globalNames: Record<GlobalMetricId, MessageKey> = {
@@ -51,6 +51,12 @@ const noteNames: Record<MetricsNote['code'], MessageKey> = {
   directedAsUndirected: 'metrics.note.directedAsUndirected',
   multipleNodeTypes: 'metrics.note.multipleNodeTypes',
 };
+/** 注意ごとの詳しい説明。ダイアログで、短い文の後に続けて示す。 */
+const noteDetails: Record<MetricsNote['code'], MessageKey> = {
+  mixedAsBidirectional: 'metrics.noteDetail.mixedAsBidirectional',
+  directedAsUndirected: 'metrics.noteDetail.directedAsUndirected',
+  multipleNodeTypes: 'metrics.noteDetail.multipleNodeTypes',
+};
 
 /**
  * 絞り込み後の全体・ノード指標、進行と中止、日英の短い説明を表示する。
@@ -58,23 +64,13 @@ const noteNames: Record<MetricsNote['code'], MessageKey> = {
  */
 export function MetricsPanel() {
   const t = useT();
-  const dataset = useData((s) => s.dataset);
-  const filter = useFilter(selectFilterState);
-  const graphOptions = useStore(graphViewStore, selectGraphOptions);
-  const view = useSyncExternalStore(metricsController.subscribe, metricsController.getSnapshot);
+  const { dataset, filter, graphOptions, phase, result, error } = useCurrentMetrics();
   useEffect(() => {
     metricsController.update(dataset, filter, graphOptions);
     return () => {
       metricsController.cancel();
     };
   }, [dataset, filter, graphOptions]);
-  // 【なぜ】effect が次の入力を渡す前の描画でも、前のデータ・フィルタの数値を見せない。
-  const current =
-    view.input?.dataset === dataset &&
-    view.input.filter === filter &&
-    view.input.graphOptions === graphOptions;
-  const phase = dataset === null ? 'empty' : current ? view.phase : 'waiting';
-  const result = current && phase === 'ready' ? view.result : null;
   const busy = phase === 'waiting' || phase === 'running';
   return (
     <section className="metrics-panel" aria-labelledby="metrics-title">
@@ -117,10 +113,9 @@ export function MetricsPanel() {
       {phase === 'error' && (
         <div role="alert">
           <p>{t('metrics.failed')}</p>
-          <bdi>{view.error}</bdi>
+          <bdi>{error}</bdi>
         </div>
       )}
-      {dataset !== null && <CsvExportControls dataset={dataset} filter={filter} result={result} />}
       {result !== null && <MetricResults result={result} />}
     </section>
   );
@@ -129,6 +124,7 @@ export function MetricsPanel() {
 function MetricResults({ result }: { readonly result: MetricsResult }) {
   const t = useT();
   const locale = useUi((s) => s.locale);
+  const setOpenDialog = useUi((s) => s.setOpenDialog);
   const dataset = useData((s) => s.dataset);
   const nf = useMemo(
     () => new Intl.NumberFormat(locale, { maximumSignificantDigits: 6 }),
@@ -214,24 +210,40 @@ function MetricResults({ result }: { readonly result: MetricsResult }) {
         </dl>
       </section>
       {result.notes.length > 0 && (
-        <ul className="metrics-notes">
-          {result.notes.map((note) => (
-            <li key={note.code}>
-              {t(noteNames[note.code])}
-              {(note.nodeMetrics.length > 0 || note.globalMetrics.length > 0) && (
-                <span>
-                  {' '}
-                  (
-                  {[
-                    ...note.nodeMetrics.map((id) => t(NODE_METRIC_LABELS[id])),
-                    ...note.globalMetrics.map((id) => t(globalNames[id])),
-                  ].join(', ')}
-                  )
-                </span>
-              )}
-            </li>
-          ))}
-        </ul>
+        <>
+          {/* 【なぜ】注意の全文は場所を取るので、ボタンから開くダイアログで詳しく示す（利用者の指摘）。 */}
+          <button
+            type="button"
+            className="metrics-notes-open"
+            aria-haspopup="dialog"
+            onClick={() => {
+              setOpenDialog('metricsNotes');
+            }}
+          >
+            <span aria-hidden="true">ⓘ </span>
+            {t('metrics.notes.open', { count: result.notes.length })}
+          </button>
+          <ModalDialog id="metricsNotes" title={t('metrics.notes.title')} className="notes-dialog">
+            {result.notes.map((note) => {
+              const affected = [
+                ...note.nodeMetrics.map((id) => t(NODE_METRIC_LABELS[id])),
+                ...note.globalMetrics.map((id) => t(globalNames[id])),
+              ];
+              return (
+                <section key={note.code} className="metrics-note">
+                  <h3>{t(noteNames[note.code])}</h3>
+                  {affected.length > 0 && (
+                    <p>
+                      <strong>{t('metrics.notes.affected')}</strong> {affected.join(', ')}
+                    </p>
+                  )}
+                  <p>{t(noteDetails[note.code])}</p>
+                </section>
+              );
+            })}
+            <p className="hint">{t('metrics.notes.docs')}</p>
+          </ModalDialog>
+        </>
       )}
       <div
         className="metrics-table-wrap"

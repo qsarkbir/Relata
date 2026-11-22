@@ -2,8 +2,14 @@ import { createStore } from 'zustand/vanilla';
 import type { Locale, MessageKey, MessageParams } from '../i18n';
 import { DEFAULT_LOCALE } from '../i18n';
 
-/** 開いているダイアログの種類。いまは「このツールについて」だけ。後のタスクで足す。 */
-export type DialogId = 'about';
+/**
+ * 開いているダイアログの種類。
+ *
+ * - `about`: このツールについて
+ * - `csvExport`: CSV の書き出し
+ * - `metricsNotes`: 指標の計算上の注意
+ */
+export type DialogId = 'about' | 'csvExport' | 'metricsNotes';
 
 /**
  * 処理の名前。翻訳キーと差し込みの値で持つ。

@@ -260,3 +260,16 @@ export async function advanceClockUntilLoaded(page: Page): Promise<void> {
     await expect(loadedNotice(page)).toBeVisible({ timeout: 100 });
   }).toPass({ timeout: 10_000 });
 }
+
+/**
+ * 上部の「CSV出力」からダイアログを開き、その dialog を返す（FR-OUT-02）。
+ *
+ * @param page - ページ
+ * @returns CSV 出力のダイアログ
+ */
+export async function openCsvDialog(page: Page): Promise<Locator> {
+  await page.getByRole('button', { name: 'CSV出力', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'CSV出力', exact: true });
+  await expect(dialog).toBeVisible();
+  return dialog;
+}
