@@ -106,7 +106,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  # 配信（デプロイ）: 検査を通った dist を GitHub Pages に公開する。公開先は https://qsarkbir.github.io/relata/ 。
+  # 配信（デプロイ）: 検査を通った dist を GitHub Pages に公開する。公開先は https://qsarkbir.github.io/Relata/ 。
   #
   # 【注意】リポジトリの Settings → Pages → Source が「GitHub Actions」になっていないと、
   # main への push で、このジョブだけが失敗する（「Pages site not found」や 404 の旨のエラー）。

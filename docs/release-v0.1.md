@@ -11,8 +11,8 @@
 | NFR-06 対応ブラウザ | 最新公開準備版でChrome/Edge/Firefox/WebKit各91件・計364件成功。バージョンと条件は下記。実機Safariは未確認 |
 | NFR-11 core網羅率 | core網羅率80%以上の閾値を含むnpm test成功。統合CI成功 |
 | 操作案内 | READMEの日英を統合版の操作に更新。配信済みと未統合を区別する |
-| 版 | package.jsonは0.0.0。公開条件を満たすときに0.1.0へ更新する |
-| 配信と公開サイト | 利用者がmainへ統合後、CI verify→deploy成功、サンプル・取込・SVG・保存復元を公開先で確認する |
+| 版 | package.jsonを0.1.0へ更新済み（2026-11-22） |
+| 配信と公開サイト | 公開先は https://qsarkbir.github.io/Relata/ 。mainへ統合後、CI verify→deploy成功、サンプル・取込・SVG・保存復元を公開先で確認する。統合前の確認で、`base`が`/relata/`のままだとJSとCSSが404になり画面が空になることが判明し、`/Relata/`へ直した（パスは大文字と小文字を区別する） |
 
 ## 性能測定
 

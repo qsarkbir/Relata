@@ -18,7 +18,7 @@
 | 直近の完了 | T1-17読み込み（PR #29）、T1-19グラフ（PR #30）、T1-24 UC-1統合（PR #31）。ローカル全検証・独立レビュー・GitHub CI成功 |
 | 作業中 | T1-07/12/13のコメント対応と統合検証完了。公開準備版も4ブラウザ構成の全364 E2Eと最新性能診断成功。T1-25は実機Safari・版更新・main配信確認待ち |
 | 待っていること | mainへの統合は利用者が行う。実機Safariと配信後の公開サイト確認は未完了 |
-| メモ | GitHub リポジトリ `qsarkbir/relata`（非公開）。公開サイト https://qsarkbir.github.io/relata/ 。現在はCodexがローカルの独立worktreeで作業し、rootはcodex/mvp-workspaceで統合状態を保持する |
+| メモ | GitHub リポジトリ `qsarkbir/relata`（非公開）。公開サイト https://qsarkbir.github.io/Relata/ 。現在はCodexがローカルの独立worktreeで作業し、rootはcodex/mvp-workspaceで統合状態を保持する |
 
 2026-11-22: 個別PRのmain競合を解消し、検証とCI成功。最新の公開準備は [PR #33](https://github.com/qsarkbir/relata/pull/33)（draft）。Firefoxの検証互換性を修正し、mainは利用者の統合を待つ。
 

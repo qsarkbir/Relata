@@ -18,7 +18,7 @@
 4. 図は「SVGを保存」、データと指標は各CSVボタンで保存できます。CSV式保護を有効にして書き出した値は、読み込み時にも保護解除を明示すると元へ戻せます。
 5. 「保存」で配置・フィルタ・表示設定を含むRelataプロジェクトを保存します。「プロジェクトを開く」で再開できます。自動保存は同じブラウザ内に残ります。
 
-最初は空画面のサンプルから試せます。配置と指標の計算中は進行表示から取り消せます。公開先は [GitHub Pages](https://qsarkbir.github.io/relata/) です。
+最初は空画面のサンプルから試せます。配置と指標の計算中は進行表示から取り消せます。公開先は [GitHub Pages](https://qsarkbir.github.io/Relata/) です。
 
 地図・時間軸の再生・射影・旧Palladioファイルの直接読み込み・PDF/PNG出力は後続フェーズの対象です。性能測定の条件とブラウザごとの確認状況は、公開前チェックに記録しています。
 
@@ -48,7 +48,7 @@ Node.js 24 系（[.nvmrc](.nvmrc)）が必要です。
 
 ```bash
 npm ci          # 依存パッケージを入れる
-npm run dev     # 開発サーバーを起動する（http://localhost:5173/relata/ で開く。末尾の /relata/ が必要）
+npm run dev     # 開発サーバーを起動する（http://localhost:5173/Relata/ で開く。末尾の /Relata/ が必要）
 npm run build   # dist/ に静的ファイルを出力する
 npm run typecheck
 npm run lint
@@ -76,7 +76,7 @@ npm run test:e2e  # E2E テスト（Playwright）
 4. Save SVG figures or export data and metrics as CSV. To restore values protected against spreadsheet formulas, explicitly select formula-protection removal during import.
 5. Save a Relata project to preserve positions, filters and display settings, and reopen it with **Open project**. Autosave stays in the same browser.
 
-Try the sample on the empty screen. Layout and metric jobs can be cancelled from the progress panel. The deployment URL is [GitHub Pages](https://qsarkbir.github.io/relata/).
+Try the sample on the empty screen. Layout and metric jobs can be cancelled from the progress panel. The deployment URL is [GitHub Pages](https://qsarkbir.github.io/Relata/).
 
 Maps, timeline playback, projection, direct import of legacy Palladio projects, and PDF/PNG export belong to later phases. The release checklist records performance measurement conditions and verification status for each browser.
 

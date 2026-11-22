@@ -11,11 +11,11 @@ if (!/^\d+$/u.test(PORT) || Number(PORT) < 1 || Number(PORT) > 65535) {
  * 手元では未設定なので、これまでどおり build してから起動する。
  */
 /**
- * 配信先のURL。【なぜ】vite.config.ts の base（/relata/）に合わせ、末尾の `/` まで付ける。
+ * 配信先のURL。【なぜ】vite.config.ts の base（/Relata/）に合わせ、末尾の `/` まで付ける。
  * テストは `page.goto('./')` のように相対で書く。`goto('/')` は base の外（サイトの根）を開いてしまい、
  * 404 になる。baseURL の末尾に `/` がないと、相対指定が `/relata` の親から解決される点にも注意。
  */
-const BASE_URL = `http://localhost:${PORT}/relata/`;
+const BASE_URL = `http://localhost:${PORT}/Relata/`;
 
 const SKIP_BUILD = !!process.env.E2E_SKIP_BUILD;
 
