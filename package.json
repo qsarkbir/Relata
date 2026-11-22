@@ -23,9 +23,11 @@
   "dependencies": {
     "comlink": "^4.4.2",
     "graphology": "^0.26.0",
+    "graphology-layout-forceatlas2": "0.10.1",
     "graphology-metrics": "^2.4.2",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zustand": "^5.1.0"
   },
   "devDependencies": {
