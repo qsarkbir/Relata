@@ -1,7 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
-/** プレビューサーバーのポート。【なぜ】固定する。CI でも手元でも同じ URL で動かすため。 */
-const PORT = '4173';
+/** 既定は固定。並行するworktreeの検証では専用ポートを指定し、別のビルドを試さないようにする。 */
+const PORT = process.env.RELATA_E2E_PORT ?? '4173';
+if (!/^\d+$/u.test(PORT) || Number(PORT) < 1 || Number(PORT) > 65535) {
+  throw new RangeError('RELATA_E2E_PORT は 1〜65535 の整数です。');
+}
 
 /**
  * build を省くか。【なぜ】CI は E2E の前に build 済みなので、環境変数 E2E_SKIP_BUILD で二重の build を避ける。
@@ -41,7 +44,7 @@ export default defineConfig({
       ? `npm run preview -- --port ${PORT} --strictPort`
       : `npm run build && npm run preview -- --port ${PORT} --strictPort`,
     url: BASE_URL,
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: !process.env.CI && !process.env.RELATA_E2E_PORT,
     timeout: 120_000,
   },
 });
