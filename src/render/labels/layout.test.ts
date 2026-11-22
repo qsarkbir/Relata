@@ -4,6 +4,7 @@ import type { RelataGraph } from '../../core/graph';
 import { toNodeId, toNodeTypeId } from '../../core/model';
 import { buildScene } from '../scene';
 import { placeLabels } from './layout';
+import type { SceneLabel } from '../scene/types';
 
 const a = toNodeId('a');
 const b = toNodeId('b');
@@ -134,4 +135,92 @@ it('FR-VG-10 / FR-OUT-01: 非衝突のLTR・RTLラベル全体を余白つきvie
     expect(label.y - label.fontSize).toBeGreaterThanOrEqual(24 - 1e-9);
     expect(label.y + label.fontSize * 0.3).toBeLessThanOrEqual(scene.height - 24 + 1e-9);
   }
+});
+
+it('FR-VG-10 / NFR-09: 測定失敗の補助面文字を1コードポイントで見積もり、配置と範囲で共有する', () => {
+  const labels: SceneLabel[] = [
+    { nodeId: a, text: '😀', x: 0, y: 0, fontSize: 10, direction: 'ltr', anchor: 'left' },
+    { nodeId: b, text: '𠀋', x: 12, y: 0, fontSize: 10, direction: 'ltr', anchor: 'left' },
+  ];
+  expect(placeLabels(labels, [], () => NaN).visible).toHaveLength(2);
+  const g = graph();
+  g.setNodeAttribute(a, 'label', '😀');
+  g.setNodeAttribute(b, 'label', '𠀋');
+  const options = { labelFontSize: 10, measureText: () => NaN };
+  const separated = new Map([
+    [a, { x: 0, y: 0 }],
+    [b, { x: 12, y: 0 }],
+  ]);
+  const tiny = {
+    sizes: new Map([
+      [a, { size: 0, missing: false }],
+      [b, { size: 0, missing: false }],
+    ]),
+  };
+  const fallback = buildScene(g, separated, tiny, options);
+  expect(fallback.labels).toHaveLength(2);
+  expect(fallback).toEqual(
+    buildScene(g, separated, tiny, {
+      ...options,
+      measureText: (text) => Array.from(text).length * 6,
+    }),
+  );
+});
+
+function label(id: string, text: string, x: number, y: number): SceneLabel {
+  return { nodeId: toNodeId(id), text, x, y, fontSize: 12, direction: 'ltr', anchor: 'left' };
+}
+
+it('FR-VG-10: 中央値の格子でも長い矩形が覆う中間区画の衝突を見逃さない', () => {
+  const labels = [
+    label('wide', 'wide', 0, 0),
+    label('inside', 'inside', 100, 0),
+    ...Array.from({ length: 100 }, (_, i) => label('n' + String(i), 'short', 1000 + i * 40, 100)),
+  ];
+  const placed = placeLabels(labels, [], (text) => (text === 'wide' ? 200 : 10));
+  expect(placed.hidden).toEqual([toNodeId('inside')]);
+  expect(placed.visible).toHaveLength(101);
+});
+
+it('FR-VG-10: 64区画を超える矩形も、格子へ登録した矩形も、優先順に相互照合する', () => {
+  for (const wideFirst of [true, false]) {
+    const wide = label('wide', 'wide', 0, 0);
+    const small = label('small', 'small', 5000, 0);
+    const labels = wideFirst ? [wide, small] : [small, wide];
+    const result = placeLabels(labels, [], (text) => (text === 'wide' ? 1e7 : 10));
+    expect(result.visible.map((l) => l.nodeId)).toEqual([wideFirst ? wide.nodeId : small.nodeId]);
+    expect(result.hidden).toEqual([wideFirst ? small.nodeId : wide.nodeId]);
+  }
+});
+
+it('FR-VG-10: 1件の極端な長文と多数の短い非衝突ラベルを保持する', () => {
+  const normal = Array.from({ length: 6000 }, (_, i) => label('n' + String(i), 'short', i * 40, 0));
+  const placed = placeLabels([...normal, label('wide', 'wide', 0, 100)], [], (text) =>
+    text === 'wide' ? 1e9 : 10,
+  );
+  expect(placed.hidden).toEqual([]);
+  expect(placed.visible).toHaveLength(6001);
+});
+
+it('FR-VG-10: largeは候補の上限で、衝突した大ノードを次点の小ノードで補充しない', () => {
+  const g = graph();
+  g.setNodeAttribute(c, 'label', 'third');
+  const scene = buildScene(
+    g,
+    new Map([
+      [a, { x: 0, y: 0 }],
+      [b, { x: 0, y: 0 }],
+      [c, { x: 500, y: 0 }],
+    ]),
+    {
+      sizes: new Map([
+        [a, { size: 10, missing: false }],
+        [b, { size: 9, missing: false }],
+        [c, { size: 8, missing: false }],
+      ]),
+    },
+    { labels: 'large', largeLabelCount: 2, measureText: () => 100 },
+  );
+  expect(scene.labels.map((l) => l.nodeId)).toEqual([a]);
+  expect(scene.hiddenLabels).toEqual([b]);
 });

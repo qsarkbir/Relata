@@ -1,4 +1,5 @@
 import { placeLabels } from '../labels/layout';
+import { estimateTextWidth } from '../text/width';
 import { edgeGeometry, type DirectedEdgeStyle } from '../edges/geometry';
 /**
  * シーンの組み立て（設計書 §8.1、D-31）。
@@ -80,13 +81,13 @@ export interface BuildSceneOptions {
   readonly includeSelection?: boolean;
   /** ラベルの表示。既定 `all`。 */
   readonly labels?: LabelMode;
-  /** `large` のとき、ラベルを出すノードの数（大きい順）。既定 20。 */
+  /** `large` のときの候補数の上限（大きい順）。既定20。衝突で減っても次点を補充しない。 */
   readonly largeLabelCount?: number;
   /** ラベルの文字の大きさ（px）。既定 12。 */
   readonly labelFontSize?: number;
   /**
    * 文字の幅を測る関数。無いとき、または有限で 0 以上でない値を返したときは、
-   * 文字数 × 文字の大きさ × 0.6 で見積もる。ラベルと凡例は、この幅で図の範囲に収める。
+   * Unicodeコードポイント数 × 文字の大きさ × 0.6 で見積もる。ラベルと凡例は、この幅で図の範囲に収める。
    */
   readonly measureText?: MeasureText;
   readonly legend?: LegendSpec;
@@ -210,7 +211,7 @@ export function buildScene(
     const cached = measuredWidths.get(t);
     if (cached !== undefined) return cached;
     const w = measure?.(t, font);
-    const width = nonNeg(w, t.length * fontSize * 0.6);
+    const width = nonNeg(w, estimateTextWidth(t, fontSize));
     measuredWidths.set(t, width);
     return width;
   };
@@ -298,8 +299,7 @@ export function buildScene(
       source: s.id,
       target: t.id,
       ...geometry,
-      width:
-        w !== undefined && Number.isFinite(w.width) ? Math.max(0, w.width) : DEFAULT_EDGE_WIDTH,
+      width: geometry.shaftWidth ?? width,
       color: DEFAULT_EDGE_COLOR,
       opacity: 0.6,
       directed: attrs.directed,
