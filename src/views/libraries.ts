@@ -14,7 +14,9 @@ export const LIBRARIES: readonly LibraryInfo[] = [
   { name: 'comlink', license: 'Apache-2.0' },
   { name: 'graphology', license: 'MIT' },
   { name: 'graphology-metrics', license: 'MIT' },
+  { name: 'graphology-layout-forceatlas2', license: 'MIT' },
   { name: 'react', license: 'MIT' },
   { name: 'react-dom', license: 'MIT' },
+  { name: 'xlsx', license: 'Apache-2.0' },
   { name: 'zustand', license: 'MIT' },
 ];
