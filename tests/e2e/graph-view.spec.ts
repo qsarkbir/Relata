@@ -351,3 +351,31 @@ test('FR-VG-11: 位置の欠けたノードの計算中に固定を切り替え�
   await expect(nodes).toHaveCount(14);
   await expect(page.locator('.task-panel')).toBeHidden();
 });
+
+test('FR-UI-02 / FR-VG-11: 左右のパネルを畳むと図が横に広がり、開き直すと絞り込みの状態が残る', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await startApp(page);
+  await openProject(page, 'maghrib.relata.json');
+  const figure = page.getByRole('img', { name: 'ネットワーク図' });
+  await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]')).toHaveCount(14);
+  const before = (await figure.boundingBox())?.width ?? 0;
+  await page.getByLabel('ノードの検索語', { exact: true }).fill('下書き');
+  await page.getByRole('button', { name: '絞り込みを畳む', exact: true }).click();
+  await page.getByRole('button', { name: '指標を畳む', exact: true }).click();
+  await expect(page.getByLabel('ノードの検索語', { exact: true })).toBeHidden();
+  await expect(page.getByRole('heading', { name: 'ネットワーク指標' })).toBeHidden();
+  await expect
+    .poll(async () => (await figure.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(before + 300);
+  // 期待: viewBox も枠の実寸に追従する。
+  const width = Math.round((await figure.boundingBox())?.width ?? 0);
+  await expect(figure).toHaveAttribute(
+    'viewBox',
+    new RegExp(`^0 0 (${String(width - 1)}|${String(width)}|${String(width + 1)}) `),
+  );
+  // 操作: 開き直すと、畳む前の入力が残っている（中身を外さずに隠しているため）。
+  await page.getByRole('button', { name: '絞り込みを開く', exact: true }).click();
+  await expect(page.getByLabel('ノードの検索語', { exact: true })).toHaveValue('下書き');
+});

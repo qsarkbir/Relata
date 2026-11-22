@@ -319,6 +319,8 @@ export const en = {
   'save.autosave.hint':
     'Your work is saved automatically in this browser and restored the next time you open Relata. Clear it if you do not want it kept, for example on a shared computer.',
   'metrics.info.topic': 'Metric meanings and calculation notes',
+  'panel.collapse': 'Collapse {panel}',
+  'panel.expand': 'Expand {panel}',
   'about.open': 'About this tool',
   'about.title': 'About this tool',
   'about.close': 'Close',

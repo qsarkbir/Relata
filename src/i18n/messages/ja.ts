@@ -310,6 +310,8 @@ export const ja = {
   'save.autosave.hint':
     '作業はこのブラウザの中に自動で保存され、次に開いたときに復元されます。共用のパソコンなどで残したくないときは消してください。',
   'metrics.info.topic': '指標の意味と計算上の注意',
+  'panel.collapse': '{panel}を畳む',
+  'panel.expand': '{panel}を開く',
   'about.open': 'このツールについて',
   'about.title': 'このツールについて',
   'about.close': '閉じる',

@@ -1,6 +1,7 @@
 import { GraphView } from '../views/GraphView';
 import { AboutDialog } from '../views/AboutDialog';
 import { CsvExportMenu } from '../views/metrics/CsvExportMenu';
+import { SidePanel } from '../views/ui/SidePanel';
 import { FilterPanel } from '../views/FilterPanel';
 import { SampleCard } from '../views/SampleCard';
 import { ProjectMenu } from '../views/ProjectMenu';
@@ -29,6 +30,7 @@ export function App() {
   const setLocale = useUi((s) => s.setLocale);
   const setOpenDialog = useUi((s) => s.setOpenDialog);
   const dataset = useData((s) => s.dataset);
+  const collapsed = useUi((s) => s.collapsedPanels);
 
   return (
     <div className="app">
@@ -69,10 +71,19 @@ export function App() {
         </div>
       </header>
       <ProjectNotice />
-      <div className="app-body">
-        <aside className="region-filters" aria-label={t('app.region.filters')}>
+      <div
+        className="app-body"
+        data-filters={collapsed.filters ? 'collapsed' : 'open'}
+        data-metrics={collapsed.metrics ? 'collapsed' : 'open'}
+      >
+        <SidePanel
+          id="filters"
+          side="start"
+          className="region-filters"
+          label={t('app.region.filters')}
+        >
           <FilterPanel />
-        </aside>
+        </SidePanel>
         <main className="region-main" aria-label={t('app.region.main')}>
           <GraphView />
           {dataset === null ? (
@@ -83,9 +94,14 @@ export function App() {
             </div>
           ) : null}
         </main>
-        <aside className="region-metrics" aria-label={t('app.region.metrics')}>
+        <SidePanel
+          id="metrics"
+          side="end"
+          className="region-metrics"
+          label={t('app.region.metrics')}
+        >
           <MetricsPanel />
-        </aside>
+        </SidePanel>
       </div>
       <TaskPanel />
       <AboutDialog />
