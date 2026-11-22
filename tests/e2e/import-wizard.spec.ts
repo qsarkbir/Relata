@@ -250,7 +250,7 @@ for (const formulaProtection of [false, true]) {
       .getByRole('textbox', { name: '表の貼り付け', exact: true })
       .fill("From,To,note\n'=SUM(1),''original,'@note");
     const protection = dialog.getByRole('checkbox', {
-      name: "Relataで式を保護したCSVを読み戻す（先頭の保護用 ' を戻す）",
+      name: '式の保護を戻して読む',
       exact: true,
     });
     await expect(protection).not.toBeChecked();
@@ -306,4 +306,27 @@ test('FR-IN-06 / FR-UI-03: 変換待機中は列・型名・欠損を変更で�
   await page.getByRole('button', { name: '表データを読み込む', exact: true }).click();
   await expect(dialog.getByRole('button', { name: '列の対応へ' })).toBeDisabled();
   await expect(dialog.getByRole('button', { name: 'このデータを読み込む' })).toHaveCount(0);
+});
+
+test('FR-UI-04 / NFR-07: ウィザードの説明はアイコンのダイアログで読み、Esc で説明だけを閉じる', async ({
+  page,
+}) => {
+  await startApp(page);
+  await page.getByRole('button', { name: '表データを読み込む', exact: true }).click();
+  const wizard = page.getByRole('dialog', { name: '表データの読み込み', exact: true });
+  await wizard.getByLabel('表の貼り付け', { exact: true }).fill('From,To\nA,B');
+  await wizard.getByRole('button', { name: '表を解析してプレビュー', exact: true }).click();
+  await wizard.getByRole('button', { name: '列の対応へ', exact: true }).click();
+  // 期待: 説明文は画面に並べず、アイコンから開く。
+  await expect(wizard.getByText('完全に一致したときだけ', { exact: false })).toHaveCount(0);
+  await wizard.getByRole('button', { name: '説明: 欠損の記号と理由', exact: true }).click();
+  const info = page.getByRole('dialog', { name: '欠損の記号と理由', exact: true });
+  await expect(info.getByText('完全に一致したときだけ', { exact: false })).toBeVisible();
+  // 操作: Esc。説明のダイアログだけが閉じ、ウィザードは開いたまま。
+  await page.keyboard.press('Escape');
+  await expect(info).toBeHidden();
+  await expect(wizard).toBeVisible();
+  await expect(
+    wizard.getByRole('button', { name: '説明: 欠損の記号と理由', exact: true }),
+  ).toBeFocused();
 });

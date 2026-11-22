@@ -87,7 +87,7 @@ export const ja = {
   'sample.description.ja':
     '15〜16世紀のマグリブの学者とスーフィーの社会的ネットワークを記録したデータです。イブン・アスカル・シャフシャーワーニー（986/1578年没）の『Dawḥat al-nāshir li-maḥāsin man kāna bi-l-Maghrib min mashāyikh al-qarn al-ʿāshir』に基づき、当初はPalladioで地図上にネットワークを可視化するために作成されました。',
   'app.empty.body':
-    '表データ（CSV、Excel など）を読み込むと、ここにグラフや指標が表示されます。読み込みの機能は準備中です。',
+    '表データ（CSV、Excel など）を読み込むと、ここにグラフや指標が表示されます。上の「表データを読み込む」から始めるか、下のサンプルで試せます。',
   'app.region.filters': '絞り込み',
   'app.region.main': '主な表示',
   'app.region.metrics': '指標',
@@ -100,6 +100,13 @@ export const ja = {
   'import.open': '表データを読み込む',
   'import.title': '表データの読み込み',
   'import.cancel': 'やめる',
+  'import.mode.hint.single':
+    '1表: 1 行が 1 つの関係です。始点の列と終点の列（たとえば差出人と受取人）から、ノードとエッジを作ります。',
+  'import.mode.hint.pair':
+    '2表: ノードの一覧（ノード表）と、関係の一覧（エッジ表）を別々に読み込みます。ノードに属性（生没年、出身地など）があるときに使います。',
+  'import.protected.hint':
+    "Relata の「CSV出力」で式の保護を付けて書き出した CSV を読み戻すときに選びます。表計算ソフトが「=」などで始まる文字列を式として実行しないよう、書き出し時に先頭へ「'」を付けています。これを外して元の文字列に戻します。",
+  'import.columns.topic': '列の対応と型',
   'import.mode': '表の形式',
   'import.single': '1表（始点と終点の列）',
   'import.pair': 'ノード表とエッジ表',
@@ -135,9 +142,10 @@ export const ja = {
   'import.sourceType': '始点の型',
   'import.targetType': '終点の型',
   'import.sameTypeHint':
-    '同じ種類のノードなら同じ型を指定してください。ID列を指定しないと、同型・同名のノードは合流します。',
+    '始点の列と終点の列のノードに付ける型です。書簡の差出人と受取人のように同じ種類のノードなら、同じ型を指定してください。ID 列が無いときは、型とラベルが同じノードを 1 つにまとめます（同名異人は区別できません）。',
   'import.missing': '欠損の記号と理由',
-  'import.missingHint': '空欄は「記載なし」です。追加した記号は完全一致で照合します。',
+  'import.missingHint':
+    '空欄は「記載なし」として欠損になります。「〔欠〕」「□」のように、史料の欠落や判読できない箇所を表す記号を使っている場合は、記号と理由（欠落、判読不能など）を追加してください。記号は完全に一致したときだけ欠損として扱います。ラベル・ID・始点・終点の列に記号があると、その行はエラーになります。',
   'import.token': '記号',
   'import.reason': '理由',
   'import.remove': '削除',
@@ -145,7 +153,7 @@ export const ja = {
   'import.addToken': '欠損記号を追加',
   'import.reinfer': '欠損記号を考慮して型を推定し直す',
   'import.columnsHint':
-    '全列の型を推定しています。用途、属性キー、型、列ごとの暦、複数値の区切りを変更できます。特殊列の名前は用途で対応づけます。',
+    'すべての列について、中身から型（文字列、数値、日付など）を推定しています。用途（始点、ラベル、属性など）、属性のキーと名前、型、日付の列の暦（西暦、ヒジュラ暦）、複数の値を区切る記号を変えられます。始点・終点・日付などの特別な列は、列名ではなく「用途」で指定します。',
   'import.column': '元の列',
   'import.use': '用途',
   'import.key': '属性キー',
@@ -176,7 +184,7 @@ export const ja = {
   'import.wholeFile': 'ファイル全体',
   'import.row': 'レコード {row}',
   'import.details': '元の解析メッセージ',
-  'import.protected': "Relataで式を保護したCSVを読み戻す（先頭の保護用 ' を戻す）",
+  'import.protected': '式の保護を戻して読む',
   'import.role.ignore': '使わない',
   'import.role.attr': '属性',
   'import.role.id': 'ID',
