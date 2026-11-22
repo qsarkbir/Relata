@@ -59,7 +59,7 @@ test.describe('FR-FL-01 / FR-FL-02: 対象ごとのフィルタとノード型',
     // 操作: エッジの検索語に「ذكر」（自己ループ e-self の relation「ذكر نفسه」の一部）。
     const search = page.getByRole('search', { name: 'エッジのテキスト検索' });
     await search.getByRole('searchbox').fill('ذكر');
-    await search.getByRole('button', { name: '検索' }).click();
+    await search.getByRole('button', { name: '検索', exact: true }).click();
     // 期待: エッジは e-self の 1 本。両端（p6）だけが残るのでノード 1。
     await expectCounts(page, [1, 15], [1, 17]);
   });
@@ -206,7 +206,7 @@ test.describe('FR-FL-12: テキスト検索のゆるい／厳密', () => {
     const search = page.getByRole('search', { name: 'ノードのテキスト検索' });
     // 操作: ハムザ付きのアリフを含まない「احمد」で検索（既定は「ゆるい」）。
     await search.getByRole('searchbox').fill('احمد');
-    await search.getByRole('button', { name: '検索' }).click();
+    await search.getByRole('button', { name: '検索', exact: true }).click();
     // 期待: ラベルが「أحمد…」の p18 と p19 に当たる。間のエッジ e9 が 1 本。
     await expectCounts(page, [2, 15], [1, 17]);
     await expect(appliedRegion(page)).toContainText('ゆるい');
@@ -219,7 +219,7 @@ test.describe('FR-FL-12: テキスト検索のゆるい／厳密', () => {
 
     // 操作: ハムザ付きの「أحمد」を厳密のまま検索する。
     await search.getByRole('searchbox').fill('أحمد');
-    await search.getByRole('button', { name: '検索' }).click();
+    await search.getByRole('button', { name: '検索', exact: true }).click();
     // 期待: 厳密でも、表記が同じなら当たる。
     await expectCounts(page, [2, 15], [1, 17]);
   });
@@ -227,10 +227,10 @@ test.describe('FR-FL-12: テキスト検索のゆるい／厳密', () => {
   test('FR-FL-12: 空の検索語で確定すると、検索を解除する', async ({ page }) => {
     const search = page.getByRole('search', { name: 'ノードのテキスト検索' });
     await search.getByRole('searchbox').fill('احمد');
-    await search.getByRole('button', { name: '検索' }).click();
+    await search.getByRole('button', { name: '検索', exact: true }).click();
     await expectCounts(page, [2, 15], [1, 17]);
     await search.getByRole('searchbox').fill('');
-    await search.getByRole('button', { name: '検索' }).click();
+    await search.getByRole('button', { name: '検索', exact: true }).click();
     await expectCounts(page, [14, 15], [17, 17]);
     await expect(appliedRegion(page)).toContainText('適用中のフィルタはありません。');
   });

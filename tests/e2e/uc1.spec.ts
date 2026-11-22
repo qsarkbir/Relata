@@ -2,13 +2,14 @@
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { counts, openCsvDialog, openProject, saveButton, startApp } from './support';
-
-async function downloadText(page: Page, name: string): Promise<string> {
-  const pending = page.waitForEvent('download');
-  await page.getByRole('button', { name, exact: true }).click();
-  return readFileSync(await (await pending).path(), 'utf8');
-}
+import {
+  counts,
+  openCsvDialog,
+  openProject,
+  saveProjectFile,
+  saveSvgFile,
+  startApp,
+} from './support';
 
 /**
  * 上部の「CSV出力」のダイアログから CSV を保存し、ダイアログを閉じて中身を返す。
@@ -62,13 +63,15 @@ test('UC-1 / FR-IN-04 / FR-VG-03 / FR-MT-04 / FR-OUT-01/02 / FR-PJ-01: 書簡を
   expect(metricCsv).toContain('Group A1');
   expect(metricCsv).toContain('Group A2');
   expect(metricCsv).not.toMatch(/,C,/u);
-  const svg = await downloadText(page, 'SVGを保存');
+  const pendingSvg = page.waitForEvent('download');
+  await saveSvgFile(page);
+  const svg = readFileSync(await (await pendingSvg).path(), 'utf8');
   expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
   expect(svg).toContain('Group A');
   await page.getByRole('button', { name: '拡大', exact: true }).click();
   const transform = await page.locator('.graph-canvas svg > g').getAttribute('transform');
   const pending = page.waitForEvent('download');
-  await saveButton(page).click();
+  await saveProjectFile(page);
   const saved = readFileSync(await (await pending).path(), 'utf8');
   expect(saved).toContain('"metric":"degree"');
   expect(saved).toContain('"selfLoops":false');

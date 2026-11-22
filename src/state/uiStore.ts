@@ -7,9 +7,9 @@ import { DEFAULT_LOCALE } from '../i18n';
  *
  * - `about`: このツールについて
  * - `csvExport`: CSV の書き出し
- * - `metricsNotes`: 指標の計算上の注意
+ * - `save`: 保存（プロジェクトか図かを選ぶ）
  */
-export type DialogId = 'about' | 'csvExport' | 'metricsNotes';
+export type DialogId = 'about' | 'csvExport' | 'save';
 
 /**
  * 処理の名前。翻訳キーと差し込みの値で持つ。

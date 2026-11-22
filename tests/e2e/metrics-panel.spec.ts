@@ -61,21 +61,21 @@ test.describe('FR-MT-02/03/04 / FR-UI-04: 指標パネル', () => {
     await expect(table.locator('tbody tr').first().getByRole('rowheader')).toHaveText('A');
     await degree.click();
     await expect(table.locator('tbody tr').first().getByRole('rowheader')).toHaveText('B');
-    await page.getByText('指標の意味を読む', { exact: true }).click();
-    await expect(page.getByText(/ほかのノード間の最短経路をどれだけ仲介/)).toBeVisible();
+    // 【なぜ】指標の意味は、狭いパネルに広げず、アイコンから開くダイアログで読む（利用者の指摘）。
+    await page.getByRole('button', { name: /^説明: 指標の意味と計算上の注意/ }).click();
+    const info = page.getByRole('dialog', { name: '指標の意味と計算上の注意', exact: true });
+    await expect(info.getByText(/ほかのノード間の最短経路をどれだけ仲介/)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(info).toBeHidden();
     await page.screenshot({ path: 'test-results/metrics-panel.png', fullPage: true });
   });
   test('孤立ノードの設定変更で自動再計算し、古い値を表示し続けない', async ({ page }) => {
     await startApp(page);
     await openProject(page, projectFile());
     await expect(page.getByTestId('metric-global-nodeCount')).toHaveText('3');
-    await page
-      .getByRole('checkbox', { name: '孤立ノード（表示されるエッジのないノード）を表示する' })
-      .check();
+    await page.getByRole('checkbox', { name: '孤立ノードを表示する' }).check();
     await expect(page.getByTestId('metric-global-nodeCount')).toHaveText('4');
-    await page
-      .getByRole('checkbox', { name: '孤立ノード（表示されるエッジのないノード）を表示する' })
-      .uncheck();
+    await page.getByRole('checkbox', { name: '孤立ノードを表示する' }).uncheck();
     await expect(page.getByTestId('metric-global-nodeCount')).toHaveText('3');
   });
   test('待ち時間中に取り消せ、再計算すると実Workerの結果が表示される', async ({ page }) => {
@@ -84,9 +84,7 @@ test.describe('FR-MT-02/03/04 / FR-UI-04: 指標パネル', () => {
     await expect(page.getByTestId('metric-global-nodeCount')).toHaveText('3');
     await page.clock.install({ time: new Date('2026-01-01T00:00:00Z') });
     await page.clock.pauseAt(new Date('2026-01-01T00:00:01Z'));
-    await page
-      .getByRole('checkbox', { name: '孤立ノード（表示されるエッジのないノード）を表示する' })
-      .check();
+    await page.getByRole('checkbox', { name: '孤立ノードを表示する' }).check();
     await expect(
       page.getByRole('progressbar', { name: '絞り込み後のグラフの指標を計算中…' }),
     ).toBeVisible();
@@ -103,8 +101,10 @@ test.describe('FR-MT-02/03/04 / FR-UI-04: 指標パネル', () => {
     await openProject(page, 'maghrib.relata.json');
     await expect(page.getByTestId('metric-global-nodeCount')).toHaveText('14');
     // 【なぜ】注意はボタンの件数で示し、全文はダイアログで読む（利用者の指摘、2026-11-22）。
-    await page.getByRole('button', { name: '計算上の注意（2件）', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: '指標の計算上の注意', exact: true });
+    await page
+      .getByRole('button', { name: '説明: 指標の意味と計算上の注意（注意 2 件）', exact: true })
+      .click();
+    const dialog = page.getByRole('dialog', { name: '指標の意味と計算上の注意', exact: true });
     await expect(dialog.getByText(/ノード型が複数あります/)).toBeVisible();
     await expect(dialog.getByText(/次の指標は向きを無視して計算しました/)).toBeVisible();
   });

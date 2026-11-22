@@ -1,6 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { startApp, openProject, saveButton, readAutosave, waitForAutosave } from './support';
+import {
+  startApp,
+  openProject,
+  readAutosave,
+  waitForAutosave,
+  saveProjectFile,
+  saveSvgFile,
+} from './support';
 
 test.use({ locale: 'ja-JP' });
 
@@ -19,7 +26,7 @@ test('FR-VG-09/11: Workerで表示し検索・選択・向きの強調と拡大�
   await expect(page.locator('.graph-search-results button').first()).toBeVisible();
   await page.locator('.graph-search-results button').first().click();
   await expect(page.getByRole('region', { name: '選択したノードの詳細' })).toBeVisible();
-  await page.getByLabel('関係の強調').selectOption('out');
+  await page.getByLabel('関係の強調', { exact: true }).selectOption('out');
   await page.getByRole('button', { name: '位置を固定', exact: true }).click();
   await expect(page.getByRole('button', { name: '固定を解除', exact: true })).toBeVisible();
   await page.getByLabel('ラベル', { exact: true }).selectOption('selected');
@@ -28,7 +35,7 @@ test('FR-VG-09/11: Workerで表示し検索・選択・向きの強調と拡大�
     .allTextContents();
   expect(selectedLabel.length).toBeGreaterThan(0);
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'SVGを保存' }).click();
+  await saveSvgFile(page);
   const file = await download;
   const path = await file.path();
   const svg = readFileSync(path, 'utf8');
@@ -70,7 +77,7 @@ test('FR-PJ-01/02 / NFR-08: 配置・固定点・拡大と表示設定をファ�
   const zoom = await page.getByRole('img', { name: 'ネットワーク図' }).getAttribute('data-zoom');
   const center = await nodeCenter(page, 'p1');
   const download = page.waitForEvent('download');
-  await saveButton(page).click();
+  await saveProjectFile(page);
   const file = await download;
   const path = await file.path();
   const text = readFileSync(path, 'utf8');
@@ -110,7 +117,7 @@ test('FR-VG-11 / NFR-08: ドラッグした位置を固定し、ファイルと�
   if (id === null) throw new Error('node');
   const saveGraph = async () => {
     const download = page.waitForEvent('download');
-    await saveButton(page).click();
+    await saveProjectFile(page);
     const path = await (await download).path();
     const text = readFileSync(path, 'utf8');
     // 【なぜ】アプリ自身が保存したJSONから、このテストが比較する項目だけを読む。
@@ -175,7 +182,7 @@ test('FR-VG-03/04/08/09: 次数サイズ・属性色・型形・スケールとp
   await expect(edges.locator('[stroke="#0072b2"]')).not.toHaveCount(0);
   await expect(edges.locator('[stroke="#7b3294"]')).not.toHaveCount(0);
   const download = page.waitForEvent('download');
-  await saveButton(page).click();
+  await saveProjectFile(page);
   const path = await (await download).path();
   const saved = readFileSync(path, 'utf8');
   expect(saved).toContain('"metric":"degree"');
@@ -242,7 +249,7 @@ test('FR-VG-11: 再配置の応答待ち中でも固定・解除を失わず、�
       }),
     ).toBeVisible();
     const download = page.waitForEvent('download');
-    await saveButton(page).click();
+    await saveProjectFile(page);
     const path = await (await download).path();
     const saved: unknown = JSON.parse(readFileSync(path, 'utf8'));
     expect(saved).toMatchObject({

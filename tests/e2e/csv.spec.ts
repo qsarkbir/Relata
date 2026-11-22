@@ -56,15 +56,17 @@ test('FR-MT-04: 新しい計算中や取消後は古い指標CSVを保存させ�
   ).toBeVisible();
 });
 
-test('FR-UI-04: 指標の計算上の注意は、ボタンから開くダイアログで詳しく読める', async ({ page }) => {
+test('FR-UI-04: 指標の計算上の注意は、〇に！のアイコンから開くダイアログで詳しく読める', async ({
+  page,
+}) => {
   await startApp(page);
   await openProject(page, 'maghrib.relata.json');
-  const open = page.getByRole('button', { name: /計算上の注意/u });
+  const open = page.getByRole('button', { name: /^説明: 指標の意味と計算上の注意（注意/u });
   await expect(open).toBeVisible();
   await open.click();
-  const dialog = page.getByRole('dialog', { name: '指標の計算上の注意', exact: true });
+  const dialog = page.getByRole('dialog', { name: '指標の意味と計算上の注意', exact: true });
   await expect(dialog.getByRole('heading', { name: /向きを無視して計算しました/u })).toBeVisible();
-  await expect(dialog.getByText('弱連結成分', { exact: false })).toBeVisible();
+  await expect(dialog.getByText('弱連結成分', { exact: false }).first()).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
 });

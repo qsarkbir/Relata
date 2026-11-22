@@ -8,6 +8,7 @@ import type { FilterOfKind } from './activeFilters';
 import { DuplicateNotice } from './DuplicateNotice';
 import { categoryFilterId } from './filterIds';
 import { categoryKeyText } from './labels';
+import { InfoTip } from '../ui/InfoTip';
 
 /** 最初に表示する項目の数（種類の多い属性で、一覧が長くなりすぎないように）。 */
 const INITIAL_LIMIT = 50;
@@ -83,7 +84,11 @@ export function FacetControl({ target, def, getCounts, active, duplicates }: Fac
     const hidden = ordered.length - visible.length;
     body = (
       <>
-        <p className="hint">{t('filter.facet.hint')}</p>
+        <div className="info-row">
+          <InfoTip topic={t('filter.facet.topic')}>
+            <p>{t('filter.facet.hint')}</p>
+          </InfoTip>
+        </div>
         <ul className="facet-list">
           {visible.map((c) => {
             const id = categoryKeyId(c.key);

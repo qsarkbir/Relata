@@ -13,6 +13,9 @@ import { toNodeId } from '../core/model';
 import { matchIncludes, LOOSE_MATCH } from '../core/text';
 import { buildScene, renderSvg } from '../render';
 import { createSvgExport, downloadSvg } from '../io/export';
+import { setSvgExporter } from './svgExport';
+import { IconButton } from './ui/icons';
+import { InfoTip } from './ui/InfoTip';
 import { graphViewStore, layoutController, uiStore } from '../state';
 import { useData, useFilter, useT } from './hooks';
 import './graph.css';
@@ -246,6 +249,42 @@ export function GraphView() {
     // 位置・viewportの保存更新では反復を再開しない。入力グラフと方式/seed、明示再計算だけを監視する。
   }, [graph, view.layout, view.seed, iteration, measureText, encoding]);
   const hasFigure = dataset !== null && graph !== null && scene !== null;
+  // 【なぜ】「保存」のダイアログから図を保存できるよう、今の図を保存する関数を登録する（svgExport.ts）。
+  const canExport = hasFigure && scene.nodes.length > 0;
+  useEffect(() => {
+    if (!canExport) {
+      setSvgExporter(null);
+      return;
+    }
+    setSvgExporter(() => {
+      downloadSvg(
+        createSvgExport(graph, positions, encoding, {
+          labels: view.labels,
+          largeLabelCount: view.largeLabelCount,
+          // 【なぜ】選択ラベルの候補は渡し、選択の輪郭だけを保存から除く。
+          selected: visibleSelected,
+          includeSelection: false,
+          directedStyle: view.direction,
+          measureText,
+          title: dataset.meta.title,
+        }),
+      );
+    });
+    return () => {
+      setSvgExporter(null);
+    };
+  }, [
+    canExport,
+    dataset,
+    graph,
+    positions,
+    encoding,
+    view.labels,
+    view.largeLabelCount,
+    view.direction,
+    visibleSelected,
+    measureText,
+  ]);
   useEffect(() => {
     const element = svg.current;
     if (!hasFigure || element === null) return;
@@ -465,45 +504,21 @@ export function GraphView() {
           }}
         />
         <div className="graph-controls">
-          <button
-            type="button"
+          <IconButton
+            icon="zoomIn"
+            label={t('graph.zoomIn')}
             onClick={() => {
               zoomBy(1.25);
             }}
-          >
-            {t('graph.zoomIn')}
-          </button>
-          <button
-            type="button"
+          />
+          <IconButton
+            icon="zoomOut"
+            label={t('graph.zoomOut')}
             onClick={() => {
               zoomBy(0.8);
             }}
-          >
-            {t('graph.zoomOut')}
-          </button>
-          <button type="button" onClick={fit}>
-            {t('graph.fit')}
-          </button>
-          <button
-            type="button"
-            disabled={scene.nodes.length === 0}
-            onClick={() => {
-              downloadSvg(
-                createSvgExport(graph, positions, encoding, {
-                  labels: view.labels,
-                  largeLabelCount: view.largeLabelCount,
-                  // 【なぜ】選択ラベルの候補は渡し、選択の輪郭だけを保存から除く。
-                  selected: visibleSelected,
-                  includeSelection: false,
-                  directedStyle: view.direction,
-                  measureText,
-                  title: dataset.meta.title,
-                }),
-              );
-            }}
-          >
-            {t('graph.export')}
-          </button>
+          />
+          <IconButton icon="fit" label={t('graph.fit')} onClick={fit} />
         </div>
         <label>
           {t('graph.search')}{' '}
@@ -557,7 +572,6 @@ export function GraphView() {
             ))}
           </select>
         </label>
-        <p>{t('graph.highlightLegend')}</p>
         <label>
           {t('graph.highlight')}{' '}
           <select
@@ -572,7 +586,10 @@ export function GraphView() {
             <option value="in">{t('graph.in')}</option>
             <option value="out">{t('graph.out')}</option>
           </select>
-        </label>
+        </label>{' '}
+        <InfoTip topic={t('graph.highlight')}>
+          <p>{t('graph.highlightLegend')}</p>
+        </InfoTip>
       </details>
       <div className="graph-canvas" ref={frame}>
         <svg

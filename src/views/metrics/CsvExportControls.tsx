@@ -5,6 +5,7 @@ import type { MetricsResult } from '../../core/metrics';
 import { applyFilters } from '../../core/filter';
 import { downloadCsv, exportDatasetCsv, exportMetricsCsv } from '../../io/export/csv';
 import { useT } from '../hooks';
+import { InfoTip } from '../ui/InfoTip';
 
 /** CSVボタンの現在の入力。 */
 interface CsvExportControlsProps {
@@ -41,7 +42,12 @@ export function CsvExportControls({ dataset, filter, result }: CsvExportControls
   };
   return (
     <fieldset className="csv-export">
-      <legend>{t('csv.options')}</legend>
+      <legend>
+        {t('csv.options')}{' '}
+        <InfoTip topic={t('csv.options')}>
+          <p>{t('csv.hint')}</p>
+        </InfoTip>
+      </legend>
       <label>
         <input
           type="checkbox"
@@ -62,7 +68,6 @@ export function CsvExportControls({ dataset, filter, result }: CsvExportControls
         />
         {t('csv.protection')}
       </label>
-      <p className="hint">{t('csv.hint')}</p>
       <div className="metrics-actions">
         {(['nodes', 'edges', 'metrics', 'global'] as const).map((kind) => (
           <button

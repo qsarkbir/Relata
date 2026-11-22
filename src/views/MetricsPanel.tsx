@@ -9,7 +9,7 @@ import {
 } from '../core/metrics/types';
 import { metricsController } from '../state';
 import { useData, useT, useUi } from './hooks';
-import { ModalDialog } from './ModalDialog';
+import { InfoTip } from './ui/InfoTip';
 import { getCollator } from './intl';
 import {
   NODE_METRIC_LABELS,
@@ -124,7 +124,6 @@ export function MetricsPanel() {
 function MetricResults({ result }: { readonly result: MetricsResult }) {
   const t = useT();
   const locale = useUi((s) => s.locale);
-  const setOpenDialog = useUi((s) => s.setOpenDialog);
   const dataset = useData((s) => s.dataset);
   const nf = useMemo(
     () => new Intl.NumberFormat(locale, { maximumSignificantDigits: 6 }),
@@ -186,7 +185,48 @@ function MetricResults({ result }: { readonly result: MetricsResult }) {
   return (
     <>
       <section aria-labelledby="metrics-global-title">
-        <h3 id="metrics-global-title">{t('metrics.global')}</h3>
+        <h3 id="metrics-global-title">
+          {t('metrics.global')}{' '}
+          {/* 【なぜ】計算上の注意と指標の意味を、1 つのアイコンにまとめる。狭いパネルに長い説明を
+              広げると読みにくいため、ダイアログで読む（利用者の指摘、2026-11-22）。
+              注意があるときは、件数をアイコンの横に示して気づけるようにする。 */}
+          <InfoTip topic={t('metrics.info.topic')} count={result.notes.length}>
+            {result.notes.length > 0 && (
+              <section>
+                <h3>{t('metrics.notes.title')}</h3>
+                {result.notes.map((note) => {
+                  const affected = [
+                    ...note.nodeMetrics.map((id) => t(NODE_METRIC_LABELS[id])),
+                    ...note.globalMetrics.map((id) => t(globalNames[id])),
+                  ];
+                  return (
+                    <section key={note.code} className="metrics-note">
+                      <h4>{t(noteNames[note.code])}</h4>
+                      {affected.length > 0 && (
+                        <p>
+                          <strong>{t('metrics.notes.affected')}</strong> {affected.join(', ')}
+                        </p>
+                      )}
+                      <p>{t(noteDetails[note.code])}</p>
+                    </section>
+                  );
+                })}
+              </section>
+            )}
+            <section>
+              <h3>{t('metrics.explanations')}</h3>
+              <dl className="metrics-definitions">
+                {[...definitions].map(([name, help]) => (
+                  <div key={name}>
+                    <dt>{t(name)}</dt>
+                    <dd>{t(help)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+            <p className="hint">{t('metrics.notes.docs')}</p>
+          </InfoTip>
+        </h3>
         <dl className="metrics-global">
           {GLOBAL_METRIC_IDS.map((id) => {
             const outcome = result.global[id];
@@ -209,42 +249,6 @@ function MetricResults({ result }: { readonly result: MetricsResult }) {
           })}
         </dl>
       </section>
-      {result.notes.length > 0 && (
-        <>
-          {/* 【なぜ】注意の全文は場所を取るので、ボタンから開くダイアログで詳しく示す（利用者の指摘）。 */}
-          <button
-            type="button"
-            className="metrics-notes-open"
-            aria-haspopup="dialog"
-            onClick={() => {
-              setOpenDialog('metricsNotes');
-            }}
-          >
-            <span aria-hidden="true">ⓘ </span>
-            {t('metrics.notes.open', { count: result.notes.length })}
-          </button>
-          <ModalDialog id="metricsNotes" title={t('metrics.notes.title')} className="notes-dialog">
-            {result.notes.map((note) => {
-              const affected = [
-                ...note.nodeMetrics.map((id) => t(NODE_METRIC_LABELS[id])),
-                ...note.globalMetrics.map((id) => t(globalNames[id])),
-              ];
-              return (
-                <section key={note.code} className="metrics-note">
-                  <h3>{t(noteNames[note.code])}</h3>
-                  {affected.length > 0 && (
-                    <p>
-                      <strong>{t('metrics.notes.affected')}</strong> {affected.join(', ')}
-                    </p>
-                  )}
-                  <p>{t(noteDetails[note.code])}</p>
-                </section>
-              );
-            })}
-            <p className="hint">{t('metrics.notes.docs')}</p>
-          </ModalDialog>
-        </>
-      )}
       <div
         className="metrics-table-wrap"
         role="region"
@@ -304,17 +308,6 @@ function MetricResults({ result }: { readonly result: MetricsResult }) {
           {t('metrics.next')}
         </button>
       </div>
-      <details className="metrics-definitions">
-        <summary>{t('metrics.explanations')}</summary>
-        <dl>
-          {[...definitions].map(([name, help]) => (
-            <div key={name}>
-              <dt>{t(name)}</dt>
-              <dd>{t(help)}</dd>
-            </div>
-          ))}
-        </dl>
-      </details>
     </>
   );
 }
