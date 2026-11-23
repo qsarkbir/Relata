@@ -56,9 +56,40 @@ async function openTimeline(page: Page): Promise<void> {
 
 /** 描画の領域の、左から ratio の位置（0〜1）の座標。 */
 async function pointAt(page: Page, ratio: number): Promise<{ x: number; y: number }> {
-  const box = await plot(page).boundingBox();
-  if (box === null) throw new Error('描画の領域が見えない');
+  const box = await stableBox(plot(page));
   return { x: box.x + box.width * ratio, y: box.y + box.height / 2 };
+}
+
+/**
+ * 位置が落ち着いた後の矩形を返す。
+ *
+ * 【なぜ】タブを開いた直後やフィルタの適用の直後は、ページのスクロールや上の行の高さが
+ * 1〜2 フレーム遅れて変わり、描画の領域が数十 px 動くことがある。動いている途中の座標で
+ * ドラッグすると、領域の外（再生の操作など）を押してしまい、CI のような遅い環境で失敗した。
+ * 画面に入れたうえで、2 回続けて同じ矩形になるまで待つ。
+ */
+async function stableBox(
+  target: Locator,
+): Promise<{ x: number; y: number; width: number; height: number }> {
+  await target.scrollIntoViewIfNeeded();
+  let prev = await target.boundingBox();
+  for (let i = 0; i < 20; i++) {
+    await target.page().waitForTimeout(50);
+    const next = await target.boundingBox();
+    if (
+      prev !== null &&
+      next !== null &&
+      prev.x === next.x &&
+      prev.y === next.y &&
+      prev.width === next.width &&
+      prev.height === next.height
+    ) {
+      return next;
+    }
+    prev = next;
+  }
+  if (prev === null) throw new Error('描画の領域が見えない');
+  return prev;
 }
 
 async function drag(page: Page, from: number, to: number): Promise<void> {

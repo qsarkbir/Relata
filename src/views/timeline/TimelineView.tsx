@@ -25,6 +25,8 @@ import { sourceToValue, valueToSource } from '../filter/timeInput';
 import { Field } from '../ui/Field';
 import { InfoTip } from '../ui/InfoTip';
 import { bandIndexes, binIndexAt, tickIndexes } from './timelineLayout';
+import { TimeControls } from './TimeControls';
+import { TimeCursor } from './TimeCursor';
 import './timeline.css';
 
 /** 描画の領域の余白（CSS ピクセル）。左は件数の目盛り、下は年の目盛りの分。 */
@@ -217,7 +219,6 @@ export function TimelineView() {
     [dataset, source, shownIds, target, calendar, width],
   );
   const bins = result?.bins;
-
   const { ref: chartRef, size } = useElementSize<HTMLDivElement>();
   const [sel, setSel] = useState<Selection | null>(null);
   // 【なぜ】選択の番号は「区切りの何番目か」なので、軸（先頭の年、幅、暦、区切りの数、対象）が変わると
@@ -525,6 +526,7 @@ export function TimelineView() {
           </button>
         )}
       </div>
+      <TimeControls />
       {message !== null && <p className="hint">{message}</p>}
       <div className="timeline-main">
         {/* 【なぜ】`role="application"`: 矢印キーなどをスクリーンリーダーの閲覧モードに奪われず、この部品に届ける。 */}
@@ -582,6 +584,9 @@ export function TimelineView() {
                     height={plotH}
                   />
                 )}
+                {/* 再生のカーソルと窓（FR-TM-02、FR-TM-03）。時刻は毎コマ変わるので、小さな部品に分け、
+                    年表の他の部分（集計、棒、選択）を再描画しない（NFR-05）。 */}
+                <TimeCursor bins={bins} barW={barW} plotH={plotH} calendar={calendar} />
                 {/* 描画の領域全体でポインタを受ける（棒のない場所でもドラッグを始められる）。 */}
                 <rect
                   className="tl-hit"

@@ -68,3 +68,6 @@ export {
   sameTimeSource,
   timelineSourceOptions,
 } from './timeline';
+
+export type { TimeSpan, TimeIndex, OutOfTime, GraphEdgeRef } from './timeFade';
+export { itemTimeSpans, buildTimeIndex, outOfTime, fadedGraphEdges } from './timeFade';

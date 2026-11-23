@@ -45,6 +45,11 @@ export interface SceneNode {
   readonly attrMissing?: boolean;
   /** 選択の強調を書き出しに含める指定のとき、選択中のノードだけ true。 */
   readonly selected: boolean;
+  /**
+   * 再生の時刻の外（D-38）。true なら薄く描く（消さない）。`markOutOfTime` が付ける。
+   * 【なぜ】座標やラベルの配置を変えずに、描くときの不透明度だけを変えるため。
+   */
+  readonly faded?: boolean;
 }
 
 /**
@@ -65,6 +70,8 @@ export interface SceneEdge extends EdgeGeometry {
   readonly dashed: boolean;
   /** 指定した属性の欠損による破線か（ノードの `attrMissing` と同じ。間隔を変えて描く）。 */
   readonly attrMissing?: boolean;
+  /** 再生の時刻の外（D-38）。true なら薄く描く。 */
+  readonly faded?: boolean;
 }
 
 /** ラベル 1 つ。座標は文字の基準点で、`anchor` が基準点と文字の位置関係を決める。 */
@@ -83,19 +90,39 @@ export interface SceneLabel {
    * `renderSvg` が変換する。
    */
   readonly anchor: 'left' | 'right';
+  /** 再生の時刻の外のノードのラベル（D-38）。true なら薄く描く。 */
+  readonly faded?: boolean;
 }
+
+/**
+ * 凡例の見本の種類。`node` はノードの図形、`line` は線、`arrow` は矢じり付きの線、
+ * `taper` は先細りの帯（始点が太く終点が細い）、`gradient` は濃淡の線（終点が濃い）、
+ * `none` は見本なしの文字だけの行（見出し、出典表記）。
+ */
+export type LegendMark = 'node' | 'line' | 'arrow' | 'taper' | 'gradient' | 'none';
 
 /** 凡例の 1 項目。見本の図形と文字。 */
 export interface SceneLegendItem {
   readonly swatch: {
     readonly x: number;
     readonly y: number;
+    /** `node` は半径。`line`、`arrow` は線の長さの半分。 */
     readonly r: number;
     readonly shape: NodeShape;
     readonly fill: string;
     readonly dashed: boolean;
+    /** 見本の種類。 */
+    readonly mark: LegendMark;
+    /** 指定した属性の欠損の破線か（間隔を変える。`dashed` が true のときだけ意味を持つ）。 */
+    readonly attrMissing?: boolean;
+    /** 線の見本（`line`、`arrow`、`taper`、`gradient`）の太さ（px）。矢じりの大きさは、エッジと同じ式でこの太さから決める。 */
+    readonly lineWidth?: number;
+    /** 線の見本の不透明度（0 から 1）。省略は 1。図のエッジと同じ見え方にするために使う。 */
+    readonly opacity?: number;
   };
   readonly label: SceneLabel;
+  /** 見出しとして太字にするか。 */
+  readonly bold?: boolean;
 }
 
 /** 凡例。図の右側に置く。 */

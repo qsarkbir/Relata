@@ -2,7 +2,7 @@ import { GraphView } from '../views/GraphView';
 import { BottomPanel } from '../views/BottomPanel';
 import { ConditionsBar } from '../views/ConditionsBar';
 import { AboutDialog } from '../views/AboutDialog';
-import { CsvExportMenu } from '../views/metrics/CsvExportMenu';
+import { ExportMenu } from '../views/export/ExportMenu';
 import { SidePanel } from '../views/ui/SidePanel';
 import { FilterPanel } from '../views/FilterPanel';
 import { SampleCard } from '../views/SampleCard';
@@ -14,6 +14,7 @@ import { MetricsPanel } from '../views/MetricsPanel';
 import { useData, useT, useUi, useWorkspaceView } from '../views/hooks';
 import { LOCALES, LOCALE_NAMES } from '../i18n';
 import { clearAutosave } from './autosaveService';
+import { usePlaybackClock } from './playbackClock';
 import './tokens.css';
 import './app.css';
 
@@ -28,6 +29,7 @@ import './app.css';
 // 【TS】`.tsx` は JSX（HTML に似た記法）を書ける TypeScript のファイル。
 //       戻り値の型は、TypeScript が JSX の中身から推論するので書かなくてよい。
 export function App() {
+  usePlaybackClock();
   const t = useT();
   const locale = useUi((s) => s.locale);
   const setLocale = useUi((s) => s.setLocale);
@@ -48,7 +50,7 @@ export function App() {
               void clearAutosave();
             }}
           />
-          <CsvExportMenu />
+          <ExportMenu />
           <div role="group" aria-label={t('locale.label')} className="locale-switch">
             {LOCALES.map((l) => (
               <button

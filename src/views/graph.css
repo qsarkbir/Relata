@@ -315,3 +315,9 @@
   margin-block: 0 var(--rl-space-2);
   padding-inline-start: 1.2em;
 }
+.graph-time-note {
+  margin: 0;
+  padding: var(--rl-space-1) var(--rl-space-2);
+  color: var(--rl-text-muted);
+  font-size: var(--rl-font-sm);
+}

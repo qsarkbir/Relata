@@ -1,7 +1,7 @@
 {
   "name": "relata",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "license": "BSD-3-Clause",
   "engines": {
@@ -22,10 +22,12 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "bidi-js": "^1.1.0",
     "comlink": "^4.4.2",
     "graphology": "^0.26.0",
     "graphology-layout-forceatlas2": "0.10.1",
     "graphology-metrics": "^2.4.2",
+    "harfbuzzjs": "^1.6.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",

@@ -22,3 +22,4 @@ export type {
 } from './tableView';
 export { DEFAULT_TIMELINE, parseTimeline } from './timelineView';
 export type { TimelineSettings } from './timelineView';
+export { parseTimeSettings } from './timeView';

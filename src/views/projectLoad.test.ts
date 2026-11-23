@@ -114,7 +114,7 @@ describe('loadProjectText', () => {
     const snap = takeSnapshot(t.data, t.filter);
     expect(Object.keys(snap?.view ?? {}).sort()).toEqual(
       PROJECT_VIEW_KEYS.filter(
-        (key) => !['graph', 'table', 'workspace', 'display', 'timeline'].includes(key),
+        (key) => !['graph', 'table', 'workspace', 'display', 'timeline', 'time'].includes(key),
       ).sort(),
     );
     // 既定のままの任意の項目は書かない（読み込みで既定が補われる）。

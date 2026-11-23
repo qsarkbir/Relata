@@ -44,3 +44,36 @@ export {
   binsDayRange,
 } from './bins';
 export type { TimeBinWidth } from './bins';
+export {
+  TIME_MODES,
+  TIME_SPEEDS,
+  TIME_WINDOW_YEARS,
+  DEFAULT_TIME_SETTINGS,
+  isTimeMode,
+  isTimeSpeed,
+  isTimeWindowYears,
+  isDefaultTimeSettings,
+  makeTimeAxis,
+  meanYearDays,
+  clampTime,
+  seekTime,
+  startPlayback,
+  pausePlayback,
+  clearTime,
+  tickTime,
+  stepTime,
+  binIndexOfTime,
+  setTimeMode,
+  setTimeSpeed,
+  setTimeWindowYears,
+  timeWindowOf,
+} from './playback';
+export type {
+  TimeMode,
+  TimeSpeed,
+  TimeWindowYears,
+  TimeSettings,
+  TimeState,
+  TimeAxis,
+  TimeWindow,
+} from './playback';

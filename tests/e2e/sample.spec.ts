@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { startApp, counts, loadedNotice, openProject, csvButton } from './support';
+import { startApp, counts, loadedNotice, openProject, exportButton } from './support';
 test.use({ locale: 'ja-JP' });
 
 test('FR-IN-09: 日本語の説明と承認済み英題を表示し1クリックで全サンプルを読む', async ({
@@ -15,7 +15,7 @@ test('FR-IN-09: 日本語の説明と承認済み英題を表示し1クリック
   await expect(loadedNotice(page)).toContainText('Scholars and Sufis');
   await expect(counts(page)).toContainText('/ 219');
   await expect(counts(page)).toContainText('/ 204');
-  await expect(csvButton(page)).toBeEnabled();
+  await expect(exportButton(page)).toBeEnabled();
   await expect(page.getByRole('button', { name: 'サンプルを読み込む' })).toHaveCount(0);
 });
 

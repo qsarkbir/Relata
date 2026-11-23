@@ -1,6 +1,6 @@
 import { EncodingControls } from './EncodingControls';
 import { MissingDisplayControls } from './MissingDisplayControls';
-import { graphEncoding } from './graphEncoding';
+import { graphEncodingWithLegends } from './graphEncoding';
 import { createGraphMeasure } from './graphMeasure';
 /** グラフ表示と操作。元データとフィルタは既存ストアを参照する（T1-19）。 */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -12,9 +12,10 @@ import type { NodeId } from '../core/model';
 import { toNodeId } from '../core/model';
 import { findMissingElements } from '../core/missing';
 import { matchIncludes, LOOSE_MATCH } from '../core/text';
-import { buildScene, renderSvg } from '../render';
-import { createSvgExport, downloadSvg } from '../io/export';
-import { setSvgExporter } from './svgExport';
+import { buildScene, markOutOfTime, renderSvg } from '../render';
+import { createSvgExport } from '../io/export';
+import { setFigureSource } from './figureExport';
+import { buildFigureLegend } from './figureLegend';
 import { Icon, IconButton } from './ui/icons';
 import { InfoTip } from './ui/InfoTip';
 import { CollapsibleSection } from './ui/CollapsibleSection';
@@ -34,6 +35,8 @@ import {
   uiStore,
 } from '../state';
 import { useData, useSelection, useT, useUi } from './hooks';
+import { TimeFadeNote } from './TimeFadeNote';
+import { useTimeFade } from './timeFade';
 import { useNetwork } from './useNetwork';
 import { clientToSvg, useRangeSelect } from './useRangeSelect';
 import { RangeSelectSummary } from './RangeSelectSummary';
@@ -159,10 +162,14 @@ export function GraphView() {
       .getState()
       .setView({ ...(graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW), ...change });
   };
-  const encoding = useMemo(
-    () => (graph === null || dataset === null ? {} : graphEncoding(dataset, graph, view.encoding)),
+  const encodingWithLegends = useMemo(
+    () =>
+      graph === null || dataset === null
+        ? null
+        : graphEncodingWithLegends(dataset, graph, view.encoding),
     [graph, dataset, view.encoding],
   );
+  const encoding = useMemo(() => encodingWithLegends?.encoding ?? {}, [encodingWithLegends]);
   // 【なぜ】「欠損の表示」の判定は core の関数で行う。図のエッジはまとめた後のものなので、元のエッジのどれかが
   // 欠損していれば、そのエッジ（グラフのキー）を破線にする。位置や配置の計算には関わらない（再配置しない）。
   const missingMarks = useMemo(() => {
@@ -185,6 +192,9 @@ export function GraphView() {
   );
   const positions = useMemo(() => new Map(view.positions.map((p) => [p.id, p])), [view.positions]);
   const measureText = useMemo(() => createGraphMeasure(), []);
+  // 【なぜ】再生の「時刻の外」は、配置やシーンの組み立てには入れない（再生のたびに再配置・再構築しない。R-17）。
+  //   組み立て済みのシーンに、薄くする印だけを後から付ける。フィルタ、件数、指標には関わらない。
+  const timeFade = useTimeFade();
   const scene = useMemo(
     () =>
       graph === null
@@ -353,31 +363,64 @@ export function GraphView() {
     // 位置・viewportの保存更新では反復を再開しない。入力グラフと方式/seed、明示再計算だけを監視する。
   }, [graph, dataset, view.layout, view.seed, iteration, measureText, encoding]);
   const hasFigure = dataset !== null && graph !== null && scene !== null;
-  // 【なぜ】「保存」のダイアログから図を保存できるよう、今の図を保存する関数を登録する（svgExport.ts）。
+  // 【なぜ】「書き出し」のダイアログから図を書き出せるよう、今の図を作る関数を登録する（figureExport.ts）。
   const canExport = hasFigure && scene.nodes.length > 0;
   useEffect(() => {
-    if (!canExport) {
-      setSvgExporter(null);
+    if (!canExport || encodingWithLegends === null) {
+      setFigureSource(null);
       return;
     }
-    setSvgExporter(() => {
-      downloadSvg(
-        createSvgExport(graph, positions, encoding, {
+    setFigureSource({
+      title: dataset.meta.title,
+      build: (request) => {
+        const options = {
           labels: view.labels,
           largeLabelCount: view.largeLabelCount,
-          // 【なぜ】選択ラベルの候補は渡し、選択の輪郭だけを保存から除く。
+          // 【なぜ】選択ラベルの候補は渡し、選択の輪郭だけを書き出しから除く。
           selected: visibleSelected,
           includeSelection: false,
           directedStyle: view.direction,
-          measureText,
+          measureText: request.measureText ?? measureText,
           ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
           ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
+          // 【なぜ】画面で薄く表示している要素を、書き出しでも薄くする（画面と図を食い違わせない）。
+          // 利用者が「書き出し」のダイアログで外したときと、何も薄くしていないときは付けない。
+          ...(request.timeFade && (timeFade.nodes.size > 0 || timeFade.edges.size > 0)
+            ? { timeFade }
+            : {}),
           title: dataset.meta.title,
-        }),
-      );
+        };
+        const plain = createSvgExport(graph, positions, encoding, options);
+        if (!request.legend && !request.credit) return plain;
+        // 凡例は、図に現れた破線の種類などを調べるため、凡例なしのシーンを見てから作る。
+        const legend = buildFigureLegend({
+          t,
+          formatNumber: (n) => nf.format(n),
+          dataset,
+          graph,
+          settings: view.encoding,
+          encoding,
+          legends: encodingWithLegends.legends,
+          directedStyle: view.direction,
+          scene: plain.scene,
+          legend: request.legend,
+          ...(request.credit
+            ? {
+                credit: {
+                  title: dataset.meta.title,
+                  ...(dataset.meta.source === undefined ? {} : { source: dataset.meta.source }),
+                  date: request.createdAt,
+                },
+              }
+            : {}),
+        });
+        return legend === undefined
+          ? plain
+          : createSvgExport(graph, positions, encoding, { ...options, legend });
+      },
     });
     return () => {
-      setSvgExporter(null);
+      setFigureSource(null);
     };
   }, [
     canExport,
@@ -385,12 +428,17 @@ export function GraphView() {
     graph,
     positions,
     encoding,
+    encodingWithLegends,
     view.labels,
     view.largeLabelCount,
     view.direction,
+    view.encoding,
     visibleSelected,
     measureText,
     missingMarks,
+    timeFade,
+    t,
+    nf,
   ]);
   useEffect(() => {
     const element = svg.current;
@@ -441,12 +489,13 @@ export function GraphView() {
               matchIncludes(id, query, LOOSE_MATCH),
           ),
     );
+    const marked = markOutOfTime(scene, timeFade.nodes, timeFade.edges);
     const display = {
-      ...scene,
-      nodes: scene.nodes.map((node) =>
+      ...marked,
+      nodes: marked.nodes.map((node) =>
         matchSet.has(node.id) ? { ...node, fill: '#ffcc00' } : node,
       ),
-      edges: scene.edges.map((edge) => ({
+      edges: marked.edges.map((edge) => ({
         ...edge,
         // 選んだエッジは、色に加えて太さでも示す（色だけで伝えない）。
         ...(selectedEdgeSet.has(edge.id) ? { width: Math.max(edge.width * 2, 3) } : {}),
@@ -474,7 +523,7 @@ export function GraphView() {
     const markup = renderSvg(display, { idPrefix: 'graph-view-' });
     // 生成器が検証・エスケープしたSVGの中身だけを使う。任意の利用者HTMLは挿入しない。
     return markup.slice(markup.indexOf('>') + 1, markup.lastIndexOf('</svg>'));
-  }, [scene, graph, query, visibleSelected, selectedEdgeSet, highlight]);
+  }, [scene, graph, query, visibleSelected, selectedEdgeSet, highlight, timeFade]);
   if (dataset === null || graph === null || scene === null) return null;
   const matches = graph
     .nodes()
@@ -656,6 +705,7 @@ export function GraphView() {
       </Toolbar>
       {network !== null && !buildPanelOpen && <ProjectionIssues status={network.projection} />}
       <NoCoordinatesNote dataset={dataset} graph={graph} view={view} />
+      <TimeFadeNote fade={timeFade} />
       {graph.order === 0 && (
         <StatusMessage
           state={

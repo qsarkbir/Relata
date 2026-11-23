@@ -11,7 +11,9 @@ import type { TimelineViewState } from './timelineStore';
 import { isDefaultTimeline } from './timelineStore';
 import { DEFAULT_TABLE_VIEW, DEFAULT_WORKSPACE } from '../core/project';
 import type { DisplayState } from './displayStore';
-import { DEFAULT_CALENDAR_DISPLAY } from '../core/time';
+import { DEFAULT_CALENDAR_DISPLAY, isDefaultTimeSettings } from '../core/time';
+import type { TimeStoreState } from './timeStore';
+import { selectTimeSettings } from './timeStore';
 /** 保存用表示状態の共通型。 */
 export type ProjectSnapshotView = ProjectView;
 /** 保存する中身の共通型。 */
@@ -39,6 +41,8 @@ export interface ViewTargets {
   readonly display?: StoreApi<DisplayState>;
   /** 年表の設定（R-23）。渡したときだけ保存・復元の対象にする。 */
   readonly timeline?: StoreApi<TimelineViewState>;
+  /** 時間の再生の設定（FR-TM-02）。再生中かどうかは保存しない。 */
+  readonly time?: StoreApi<TimeStoreState>;
 }
 
 /**
@@ -60,6 +64,7 @@ export function takeSnapshot(
   const graphView = targets.graph?.getState().view;
   const ws = targets.workspace?.getState();
   const timeline = targets.timeline?.getState().timeline;
+  const time = targets.time === undefined ? undefined : selectTimeSettings(targets.time.getState());
   return {
     dataset,
     importSettings,
@@ -76,6 +81,8 @@ export function takeSnapshot(
         : { display: { calendar: targets.display.getState().calendar } }),
       // 【なぜ】既定と同じ内容なら書かない（任意の項目。D-24）。
       ...(timeline === undefined || isDefaultTimeline(timeline) ? {} : { timeline }),
+      // 【なぜ】再生中かどうかは保存しない（開いた直後に動き出さないため）。既定と同じなら書かない。
+      ...(time === undefined || isDefaultTimeSettings(time) ? {} : { time }),
     },
   };
 }
@@ -110,4 +117,5 @@ export function applySnapshot(
     ?.getState()
     .setCalendar(snapshot.view.display?.calendar ?? DEFAULT_CALENDAR_DISPLAY);
   targets.timeline?.getState().reset(snapshot.view.timeline);
+  targets.time?.getState().reset(snapshot.view.time);
 }

@@ -1,7 +1,9 @@
 /** SVG ファイルの組み立てと保存（FR-OUT-01、D-31）。 */
 import type { RelataGraph } from '../../core/graph';
 import type { NodeId } from '../../core/model';
-import { buildScene, renderSvg } from '../../render';
+import { buildScene, markOutOfTime, renderSvg } from '../../render';
+import type { Scene } from '../../render';
+import { downloadBlob, withExtension } from './download';
 import type { BuildSceneOptions, SceneEncoding, SceneOmitted } from '../../render';
 
 /** SVG の書き出し設定。画面のズームやパンは受け取らず、常に全体を収める。 */
@@ -12,11 +14,23 @@ export interface SvgExportOptions extends BuildSceneOptions {
   readonly title?: string;
   /** 他の図と同じ文書に貼るときの id の接頭辞。 */
   readonly idPrefix?: string;
+  /**
+   * 時間の再生で薄く表示している要素（D-38）。渡すと、書き出した図でも画面と同じく薄く描く。
+   * 省略すると、時刻を反映しない通常の図になる。
+   */
+  readonly timeFade?: {
+    readonly nodes: ReadonlySet<string>;
+    readonly edges: ReadonlySet<string>;
+  };
 }
 
 /** 保存する SVG と、図に含められなかったものの報告。 */
 export interface SvgExport {
   readonly blob: Blob;
+  /** 書き出しに使ったシーン。PNG と PDF は、このシーンから作る（画面と書き出しを一致させる）。 */
+  readonly scene: Scene;
+  /** SVG の文字列（XML 宣言なし）。PNG への変換に使う。 */
+  readonly svg: string;
   readonly width: number;
   readonly height: number;
   readonly omitted: SceneOmitted;
@@ -42,13 +56,19 @@ export function createSvgExport(
   encoding: SceneEncoding = {},
   options: SvgExportOptions = {},
 ): SvgExport {
-  const scene = buildScene(graph, positions, encoding, options);
+  const built = buildScene(graph, positions, encoding, options);
+  // 【なぜ】薄い印は、画面と同じく組み立て済みのシーンに後から付ける（markOutOfTime）。SVG・PNG・PDF は
+  // どれもこのシーンから作るので、3 つの形式で薄い表示がそろう。
+  const scene =
+    options.timeFade === undefined
+      ? built
+      : markOutOfTime(built, options.timeFade.nodes, options.timeFade.edges);
   const svg = renderSvg(scene, options);
   // 【なぜ】外部の CSS や画面の transform を使わない、単独で開ける文書にする。
   const blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n', svg], {
     type: 'image/svg+xml;charset=utf-8',
   });
-  return { blob, width: scene.width, height: scene.height, omitted: scene.omitted };
+  return { blob, scene, svg, width: scene.width, height: scene.height, omitted: scene.omitted };
 }
 
 /**
@@ -59,20 +79,5 @@ export function createSvgExport(
  * @param fileName - 保存名。前後の空白を除き、省略・空白のみなら relata.svg。拡張子が無ければ .svg を付ける
  */
 export function downloadSvg(exported: SvgExport, fileName = 'relata.svg'): void {
-  const trimmedName = fileName.trim() || 'relata.svg';
-  const url = URL.createObjectURL(exported.blob);
-  let anchor: HTMLAnchorElement | undefined;
-  try {
-    anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = /\.svg$/iu.test(trimmedName) ? trimmedName : trimmedName + '.svg';
-    document.body.append(anchor);
-    anchor.click();
-  } finally {
-    anchor?.remove();
-    // 【なぜ】クリック直後の解放で保存が中断される環境がある。既存のプロジェクト保存と同じ猶予を置く。
-    setTimeout(() => {
-      URL.revokeObjectURL(url);
-    }, 10_000);
-  }
+  downloadBlob(exported.blob, withExtension(fileName, 'svg'));
 }
