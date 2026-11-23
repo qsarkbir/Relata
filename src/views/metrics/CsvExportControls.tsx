@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Dataset } from '../../core/model';
 import type { FilterState } from '../../core/filter';
+import type { GraphOptions } from '../../core/graph';
 import type { MetricsResult } from '../../core/metrics';
 import { applyFilters } from '../../core/filter';
 import { downloadCsv, exportDatasetCsv, exportMetricsCsv } from '../../io/export/csv';
@@ -12,13 +13,20 @@ interface CsvExportControlsProps {
   readonly dataset: Dataset;
   readonly filter: FilterState;
   readonly result: MetricsResult | null;
+  /** 指標を計算したグラフの設定（射影を含む）。指標のCSVの最後の列に残す。 */
+  readonly graphOptions: GraphOptions;
 }
 /**
  * 現在の全対象を書き出す。古い指標がある間は指標CSVだけを無効にする。
  * @param props - 現在のデータ・フィルタ・確定した指標
  * @returns BOM/式保護の選択と4つのダウンロードボタン
  */
-export function CsvExportControls({ dataset, filter, result }: CsvExportControlsProps) {
+export function CsvExportControls({
+  dataset,
+  filter,
+  result,
+  graphOptions,
+}: CsvExportControlsProps) {
   const t = useT();
   const names = {
     nodes: 'csv.nodes',
@@ -35,7 +43,8 @@ export function CsvExportControls({ dataset, filter, result }: CsvExportControls
       const options = { bom, formulaProtection };
       if (kind === 'nodes' || kind === 'edges')
         downloadCsv(exportDatasetCsv(dataset, applyFilters(dataset, filter), options)[kind]);
-      else if (result !== null) downloadCsv(exportMetricsCsv(dataset, result, options)[kind]);
+      else if (result !== null)
+        downloadCsv(exportMetricsCsv(dataset, result, options, graphOptions)[kind]);
     } catch {
       setFailed(true);
     }

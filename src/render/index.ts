@@ -2,3 +2,4 @@
 export * from './scene';
 export * from './svg';
 export { detectDirection } from './text/direction';
+export * from './pdf';

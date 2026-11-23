@@ -429,3 +429,15 @@ fieldset {
   box-sizing: border-box;
   min-inline-size: 0;
 }
+
+/* 書き出しのダイアログ（T2-08）。図、グラフのデータ、CSV を節に分ける。 */
+.export-dialog {
+  max-inline-size: 42rem;
+}
+.export-section {
+  margin-block-end: 1rem;
+}
+.export-section label {
+  display: block;
+  margin-block: 0.25rem;
+}

@@ -21,6 +21,7 @@ import type {
   Scene,
   SceneEdge,
   SceneLabel,
+  LegendMark,
   SceneLegend,
   SceneLegendItem,
   SceneNode,
@@ -58,6 +59,14 @@ export interface LegendItemSpec {
   /** 見本の半径。省略は 6。 */
   readonly r?: number;
   readonly dashed?: boolean;
+  /** 指定した属性の欠損の破線（`dashed` と合わせて使う。間隔がノード・エッジの図と同じになる）。 */
+  readonly attrMissing?: boolean;
+  /** 見本の種類。省略は `node`。`line`、`arrow` は線、`none` は文字だけの行。 */
+  readonly mark?: LegendMark;
+  /** `line`、`arrow` の線の太さ（px）。省略は既定のエッジの太さ。 */
+  readonly lineWidth?: number;
+  /** 見出し（太字）にするか。 */
+  readonly bold?: boolean;
 }
 
 /** 凡例の指定。 */
@@ -488,6 +497,8 @@ function pickLabelNodes(
 }
 
 // 凡例の配置。1 列に並べる。右から左の文字は、凡例の右端にそろえる。
+// 線の見本（line、arrow）の半長は LINE_HALF。ノードの半径とは別に、見本の列の幅を決める。
+const LINE_HALF = 14;
 function layoutLegend(
   spec: LegendSpec,
   x: number,
@@ -495,10 +506,18 @@ function layoutLegend(
   fontSize: number,
   textWidth: (t: string) => number,
 ): SceneLegend {
-  const rOf = (i: LegendItemSpec): number => nonNeg(i.r, DEFAULT_RADIUS);
-  const maxR = Math.max(...spec.items.map(rOf));
-  const rowH = Math.max(fontSize + 6, maxR * 2 + 4);
-  const swatchCol = maxR * 2 + 6;
+  const markOf = (i: LegendItemSpec): LegendMark => i.mark ?? 'node';
+  const rOf = (i: LegendItemSpec): number =>
+    markOf(i) === 'node' ? nonNeg(i.r, DEFAULT_RADIUS) : LINE_HALF;
+  // 【なぜ】行の高さは、ノードの見本の大きさだけで決める。線の見本は幅が長いが、高さは要らない。
+  const maxNodeR = Math.max(
+    0,
+    ...spec.items.filter((i) => markOf(i) === 'node').map((i) => nonNeg(i.r, DEFAULT_RADIUS)),
+  );
+  const hasSwatch = spec.items.some((i) => markOf(i) !== 'none');
+  const maxR = Math.max(0, ...spec.items.filter((i) => markOf(i) !== 'none').map(rOf));
+  const rowH = Math.max(fontSize + 6, maxNodeR * 2 + 4);
+  const swatchCol = hasSwatch ? maxR * 2 + 6 : 0;
   const texts = [spec.title ?? '', ...spec.items.map((i) => i.label)];
   const textW = Math.max(...texts.map(textWidth));
   const width = LEGEND_PAD * 2 + swatchCol + textW;
@@ -519,8 +538,14 @@ function layoutLegend(
         shape: it.shape ?? 'circle',
         fill: normalizeColor(it.fill) ?? OTHER_COLOR,
         dashed: it.dashed === true,
+        mark: markOf(it),
+        ...(it.attrMissing === true ? { attrMissing: true } : {}),
+        ...(markOf(it) === 'line' || markOf(it) === 'arrow'
+          ? { lineWidth: nonNeg(it.lineWidth, DEFAULT_EDGE_WIDTH) }
+          : {}),
       },
       label: labelAt(it.label, cy),
+      ...(it.bold === true ? { bold: true } : {}),
     };
   });
   const title =

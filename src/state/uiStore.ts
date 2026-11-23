@@ -6,10 +6,10 @@ import { DEFAULT_LOCALE } from '../i18n';
  * 開いているダイアログの種類。
  *
  * - `about`: このツールについて
- * - `csvExport`: CSV の書き出し
- * - `save`: 保存（プロジェクトか図かを選ぶ）
+ * - `export`: 書き出し（図、グラフのデータ、CSV）
+ * - `save`: 保存（プロジェクトの保存と、自動保存を消す操作）
  */
-export type DialogId = 'about' | 'csvExport' | 'save';
+export type DialogId = 'about' | 'export' | 'save';
 
 /**
  * 処理の名前。翻訳キーと差し込みの値で持つ。

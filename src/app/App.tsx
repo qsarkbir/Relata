@@ -2,7 +2,7 @@ import { GraphView } from '../views/GraphView';
 import { BottomPanel } from '../views/BottomPanel';
 import { ConditionsBar } from '../views/ConditionsBar';
 import { AboutDialog } from '../views/AboutDialog';
-import { CsvExportMenu } from '../views/metrics/CsvExportMenu';
+import { ExportMenu } from '../views/export/ExportMenu';
 import { SidePanel } from '../views/ui/SidePanel';
 import { FilterPanel } from '../views/FilterPanel';
 import { SampleCard } from '../views/SampleCard';
@@ -48,7 +48,7 @@ export function App() {
               void clearAutosave();
             }}
           />
-          <CsvExportMenu />
+          <ExportMenu />
           <div role="group" aria-label={t('locale.label')} className="locale-switch">
             {LOCALES.map((l) => (
               <button

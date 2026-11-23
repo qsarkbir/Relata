@@ -8,7 +8,14 @@
 import { assertNever } from '../../core/util/assertNever';
 import type { NodeShape } from '../../core/model';
 import { shapeExtent } from '../scene/build';
-import type { PathCommand, Scene, SceneEdge, SceneLabel, SceneNode } from '../scene/types';
+import type {
+  PathCommand,
+  Scene,
+  SceneEdge,
+  SceneLabel,
+  SceneLegendItem,
+  SceneNode,
+} from '../scene/types';
 import { escapeXml, num, safeColor, safeIdPrefix } from './escape';
 
 /** `renderSvg` の選択肢。 */
@@ -167,6 +174,48 @@ function edgeSvg(e: SceneEdge, index: number, prefix: string): string {
         '"/>';
   return defs + shaft + head;
 }
+// 凡例の見本の SVG。ノードの図形、線、矢じり付きの線のいずれか（文字だけの行は何も出さない）。
+//
+// 【なぜ】線の見本の破線の間隔と矢じりの大きさは、図のエッジと同じ式（破線は 4 3 と 9 4、矢じりは
+// 長さ max(6, 3w)、半幅 max(3, 1.5w)）にする。凡例と図が食い違うと、読み手が取り違える。
+function legendSwatchSvg(s: SceneLegendItem['swatch']): string[] {
+  switch (s.mark) {
+    case 'none':
+      return [];
+    case 'node':
+      return [
+        shapeElement(
+          s.shape,
+          s.x,
+          s.y,
+          s.r,
+          ` fill="${safeColor(s.fill, '#999999')}" stroke="#333333" stroke-width="1"` +
+            (s.dashed ? ` stroke-dasharray="${s.attrMissing === true ? '6 3' : '3 2'}"` : ''),
+        ),
+      ];
+    case 'line':
+    case 'arrow': {
+      const w = s.lineWidth ?? 1.5;
+      const color = safeColor(s.fill, '#999999');
+      const left = s.x - s.r;
+      const right = s.x + s.r;
+      const headLen = Math.min(Math.max(6, w * 3), s.r);
+      const headHalf = Math.max(3, w * 1.5);
+      const end = s.mark === 'arrow' ? right - headLen : right;
+      const dash = s.dashed ? ` stroke-dasharray="${s.attrMissing === true ? '9 4' : '4 3'}"` : '';
+      const out = [
+        `<path d="M${num(left)} ${num(s.y)} L${num(end)} ${num(s.y)}" fill="none" stroke="${color}" stroke-width="${num(w)}"${dash}/>`,
+      ];
+      if (s.mark === 'arrow')
+        out.push(
+          `<polygon points="${num(right)},${num(s.y)} ${num(end)},${num(s.y + headHalf)} ${num(end)},${num(s.y - headHalf)}" fill="${color}"/>`,
+        );
+      return out;
+    }
+    default:
+      return assertNever(s.mark, 'LegendMark');
+  }
+}
 function textSvg(l: SceneLabel, extra: string): string {
   // 右から左のラベルには direction と unicode-bidi を付ける（NFR-09）。text-anchor は基準点の側を決める。
   const rtl = l.direction === 'rtl' ? ' direction="rtl" unicode-bidi="embed"' : '';
@@ -218,17 +267,9 @@ export function renderSvg(scene: Scene, options: RenderSvgOptions = {}): string 
     );
     if (lg.title !== undefined) out.push(textSvg(lg.title, ' font-weight="bold"'));
     for (const it of lg.items) {
-      const s = it.swatch;
       out.push(
-        shapeElement(
-          s.shape,
-          s.x,
-          s.y,
-          s.r,
-          ` fill="${safeColor(s.fill, '#999999')}" stroke="#333333" stroke-width="1"` +
-            (s.dashed ? ' stroke-dasharray="3 2"' : ''),
-        ),
-        textSvg(it.label, ''),
+        ...legendSwatchSvg(it.swatch),
+        textSvg(it.label, it.bold === true ? ' font-weight="bold"' : ''),
       );
     }
     out.push('</g>');

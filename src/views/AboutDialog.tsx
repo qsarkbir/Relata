@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 // 【なぜ】LICENSE の全文と著作権表示は、ファイルそのものを `?raw` で読む。コピーを持つと食い違うため（D-25）。
 import licenseText from '../../LICENSE?raw';
-import { LIBRARIES } from './libraries';
+import { FONTS, LIBRARIES } from './libraries';
 import { useT, useUi } from './hooks';
 
 /** Palladio のリポジトリ。 */
@@ -79,6 +79,34 @@ export function AboutDialog() {
             <tr key={lib.name}>
               <td dir="ltr">{lib.name}</td>
               <td dir="ltr">{lib.license}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h3>{t('about.fonts')}</h3>
+      <p>{t('about.fonts.note')}</p>
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">{t('about.libraries.name')}</th>
+            <th scope="col">{t('about.libraries.license')}</th>
+            <th scope="col">{t('about.copyright')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {FONTS.map((font) => (
+            <tr key={font.name}>
+              <td dir="ltr">{font.name}</td>
+              <td dir="ltr">
+                <a
+                  href={`${import.meta.env.BASE_URL}fonts/${font.licenseFile}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {font.license}
+                </a>
+              </td>
+              <td dir="ltr">{font.copyright}</td>
             </tr>
           ))}
         </tbody>

@@ -4,6 +4,7 @@ export type {
   SceneNode,
   SceneEdge,
   SceneLabel,
+  LegendMark,
   SceneLegendItem,
   SceneLegend,
   SceneOmitted,

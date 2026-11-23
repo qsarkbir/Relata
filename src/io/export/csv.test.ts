@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { applyFilters, DEFAULT_FILTER_STATE, toFilterId } from '../../core/filter';
 import { filterDataset, num, mkEdge } from '../../core/filter/fixtures/filterDataset';
-import { makeAttrs, toNodeId } from '../../core/model';
+import { makeAttrs, toNodeId, toNodeTypeId } from '../../core/model';
 import { computeMetrics } from '../../core/metrics';
 import { buildGraph, toSnapshot } from '../../core/graph';
 import { parseTextTable } from '../table/text';
 import { importTables } from '../table/dataset';
-import { encodeCsv, exportDatasetCsv, exportMetricsCsv } from './csv';
+import { GRAPH_SETTING_COLUMNS, encodeCsv, exportDatasetCsv, exportMetricsCsv } from './csv';
 
 describe('FR-OUT-02 / R-12: CSV', () => {
   it('BOM既定あり・CRLF・RFC4180の引用でUnicodeと改行を保つ', () => {
@@ -237,5 +237,36 @@ describe('FR-OUT-02 / FR-MT-04: 現在の全対象', () => {
     expect(global.rows.find((row) => row[0] === 'nodeCount')?.[1]).toBe(
       String(result.nodeIds.length),
     );
+  });
+  it('§9.1: グラフの設定（射影先・仲介・方式）を、指標の CSV の最後の列に残す', () => {
+    const dataset = filterDataset();
+    const filtered = applyFilters(dataset, { ...DEFAULT_FILTER_STATE, showIsolated: true });
+    const result = computeMetrics(toSnapshot(buildGraph(dataset, filtered)));
+    const projected = exportMetricsCsv(
+      dataset,
+      result,
+      {},
+      {
+        weight: { attr: 'w' },
+        selfLoops: false,
+        projection: { target: toNodeTypeId('person'), via: toNodeTypeId('org'), method: 'newman' },
+      },
+    );
+    const global = parseTextTable(projected.global.text);
+    expect(global.headers.slice(-5)).toEqual([...GRAPH_SETTING_COLUMNS]);
+    expect(global.rows[0]?.slice(-5)).toEqual(['attr:w', 'false', 'person', 'org', 'newman']);
+    const nodes = parseTextTable(projected.metrics.text);
+    expect(nodes.headers.slice(-5)).toEqual([...GRAPH_SETTING_COLUMNS]);
+    expect(nodes.rows.every((row) => row.at(-1) === 'newman')).toBe(true);
+    // 射影しないときは method が none。設定を渡さなければ、列は付かない（既存の形のまま）。
+    const plain = exportMetricsCsv(dataset, result, {}, { weight: 'count', selfLoops: true });
+    expect(parseTextTable(plain.global.text).rows[0]?.slice(-5)).toEqual([
+      'count',
+      'true',
+      '',
+      '',
+      'none',
+    ]);
+    expect(parseTextTable(exportMetricsCsv(dataset, result).global.text).headers).toHaveLength(5);
   });
 });

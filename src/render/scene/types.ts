@@ -85,17 +85,32 @@ export interface SceneLabel {
   readonly anchor: 'left' | 'right';
 }
 
+/**
+ * 凡例の見本の種類。`node` はノードの図形、`line` は線、`arrow` は矢じり付きの線、
+ * `none` は見本なしの文字だけの行（見出し、出典表記）。
+ */
+export type LegendMark = 'node' | 'line' | 'arrow' | 'none';
+
 /** 凡例の 1 項目。見本の図形と文字。 */
 export interface SceneLegendItem {
   readonly swatch: {
     readonly x: number;
     readonly y: number;
+    /** `node` は半径。`line`、`arrow` は線の長さの半分。 */
     readonly r: number;
     readonly shape: NodeShape;
     readonly fill: string;
     readonly dashed: boolean;
+    /** 見本の種類。 */
+    readonly mark: LegendMark;
+    /** 指定した属性の欠損の破線か（間隔を変える。`dashed` が true のときだけ意味を持つ）。 */
+    readonly attrMissing?: boolean;
+    /** `line`、`arrow` の線の太さ（px）。矢じりの大きさは、エッジと同じ式でこの太さから決める。 */
+    readonly lineWidth?: number;
   };
   readonly label: SceneLabel;
+  /** 見出しとして太字にするか。 */
+  readonly bold?: boolean;
 }
 
 /** 凡例。図の右側に置く。 */
