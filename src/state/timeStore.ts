@@ -62,8 +62,23 @@ export interface TimeStoreState extends TimeState {
   readonly seek: (at: number) => void;
   /** 時刻を解除する（グラフの薄い表示をやめる）。 */
   readonly clear: () => void;
+  /**
+   * 表示の方式（累積／移動窓）を変える。
+   *
+   * @param mode - 新しい方式
+   */
   readonly setMode: (mode: TimeMode) => void;
+  /**
+   * 再生の速度を変える（再生中でも続けて動く）。
+   *
+   * @param speed - 新しい速度（年/秒）
+   */
   readonly setSpeed: (speed: TimeSpeed) => void;
+  /**
+   * 移動窓の幅を変える。
+   *
+   * @param years - 新しい幅（年）
+   */
   readonly setWindowYears: (years: TimeWindowYears) => void;
   /**
    * 保存した設定で置き換える。省略すると既定に戻る。再生中ではなくなる。
@@ -168,10 +183,46 @@ export function bindTimeToData(
   });
 }
 
-/** アプリ全体の時間の状態。軸は、データ・年表の設定・暦から求める。 */
-export const timeStore = createTimeStore(() => {
+/**
+ * 年表の設定や暦が変わって軸が変わったとき、範囲の外に出た時刻を新しい軸に収め直す。
+ *
+ * 【なぜ】時刻は年表の軸の上の位置。区切りの幅や暦を変えると軸の範囲が変わり、古い時刻が
+ * カーソルの外（年表の端の外）に残るため。軸が無い（日付が無い）ときは何もしない。
+ *
+ * @param time - 時間のストア
+ * @param getAxis - 今の軸を返す関数
+ * @param sources - 軸の元になるストア（年表の設定、暦）
+ * @returns 購読解除
+ */
+export function bindTimeToAxis(
+  time: StoreApi<TimeStoreState>,
+  getAxis: () => TimeAxis | null,
+  sources: readonly StoreApi<unknown>[],
+): () => void {
+  const unsubs = sources.map((s) =>
+    s.subscribe(() => {
+      const axis = getAxis();
+      const at = time.getState().at;
+      if (axis !== null && at !== null && (at < axis.min || at > axis.max))
+        time.getState().seek(at);
+    }),
+  );
+  return () => {
+    for (const u of unsubs) u();
+  };
+}
+
+/**
+ * アプリの今の軸を、データ・年表の設定・暦から求める。
+ *
+ * @returns 軸。データが無い、または日付が無ければ null
+ */
+function appAxis(): TimeAxis | null {
   const dataset = dataStore.getState().dataset;
   if (dataset === null) return null;
   return getTimeAxis(dataset, timelineStore.getState().timeline, displayStore.getState().calendar);
-});
+}
+/** アプリ全体の時間の状態。 */
+export const timeStore = createTimeStore(appAxis);
 bindTimeToData(timeStore, dataStore);
+bindTimeToAxis(timeStore, appAxis, [timelineStore, displayStore]);

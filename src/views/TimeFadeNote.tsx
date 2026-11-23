@@ -1,6 +1,6 @@
 import { useData, useT, useTime, useUi } from './hooks';
 import { useTimeStateText } from './timeFade';
-import type { GraphFade } from './timeFade';
+import type { GraphFade } from '../state';
 import { getNumberFormat } from './intl';
 
 /**

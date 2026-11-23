@@ -8,11 +8,20 @@ import {
   isTimeSpeed,
   isTimeWindowYears,
 } from '../../core/time';
+import type { TimeMode } from '../../core/time';
+import type { MessageKey } from '../../i18n';
 import { getTimeAxis, timeStore } from '../../state';
 import { useData, useDisplay, useT, useTime, useTimelineView } from '../hooks';
 import { timeStateText } from '../timeFade';
 import { InfoTip } from '../ui/InfoTip';
 import './timeline.css';
+
+// 【TS】`satisfies Record<TimeMode, MessageKey>` は、方式（TimeMode）をすべて含むことを検査する。
+//       方式を足して文言を書き忘れると、型エラーになる。
+const MODE_LABEL = {
+  cumulative: 'time.mode.cumulative',
+  window: 'time.mode.window',
+} as const satisfies Record<TimeMode, MessageKey>;
 
 /**
  * 時間の再生の操作（FR-TM-02、FR-TM-03、D-38、R-17）。年表の付近に置く。
@@ -22,7 +31,7 @@ import './timeline.css';
  * 再生は表示だけを変える（R-17）。時刻で絞り込むときは年表で範囲を選ぶことを、画面に書く。
  *
  * キーボード: すべて Tab で届くボタン、選択、つまみ（矢印キーで区切りを 1 つずつ）。再生中かどうかは
- * 押した状態（`aria-pressed`）と名前の両方で伝え、時刻は文字でも出す（色だけに頼らない）。
+ * ボタンの名前（再生／一時停止）で伝え、時刻は文字でも出す（色だけに頼らない）。
  *
  * @returns 再生の操作の要素
  */
@@ -43,18 +52,12 @@ export function TimeControls() {
   const store = timeStore.getState();
   const disabled = axis === null;
   const text = timeStateText(t, display, { at, mode, windowYears, speed });
-  const binIndex = axis === null || at === null ? 0 : binIndexOfTime(at, axis);
+  const binIndex = axis === null || at === null ? -1 : binIndexOfTime(at, axis);
 
   return (
     <div className="time-controls" role="group" aria-label={t('time.controls')}>
       <div className="time-controls-row">
-        <button
-          type="button"
-          className="time-play"
-          aria-pressed={playing}
-          disabled={disabled}
-          onClick={store.toggle}
-        >
+        <button type="button" className="time-play" disabled={disabled} onClick={store.toggle}>
           <span aria-hidden="true">{playing ? '⏸ ' : '▶ '}</span>
           {playing ? t('time.pause') : t('time.play')}
         </button>
@@ -82,14 +85,22 @@ export function TimeControls() {
           <span>{t('time.slider')}</span>
           <input
             type="range"
-            min={0}
+            // 【なぜ】最小を -1 にし、時刻が未設定のときのつまみを -1（「未設定」）に置く。0 に置くと、
+            //   先頭の区切りを選ぶ操作が「値が変わらない」ため効かない。矢印キーの右で先頭の区切りへ、
+            //   左で未設定へ戻る。
+            min={-1}
             max={Math.max(0, (axis?.bins.length ?? 1) - 1)}
             step={1}
             value={binIndex}
             disabled={disabled}
             aria-valuetext={text === '' ? t('time.none') : text}
             onChange={(e) => {
-              const bin = axis?.bins[Number(e.currentTarget.value)];
+              const i = Number(e.currentTarget.value);
+              if (i < 0) {
+                store.clear();
+                return;
+              }
+              const bin = axis?.bins[i];
               if (bin !== undefined) store.seek(bin.latest);
             }}
           />
@@ -121,7 +132,7 @@ export function TimeControls() {
           >
             {TIME_MODES.map((m) => (
               <option key={m} value={m}>
-                {t(m === 'cumulative' ? 'time.mode.cumulative' : 'time.mode.window')}
+                {t(MODE_LABEL[m])}
               </option>
             ))}
           </select>

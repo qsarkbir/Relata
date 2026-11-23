@@ -114,4 +114,22 @@ describe('FR-TM-02: 再生の時計', () => {
     store.getState().play();
     expect(clock.pending()).toBe(0);
   });
+
+  it('FR-TM-02: tick が例外を出したら再生を止め、予約を残さない', () => {
+    const store = createTimeStore(() => axis);
+    const clock = fakeEnv();
+    startPlaybackClock(store, clock.env);
+    store.getState().play();
+    const boom = new Error('boom');
+    store.setState({
+      tick: () => {
+        throw boom;
+      },
+    });
+    expect(() => {
+      clock.frame(100);
+    }).toThrow(boom);
+    expect(store.getState().playing).toBe(false);
+    expect(clock.pending()).toBe(0);
+  });
 });

@@ -3,6 +3,8 @@ import type { StoreApi } from 'zustand/vanilla';
 import { timeStore } from '../state';
 import type { TimeStoreState } from '../state';
 
+// 【TS】`interface` の `readonly` な関数の項目だけで「窓口」の形を決める。本物（ブラウザ）と偽物（テスト）が
+//       同じ形を満たせば差し替えられる。これを依存の注入と呼ぶ。
 /** 時計が使う、ブラウザの機能の窓口。テストでは偽物（手で進める時計）に替える。 */
 export interface ClockEnv {
   /** 次の描画の直前に `cb(時刻 ms)` を呼ぶよう頼み、取り消し用の番号を返す。 */
@@ -34,6 +36,8 @@ export const MAX_FRAME_MS = 250;
  * @param env - ブラウザの機能の窓口
  * @returns 時計を止める関数（購読と予約を解除する）
  */
+// 【TS】戻り値の型 `() => void` は「引数なしで呼ぶと止める関数」。React の `useEffect` が、
+//       後片付けの関数として受け取れる形でもある。
 export function startPlaybackClock(store: StoreApi<TimeStoreState>, env: ClockEnv): () => void {
   let handle: number | null = null;
   let last: number | null = null;
@@ -53,6 +57,11 @@ export function startPlaybackClock(store: StoreApi<TimeStoreState>, env: ClockEn
     inFrame = true;
     try {
       store.getState().tick(dt);
+    } catch (e) {
+      // 【なぜ】tick で例外が出たまま次の予約を取ると、毎コマ失敗し続ける。再生を止めてから投げ直す。
+      store.getState().pause();
+      last = null;
+      throw e;
     } finally {
       inFrame = false;
     }

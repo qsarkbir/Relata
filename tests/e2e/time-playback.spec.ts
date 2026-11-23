@@ -22,6 +22,13 @@ function bottom(page: Page): Locator {
 function controls(page: Page): Locator {
   return bottom(page).getByRole('group', { name: '時間の再生' });
 }
+/** 年表の付近の「再生」ボタン（名前は再生中は「一時停止」に変わる。aria-pressed は使わない）。 */
+function playButton(page: Page): Locator {
+  return controls(page).getByRole('button', { name: '再生', exact: true });
+}
+function pauseButton(page: Page): Locator {
+  return controls(page).getByRole('button', { name: '一時停止', exact: true });
+}
 function timeState(page: Page): Locator {
   return controls(page).getByTestId('time-state');
 }
@@ -74,29 +81,29 @@ test.describe('時間の再生', () => {
     await loadSample(page);
     await expect(timeState(page)).toContainText('時刻は未設定');
     await controls(page).getByLabel('速度').selectOption('100');
-    const play = controls(page).getByRole('button', { name: '再生', exact: true });
-    await play.click();
-    await expect(
-      controls(page).getByRole('button', { name: '一時停止', exact: true }),
-    ).toHaveAttribute('aria-pressed', 'true');
+    await playButton(page).click();
+    // 再生中は、ボタンの名前が「一時停止」に変わる。
+    await expect(pauseButton(page)).toBeVisible();
     // 時刻が変わっていく（文が「まで（累積）」の形になり、年が増える）。
     await expect(timeState(page)).toContainText('まで（累積）');
     const first = (await timeState(page).textContent()) ?? '';
-    await expect.poll(async () => (await timeState(page).textContent()) ?? '').not.toBe(first);
-    await controls(page).getByRole('button', { name: '一時停止', exact: true }).click();
-    await expect(play).toHaveAttribute('aria-pressed', 'false');
+    await expect(timeState(page)).not.toHaveText(first);
+    await pauseButton(page).click();
+    await expect(playButton(page)).toBeVisible();
     const paused = (await timeState(page).textContent()) ?? '';
     await settleFrames(page);
     await settleFrames(page);
     await expect(timeState(page)).toHaveText(paused);
 
-    // コマ送り: 次、次、前（年表の区切りの末日に合う）。
+    // コマ送り: 次、次、前（年表の区切りの末日に合う）。つまみで区切りの末日に置いてから始める。
+    await seekRatio(page, 0.5);
+    const base = (await timeState(page).textContent()) ?? '';
     const stepNext = controls(page).getByRole('button', { name: '次のコマ' });
     await stepNext.click();
+    await expect(timeState(page)).not.toHaveText(base);
     const afterNext = (await timeState(page).textContent()) ?? '';
     await stepNext.click();
-    const afterNext2 = (await timeState(page).textContent()) ?? '';
-    expect(afterNext2).not.toBe(afterNext);
+    await expect(timeState(page)).not.toHaveText(afterNext);
     await controls(page).getByRole('button', { name: '前のコマ' }).click();
     await expect(timeState(page)).toHaveText(afterNext);
 
@@ -109,12 +116,11 @@ test.describe('時間の再生', () => {
   test('FR-TM-02: 再生を最後まで進めると、そこで止まる', async ({ page }) => {
     await loadSample(page);
     await controls(page).getByLabel('速度').selectOption('100');
-    await controls(page).getByRole('button', { name: '再生', exact: true }).click();
-    await expect(controls(page).getByRole('button', { name: '再生', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-      { timeout: 60_000 },
-    );
+    // 先に終わり近くへ動かしてから再生する（最初から最後まで待たない）。
+    await seekRatio(page, 0.97);
+    await playButton(page).click();
+    await expect(pauseButton(page)).toBeVisible();
+    await expect(playButton(page)).toBeVisible({ timeout: 30_000 });
     // 最後まで進んだので、累積ではすべてのノードが時刻の中（薄いものは無い）。
     await expect(timeState(page)).toContainText('まで（累積）');
     await expect(fadedNodes(page)).toHaveCount(0);
@@ -203,14 +209,9 @@ test.describe('時間の再生', () => {
     // 適用中の条件の行に、時刻の文と小さな再生の操作がある。年表の再生と同じ状態を指す。
     await expect(conditions(page)).toContainText('再生:');
     await conditions(page).getByRole('button', { name: '再生', exact: true }).click();
-    await expect(
-      controls(page).getByRole('button', { name: '一時停止', exact: true }),
-    ).toHaveAttribute('aria-pressed', 'true');
+    await expect(pauseButton(page)).toBeVisible();
     await conditions(page).getByRole('button', { name: '一時停止', exact: true }).click();
-    await expect(controls(page).getByRole('button', { name: '再生', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
+    await expect(playButton(page)).toBeVisible();
     // 条件の行の解除で、時刻が外れる。
     await conditions(page).getByRole('button', { name: '時刻を解除' }).click();
     await expect(cursorLine).toHaveCount(0);
@@ -264,10 +265,7 @@ test.describe('時間の再生', () => {
     await expect(timeState(page)).toHaveText(stateText);
     await expect(controls(page).getByLabel('表示方式')).toHaveValue('window');
     await expect(controls(page).getByLabel('速度')).toHaveValue('50');
-    await expect(controls(page).getByRole('button', { name: '再生', exact: true })).toHaveAttribute(
-      'aria-pressed',
-      'false',
-    );
+    await expect(playButton(page)).toBeVisible();
     await expect.poll(() => fadedNodes(page).count()).toBeGreaterThan(0);
 
     // ファイルに保存し、時刻を解除してから読み込むと戻る。

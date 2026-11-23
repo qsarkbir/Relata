@@ -68,6 +68,8 @@ export interface TimeIndex {
     readonly target: string;
     readonly spans: readonly TimeSpan[];
   }[];
+  /** 自分の日付を持つエッジの ID（まとめ・射影の後のエッジの判定に使う）。 */
+  readonly datedEdges: ReadonlySet<string>;
 }
 
 /**
@@ -94,7 +96,9 @@ export function buildTimeIndex(
     target: e.target,
     spans: edgeSource === undefined ? [] : itemTimeSpans(e, edgeSource),
   }));
-  return { nodes, edges };
+  const datedEdges = new Set<string>();
+  for (const e of edges) if (e.spans.length > 0) datedEdges.add(e.id);
+  return { nodes, edges, datedEdges };
 }
 
 /** 時刻の外にある要素の ID。 */
@@ -129,4 +133,50 @@ export function outOfTime(index: TimeIndex, window: TimeWindow | null): OutOfTim
     }
   }
   return { nodes, edges };
+}
+
+/** 図のエッジ 1 本（まとめた後、または射影した後）。 */
+export interface GraphEdgeRef {
+  /** 図のエッジのキー。 */
+  readonly key: string;
+  /** 図の端点（射影では射影後のノード）。 */
+  readonly source: string;
+  readonly target: string;
+  /** 元のエッジの ID（まとめでは束ねた元のエッジ、射影では根拠の両側のエッジ）。 */
+  readonly edgeIds: readonly string[];
+}
+
+/**
+ * 図のエッジのうち、時刻の外として薄くするもののキーを返す。計算量は O(エッジ数 + 元のエッジ数)。
+ *
+ * 規則（D-38）:
+ * - 元のエッジに自分の日付を持つものがあれば、そのうち 1 つでも時刻の中なら見せ、すべて外なら薄くする
+ *   （日付のない元のエッジは数えない）。
+ * - 元のエッジがすべて日付を持たないとき（日付のないデータや、射影の根拠のエッジ）は、図の端点で決める:
+ *   端点のどちらかが時刻の外（`outNodes`）なら薄くする。
+ *   【なぜ】射影では、仲介のノードの両側のエッジが元のエッジに入る。片方の端点だけがまだ存在しない
+ *   のに、もう一方の側の元のエッジが「中」だというだけで線が濃く残るのを避けるため。
+ * - 元のエッジが無いもの（`edgeIds` が空）は薄くしない。
+ *
+ * @param index - {@link buildTimeIndex} の結果
+ * @param out - {@link outOfTime} の結果
+ * @param edges - 図のエッジ
+ * @returns 薄くする図のエッジのキー
+ */
+export function fadedGraphEdges(
+  index: TimeIndex,
+  out: OutOfTime,
+  edges: Iterable<GraphEdgeRef>,
+): Set<string> {
+  const faded = new Set<string>();
+  for (const e of edges) {
+    if (e.edgeIds.length === 0) continue;
+    const dated = e.edgeIds.filter((id) => index.datedEdges.has(id));
+    const isOut =
+      dated.length > 0
+        ? dated.every((id) => out.edges.has(id))
+        : out.nodes.has(e.source) || out.nodes.has(e.target);
+    if (isOut) faded.add(e.key);
+  }
+  return faded;
 }

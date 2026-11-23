@@ -5,7 +5,8 @@ import { sampleDataset } from '../core/model/fixtures/sampleDataset';
 import { createDataStore } from './dataStore';
 import { bindFilterToData, createFilterStore } from './filterStore';
 import { applySnapshot, takeSnapshot } from './project';
-import { bindTimeToData, createTimeStore, selectTimeSettings } from './timeStore';
+import { createStore } from 'zustand/vanilla';
+import { bindTimeToAxis, bindTimeToData, createTimeStore, selectTimeSettings } from './timeStore';
 
 const axis: TimeAxis | null = makeTimeAxis(
   'gregorian',
@@ -120,5 +121,23 @@ describe('FR-TM-02: 保存（view.time）', () => {
     time.getState().play();
     data.getState().setDataset(sampleDataset());
     expect(time.getState()).toMatchObject({ at: null, playing: false, speed: 50, mode: 'window' });
+  });
+});
+
+describe('FR-TM-03: 軸が変わったときの時刻', () => {
+  it('FR-TM-03: 軸が変わって時刻が範囲の外に出たら、新しい軸に収め直す', () => {
+    let current: TimeAxis | null = axis;
+    const trigger = createStore<{ n: number }>()(() => ({ n: 0 }));
+    const s = createTimeStore(() => current);
+    bindTimeToAxis(s, () => current, [trigger]);
+    s.getState().seek(gregorianToJdn(1525, 1, 1));
+    const narrow = makeTimeAxis('gregorian', [binDayRange('gregorian', 1500, 10)]);
+    current = narrow;
+    trigger.setState({ n: 1 });
+    expect(s.getState().at).toBe(narrow?.max);
+    // 範囲の中なら動かさない。時刻が無ければ何もしない
+    s.getState().clear();
+    trigger.setState({ n: 2 });
+    expect(s.getState().at).toBeNull();
   });
 });

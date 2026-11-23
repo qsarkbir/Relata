@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Dataset } from '../model';
 import { gregorianToJdn } from '../time';
 import { filterDataset, mkEdge, mkNode, num, person, span } from './fixtures/filterDataset';
-import { buildTimeIndex, itemTimeSpans, outOfTime } from './timeFade';
+import { buildTimeIndex, fadedGraphEdges, itemTimeSpans, outOfTime } from './timeFade';
 
 const g = (y: number): number => gregorianToJdn(y, 1, 1);
 const gEnd = (y: number): number => gregorianToJdn(y, 12, 31);
@@ -91,5 +91,40 @@ describe('FR-TM-02: 時刻の外の判定（D-38）', () => {
   it('FR-TM-02: 出どころが無ければ、すべて年代なしとして薄くしない', () => {
     const none = buildTimeIndex(ds, undefined, undefined);
     expect(outOfTime(none, cumulative(1400)).nodes.size).toBe(0);
+  });
+});
+
+describe('FR-TM-02: 図のエッジ（まとめ・射影）の判定', () => {
+  const out = outOfTime(index, cumulative(1550)); // b は外、a は中
+  it('FR-TM-02: 日付のない元のエッジだけなら、図の端点のどちらかが外のとき薄くする（射影）', () => {
+    // 射影した a-b のエッジ。根拠は日付のない 2 本（a 側の e-ad は元の端点 a, d。中）。
+    // 元のエッジだけで見ると「中」だが、図の端点 b が外なので薄くする。
+    const faded = fadedGraphEdges(index, out, [
+      { key: 'proj-ab', source: 'a', target: 'b', edgeIds: ['e-ad', 'e-dd'] },
+      { key: 'proj-ad', source: 'a', target: 'd', edgeIds: ['e-ad'] },
+    ]);
+    expect([...faded]).toEqual(['proj-ab']);
+  });
+  it('FR-TM-02: 自分の日付を持つ元のエッジがあれば、図の端点でなく、その日付で決める（まとめ）', () => {
+    const early = fadedGraphEdges(index, outOfTime(index, cumulative(1400)), [
+      { key: 'k1', source: 'a', target: 'b', edgeIds: ['e-ab', 'e-own'] },
+    ]);
+    // e-own（1505 年）は外。日付のない e-ab は数えない → 薄くする
+    expect(early.has('k1')).toBe(true);
+    const later = fadedGraphEdges(index, outOfTime(index, cumulative(1520)), [
+      // e-own は中。端点 b が外でも、日付のあるエッジが中なら濃く残る
+      { key: 'k1', source: 'a', target: 'b', edgeIds: ['e-ab', 'e-own'] },
+    ]);
+    expect(later.has('k1')).toBe(false);
+  });
+  it('FR-TM-02: 元のエッジが無い図のエッジは薄くしない。時刻が無ければ何も薄くしない', () => {
+    expect(
+      fadedGraphEdges(index, out, [{ key: 'x', source: 'b', target: 'c', edgeIds: [] }]).size,
+    ).toBe(0);
+    const none = outOfTime(index, null);
+    expect(
+      fadedGraphEdges(index, none, [{ key: 'k', source: 'b', target: 'c', edgeIds: ['e-ab'] }])
+        .size,
+    ).toBe(0);
   });
 });

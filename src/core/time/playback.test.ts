@@ -104,7 +104,16 @@ describe('FR-TM-02: コマ送り（年表の区切りに合わせる）', () => 
   it('FR-TM-02: 前のコマは、今より前で最も近い区切りの末日。先頭で止まる', () => {
     expect(stepTime({ ...idle, at: at(1529, 12, 31) }, -1, axis).at).toBe(at(1519, 12, 31));
     expect(stepTime({ ...idle, at: at(1515, 6, 1) }, -1, axis).at).toBe(at(1509, 12, 31));
-    expect(stepTime({ ...idle, at: at(1505) }, -1, axis).at).toBe(at(1509, 12, 31));
+    // 先頭の区切りの途中から前へ戻ると、軸の始まりへ（後ろへ進まない）
+    expect(stepTime({ ...idle, at: at(1505) }, -1, axis).at).toBe(axis.min);
+    expect(stepTime({ ...idle, at: at(1509, 12, 31) }, -1, axis).at).toBe(axis.min);
+  });
+  it('FR-TM-02: 時刻が無いときの前のコマは軸の始まり。動かないときは同じ参照を返す', () => {
+    expect(stepTime(idle, -1, axis).at).toBe(axis.min);
+    const atMin: TimeState = { ...idle, at: axis.min };
+    expect(stepTime(atMin, -1, axis)).toBe(atMin);
+    const atMax: TimeState = { ...idle, at: axis.max };
+    expect(stepTime(atMax, 1, axis)).toBe(atMax);
   });
   it('FR-TM-02: コマ送りは再生を止める', () => {
     const p: TimeState = { ...idle, at: axis.min, playing: true };

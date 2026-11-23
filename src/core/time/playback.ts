@@ -13,6 +13,7 @@
  * 日数への換算は区切りを数える暦の平均の年の長さ（{@link meanYearDays}）で行う。
  */
 import type { CalendarId, DayNumber } from '../model';
+import { assertNever } from '../util/assertNever';
 import type { DayRange } from './calendars';
 
 // 【TS】`as const` で配列を読み取り専用のリテラルの組にし、`(typeof X)[number]` で和集合の型にする（bins.ts と同じ書き方）。
@@ -147,7 +148,15 @@ export function makeTimeAxis(calendar: CalendarId, bins: readonly DayRange[]): T
  * @returns 平均の年の長さ
  */
 export function meanYearDays(calendar: CalendarId): number {
-  return calendar === 'hijri' ? 10631 / 30 : 365.2425;
+  // 【TS】`assertNever` は、暦（CalendarId）を足したのに分岐を書き忘れたとき、コンパイルエラーにする。
+  switch (calendar) {
+    case 'gregorian':
+      return 365.2425;
+    case 'hijri':
+      return 10631 / 30;
+    default:
+      return assertNever(calendar, 'CalendarId');
+  }
 }
 
 /**
@@ -232,9 +241,10 @@ export function tickTime(state: TimeState, dtMs: number, axis: TimeAxis | null):
 /**
  * 1 コマ（区切り 1 つ）ぶん前後へ動かす。再生中なら止める（手で動かす操作を優先する）。
  *
- * 進む先は、今の時刻より後で最も近い区切りの末日。戻る先は、今の時刻より前で最も近い区切りの末日。
- * 時刻が無いときは、進むなら先頭の区切りの末日、戻るなら先頭の区切りの末日から始める。
- * 端では動かない。
+ * 進む先は、今の時刻より後で最も近い区切りの末日。戻る先は、今の時刻より前で最も近い区切りの末日で、
+ * それが無い（先頭の区切りの途中にいる）ときは軸の始まり（`axis.min`）。
+ * 時刻が無いときは、進むなら先頭の区切りの末日、戻るなら軸の始まり。端では動かない。
+ * 時刻も再生中かどうかも変わらないときは、同じ参照を返す。
  *
  * @param state - 今の状態
  * @param direction - 1 は次、-1 は前
@@ -244,20 +254,17 @@ export function tickTime(state: TimeState, dtMs: number, axis: TimeAxis | null):
 export function stepTime(state: TimeState, direction: 1 | -1, axis: TimeAxis | null): TimeState {
   if (axis === null) return state;
   const ends = axis.bins.map((b) => b.latest);
-  const first = ends[0] ?? axis.max;
+  const cur = state.at;
   let at: number;
-  if (state.at === null) {
-    at = first;
-  } else if (direction === 1) {
-    const cur = state.at;
-    at = ends.find((e) => e > cur) ?? axis.max;
+  if (direction === 1) {
+    at = cur === null ? (ends[0] ?? axis.max) : (ends.find((e) => e > cur) ?? axis.max);
   } else {
-    const cur = state.at;
-    // 【TS】ES2022 には `findLast` が無いので、後ろから探す。
-    at = first;
-    for (const e of ends) if (e < cur) at = e;
+    at = axis.min;
+    // 【TS】ES2022 には `findLast` が無いので、後ろから探す代わりに全部見て更新する。
+    if (cur !== null) for (const e of ends) if (e < cur) at = e;
   }
-  return { ...state, at: clampTime(at, axis), playing: false };
+  const next = clampTime(at, axis);
+  return next === state.at && !state.playing ? state : { ...state, at: next, playing: false };
 }
 
 /**
@@ -332,7 +339,14 @@ export function timeWindowOf(
   calendar: CalendarId,
 ): TimeWindow | null {
   if (state.at === null) return null;
-  if (state.mode === 'cumulative') return { from: Number.NEGATIVE_INFINITY, to: state.at };
-  const days = Math.max(1, Math.round(state.windowYears * meanYearDays(calendar)));
-  return { from: state.at - days + 1, to: state.at };
+  switch (state.mode) {
+    case 'cumulative':
+      return { from: Number.NEGATIVE_INFINITY, to: state.at };
+    case 'window': {
+      const days = Math.max(1, Math.round(state.windowYears * meanYearDays(calendar)));
+      return { from: state.at - days + 1, to: state.at };
+    }
+    default:
+      return assertNever(state.mode, 'TimeMode');
+  }
 }

@@ -189,7 +189,7 @@ export function GraphView() {
   const measureText = useMemo(() => createGraphMeasure(), []);
   // 【なぜ】再生の「時刻の外」は、配置やシーンの組み立てには入れない（再生のたびに再配置・再構築しない。R-17）。
   //   組み立て済みのシーンに、薄くする印だけを後から付ける。フィルタ、件数、指標には関わらない。
-  const timeFade = useTimeFade(dataset, graph);
+  const timeFade = useTimeFade();
   const scene = useMemo(
     () =>
       graph === null
