@@ -7,6 +7,7 @@ import {
   displayStore,
   filterStore,
   selectionStore,
+  timelineStore,
   uiStore,
   workspaceStore,
 } from '../state';
@@ -15,6 +16,7 @@ import type {
   DisplayState,
   FilterStoreState,
   SelectionState,
+  TimelineViewState,
   UiState,
   WorkspaceViewState,
 } from '../state';
@@ -102,4 +104,14 @@ export function useWorkspaceView<T>(selector: (s: WorkspaceViewState) => T): T {
  */
 export function useDisplay<T>(selector: (s: DisplayState) => T): T {
   return useStore(displayStore, selector);
+}
+
+/**
+ * timelineStore（年表の保存する設定）の一部を購読する。
+ *
+ * @param selector - 取り出す値を選ぶ関数
+ * @returns 選んだ値
+ */
+export function useTimelineView<T>(selector: (s: TimelineViewState) => T): T {
+  return useStore(timelineStore, selector);
 }

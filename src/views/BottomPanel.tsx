@@ -5,6 +5,7 @@ import type { WorkspaceTab } from '../core/project';
 import { workspaceStore } from '../state';
 import { useT, useWorkspaceView } from './hooks';
 import { TableView } from './TableView';
+import { TimelineView } from './timeline/TimelineView';
 import { Icon } from './ui/icons';
 import { Tabs } from './ui/Tabs';
 import { tabElementId, tabPanelElementId } from './ui/tabIds';
@@ -19,7 +20,7 @@ const BIG_STEP = 96;
 /**
  * 下の段（フェーズ 2 の方針 §3.1）。図の下に置く、開閉と高さの変更ができるタブの領域。
  *
- * 今あるタブは「表」だけ。年表と欠損は、それぞれのタスクでタブを足す（空のタブを置かない）。
+ * タブは「年表」と「表」。欠損は、そのタスクでタブを足す（空のタブを置かない）。
  * 開閉、開いているタブ、高さは workspaceStore に持ち、プロジェクトに保存する（D-44）。
  *
  * 【なぜ】閉じても中身は描いたまま隠す（`hidden`）。外すと、表の並べ替えやページを失うため
@@ -34,7 +35,10 @@ export function BottomPanel() {
     workspaceStore.getState().patchWorkspace(change);
   };
   // 【TS】`as const` で ID を `string` ではなく文字列リテラル型 `'table'` に保つ（`Tabs` の型引数 Id になる）。
-  const tabs = [{ id: 'table' as const, label: t('workspace.tab.table') }];
+  const tabs = [
+    { id: 'timeline' as const, label: t('workspace.tab.timeline') },
+    { id: 'table' as const, label: t('workspace.tab.table') },
+  ];
   const toggleLabel = t(open ? 'workspace.close' : 'workspace.open');
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     // 上へ動かすと段が高くなる（段の上の縁を動かす分割バーのため）。
@@ -120,14 +124,24 @@ export function BottomPanel() {
           <Icon name={open ? 'chevronDown' : 'chevronUp'} />
         </button>
       </div>
-      {/* 閉じても描いたまま隠す。タブが増えたら、タブごとにパネルを並べ、選んでいないものを隠す。 */}
+      {/* 閉じても描いたまま隠す。タブごとにパネルを並べ、選んでいないものを隠す（中身を作り直さない）。 */}
+      <div
+        id={tabPanelElementId(PREFIX, 'timeline')}
+        role="tabpanel"
+        aria-labelledby={tabElementId(PREFIX, 'timeline')}
+        className="bottom-body"
+        style={{ height }}
+        hidden={!open || tab !== 'timeline'}
+      >
+        <TimelineView />
+      </div>
       <div
         id={tabPanelElementId(PREFIX, 'table')}
         role="tabpanel"
         aria-labelledby={tabElementId(PREFIX, 'table')}
         className="bottom-body"
         style={{ height }}
-        hidden={!open}
+        hidden={!open || tab !== 'table'}
       >
         <TableView />
       </div>

@@ -78,13 +78,13 @@ test.describe('日本語の画面', () => {
     await expect(workspace(page)).toContainText('データがありません');
   });
 
-  test('FR-UI-02: 下の段は既定で閉じ、タブは「表」だけで、開閉してもフィルタ・選択・viewport・並べ替えが変わらない', async ({
+  test('FR-UI-02: 下の段は既定で閉じ、タブは「年表」と「表」だけで、開閉してもフィルタ・選択・viewport・並べ替えが変わらない', async ({
     page,
   }) => {
     await openProject(page, 'maghrib.relata.json');
-    // 既定は閉じている。タブは「表」だけ（空のタブを置かない）。
-    await expect(page.getByRole('tab')).toHaveCount(1);
-    await expect(page.getByRole('tab', { name: '表' })).toBeVisible();
+    // 既定は閉じている。タブは「年表」と「表」だけ（空のタブを置かない。欠損は T2-04 で足す）。
+    await expect(page.getByRole('tab')).toHaveCount(2);
+    await expect(page.getByRole('tab', { name: '表', exact: true })).toBeVisible();
     await expect(table(page)).toBeHidden();
     // 状態を作る: フィルタ、選択、ズーム。
     await page.getByRole('checkbox', { name: 'タイプ 2' }).check();
@@ -103,7 +103,7 @@ test.describe('日本語の画面', () => {
     await expect(table(page)).toBeHidden();
     await page.getByRole('button', { name: '絞り込みを畳む' }).click();
     await page.getByRole('button', { name: '絞り込みを開く' }).click();
-    await page.getByRole('tab', { name: '表' }).click();
+    await page.getByRole('tab', { name: '表', exact: true }).click();
     await expect(table(page)).toBeVisible();
     await expect(table(page).locator('th[aria-sort="ascending"]')).toHaveCount(1);
     await expect(figure).toHaveAttribute('data-zoom', zoom ?? '');
@@ -144,7 +144,7 @@ test.describe('日本語の画面', () => {
     const dragged = Number(await bar.getAttribute('aria-valuenow'));
     expect(dragged).toBeGreaterThanOrEqual(212);
     expect(dragged).toBeLessThanOrEqual(224);
-    const body = page.getByRole('tabpanel', { name: '表' });
+    const body = page.getByRole('tabpanel', { name: '表', exact: true });
     expect((await body.boundingBox())?.height).toBeCloseTo(dragged, 0);
   });
 
@@ -336,7 +336,7 @@ test.describe('日本語の画面', () => {
     await page.locator('.graph-canvas').evaluate((el) => {
       (el as HTMLElement).style.height = '2000px'; // 理由: 利用者がつまみで高さを変えた状態を再現する
     });
-    const bar = page.getByRole('tab', { name: '表' });
+    const bar = page.getByRole('tab', { name: '表', exact: true });
     const box = await bar.boundingBox();
     expect(box).not.toBeNull();
     expect((box?.y ?? 9999) + (box?.height ?? 0)).toBeLessThanOrEqual(800);
@@ -406,7 +406,7 @@ test.describe('日本語の画面', () => {
     await workspace(page).getByRole('button', { name: 'エッジ表' }).click();
     await openProject(page, 'maghrib.relata.json');
     await expect(table(page)).toBeHidden();
-    await page.getByRole('tab', { name: '表' }).click();
+    await page.getByRole('tab', { name: '表', exact: true }).click();
     await expect(workspace(page).getByRole('button', { name: 'ノード表' })).toHaveAttribute(
       'aria-pressed',
       'true',

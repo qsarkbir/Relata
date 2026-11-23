@@ -614,6 +614,41 @@ export const en = {
   'workspace.resize': 'Bottom panel height',
   'workspace.resize.hint':
     'Use the up and down arrow keys to change the height (Home for minimum, End for maximum)',
+  'workspace.tab.timeline': 'Timeline',
+  'timeline.region': 'Timeline',
+  'timeline.target': 'Target',
+  'timeline.source': 'Date source',
+  'timeline.width': 'Bin width',
+  'timeline.width.option': '{n} yr',
+  'timeline.calendarNote.gregorian': 'Bins follow Gregorian year boundaries.',
+  'timeline.calendarNote.hijri': 'Bins follow Hijri year boundaries.',
+  'timeline.chartHintShort': 'Drag, or use the arrow keys, to choose a period.',
+  'timeline.info.topic': 'How to read and use the timeline',
+  'timeline.chart': 'Timeline bar chart',
+  'timeline.chartHint':
+    'Drag to choose a period; on release the time filter is replaced (you can undo it). With the keyboard, use the left and right arrow keys to move between bins, hold Shift to extend the range, press Enter to filter and Escape to start over.',
+  'timeline.noSource':
+    'There are no elements with dates and no date attributes, so no timeline can be drawn.',
+  'timeline.noBins': 'No element has a date in this source.',
+  'timeline.tooMany':
+    'The dates are spread too widely and would make too many bins. Choose a wider bin.',
+  'timeline.noDate': 'Undated: {n}',
+  'timeline.noDate.hint':
+    'Number of elements after filtering that have no date in this source. This is separate from the number removed by filters and is not part of the axis above.',
+  'timeline.noDate.total': '({n} before filtering)',
+  'timeline.legend.contained': 'Date fits in the bin',
+  'timeline.legend.spanning': 'Wide date (crosses bins)',
+  'timeline.legend.excluded': 'Removed by filters',
+  'timeline.countAxis': 'Count',
+  'timeline.bin': '{range}: {count} (wide dates: {spanning}; removed by filters: {excluded})',
+  'timeline.cursor': 'Bin {range}',
+  'timeline.selection': 'Selected: {range} (press Enter to filter)',
+  'timeline.applied': 'Applied range: {range}',
+  'timeline.appliedOther':
+    'The applied time filter uses a different date source. Choosing a range replaces it with this source.',
+  'timeline.clearRange': 'Clear range',
+  'timeline.countNote':
+    'A wide date is counted once in every bin it overlaps, so the bar heights do not add up to the number of elements.',
   'table.target': 'Table type',
   'table.target.node': 'Node table',
   'table.target.edge': 'Edge table',

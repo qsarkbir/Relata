@@ -1,0 +1,110 @@
+/* 年表（T2-05b）。値は src/app/tokens.css の --rl-… から取る。色だけに頼らず、模様と枠でも区別する。 */
+.timeline-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rl-space-2);
+  min-block-size: 0;
+  flex: 1;
+  /* 段が低いときは、年表の中でスクロールする（棒グラフを潰さない）。 */
+  overflow: auto;
+}
+.timeline-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--rl-space-3);
+}
+.timeline-main {
+  display: flex;
+  gap: var(--rl-space-3);
+  flex: 1;
+  min-block-size: 120px;
+}
+.timeline-chart {
+  position: relative;
+  flex: 1;
+  min-inline-size: 0;
+  /* SVG の中の位置は、見た目の向きに関わらず左が古い側（時間軸は左から右へ）。 */
+  direction: ltr;
+  user-select: none;
+}
+.timeline-chart[hidden] {
+  display: none;
+}
+.timeline-chart:focus-visible {
+  outline: var(--rl-focus-ring);
+  outline-offset: 2px;
+}
+.timeline-chart svg {
+  display: block;
+}
+.timeline-nodate {
+  flex: 0 0 11rem;
+  align-self: flex-start;
+  padding: var(--rl-space-2);
+  border: var(--rl-border-width) dashed var(--rl-border-strong);
+  border-radius: var(--rl-radius);
+  background: var(--rl-surface-subtle);
+}
+.timeline-nodate {
+  overflow-wrap: anywhere;
+}
+.timeline-nodate p {
+  margin: 0 0 var(--rl-space-1);
+}
+.timeline-status {
+  margin: 0;
+  min-block-size: 1.5em;
+  font-size: var(--rl-font-sm);
+}
+.timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rl-space-1) var(--rl-space-3);
+}
+.timeline-legend[hidden] {
+  display: none;
+}
+.tl-bar-contained {
+  fill: var(--rl-accent);
+}
+.tl-hatch-bg {
+  fill: var(--rl-surface);
+}
+.tl-hatch-line {
+  stroke: var(--rl-accent);
+  stroke-width: 3;
+}
+.tl-bar-spanning {
+  stroke: var(--rl-accent);
+  stroke-width: 1;
+}
+.tl-total {
+  fill: none;
+  stroke: var(--rl-border-strong);
+  stroke-dasharray: 3 2;
+}
+.tl-band {
+  fill: var(--rl-selected);
+  stroke: var(--rl-accent);
+  stroke-dasharray: 4 3;
+}
+.tl-selection {
+  fill: var(--rl-accent);
+  fill-opacity: 0.18;
+  stroke: var(--rl-accent);
+  stroke-width: 2;
+}
+.tl-axis {
+  stroke: var(--rl-border-strong);
+  stroke-width: 1;
+}
+.tl-tick {
+  fill: var(--rl-text-muted);
+  font-size: 11px;
+}
+.tl-hit {
+  fill: transparent;
+  cursor: crosshair;
+  touch-action: none;
+}
