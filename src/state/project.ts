@@ -7,6 +7,8 @@ import { selectFilterState } from './filterStore';
 import type { ProjectView, ProjectParts } from '../core/project';
 import type { GraphViewState } from './graphViewStore';
 import type { WorkspaceViewState } from './workspaceStore';
+import type { TimelineViewState } from './timelineStore';
+import { isDefaultTimeline } from './timelineStore';
 import { DEFAULT_TABLE_VIEW, DEFAULT_WORKSPACE } from '../core/project';
 import type { DisplayState } from './displayStore';
 import { DEFAULT_CALENDAR_DISPLAY } from '../core/time';
@@ -35,6 +37,8 @@ export interface ViewTargets {
   readonly workspace?: StoreApi<WorkspaceViewState>;
   /** 表示する暦（R-24）。渡したときだけ保存・復元の対象にする。 */
   readonly display?: StoreApi<DisplayState>;
+  /** 年表の設定（R-23）。渡したときだけ保存・復元の対象にする。 */
+  readonly timeline?: StoreApi<TimelineViewState>;
 }
 
 /**
@@ -55,6 +59,7 @@ export function takeSnapshot(
   const f = filter.getState();
   const graphView = targets.graph?.getState().view;
   const ws = targets.workspace?.getState();
+  const timeline = targets.timeline?.getState().timeline;
   return {
     dataset,
     importSettings,
@@ -69,6 +74,8 @@ export function takeSnapshot(
       ...(targets.display === undefined
         ? {}
         : { display: { calendar: targets.display.getState().calendar } }),
+      // 【なぜ】既定と同じ内容なら書かない（任意の項目。D-24）。
+      ...(timeline === undefined || isDefaultTimeline(timeline) ? {} : { timeline }),
     },
   };
 }
@@ -102,4 +109,5 @@ export function applySnapshot(
   targets.display
     ?.getState()
     .setCalendar(snapshot.view.display?.calendar ?? DEFAULT_CALENDAR_DISPLAY);
+  targets.timeline?.getState().reset(snapshot.view.timeline);
 }

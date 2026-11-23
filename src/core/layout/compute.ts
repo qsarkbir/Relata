@@ -3,6 +3,8 @@ import iterate from 'graphology-layout-forceatlas2/iterate.js';
 import type { ForceAtlas2Settings } from 'graphology-layout-forceatlas2';
 import { fromSnapshot, type GraphSnapshot } from '../graph';
 import { toNodeId, type NodeId } from '../model';
+import { geoLayout, type GeoInput } from './geo';
+import { layeredLayout } from './layered';
 
 /** 保存できる座標とピン留め。特殊な ID も保てるよう配列で持つ。 */
 export interface LayoutPosition {
@@ -12,13 +14,17 @@ export interface LayoutPosition {
   readonly fixed: boolean;
 }
 /** レイアウトの方式。 */
-export type LayoutKind = 'forceatlas2' | 'circular' | 'fixed';
+export type LayoutKind = 'forceatlas2' | 'circular' | 'fixed' | 'layered' | 'geo';
 /** 保存・Worker 転送できる設定。seed は符号なし 32 ビット整数。 */
 export interface LayoutOptions {
   readonly kind: LayoutKind;
   readonly seed: number;
   readonly positions?: readonly LayoutPosition[];
   readonly settings?: ForceAtlas2Settings;
+  /** 層状: 列の順（型 ID）。省略すると型 ID の昇順（FR-VG-02）。 */
+  readonly columnOrder?: readonly string[];
+  /** 地理座標: ノードごとの検査済みの緯度・経度（`extractGeoInputs`）。geo では必須（FR-VG-02）。 */
+  readonly geo?: readonly GeoInput[];
 }
 /** Worker への初回の依頼。 */
 export interface LayoutJob {
@@ -31,6 +37,8 @@ export interface LayoutResult {
   readonly seed: number;
   readonly iterations: number;
   readonly positions: readonly LayoutPosition[];
+  /** 地理座標のとき、座標なしの列に置いたノードの件数。 */
+  readonly noCoordinates?: number;
 }
 /** Worker 内で保持する計算。途中結果は step の返り値で受け取る。 */
 export interface LayoutSession {
@@ -54,7 +62,7 @@ function compare(a: string, b: string): number {
 export function createLayoutSession(job: LayoutJob): LayoutSession {
   const { options } = job;
   const { kind, seed } = options;
-  if (!['forceatlas2', 'circular', 'fixed'].includes(kind))
+  if (!['forceatlas2', 'circular', 'fixed', 'layered', 'geo'].includes(kind))
     throw new RangeError('未対応のレイアウトです。');
   if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff)
     throw new RangeError('seed は 0〜2^32-1 の整数です。');
@@ -76,6 +84,25 @@ export function createLayoutSession(job: LayoutJob): LayoutSession {
       throw new RangeError('座標は有限で絶対値 10^9 以下にしてください。');
     positions.set(position.id, position);
   }
+  // 層状・地理座標は、ピン留めしていないノードの座標を毎回計算し直す（円形と同じ扱い）。
+  let noCoordinates: number | undefined;
+  const computed = new Map<string, { x: number; y: number }>();
+  if (kind === 'layered') {
+    const result = layeredLayout(
+      ids.map((id) => ({ id, type: graph.getNodeAttribute(id, 'type') })),
+      graph.edges().map((e) => ({ source: graph.source(e), target: graph.target(e) })),
+      options.columnOrder ?? [],
+    );
+    for (const [id, p] of result.coordinates) computed.set(id, p);
+  } else if (kind === 'geo') {
+    if (options.geo === undefined) throw new RangeError('地理座標の入力がありません。');
+    const known = new Map(options.geo.map((g) => [g.id, g]));
+    // 【なぜ】入力に無いノードは座標なしとして扱う（図から消さない）。
+    const result = geoLayout(ids.map((id) => known.get(id) ?? { id, point: null }));
+    for (const [id, p] of result.coordinates) computed.set(id, p);
+    noCoordinates = result.noCoordinates;
+  }
+  const isComputed = kind === 'layered' || kind === 'geo';
   let randomState = seed;
   // Mulberry32 (Tommy Ettinger, 2017)。整数演算でブラウザ間の初期配置を一致させる。
   const random = (): number => {
@@ -126,18 +153,24 @@ export function createLayoutSession(job: LayoutJob): LayoutSession {
       throw new RangeError('固定位置がありません: ' + id);
     const angle = (2 * Math.PI * index) / Math.max(1, ids.length);
     const radius = 10 * Math.sqrt(Math.max(1, ids.length));
+    const place = computed.get(id);
+    const regenerated = kind === 'circular' || isComputed;
     const x =
-      saved !== undefined && (kind !== 'circular' || saved.fixed)
+      saved !== undefined && (!regenerated || saved.fixed)
         ? saved.x
-        : kind === 'circular'
-          ? radius * Math.cos(angle)
-          : radius * (random() - 0.5);
+        : place !== undefined
+          ? place.x
+          : kind === 'circular'
+            ? radius * Math.cos(angle)
+            : radius * (random() - 0.5);
     const y =
-      saved !== undefined && (kind !== 'circular' || saved.fixed)
+      saved !== undefined && (!regenerated || saved.fixed)
         ? saved.y
-        : kind === 'circular'
-          ? radius * Math.sin(angle)
-          : radius * (random() - 0.5);
+        : place !== undefined
+          ? place.y
+          : kind === 'circular'
+            ? radius * Math.sin(angle)
+            : radius * (random() - 0.5);
     const fixed = kind === 'fixed' || (saved?.fixed ?? false);
     // 【なぜ】0.10.1 の helpers.js は index[node] = j として j を PPN=10 ずつ進め、
     // iterate.js もエッジ端点をノード番号ではなく配列上のオフセットとして読む。
@@ -185,7 +218,13 @@ export function createLayoutSession(job: LayoutJob): LayoutSession {
           throw new RangeError('レイアウトが発散しました。設定や固定位置を確認してください。');
         return { ...position, x, y };
       });
-      return { kind: kind, seed: seed, iterations: total, positions: result };
+      return {
+        kind: kind,
+        seed: seed,
+        iterations: total,
+        positions: result,
+        ...(noCoordinates === undefined ? {} : { noCoordinates }),
+      };
     },
   };
 }

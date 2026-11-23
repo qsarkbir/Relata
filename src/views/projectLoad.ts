@@ -1,4 +1,4 @@
-import type { DisplayState, GraphViewState, WorkspaceViewState } from '../state';
+import type { DisplayState, GraphViewState, TimelineViewState, WorkspaceViewState } from '../state';
 import type { StoreApi } from 'zustand/vanilla';
 import { parseProject } from '../io/project';
 import type { ParseProjectResult } from '../io/project';
@@ -8,6 +8,7 @@ import {
   displayStore,
   filterStore,
   graphViewStore,
+  timelineStore,
   workspaceStore,
 } from '../state';
 import type { DataState, FilterStoreState, UiState } from '../state';
@@ -19,6 +20,7 @@ export interface ProjectLoadTargets {
   readonly graph?: StoreApi<GraphViewState>;
   readonly workspace?: StoreApi<WorkspaceViewState>;
   readonly display?: StoreApi<DisplayState>;
+  readonly timeline?: StoreApi<TimelineViewState>;
   readonly data: StoreApi<DataState>;
   readonly filter: StoreApi<FilterStoreState>;
   readonly notice: StoreApi<ProjectNoticeState>;
@@ -29,6 +31,7 @@ const DEFAULT_TARGETS: ProjectLoadTargets = {
   graph: graphViewStore,
   workspace: workspaceStore,
   display: displayStore,
+  timeline: timelineStore,
   filter: filterStore,
   notice: projectNoticeStore,
 };
@@ -68,6 +71,7 @@ export function loadProjectText(
     ...(targets.graph === undefined ? {} : { graph: targets.graph }),
     ...(targets.workspace === undefined ? {} : { workspace: targets.workspace }),
     ...(targets.display === undefined ? {} : { display: targets.display }),
+    ...(targets.timeline === undefined ? {} : { timeline: targets.timeline }),
   });
   targets.notice.getState().setReport({
     source,

@@ -20,3 +20,5 @@ export type {
   WorkspaceSettings,
   WorkspaceTab,
 } from './tableView';
+export { DEFAULT_TIMELINE, parseTimeline } from './timelineView';
+export type { TimelineSettings } from './timelineView';

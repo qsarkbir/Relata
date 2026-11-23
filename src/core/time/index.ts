@@ -34,3 +34,13 @@ export type {
   TimeFilterInputResult,
 } from './filterInput';
 export { parseTimeFilterInput } from './filterInput';
+export {
+  TIME_BIN_WIDTHS,
+  DEFAULT_TIME_BIN_WIDTH,
+  isTimeBinWidth,
+  binCalendarOf,
+  binStartYear,
+  binDayRange,
+  binsDayRange,
+} from './bins';
+export type { TimeBinWidth } from './bins';

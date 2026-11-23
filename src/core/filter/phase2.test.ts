@@ -6,7 +6,7 @@ import { fid, mkEdge, mkNode, person, place, span, st, str, num } from './fixtur
 import { parseFilterState } from './parse';
 import { addFilter, replaceFilter } from './state';
 import { FILTER_KINDS, DEFAULT_FILTER_STATE, type FilterDef } from './types';
-import { makeAttrs, toNodeId, type AttributeDef, type Dataset } from '../model';
+import { makeAttrs, toNodeId, toNodeTypeId, type AttributeDef, type Dataset } from '../model';
 
 // 日付の属性 born（人物だけ）と、複数値の日付 visited、日付でない属性 name2 を持つデータ。
 const dateAttr = (...d: ReturnType<typeof span>[]) =>
@@ -185,6 +185,36 @@ describe('nodeSet（D-41、FR-FL-11）', () => {
     };
     const [r] = facetCounts(withRole, st([f]), 'node', 'role');
     expect(r).toMatchObject({ filtered: 1, total: 5 });
+  });
+});
+
+describe('nodeSet の passTypes（D-41、FR-FL-11）', () => {
+  const withPass = (types: string[], ...ids: string[]): FilterDef => ({
+    id: fid('s'),
+    kind: 'nodeSet',
+    include: ids.map(toNodeId),
+    passTypes: types.map(toNodeTypeId),
+  });
+
+  it('FR-FL-11: passTypes の型のノードは include に無くても通す', () => {
+    expect(shown(withPass(['place'], 'a'))).toEqual(['a', 'p']);
+  });
+
+  it('FR-FL-11: 存在しない型は unknown-node-type として報告する', () => {
+    expect(checkFilterState(ds(), st([withPass(['ghost'], 'a')]))).toEqual([
+      { kind: 'unknown-node-type', filterId: 's', nodeType: 'ghost' },
+    ]);
+  });
+
+  it('FR-FL-11: passTypes を読み、無ければ項目ごと作らない', () => {
+    const run = (x: unknown) => parseFilterState({ filters: [x] });
+    expect(run({ id: 's', kind: 'nodeSet', include: ['a'], passTypes: ['place'] })).toMatchObject({
+      ok: true,
+      value: { filters: [{ passTypes: ['place'] }] },
+    });
+    const plain = run({ id: 's', kind: 'nodeSet', include: ['a'] });
+    expect(plain.ok && 'passTypes' in (plain.value.filters[0] ?? {})).toBe(false);
+    expect(run({ id: 's', kind: 'nodeSet', include: [], passTypes: [''] }).ok).toBe(false);
   });
 });
 

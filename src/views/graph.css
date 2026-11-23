@@ -172,11 +172,6 @@
   white-space: nowrap;
   font-size: var(--rl-font-md);
 }
-.graph-card-more {
-  color: var(--rl-text-muted);
-  font-weight: normal;
-  font-size: var(--rl-font-sm);
-}
 .graph-card-body[hidden] {
   display: none;
 }
@@ -271,4 +266,52 @@
 }
 .evidence-count {
   color: var(--rl-text-muted);
+}
+
+/* ---- 欠損の表示（T2-04） ---- */
+.missing-display-group {
+  margin: 0 0 var(--rl-space-2);
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+.missing-display-group legend {
+  padding: 0;
+  font-weight: 600;
+}
+.missing-display-item {
+  display: flex;
+  align-items: center;
+  gap: var(--rl-space-2);
+  min-block-size: var(--rl-control-size);
+}
+.graph-no-coordinates {
+  margin: 0;
+  padding: var(--rl-space-1) var(--rl-space-2);
+  color: var(--rl-text-muted);
+  font-size: var(--rl-font-sm);
+}
+.graph-column-order {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.graph-column-order li {
+  display: flex;
+  gap: var(--rl-space-1);
+  align-items: center;
+}
+.graph-column-name {
+  flex: 1;
+}
+.graph-range {
+  fill: color-mix(in srgb, var(--rl-accent, #2563eb) 15%, transparent);
+  stroke: var(--rl-accent, #2563eb);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+  pointer-events: none;
+}
+.graph-range-summary ul {
+  margin-block: 0 var(--rl-space-2);
+  padding-inline-start: 1.2em;
 }

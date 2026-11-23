@@ -6,6 +6,7 @@ import type { CalendarDisplay } from '../../core/time';
 import type { Dataset } from '../../core/model';
 import { useDisplay, useFilter, useT, useUi } from '../hooks';
 import { getNumberFormat } from '../intl';
+import { tRich } from '../richText';
 import { categoryKeyText } from './labels';
 import { timeBoundText } from './timeText';
 import type { Translate } from './labels';
@@ -199,8 +200,21 @@ function summary(
           ))}
         </>
       );
-    case 'nodeSet':
-      return t('filter.summary.nodeSet', { count: f.include.length });
+    case 'nodeSet': {
+      const pass = f.passTypes ?? [];
+      if (pass.length === 0) return t('filter.summary.nodeSet', { count: f.include.length });
+      // 【なぜ】型の名前は利用者の語なので <bdi> で隔離する（NFR-09）。
+      return tRich(
+        t,
+        'filter.summary.nodeSetPass',
+        { count: f.include.length },
+        {
+          types: pass
+            .map((id) => dataset.nodeTypes.find((nt) => nt.id === id)?.label ?? id)
+            .join(', '),
+        },
+      );
+    }
     case 'certainty':
       return (
         <>
@@ -246,8 +260,16 @@ function plainSummary(
         .join(', ');
       return `${targetText(t, f)} ${t('filter.nodeTypes')}: ${names}`;
     }
-    case 'nodeSet':
-      return `${targetText(t, f)} ${t('filter.summary.nodeSet', { count: f.include.length })}`;
+    case 'nodeSet': {
+      const pass = (f.passTypes ?? []).map(
+        (id) => dataset.nodeTypes.find((nt) => nt.id === id)?.label ?? id,
+      );
+      const text =
+        pass.length === 0
+          ? t('filter.summary.nodeSet', { count: f.include.length })
+          : t('filter.summary.nodeSetPass', { count: f.include.length, types: pass.join(', ') });
+      return `${targetText(t, f)} ${text}`;
+    }
     case 'certainty':
       return `${targetText(t, f)} ${t('filter.certainty')}: ${f.include
         .map((k) => t(`filter.certainty.${k}`))

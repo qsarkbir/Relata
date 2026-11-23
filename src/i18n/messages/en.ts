@@ -48,6 +48,24 @@ export const en = {
   'graph.circular': 'Circular',
   'graph.fixed': 'Fixed',
   'graph.seed': 'Random seed',
+  'graph.layered': 'Layered (column per type)',
+  'graph.geo': 'Geographic',
+  'graph.noCoordinates':
+    '{count} without coordinates (placed in the "no coordinates" column at the right edge)',
+  'graph.layered.note':
+    'Nodes are split into one column per type and ordered within each column to reduce edge crossings. Changing the column order recomputes the layout.',
+  'graph.layered.single': 'With one type or fewer, there is a single column.',
+  'graph.layered.order': 'Column order (left to right)',
+  'graph.layered.up': 'Move the {name} column left',
+  'graph.layered.down': 'Move the {name} column right',
+  'graph.geo.note':
+    'Latitude and longitude attributes are projected with the Mercator projection. Non-numeric or out-of-range values (latitude beyond ±85.05, longitude beyond ±180) have no coordinates.',
+  'graph.geo.lat': 'Latitude attribute',
+  'graph.geo.lon': 'Longitude attribute',
+  'graph.geo.none': '(none)',
+  'graph.geo.choose': 'Choose the latitude and longitude attributes',
+  'graph.geo.notFound':
+    'The saved latitude or longitude attribute was not found in the current data. Please choose again.',
   'graph.relayout': 'Recompute layout',
   'graph.layoutTask': 'Computing graph layout',
   'graph.labels': 'Labels',
@@ -83,8 +101,14 @@ export const en = {
   'graph.section.appearance': 'Appearance',
   'graph.section.labels': 'Labels and direction',
   'graph.selection.clear': 'Clear selection',
+  'graph.selection.filterApplied': 'Already applied as a filter',
+  'graph.selection.filterNote':
+    'Selected nodes that are not shown in the figure are also included.',
+  'graph.selection.passNote': 'A projection is applied, so all {types} nodes pass.',
+  'filter.summary.nodeSetPass': 'Selected nodes ({count}; all {types} pass)',
+  'graph.selection.filter': 'Filter to the selected nodes',
+  'graph.selection.listMore': '{count} more',
   'graph.selection.count': '{count} selected',
-  'graph.selection.more': '{count} more selected',
   'graph.selection.hidden':
     'Not shown under the current filters and display rules. The selection is kept.',
   'graph.selection.hiddenShort': 'hidden',
@@ -402,6 +426,8 @@ export const en = {
   'project.warning.filter': 'Filter problem ({kind}, filter {id})',
   'project.warning.unknownField':
     'Skipped an unknown field ({path}). The file may have been saved by a newer version of the app.',
+  'project.warning.unknownAttribute':
+    'Skipped a missing-value display setting for an attribute that is not in the data ({path}).',
   'project.warning.unknownNodePosition':
     'Skipped the position of a node that is not in the data ({path}).',
   'project.failed.file': 'Could not open the project. Your current work is unchanged.',
@@ -611,9 +637,105 @@ export const en = {
   'workspace.close': 'Close the bottom panel',
   'workspace.tabs': 'Bottom panel tabs',
   'workspace.tab.table': 'Table',
+  'workspace.tab.missing': 'Missing',
+  'missing.view': 'Missing values by attribute',
+  'missing.note':
+    'Counted again on the filtered set and shown next to the whole data. A rate is out of the items the attribute applies to. Items without the key are not counted as missing.',
+  'missing.noData': 'Load data to see missing values by attribute.',
+  'missing.noAttrs': 'This data has no attributes.',
+  'missing.col.attr': 'Attribute',
+  'missing.col.scope': 'Scope',
+  'missing.col.total': 'Applicable',
+  'missing.col.missing': 'Missing',
+  'missing.col.absent': 'No key',
+  'missing.scope.filtered': 'Filtered',
+  'missing.scope.whole': 'Whole',
+  'missing.target.node': 'Node',
+  'missing.target.edge': 'Edge',
+  'missing.target.typeSep': ': ',
+  'missing.reason.unrecorded': 'Unrecorded',
+  'missing.reason.lost': 'Lost',
+  'missing.reason.illegible': 'Illegible',
+  'missing.reason.not-applicable': 'Not applicable',
+  'missing.cell': '{count} ({rate})',
+  'missing.noRate': 'no rate',
+  'graph.section.missing': 'Missing values',
+  'missing.display.note':
+    'Nodes missing a chosen attribute get a dashed outline; edges get a dashed line.',
+  'missing.display.legend':
+    'Dash styles: long dashes mean the chosen attribute is missing. Short dashes mean a value used for size, color, or width is missing.',
+  'missing.filteredOut': 'The filters leave 0 items. The Filtered rows show no rates.',
+  'missing.period.title': 'By period',
+  'missing.period.basis':
+    'Counted with the timeline settings (change them in the Timeline tab). Target: {target}; date source: {source}; bins: {width} years.',
+  'missing.period.region': 'Missing values by period',
+  'missing.period.col.period': 'Period (items counted)',
+  'missing.period.cell': '{missing} / {total} ({rate})',
+  'missing.period.noDate': 'No date',
+  'missing.period.inconsistent': 'Inconsistent dates',
+  'missing.period.calendar.gregorian': 'Periods follow Gregorian years.',
+  'missing.period.calendar.hijri': 'Periods follow Hijri years.',
+  'missing.period.noSource': 'There are no dates, so nothing can be counted by period.',
+  'missing.period.tooMany':
+    'The date range is too wide and would make too many bins, so nothing is counted by period.',
+  'missing.period.tooManyWide':
+    'Dates range from {from} to {to}, which makes too many bins even at 100 years, so nothing is counted.',
+  'missing.period.tooMany.hint':
+    'Widen the bins in the Timeline tab, or check for a distant date (for example a typing mistake).',
+  'missing.period.noDated': 'None of the items left by the filters has a date.',
+  'missing.period.others': 'Items that cannot be placed in a period',
+  'missing.period.noAttrs': 'This target has no attributes.',
+  'missing.period.filteredOut': 'The filters leave 0 items, so nothing can be counted by period.',
+  'missing.period.note':
+    'Each cell is missing / items counted in that period that the attribute applies to (rate). An item with a date range is counted in every bin it overlaps. Items without the key are not counted as missing.',
+  'missing.display.nodes': 'Node attributes',
+  'missing.display.edges': 'Edge attributes',
+  'missing.display.none': 'No attributes to choose from.',
   'workspace.resize': 'Bottom panel height',
   'workspace.resize.hint':
     'Use the up and down arrow keys to change the height (Home for minimum, End for maximum)',
+  'workspace.tab.timeline': 'Timeline',
+  'timeline.target': 'Target',
+  'timeline.source': 'Date source',
+  'timeline.width': 'Bin width',
+  'timeline.width.option': '{n} yr',
+  'timeline.calendarNote.gregorian': 'Bins follow Gregorian year boundaries.',
+  'timeline.calendarNote.hijri': 'Bins follow Hijri year boundaries.',
+  'timeline.chartHintShort': 'Drag, or use the arrow keys, to choose a period.',
+  'timeline.info.topic': 'How to read and use the timeline',
+  'timeline.noData': 'No data. Load data or a project and the timeline will appear here.',
+  'timeline.tooManyWide':
+    'The dates range from {from} to {to}, which would make too many bins even at 100 years. Check for dates that are far apart (such as typing mistakes).',
+  'timeline.inconsistent': 'Inconsistent dates: {n}',
+  'timeline.inconsistent.hint':
+    'Periods whose end is before the start. As in the time filter, they overlap no range, so they are not counted in any bin and are shown apart from undated elements.',
+  'timeline.chart.role': 'timeline range selector',
+  'timeline.countNote':
+    'A wide date is counted once in every bin it overlaps, so the bar heights do not add up to the number of elements. A period with an unknown end is counted only in its start bin, but the time filter treats its end as open (everything after), so it still passes a range after the start. Elements counted in the bins you choose remain only when the time filter is set to "overlaps" ("fits within" removes elements whose span sticks out).',
+  'timeline.info.binCalendar':
+    'Bins follow year boundaries of the chosen calendar. For example, with 1-year Hijri bins, a date known only as a Gregorian year (such as 1500) spans two Hijri years and is counted in two bins.',
+  'timeline.chart': 'Timeline bar chart',
+  'timeline.chartHint':
+    'Drag to choose a period; on release the time filter is replaced (you can undo it). With the keyboard, use the left and right arrow keys to move between bins, hold Shift to extend the range, press Enter to filter and Escape to start over.',
+  'timeline.noSource':
+    'There are no elements with dates and no date attributes, so no timeline can be drawn.',
+  'timeline.noBins': 'No element has a date in this source.',
+  'timeline.tooMany':
+    'The dates are spread too widely and would make too many bins. Choose a wider bin.',
+  'timeline.noDate': 'Undated: {n}',
+  'timeline.noDate.hint':
+    'Number of elements after filtering that have no date in this source. This is separate from the number removed by filters and is not part of the axis above.',
+  'timeline.noDate.total': '({n} before filtering)',
+  'timeline.legend.contained': 'Date fits in the bin',
+  'timeline.legend.spanning': 'Wide date (crosses bins)',
+  'timeline.legend.excluded': 'Removed by filters',
+  'timeline.bin': '{range}: {count} (wide dates: {spanning}; removed by filters: {excluded})',
+  'timeline.cursor': 'Bin {range}',
+  'timeline.selection': 'Selected: {range} (press Enter to filter)',
+  'timeline.applied': 'Applied range: {range}',
+  'timeline.appliedOther':
+    'The applied time filter uses a different date source. Choosing a range replaces it with this source.',
+  'timeline.clearRange': 'Clear range',
   'table.target': 'Table type',
   'table.target.node': 'Node table',
   'table.target.edge': 'Edge table',

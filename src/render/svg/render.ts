@@ -75,7 +75,7 @@ function nodeSvg(n: SceneNode, index: number, prefix: string): string {
   const attrs =
     ` fill="${safeColor(n.fill, '#999999')}" stroke="${safeColor(n.stroke, '#333333')}"` +
     ` stroke-width="${num(n.strokeWidth)}"` +
-    (n.dashed ? ' stroke-dasharray="3 2"' : '') +
+    (n.dashed ? ` stroke-dasharray="${n.attrMissing === true ? '6 3' : '3 2'}"` : '') +
     ` id="${prefix}node-${String(index)}" data-id="${escapeXml(n.id)}"` +
     (n.selected ? ' class="selected"' : '');
   return shapeElement(n.shape, n.x, n.y, n.r, attrs);
@@ -88,7 +88,11 @@ function edgeSvg(e: SceneEdge, index: number, prefix: string): string {
   const points = (ps: readonly { readonly x: number; readonly y: number }[]) =>
     ps.map((p) => num(p.x) + ',' + num(p.y)).join(' ');
   const attrs = ' id="' + key + '" data-id="' + escapeXml(e.id) + '"';
+  // 【なぜ】値の欠損（重み）と指定した属性の欠損は、破線の間隔を変えて見分けられるようにする。
+  const dash = e.attrMissing === true ? '9 4' : '4 3';
   if (e.ribbon !== undefined)
+    // 【なぜ】先細りの帯は塗りの図形で、線ではないので `stroke-dasharray` だけでは破線に見えない。
+    //   欠損のときは、塗りを薄くして、輪郭に破線を付ける（色だけに頼らない）。
     return (
       '<polygon' +
       attrs +
@@ -97,8 +101,18 @@ function edgeSvg(e: SceneEdge, index: number, prefix: string): string {
       '" fill="' +
       color +
       '" fill-opacity="' +
-      opacity +
-      '"/>'
+      (e.dashed ? num(Number(opacity) * 0.4) : opacity) +
+      '"' +
+      (e.dashed
+        ? ' stroke="' +
+          color +
+          '" stroke-width="1" stroke-opacity="' +
+          opacity +
+          '" stroke-dasharray="' +
+          dash +
+          '"'
+        : '') +
+      '/>'
     );
   let defs = '';
   let stroke = color;
@@ -137,7 +151,7 @@ function edgeSvg(e: SceneEdge, index: number, prefix: string): string {
     '" stroke-opacity="' +
     opacity +
     '"' +
-    (e.dashed ? ' stroke-dasharray="4 3"' : '') +
+    (e.dashed ? ' stroke-dasharray="' + dash + '"' : '') +
     '/>';
   const head =
     e.head === undefined

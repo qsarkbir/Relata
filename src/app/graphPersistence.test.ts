@@ -84,4 +84,33 @@ describe('FR-PJ-01 / NFR-08: グラフ表示の保存', () => {
       ],
     });
   });
+  it('FR-VG-12: schema に無い属性（ノードとエッジの別も見る）の欠損の表示は落とし、警告にして開く', () => {
+    const result = parseProject(
+      serializeProject(
+        {
+          dataset: sampleDataset(),
+          importSettings: DEFAULT_IMPORT_SETTINGS,
+          view: {
+            filter: DEFAULT_FILTER_STATE,
+            graph: {
+              ...DEFAULT_GRAPH_VIEW,
+              // born はノードの属性、amount はエッジの属性。取り違え（edge に born）も落とす。
+              missingDisplay: { nodeAttrs: ['born', 'nope'], edgeAttrs: ['amount', 'born'] },
+            },
+          },
+        },
+        '2026-11-21',
+      ),
+    );
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        view: { graph: { missingDisplay: { nodeAttrs: ['born'], edgeAttrs: ['amount'] } } },
+      },
+      warnings: [
+        { issue: { kind: 'unknown-attribute', path: 'view.graph.missingDisplay.nodeAttrs[1]' } },
+        { issue: { kind: 'unknown-attribute', path: 'view.graph.missingDisplay.edgeAttrs[1]' } },
+      ],
+    });
+  });
 });

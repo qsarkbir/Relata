@@ -1,4 +1,5 @@
 import { EncodingControls } from './EncodingControls';
+import { MissingDisplayControls } from './MissingDisplayControls';
 import { graphEncoding } from './graphEncoding';
 import { createGraphMeasure } from './graphMeasure';
 /** グラフ表示と操作。元データとフィルタは既存ストアを参照する（T1-19）。 */
@@ -9,6 +10,7 @@ import { DEFAULT_GRAPH_VIEW } from '../core/project';
 import type { GraphViewSettings } from '../core/project';
 import type { NodeId } from '../core/model';
 import { toNodeId } from '../core/model';
+import { findMissingElements } from '../core/missing';
 import { matchIncludes, LOOSE_MATCH } from '../core/text';
 import { buildScene, renderSvg } from '../render';
 import { createSvgExport, downloadSvg } from '../io/export';
@@ -17,6 +19,8 @@ import { Icon, IconButton } from './ui/icons';
 import { InfoTip } from './ui/InfoTip';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Field } from './ui/Field';
+import { LayoutMethodControls, NoCoordinatesNote } from './LayoutMethodControls';
+import { geoInputsFor, resolveGeoSelection } from './geoInputs';
 import { GraphSearch } from './GraphSearch';
 import { getNumberFormat } from './intl';
 import { StatusMessage } from './ui/StatusMessage';
@@ -31,6 +35,8 @@ import {
 } from '../state';
 import { useData, useSelection, useT, useUi } from './hooks';
 import { useNetwork } from './useNetwork';
+import { clientToSvg, useRangeSelect } from './useRangeSelect';
+import { RangeSelectSummary } from './RangeSelectSummary';
 import { buildPanelStore } from './buildPanelStore';
 import { ProjectionIssues } from './ProjectionNotice';
 import { NeighborEvidence, SelectedEdges } from './ProjectionEvidence';
@@ -112,8 +118,13 @@ export function GraphView() {
   // 「再配置する」を押すまで、位置の決まらないノードが図に出ない）。
   const interrupted = useRef(false);
   const handledIteration = useRef(0);
+  // 【なぜ】方式を変えたとき、再配置のとき、列の順や属性を変えたときは、計算の後に図を収め直す
+  // （「全体を表示」と同じ）。位置が全く変わるので、前の拡大率のままだと図が画面の外に出ることがある。
+  const refitAfterLayout = useRef(false);
   const svg = useRef<SVGSVGElement>(null);
   const frame = useRef<HTMLDivElement>(null);
+  const rangeRect = useRef<SVGRectElement>(null);
+  // 【なぜ】フックは早期 return より前で呼ぶ（呼ぶ順序を変えない）。
   // 【なぜ】枠の大きさは利用者がつまみで変えられる。SVG の座標を CSS ピクセルと 1 対 1 にするため、
   // 測った大きさを viewBox に使う。レイアウトの効果は大きさの変化で動かしたくないので、ref にも写す。
   const [canvas, setCanvas] = useState<{ width: number; height: number }>(DEFAULT_CANVAS);
@@ -130,6 +141,11 @@ export function GraphView() {
   } | null>(null);
   // 【なぜ】描画・配置・指標が、同じ射影後のグラフを使う。計算は state の getNetwork が 1 か所で行う（D-39）。
   const network = useNetwork();
+  const range = useRangeSelect(svg, rangeRect, (key) => {
+    const g = network?.graph;
+    if (g?.hasEdge(key) !== true) return [];
+    return g.getEdgeAttribute(key, 'edgeIds');
+  });
   // 【なぜ】構築のパネルが開いている間は、同じ理由をパネルの中だけに出す（支援技術の二重の読み上げを防ぐ）。
   const buildPanelOpen = useStore(buildPanelStore, (b) => b.open);
   const graph = network?.graph ?? null;
@@ -147,6 +163,22 @@ export function GraphView() {
     () => (graph === null || dataset === null ? {} : graphEncoding(dataset, graph, view.encoding)),
     [graph, dataset, view.encoding],
   );
+  // 【なぜ】「欠損の表示」の判定は core の関数で行う。図のエッジはまとめた後のものなので、元のエッジのどれかが
+  // 欠損していれば、そのエッジ（グラフのキー）を破線にする。位置や配置の計算には関わらない（再配置しない）。
+  const missingMarks = useMemo(() => {
+    if (graph === null || dataset === null) return { nodes: undefined, edges: undefined };
+    const found = findMissingElements(
+      dataset,
+      view.missingDisplay.nodeAttrs,
+      view.missingDisplay.edgeAttrs,
+    );
+    const edges = new Set<string>();
+    if (found.edges.size > 0)
+      graph.forEachEdge((key, attrs) => {
+        if (attrs.edgeIds.some((id) => found.edges.has(id))) edges.add(key);
+      });
+    return { nodes: found.nodes, edges };
+  }, [graph, dataset, view.missingDisplay]);
   const visibleSelected = useMemo(
     () => new Set([...selected].filter((id) => graph?.hasNode(id))),
     [selected, graph],
@@ -164,8 +196,13 @@ export function GraphView() {
             includeSelection: true,
             directedStyle: view.direction,
             measureText,
+            // 【TS】条件付きスプレッド: `...(条件 ? {} : { 項目 })` は、値がある時だけ項目を足す。
+            //   値が無いとき、項目そのものを作らず、既定の扱いを buildScene 側に任せるため。
+            ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
+            ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
           }),
     [
+      missingMarks,
       graph,
       positions,
       encoding,
@@ -224,7 +261,15 @@ export function GraphView() {
     const current = graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW;
     const savedIds = new Set(current.positions.map((p) => p.id));
     const allSaved = graph.nodes().every((id) => savedIds.has(toNodeId(id)));
-    if (allSaved && iteration === handledIteration.current) {
+    // 【なぜ】地理座標は緯度・経度の両方が選ばれるまで計算しない（それまでの配置を上書きしない）。
+    const geoSelection =
+      current.layout === 'geo' && dataset !== null
+        ? resolveGeoSelection(dataset, current.geoAttrs)
+        : null;
+    const waitingForGeo =
+      geoSelection !== null && (geoSelection.lat === undefined || geoSelection.lon === undefined);
+    if (waitingForGeo) handledIteration.current = iteration;
+    if (waitingForGeo || (allSaved && iteration === handledIteration.current)) {
       queueMicrotask(() => {
         if (!isStale()) {
           setBusy(false);
@@ -246,10 +291,17 @@ export function GraphView() {
       setBusy(true);
       setError(false);
       const kind = current.layout === 'fixed' && !allSaved ? 'circular' : current.layout;
+      // 層状・地理座標の入力。属性の値の検査（座標なし）はここ（メインスレッド）で済ませ、Worker へは数だけ渡す。
+      const methodOptions =
+        kind === 'layered'
+          ? { columnOrder: current.columnOrder ?? [] }
+          : kind === 'geo' && dataset !== null
+            ? { geo: geoInputsFor(dataset, graph, current.geoAttrs) }
+            : {};
       const outcome = await layoutController.run({
         job: {
           snapshot: toSnapshot(graph),
-          options: { kind, seed: current.seed, positions: current.positions },
+          options: { kind, seed: current.seed, positions: current.positions, ...methodOptions },
         },
         rounds: kind === 'forceatlas2' ? 10 : 0,
         onProgress: (fraction) => {
@@ -259,6 +311,8 @@ export function GraphView() {
           const merged = new Map(current.positions.map((p) => [p.id, p]));
           for (const p of positions) merged.set(p.id, p);
           const nextPositions = [...merged.values()];
+          const refit = refitAfterLayout.current;
+          refitAfterLayout.current = false;
           // 保存された全座標は再開時にそのまま使う。初回だけ全体を収める。
           const raw = new Map(nextPositions.map((p) => [p.id, p]));
           const built = buildScene(graph, raw, encoding, { measureText });
@@ -274,7 +328,7 @@ export function GraphView() {
           const zoom = fitZoom(built.width, built.height, size);
           patch({
             positions: nextPositions,
-            ...(current.positions.length === 0
+            ...(current.positions.length === 0 || refit
               ? {
                   viewport: {
                     zoom,
@@ -297,7 +351,7 @@ export function GraphView() {
       uiStore.getState().endTask(task);
     };
     // 位置・viewportの保存更新では反復を再開しない。入力グラフと方式/seed、明示再計算だけを監視する。
-  }, [graph, view.layout, view.seed, iteration, measureText, encoding]);
+  }, [graph, dataset, view.layout, view.seed, iteration, measureText, encoding]);
   const hasFigure = dataset !== null && graph !== null && scene !== null;
   // 【なぜ】「保存」のダイアログから図を保存できるよう、今の図を保存する関数を登録する（svgExport.ts）。
   const canExport = hasFigure && scene.nodes.length > 0;
@@ -316,6 +370,8 @@ export function GraphView() {
           includeSelection: false,
           directedStyle: view.direction,
           measureText,
+          ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
+          ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
           title: dataset.meta.title,
         }),
       );
@@ -334,6 +390,7 @@ export function GraphView() {
     view.direction,
     visibleSelected,
     measureText,
+    missingMarks,
   ]);
   useEffect(() => {
     const element = svg.current;
@@ -371,6 +428,53 @@ export function GraphView() {
       observer.disconnect();
     };
   }, [hasFigure]);
+  // 【なぜ】SVG の文字列は、図の内容（シーン・選択・検索・強調）が変わったときだけ作り直す。
+  // パンやズーム、矩形選択のたびに全体を組み直さない（描画の負荷を避ける）。
+  const inner = useMemo(() => {
+    if (scene === null) return '';
+    const matchSet = new Set(
+      query === ''
+        ? []
+        : (graph?.nodes() ?? []).filter(
+            (id) =>
+              matchIncludes(graph?.getNodeAttribute(id, 'label') ?? '', query, LOOSE_MATCH) ||
+              matchIncludes(id, query, LOOSE_MATCH),
+          ),
+    );
+    const display = {
+      ...scene,
+      nodes: scene.nodes.map((node) =>
+        matchSet.has(node.id) ? { ...node, fill: '#ffcc00' } : node,
+      ),
+      edges: scene.edges.map((edge) => ({
+        ...edge,
+        // 選んだエッジは、色に加えて太さでも示す（色だけで伝えない）。
+        ...(selectedEdgeSet.has(edge.id) ? { width: Math.max(edge.width * 2, 3) } : {}),
+        color: selectedEdgeSet.has(edge.id)
+          ? '#7b3294'
+          : visibleSelected.has(edge.source) && visibleSelected.has(edge.target)
+            ? '#7b3294'
+            : !edge.directed &&
+                (visibleSelected.has(edge.source) || visibleSelected.has(edge.target))
+              ? '#7b3294'
+              : visibleSelected.has(edge.target)
+                ? '#d55e00'
+                : visibleSelected.has(edge.source)
+                  ? '#0072b2'
+                  : edge.color,
+        opacity:
+          selectedEdgeSet.has(edge.id) ||
+          (visibleSelected.size === 0 && selectedEdgeSet.size === 0) ||
+          (highlight !== 'in' && visibleSelected.has(edge.source)) ||
+          (highlight !== 'out' && visibleSelected.has(edge.target))
+            ? edge.opacity
+            : 0.12,
+      })),
+    };
+    const markup = renderSvg(display, { idPrefix: 'graph-view-' });
+    // 生成器が検証・エスケープしたSVGの中身だけを使う。任意の利用者HTMLは挿入しない。
+    return markup.slice(markup.indexOf('>') + 1, markup.lastIndexOf('</svg>'));
+  }, [scene, graph, query, visibleSelected, selectedEdgeSet, highlight]);
   if (dataset === null || graph === null || scene === null) return null;
   const matches = graph
     .nodes()
@@ -380,45 +484,9 @@ export function GraphView() {
         (matchIncludes(graph.getNodeAttribute(id, 'label'), query, LOOSE_MATCH) ||
           matchIncludes(id, query, LOOSE_MATCH)),
     );
-  const matchSet = new Set(matches);
   // 表示中の選択を優先し、無ければ（絞り込みで見えなくなった）選択の先頭をカードに出す。
   const selectedId = [...visibleSelected][0] ?? [...selected][0];
-  const display = {
-    ...scene,
-    nodes: scene.nodes.map((node) => (matchSet.has(node.id) ? { ...node, fill: '#ffcc00' } : node)),
-    edges: scene.edges.map((edge) => ({
-      ...edge,
-      // 選んだエッジは、色に加えて太さでも示す（色だけで伝えない）。
-      ...(selectedEdgeSet.has(edge.id) ? { width: Math.max(edge.width * 2, 3) } : {}),
-      color: selectedEdgeSet.has(edge.id)
-        ? '#7b3294'
-        : visibleSelected.has(edge.source) && visibleSelected.has(edge.target)
-          ? '#7b3294'
-          : !edge.directed && (visibleSelected.has(edge.source) || visibleSelected.has(edge.target))
-            ? '#7b3294'
-            : visibleSelected.has(edge.target)
-              ? '#d55e00'
-              : visibleSelected.has(edge.source)
-                ? '#0072b2'
-                : edge.color,
-      opacity:
-        selectedEdgeSet.has(edge.id) ||
-        (visibleSelected.size === 0 && selectedEdgeSet.size === 0) ||
-        (highlight !== 'in' && visibleSelected.has(edge.source)) ||
-        (highlight !== 'out' && visibleSelected.has(edge.target))
-          ? edge.opacity
-          : 0.12,
-    })),
-  };
-  const markup = renderSvg(display, { idPrefix: 'graph-view-' });
-  // 生成器が検証・エスケープしたSVGの中身だけを使う。任意の利用者HTMLは挿入しない。
-  const inner = markup.slice(markup.indexOf('>') + 1, markup.lastIndexOf('</svg>'));
-  const point = (clientX: number, clientY: number) => {
-    const matrix = svg.current?.getScreenCTM();
-    return matrix === null || matrix === undefined
-      ? { x: clientX, y: clientY }
-      : new DOMPoint(clientX, clientY).matrixTransform(matrix.inverse());
-  };
+  const point = (clientX: number, clientY: number) => clientToSvg(svg.current, clientX, clientY);
   const zoomBy = (factor: number) => {
     zoomAround(factor, canvas.width / 2, canvas.height / 2);
   };
@@ -470,12 +538,26 @@ export function GraphView() {
       t('graph.selection.count', { count: nf.format(selected.size) })
     );
   // カードの見出し。ノードを選んでいればその名前、エッジだけなら選んだ本数。
+  // 複数選択のときは件数にする（先頭のノード名にすると、本文の一覧と重なる）。
+  // 選択の要約と「選択したノードで絞り込む」のボタン。件数に応じてカードの中の位置を変える。
+  const rangeSummary =
+    selected.size >= 1 ? (
+      <RangeSelectSummary
+        ids={selected}
+        nodeLabel={nodeLabel}
+        passTypes={network?.projection.kind === 'applied' ? [network.projection.options.via] : []}
+        typeLabel={(id) => dataset.nodeTypes.find((nt) => nt.id === id)?.label ?? id}
+        isVisible={(id) => graph.hasNode(id)}
+      />
+    ) : null;
   const cardHeading =
-    selectedId !== undefined
-      ? nodeLabel(selectedId)
-      : hiddenEdges
-        ? t('evidence.selectedEdges')
-        : t('evidence.edgeCount', { count: nf.format(selectedEdgeKeys.length) });
+    selected.size > 1
+      ? t('graph.selection.count', { count: nf.format(selected.size) })
+      : selectedId !== undefined
+        ? nodeLabel(selectedId)
+        : hiddenEdges
+          ? t('evidence.selectedEdges')
+          : t('evidence.edgeCount', { count: nf.format(selectedEdgeKeys.length) });
   const selectedVisible = selectedId !== undefined && graph.hasNode(selectedId);
   return (
     <section className="graph-view" aria-labelledby="graph-title">
@@ -573,6 +655,7 @@ export function GraphView() {
         </button>
       </Toolbar>
       {network !== null && !buildPanelOpen && <ProjectionIssues status={network.projection} />}
+      <NoCoordinatesNote dataset={dataset} graph={graph} view={view} />
       {graph.order === 0 && (
         <StatusMessage
           state={
@@ -602,6 +685,12 @@ export function GraphView() {
                     ArrowUp: [0, -20],
                     ArrowDown: [0, 20],
                   };
+                  if (e.key === 'Escape') {
+                    // ドラッグ中は矩形の取り消しだけ。そうでなければ選択を解除する。
+                    if (range.active()) range.cancel();
+                    else selectionStore.getState().clear();
+                    return;
+                  }
                   const delta = offsets[e.key];
                   if (delta !== undefined) {
                     e.preventDefault();
@@ -618,6 +707,7 @@ export function GraphView() {
                 data-zoom={view.viewport.zoom}
                 onPointerDown={(e) => {
                   if (e.button !== 0) return;
+                  if (range.begin(e)) return;
                   const p = point(e.clientX, e.clientY);
                   const element =
                     e.target instanceof Element ? e.target.closest('[data-id]') : null;
@@ -644,6 +734,10 @@ export function GraphView() {
                   if (id !== undefined) interruptLayout();
                 }}
                 onPointerMove={(e) => {
+                  if (range.active()) {
+                    range.move(e);
+                    return;
+                  }
                   const start = drag.current;
                   if (start === null) return;
                   const p = point(e.clientX, e.clientY);
@@ -684,6 +778,11 @@ export function GraphView() {
                     });
                 }}
                 onPointerUp={(e) => {
+                  if (range.active()) {
+                    range.end(e);
+                    setCardOpen(true);
+                    return;
+                  }
                   const start = drag.current;
                   drag.current = null;
                   if (start !== null && !start.moved) {
@@ -699,7 +798,11 @@ export function GraphView() {
                     svg.current.releasePointerCapture(e.pointerId);
                   resumeLayout();
                 }}
+                onLostPointerCapture={() => {
+                  range.cancel();
+                }}
                 onPointerCancel={() => {
+                  range.cancel();
                   drag.current = null;
                   resumeLayout();
                 }}
@@ -708,19 +811,32 @@ export function GraphView() {
                   transform={`translate(${String(view.viewport.x - offset.x * view.viewport.zoom)} ${String(view.viewport.y - offset.y * view.viewport.zoom)}) scale(${String(view.viewport.zoom)})`}
                   dangerouslySetInnerHTML={{ __html: inner }}
                 />
+                {/* 【なぜ】矩形は常に置き、フックが属性を直接書き換える（ドラッグ中に再描画しない）。
+                    色だけに頼らず破線で示し、操作の対象にはしない。 */}
+                <rect
+                  ref={rangeRect}
+                  className="graph-range"
+                  visibility="hidden"
+                  data-testid="range-rect"
+                />
               </svg>
             </div>
             {(selectedId !== undefined || selectedEdges.size > 0) && (
-              <section className="graph-card" aria-label={t('graph.details')}>
+              <section
+                className="graph-card"
+                aria-label={t('graph.details')}
+                onKeyDown={(e) => {
+                  // 【なぜ】キーボードだけでも選択を解除できるよう、カードの中でも Esc で解除する。
+                  if (e.key === 'Escape') {
+                    selectionStore.getState().clear();
+                    // 【なぜ】カードが消えるとフォーカスが失われる。キーボードの利用者が続けて操作できるよう図へ戻す。
+                    svg.current?.focus();
+                  }
+                }}
+              >
                 <div className="graph-card-head">
                   <h3 ref={cardTitle} tabIndex={-1} title={cardHeading}>
                     <bdi>{cardHeading}</bdi>
-                    {selected.size > 1 && (
-                      <span className="graph-card-more">
-                        {' '}
-                        {t('graph.selection.more', { count: nf.format(selected.size - 1) })}
-                      </span>
-                    )}
                   </h3>
                   <button
                     type="button"
@@ -737,11 +853,13 @@ export function GraphView() {
                   </button>
                 </div>
                 <div id="graph-card-body" className="graph-card-body" hidden={!cardOpen}>
-                  {selectedId !== undefined && (
+                  {selectedId !== undefined && selected.size <= 1 && (
                     <p>
                       <bdi>{selectedId}</bdi>
                     </p>
                   )}
+                  {/* 【なぜ】複数選択では、絞り込みのボタンをカードの先頭に置く（単一ノードの操作は出さないため）。 */}
+                  {selected.size > 1 && rangeSummary}
                   {selectedEdgeKeys.length > 0 && (
                     <SelectedEdges graph={graph} edgeKeys={selectedEdgeKeys} />
                   )}
@@ -759,7 +877,7 @@ export function GraphView() {
                       </button>
                     </>
                   )}
-                  {selectedId === undefined ? null : selectedVisible ? (
+                  {selectedId === undefined || selected.size > 1 ? null : selectedVisible ? (
                     <>
                       <button
                         type="button"
@@ -803,6 +921,8 @@ export function GraphView() {
                     // 【なぜ】フィルタで見えなくなっても選択は消さない（R-19）。理由を文で示し、色だけに頼らない。
                     <p className="graph-card-hidden">{t('graph.selection.hidden')}</p>
                   )}
+                  {/* 【なぜ】1 件の選択では、主な操作（固定）を先に置き、絞り込みはカードの末尾に置く（キーボードの順を変えない）。 */}
+                  {selected.size === 1 && rangeSummary}
                 </div>
               </section>
             )}
@@ -851,8 +971,15 @@ export function GraphView() {
                 value={view.layout}
                 onChange={(e) => {
                   const value = e.currentTarget.value;
-                  if (value === 'forceatlas2' || value === 'circular' || value === 'fixed') {
+                  if (
+                    value === 'forceatlas2' ||
+                    value === 'circular' ||
+                    value === 'fixed' ||
+                    value === 'layered' ||
+                    value === 'geo'
+                  ) {
                     patch({ layout: value });
+                    refitAfterLayout.current = true;
                     setIteration((v) => v + 1);
                   }
                 }}
@@ -860,8 +987,21 @@ export function GraphView() {
                 <option value="forceatlas2">ForceAtlas2</option>
                 <option value="circular">{t('graph.circular')}</option>
                 <option value="fixed">{t('graph.fixed')}</option>
+                <option value="layered">{t('graph.layered')}</option>
+                <option value="geo">{t('graph.geo')}</option>
               </select>
             </Field>
+            <LayoutMethodControls
+              dataset={dataset}
+              graph={graph}
+              view={view}
+              onChange={(change) => {
+                // 【なぜ】列の順・属性の変更は配置の明示的な操作なので、ここで計算を始める。
+                patch(change);
+                refitAfterLayout.current = true;
+                setIteration((v) => v + 1);
+              }}
+            />
             <Field label={t('graph.seed')}>
               <input
                 type="number"
@@ -881,6 +1021,7 @@ export function GraphView() {
               type="button"
               disabled={busy}
               onClick={() => {
+                refitAfterLayout.current = true;
                 setIteration((v) => v + 1);
               }}
             >
@@ -927,6 +1068,15 @@ export function GraphView() {
                 <option value="gradient">{t('graph.gradient')}</option>
               </select>
             </Field>
+          </CollapsibleSection>
+          <CollapsibleSection title={t('graph.section.missing')} note={t('missing.display.note')}>
+            <MissingDisplayControls
+              dataset={dataset}
+              settings={view.missingDisplay}
+              onChange={(value) => {
+                patch({ missingDisplay: value });
+              }}
+            />
           </CollapsibleSection>
         </aside>
       </div>

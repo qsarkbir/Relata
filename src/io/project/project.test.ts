@@ -18,8 +18,10 @@ import { DEFAULT_IMPORT_SETTINGS, PROJECT_VIEW_KEYS, type ProjectParts } from '.
 import {
   DEFAULT_GRAPH_VIEW,
   DEFAULT_TABLE_VIEW,
+  DEFAULT_TIMELINE,
   DEFAULT_WORKSPACE,
   type TableViewSettings,
+  type TimelineSettings,
   type WorkspaceSettings,
 } from '../../core/project';
 
@@ -89,6 +91,7 @@ describe('プロジェクトの往復', () => {
         table: DEFAULT_TABLE_VIEW,
         workspace: DEFAULT_WORKSPACE,
         display: { calendar: 'hijri' as const },
+        timeline: DEFAULT_TIMELINE,
       },
     };
     const saved = sub(obj(serializeProject(full, AT)), 'view');
@@ -114,6 +117,31 @@ describe('プロジェクトの往復', () => {
     expect(plain.value.view.table).toBeUndefined();
     expect(plain.value.view.workspace).toBeUndefined();
   });
+  it('FR-TM-01: 年表の設定が往復し、無ければ持たない。壊れた項目は既定で補う（D-24）', () => {
+    const timeline: TimelineSettings = {
+      target: 'edge',
+      width: 25,
+      node: { kind: 'attr', attr: 'Year (AH)' },
+      edge: { kind: 'span' },
+    };
+    const r = ok(serializeProject({ ...parts, view: { ...parts.view, timeline } }, AT));
+    expect(r.value.view.timeline).toEqual(timeline);
+    expect(r.warnings).toEqual([]);
+    expect(ok(serializeProject(parts, AT)).value.view.timeline).toBeUndefined();
+    const file = obj(serializeProject(parts, AT));
+    const broken = ok(
+      JSON.stringify({
+        ...file,
+        view: { ...sub(file, 'view'), timeline: { target: 'x', width: 7, node: { kind: 'attr' } } },
+      }),
+    );
+    expect(broken.value.view.timeline).toEqual(DEFAULT_TIMELINE);
+    const nul = ok(JSON.stringify({ ...file, view: { ...sub(file, 'view'), timeline: null } }));
+    expect(nul.value.view.timeline).toBeUndefined();
+    expect(nul.warnings).toEqual([
+      { source: 'project', issue: { kind: 'unknown-field', path: 'view.timeline' } },
+    ]);
+  });
   it('FR-UI-02: 下の段の設定の壊れた項目は既定で補い、範囲外の高さは収める', () => {
     const text = serializeProject(parts, AT);
     const file = obj(text);
@@ -121,7 +149,7 @@ describe('プロジェクトの往復', () => {
       ...file,
       view: {
         ...sub(file, 'view'),
-        workspace: { tab: 'timeline', open: 'yes', height: 99999 },
+        workspace: { tab: 'no-such-tab', open: 'yes', height: 99999 },
         table: {
           target: 'x',
           node: { sort: { column: '', direction: 'up' }, columns: [1, 'a', 'a'] },
@@ -261,6 +289,20 @@ describe('プロジェクトの読み込みの補完と警告', () => {
   it('FR-PJ-01: view.filter が無くても既定の状態で補う', () => {
     const r = ok(mutated((o) => (o.view = {})));
     expect(r.value.view.filter).toEqual(DEFAULT_FILTER_STATE);
+  });
+  it('FR-VG-02: view.graph の columnOrder と geoAttrs は既知の項目で、警告なしに往復する', () => {
+    const r = ok(
+      mutated((o) => {
+        sub(o, 'view').graph = {
+          layout: 'geo',
+          columnOrder: ['org', 'person'],
+          geoAttrs: { lat: 'Lat' },
+        };
+      }),
+    );
+    expect(r.warnings).toEqual([]);
+    expect(r.value.view.graph?.columnOrder).toEqual(['org', 'person']);
+    expect(r.value.view.graph?.geoAttrs).toEqual({ lat: 'Lat' });
   });
   it('FR-PJ-01: savedAt が無ければ結果にも持たない（空文字で補わない）', () => {
     const r = ok(mutated((o) => delete o.savedAt));

@@ -85,7 +85,7 @@ export const CERTAINTY_KEYS = [
  * - `time`: 日付（`source` が `span` なら期間、`attr` なら日付の属性）が [from, to] と重なる、または収まる。
  * - `text`: ラベル（エッジなら relation）と文字列の属性値への部分一致。
  * - `nodeType`: ノード型で絞る（ノード専用なので `target` を持たない）。
- * - `nodeSet`: ID が `include` に含まれるノードだけ通す（ノード専用。範囲選択から作る。D-41）。
+ * - `nodeSet`: ID が `include` に含まれるノードだけ通す（ノード専用。範囲選択から作る。`passTypes` の型のノードは常に通す。D-41）。
  * - `certainty`: 確からしさが `include` のどれかに当たれば通す（D-37）。
  */
 export type FilterDef =
@@ -133,6 +133,12 @@ export type FilterDef =
       readonly id: FilterId;
       readonly kind: 'nodeSet';
       readonly include: readonly NodeId[];
+      /**
+       * この型のノードは `include` に関係なく通す（任意）。
+       * 【なぜ】二部グラフの射影の適用中は、フィルタが射影の前にかかる（D-39）。射影先の型の ID だけを
+       * `include` に入れると、仲介の型（組織など）が全部落ちてエッジが 0 本になる。仲介の型を通すために使う。
+       */
+      readonly passTypes?: readonly NodeTypeId[];
     }
   | {
       readonly id: FilterId;
