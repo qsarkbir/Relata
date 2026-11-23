@@ -81,6 +81,8 @@ export const ja = {
   'graph.section.appearance': '見た目',
   'graph.section.labels': 'ラベルと向き',
   'graph.selection.clear': '選択を解除',
+  'graph.selection.filter': '選択したノードで絞り込む',
+  'graph.selection.listMore': 'ほか {count} 件',
   'graph.selection.count': '{count} 件を選択中',
   'graph.selection.more': '他に {count} 件を選択中',
   'graph.selection.hidden':

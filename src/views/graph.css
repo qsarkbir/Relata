@@ -272,3 +272,14 @@
 .evidence-count {
   color: var(--rl-text-muted);
 }
+.graph-range {
+  fill: color-mix(in srgb, var(--rl-accent, #2563eb) 15%, transparent);
+  stroke: var(--rl-accent, #2563eb);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+  pointer-events: none;
+}
+.graph-range-summary ul {
+  margin-block: 0 var(--rl-space-2);
+  padding-inline-start: 1.2em;
+}

@@ -31,6 +31,8 @@ import {
 } from '../state';
 import { useData, useSelection, useT, useUi } from './hooks';
 import { useNetwork } from './useNetwork';
+import { useRangeSelect } from './useRangeSelect';
+import { RangeSelectSummary } from './RangeSelectSummary';
 import { buildPanelStore } from './buildPanelStore';
 import { ProjectionIssues } from './ProjectionNotice';
 import { NeighborEvidence, SelectedEdges } from './ProjectionEvidence';
@@ -114,6 +116,8 @@ export function GraphView() {
   const handledIteration = useRef(0);
   const svg = useRef<SVGSVGElement>(null);
   const frame = useRef<HTMLDivElement>(null);
+  // 【なぜ】フックは早期 return より前で呼ぶ（呼ぶ順序を変えない）。
+  const range = useRangeSelect(svg);
   // 【なぜ】枠の大きさは利用者がつまみで変えられる。SVG の座標を CSS ピクセルと 1 対 1 にするため、
   // 測った大きさを viewBox に使う。レイアウトの効果は大きさの変化で動かしたくないので、ref にも写す。
   const [canvas, setCanvas] = useState<{ width: number; height: number }>(DEFAULT_CANVAS);
@@ -602,6 +606,10 @@ export function GraphView() {
                     ArrowUp: [0, -20],
                     ArrowDown: [0, 20],
                   };
+                  if (e.key === 'Escape') {
+                    selectionStore.getState().clear();
+                    return;
+                  }
                   const delta = offsets[e.key];
                   if (delta !== undefined) {
                     e.preventDefault();
@@ -618,6 +626,7 @@ export function GraphView() {
                 data-zoom={view.viewport.zoom}
                 onPointerDown={(e) => {
                   if (e.button !== 0) return;
+                  if (range.begin(e)) return;
                   const p = point(e.clientX, e.clientY);
                   const element =
                     e.target instanceof Element ? e.target.closest('[data-id]') : null;
@@ -644,6 +653,10 @@ export function GraphView() {
                   if (id !== undefined) interruptLayout();
                 }}
                 onPointerMove={(e) => {
+                  if (range.active()) {
+                    range.move(e);
+                    return;
+                  }
                   const start = drag.current;
                   if (start === null) return;
                   const p = point(e.clientX, e.clientY);
@@ -684,6 +697,11 @@ export function GraphView() {
                     });
                 }}
                 onPointerUp={(e) => {
+                  if (range.active()) {
+                    range.end(e);
+                    setCardOpen(true);
+                    return;
+                  }
                   const start = drag.current;
                   drag.current = null;
                   if (start !== null && !start.moved) {
@@ -700,6 +718,7 @@ export function GraphView() {
                   resumeLayout();
                 }}
                 onPointerCancel={() => {
+                  range.cancel();
                   drag.current = null;
                   resumeLayout();
                 }}
@@ -708,10 +727,28 @@ export function GraphView() {
                   transform={`translate(${String(view.viewport.x - offset.x * view.viewport.zoom)} ${String(view.viewport.y - offset.y * view.viewport.zoom)}) scale(${String(view.viewport.zoom)})`}
                   dangerouslySetInnerHTML={{ __html: inner }}
                 />
+                {range.rect !== null && (
+                  // 【なぜ】色だけに頼らず、破線の枠で範囲を示す。操作の対象ではないので pointer-events は切る。
+                  <rect
+                    className="graph-range"
+                    x={range.rect.x}
+                    y={range.rect.y}
+                    width={range.rect.width}
+                    height={range.rect.height}
+                    data-testid="range-rect"
+                  />
+                )}
               </svg>
             </div>
             {(selectedId !== undefined || selectedEdges.size > 0) && (
-              <section className="graph-card" aria-label={t('graph.details')}>
+              <section
+                className="graph-card"
+                aria-label={t('graph.details')}
+                onKeyDown={(e) => {
+                  // 【なぜ】キーボードだけでも選択を解除できるよう、カードの中でも Esc で解除する。
+                  if (e.key === 'Escape') selectionStore.getState().clear();
+                }}
+              >
                 <div className="graph-card-head">
                   <h3 ref={cardTitle} tabIndex={-1} title={cardHeading}>
                     <bdi>{cardHeading}</bdi>
@@ -737,10 +774,17 @@ export function GraphView() {
                   </button>
                 </div>
                 <div id="graph-card-body" className="graph-card-body" hidden={!cardOpen}>
-                  {selectedId !== undefined && (
+                  {selectedId !== undefined && selected.size <= 1 && (
                     <p>
                       <bdi>{selectedId}</bdi>
                     </p>
+                  )}
+                  {selected.size > 1 && (
+                    <RangeSelectSummary
+                      ids={selected}
+                      nodeLabel={nodeLabel}
+                      isVisible={(id) => graph.hasNode(id)}
+                    />
                   )}
                   {selectedEdgeKeys.length > 0 && (
                     <SelectedEdges graph={graph} edgeKeys={selectedEdgeKeys} />
@@ -759,7 +803,7 @@ export function GraphView() {
                       </button>
                     </>
                   )}
-                  {selectedId === undefined ? null : selectedVisible ? (
+                  {selectedId === undefined || selected.size > 1 ? null : selectedVisible ? (
                     <>
                       <button
                         type="button"

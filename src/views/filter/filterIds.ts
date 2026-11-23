@@ -62,3 +62,6 @@ export function certaintyFilterId(target: Target): FilterId {
 export function timeFilterId(target: Target): FilterId {
   return toFilterId(JSON.stringify(['time', target]));
 }
+
+/** 範囲選択から作るノード集合のフィルタの ID（1 つだけ。もう一度押すと置き換わる。D-41）。 */
+export const NODE_SET_FILTER_ID: FilterId = toFilterId(JSON.stringify(['nodeSet']));

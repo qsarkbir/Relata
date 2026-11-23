@@ -83,6 +83,8 @@ export const en = {
   'graph.section.appearance': 'Appearance',
   'graph.section.labels': 'Labels and direction',
   'graph.selection.clear': 'Clear selection',
+  'graph.selection.filter': 'Filter to the selected nodes',
+  'graph.selection.listMore': '{count} more',
   'graph.selection.count': '{count} selected',
   'graph.selection.more': '{count} more selected',
   'graph.selection.hidden':
