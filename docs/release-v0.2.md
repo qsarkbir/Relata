@@ -6,10 +6,10 @@
 |---|---|
 | 1. フェーズ 2 の Must 要件の実装 | T2-01〜T2-09 がすべて ✅（[進行表](progress.md)）。PR #43、#44、#45 は統合済み。第 4 段（T2-06、T2-08）と T2-09 は PR #46 |
 | 2. 各 Must 要件に ID を名前に含むテスト | フェーズ 2 の Must 13 件（FR-FL-03、FR-GR-03、FR-GR-04、FR-VG-12、FR-TM-01、FR-TM-02、FR-TM-03、FR-TM-05、FR-TB-01、FR-OUT-03、FR-OUT-04、FR-PJ-03、FR-UI-02）すべてにある（T2-09 で確認）。FR-OUT-03 と FR-OUT-04 は E2E が 1 件ずつで、PDF の字形の連結と並びは単体テスト（`tests/unit/pdf-export.test.ts`）で確かめる |
-| 3. CI（lint、型検査、テスト、ビルド） | 2026-11-23、統合用のブランチで typecheck、lint、format、単体 1,202 件、build、Chromium の E2E 205 件が成功。PR #46 の CI も成功で確認する |
+| 3. CI（lint、型検査、テスト、ビルド） | 2026-11-23、typecheck、lint、format、単体 1,204 件、build、Chromium の E2E 206 件が成功。PR #46 と main の CI も成功 |
 | 4. UC-2、UC-4、UC-5 の E2E | `tests/e2e/uc2.spec.ts`、`uc4.spec.ts`、`uc5.spec.ts`（利用者の操作だけで通す。`--repeat-each=3` で安定） |
 | 5. 旧 Palladio の回帰テスト | 全 E2E と単体の中で成功（[対応表](regression-coverage.md)。地図に関わる項目はフェーズ 3） |
-| 6. GitHub Pages での配信 | **main への統合後に確認する**（下の「公開後の確認」） |
+| 6. GitHub Pages での配信 | 2026-11-23、PR #46 を main（`98bf06f`）に統合。CI の検査は成功、Pages への配信は GitHub 側の一時的な失敗（成果物の情報の取得）のため 1 回再実行して成功。公開サイトの JS は手元の build と同じ `index-BQYHhlPK.js` |
 | 版 | package.json を 0.2.0 に更新（2026-11-23）。プロジェクトファイルの版 2（D-36）を v0.2 で確定する。v0.1 のファイルは版 2 へ移行して開ける（FR-PJ-03 のテスト） |
 | 操作案内 | README の日英をフェーズ 2 の機能に合わせて更新 |
 
@@ -46,3 +46,10 @@ main への統合後に、統括役が行う。
 2. https://qsarkbir.github.io/Relata/ に対して、Playwright Chromium で全 E2E を実行する。
 3. サンプルの読み込み、射影、年表と再生、欠損の一覧、PDF の書き出し（フォントがこのサイトから読み込まれること）を、公開サイトで確かめる。
 4. 結果をこの文書と進行表に記録し、T2-10 を ✅ にする。
+
+### 結果（2026-11-23）
+
+- 公開サイト https://qsarkbir.github.io/Relata/ に対して、Playwright Chromium で全 E2E 206 件が成功した。
+- PDF の書き出しで、3 つのフォントが公開サイト自身から 1 回だけ読み込まれ、ほかのホストへの通信が無いことを確かめた（`export.spec.ts`）。初回の実行では、このテストが通信先を `localhost` と決め打ちしていたため失敗した。開いた先のホストと比べるように直し、手元と公開サイトの両方で成功した。
+- これで T2-10 を完了とし、フェーズ 2 を閉じる。
+
