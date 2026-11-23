@@ -12,9 +12,17 @@ import type { GraphViewSettings } from '../core/project';
  * @returns 候補の属性
  */
 export function geoCandidates(dataset: Dataset): AttributeDef[] {
-  return dataset.schema
-    .filter((a) => a.appliesTo === 'node' && a.valueType !== 'date' && a.valueType !== 'boolean')
-    .sort((a, b) => Number(b.valueType === 'number') - Number(a.valueType === 'number'));
+  // 【なぜ】属性の定義はノードの型ごとに同じキーで置ける（例: 人物と都市の両方に「緯度」）。
+  //       緯度・経度はキーで指定するので、キーごとに 1 つにまとめる（最初の定義を代表にする）。
+  //       まとめないと、選択肢が重複し、React の `key` も衝突する。
+  const byKey = new Map<string, AttributeDef>();
+  for (const a of dataset.schema) {
+    if (a.appliesTo !== 'node' || a.valueType === 'date' || a.valueType === 'boolean') continue;
+    if (!byKey.has(a.key)) byKey.set(a.key, a);
+  }
+  return [...byKey.values()].sort(
+    (a, b) => Number(b.valueType === 'number') - Number(a.valueType === 'number'),
+  );
 }
 
 /** 緯度・経度の選択の状態。 */

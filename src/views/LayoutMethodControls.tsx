@@ -140,7 +140,9 @@ export function LayoutMethodControls({ dataset, graph, view, onChange }: Control
                 ...(lat === undefined || lat === '' ? {} : { lat }),
                 ...(lon === undefined || lon === '' ? {} : { lon }),
               };
-              onChange({ geoAttrs: next });
+              // 【なぜ】両方とも未選択に戻したら、空のオブジェクトではなく項目ごと消す（保存の形と揃える）。
+              //       JSON に書き出すとき、値が undefined の項目は省かれる。
+              onChange({ geoAttrs: Object.keys(next).length === 0 ? undefined : next });
             }}
           >
             <option value="">{t('graph.geo.none')}</option>

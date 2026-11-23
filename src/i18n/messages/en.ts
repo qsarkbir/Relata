@@ -652,6 +652,7 @@ export const en = {
   'missing.scope.whole': 'Whole',
   'missing.target.node': 'Node',
   'missing.target.edge': 'Edge',
+  'missing.target.typeSep': ': ',
   'missing.reason.unrecorded': 'Unrecorded',
   'missing.reason.lost': 'Lost',
   'missing.reason.illegible': 'Illegible',

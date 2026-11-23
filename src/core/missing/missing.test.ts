@@ -68,6 +68,24 @@ describe('FR-VG-12: 属性ごとの欠損の集計', () => {
     expect(rows[1]?.filtered).toMatchObject({ total: 1, missing: 0 });
     expect(rows[1]?.whole).toMatchObject({ total: 2, missing: 1 });
   });
+  it('FR-VG-12: 同じキーの属性をノードの型ごとに定義したときは、型ごとに別の行を返し、行に型を持たせる', () => {
+    const twoTypes: Dataset = {
+      ...dataset,
+      schema: [
+        { key: '生年', label: '生年', appliesTo: 'node', nodeType: person, valueType: 'string' },
+        { key: '生年', label: '生年', appliesTo: 'node', nodeType: place, valueType: 'string' },
+      ],
+    };
+    const rows = countMissingByAttribute(twoTypes, WHOLE_SCOPE);
+    expect(rows.map((r) => [r.key, r.nodeType])).toEqual([
+      ['生年', person],
+      ['生年', place],
+    ]);
+    expect(rows[0]?.whole).toMatchObject({ total: 4, missing: 2 });
+    expect(rows[1]?.whole).toMatchObject({ total: 1, missing: 1 });
+    // 型を限らない属性の行には `nodeType` の項目が無い。
+    expect(countMissingByAttribute(dataset, WHOLE_SCOPE)[1]).not.toHaveProperty('nodeType');
+  });
   it('FR-VG-12: 分母が 0 の割合は null', () => {
     const rows = countMissingByAttribute(dataset, { nodeIds: new Set(), edgeIds: new Set() });
     expect(rows[0] === undefined ? 0 : missingRate(rows[0].filtered)).toBeNull();

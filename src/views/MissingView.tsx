@@ -56,7 +56,9 @@ export function MissingView() {
       rate: rate === null ? t('missing.noRate') : formatPercent(locale, rate),
     });
   };
-  const body = (row: AttrMissingRow): ReactNode => {
+  const typeLabel = (id: string): string =>
+    dataset.nodeTypes.find((nt) => nt.id === id)?.label ?? id;
+  const body = (row: AttrMissingRow, index: number): ReactNode => {
     const scopes = [
       { id: 'filtered', counts: row.filtered, label: t('missing.scope.filtered') },
       { id: 'whole', counts: row.whole, label: t('missing.scope.whole') },
@@ -64,7 +66,9 @@ export function MissingView() {
     // 【なぜ】属性ごとに <tbody> を分ける。`scope="rowgroup"` の見出しは、行のグループ（<tbody>）に対して
     //   意味を持つので、支援技術が「この 2 行は 1 つの属性」と読める。
     return (
-      <tbody key={`${row.target}:${row.key}`}>
+      // 【なぜ】同じキーの属性がノードの型ごとに定義されうるので、キーだけでは React の `key` が衝突する。
+      //       スキーマの並び（index）を含めて一意にする。
+      <tbody key={`${row.target}:${row.key}:${String(index)}`}>
         {scopes.map((s, i) => (
           <tr key={s.id} data-attr={row.key} data-scope={s.id}>
             {i === 0 && (
@@ -73,7 +77,14 @@ export function MissingView() {
                 <bdi>{row.label}</bdi>
                 <span className="missing-target">
                   {' '}
-                  ({t(row.target === 'node' ? 'missing.target.node' : 'missing.target.edge')})
+                  ({t(row.target === 'node' ? 'missing.target.node' : 'missing.target.edge')}
+                  {row.nodeType !== undefined && (
+                    <>
+                      {t('missing.target.typeSep')}
+                      <bdi>{typeLabel(row.nodeType)}</bdi>
+                    </>
+                  )}
+                  )
                 </span>
               </th>
             )}

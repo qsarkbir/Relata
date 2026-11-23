@@ -13,6 +13,7 @@ import type {
   EdgeId,
   MissingReason,
   NodeId,
+  NodeTypeId,
 } from '../model';
 import { MISSING_REASONS, getAttr } from '../model';
 import { assertNever } from '../util/assertNever';
@@ -53,6 +54,13 @@ export interface AttrMissingRow {
   readonly key: string;
   readonly label: string;
   readonly target: 'node' | 'edge';
+  /**
+   * 属性の定義が限るノードの型（無ければ全ノード）。
+   *
+   * 【なぜ】同じキーの属性を、ノードの型ごとに別に定義できる（例: 人物の「生年」と王朝の「生年」）。
+   *       行を見分けるため、型を一緒に返す。
+   */
+  readonly nodeType?: NodeTypeId;
   /** 絞り込み後（引数の集合）の数え上げ。 */
   readonly filtered: MissingCounts;
   /** 全体の数え上げ。 */
@@ -201,6 +209,7 @@ export function countMissingByAttribute(
       key: def.key,
       label: def.label,
       target: def.appliesTo,
+      ...(def.nodeType === undefined ? {} : { nodeType: def.nodeType }),
       filtered: countOne(def, dataset, own),
       whole: countOne(def, dataset, null),
     };

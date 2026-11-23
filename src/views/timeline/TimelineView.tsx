@@ -228,18 +228,29 @@ export function TimelineView() {
     bins === undefined || bins.length === 0
       ? ''
       : `${target}|${calendar}|${String(width)}|${String(bins[0]?.startYear)}|${String(bins.length)}`;
+  // ポインタが指している区切りの番号（ドラッグしていないとき。吹き出しの代わりに状態の文へ出す）。
+  const [hover, setHover] = useState<number | null>(null);
   const [seenAxis, setSeenAxis] = useState(axisKey);
   if (seenAxis !== axisKey) {
     setSeenAxis(axisKey);
     if (sel !== null) setSel(null);
+    if (hover !== null) setHover(null);
   }
 
   const patch = (change: Partial<typeof settings>) => {
     timelineStore.getState().patchTimeline(change);
   };
 
-  // 適用中の時間フィルタ（この対象の 1 件目）。別に持たず FilterState から探す。
-  const active = findFilters(filters.filters, 'time', (f) => f.target === target)[0];
+  // 適用中の時間フィルタ。別に持たず FilterState から探す。
+  // 【なぜ】同じ対象に、出どころの違う時間フィルタが複数ありうる（プロジェクトの直接の編集など）。
+  //       今の出どころと同じものを優先する。先頭の 1 件だけを見ると、同じ出どころのフィルタの帯が出ず、
+  //       範囲を選んだときに別の出どころのフィルタを上書きしてしまう。同じものが無ければ先頭を使う
+  //       （画面の時間フィルタは対象ごとに 1 つなので、それを今の出どころで置き換える。D-41）。
+  const targetTimeFilters = findFilters(filters.filters, 'time', (f) => f.target === target);
+  const active =
+    (source === undefined
+      ? undefined
+      : targetTimeFilters.find((f) => sameTimeSource(f.source, source))) ?? targetTimeFilters[0];
   const activeSameSource =
     active !== undefined && source !== undefined && sameTimeSource(active.source, source);
   const band =
@@ -325,9 +336,17 @@ export function TimelineView() {
     setSel({ anchor: i, cursor: i, dragging: true });
   };
   const onPointerMove = (e: PointerEvent<SVGRectElement>) => {
-    if (sel?.dragging !== true) return;
     const i = indexAtEvent(e);
+    // 【なぜ】ポインタを受ける透明な層（`.tl-hit`）が棒の上にあるので、棒の `<title>` の吹き出しは出ない。
+    //       代わりに、ドラッグしていないときは指している区切りの内容を状態の文に出す。
+    if (sel?.dragging !== true) {
+      if (i !== hover) setHover(i);
+      return;
+    }
     if (i !== sel.cursor) setSel({ ...sel, cursor: i });
+  };
+  const onPointerLeave = () => {
+    setHover(null);
   };
   const onPointerUp = (e: PointerEvent<SVGRectElement>) => {
     if (e.currentTarget.hasPointerCapture(e.pointerId))
@@ -341,6 +360,11 @@ export function TimelineView() {
     if (e.currentTarget.hasPointerCapture(e.pointerId))
       e.currentTarget.releasePointerCapture(e.pointerId);
     setSel(null);
+  };
+  // 【なぜ】ウィンドウの切り替えなどでポインタの捕捉が外れると、pointerup が届かない。ドラッグ中の選択を捨て、
+  //       選択の矩形が残らないようにする（グラフの範囲選択と同じ扱い）。
+  const onLostPointerCapture = () => {
+    if (sel?.dragging === true) setSel(null);
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -387,7 +411,7 @@ export function TimelineView() {
 
   const activeDescription = (f: Extract<FilterDef, { kind: 'time' }>): string =>
     timeBoundText(t, describeTimeFilter(f, dataset ?? undefined, display));
-  const status =
+  const baseStatus =
     sel === null
       ? active !== undefined && activeDescription(active) !== ''
         ? t('timeline.applied', { range: activeDescription(active) })
@@ -395,8 +419,14 @@ export function TimelineView() {
       : selFirst === selLast
         ? `${t('timeline.cursor', { range: rangeText(selFirst, selFirst) })} — ${titles[selFirst] ?? ''}`
         : t('timeline.selection', { range: rangeText(selFirst, selLast) });
-  const [announced, setAnnounced] = useState(status);
-  if (sel?.dragging !== true && announced !== status) setAnnounced(status);
+  // 指している区切りの内容（ドラッグしていないとき）。見える文だけに出し、読み上げない（動かすたびに読まれるため）。
+  const hoverText =
+    sel === null && hover !== null && hover < n
+      ? `${t('timeline.cursor', { range: rangeText(hover, hover) })} — ${titles[hover] ?? ''}`
+      : null;
+  const status = hoverText ?? baseStatus;
+  const [announced, setAnnounced] = useState(baseStatus);
+  if (sel?.dragging !== true && announced !== baseStatus) setAnnounced(baseStatus);
 
   // 【なぜ】`{ [target]: … }` の計算キーだと、TypeScript がキー名を `string` に広げて型検査が効かなくなる。
   //   対象ごとに分岐して、`node` と `edge` のどちらも `TimeSource | null` として検査させる。
@@ -561,6 +591,8 @@ export function TimelineView() {
                   onPointerMove={onPointerMove}
                   onPointerUp={onPointerUp}
                   onPointerCancel={onPointerCancel}
+                  onLostPointerCapture={onLostPointerCapture}
+                  onPointerLeave={onPointerLeave}
                 />
               </g>
             </svg>
@@ -582,6 +614,12 @@ export function TimelineView() {
             {result !== null && result.inconsistentTotal > 0 && (
               <p className="timeline-inconsistent">
                 {t('timeline.inconsistent', { n: String(result.inconsistent) })}
+              </p>
+            )}
+            {/* 【なぜ】年代なしと同じく、絞り込みで減ったときは絞り込む前の件数も示す（0 件だけでは元の数が分からない）。 */}
+            {result !== null && result.inconsistentTotal !== result.inconsistent && (
+              <p className="hint">
+                {t('timeline.noDate.total', { n: String(result.inconsistentTotal) })}
               </p>
             )}
           </aside>

@@ -85,6 +85,31 @@ function undatedProject(): { name: string; mimeType: string; buffer: Buffer } {
   };
 }
 
+/**
+ * 日付の属性を 2 つ（Year と、同じ値の Year2）持ち、ノードの時間フィルタを出どころ別に 2 件持つプロジェクト。
+ * 先頭は Year2 のフィルタ（全期間）、2 件目は Year のフィルタ（全期間）。
+ */
+function twoTimeFiltersProject(): { name: string; mimeType: string; buffer: Buffer } {
+  const text = readFileSync('public/samples/maghrib.relata.json', 'utf8');
+  // 理由: 自分たちの見本ファイル。必要な項目だけを型にする。
+  const file = JSON.parse(text) as {
+    dataset: { schema: Record<string, unknown>[]; nodes: { attrs: Record<string, unknown> }[] };
+    view: { filter: { filters: unknown[] } };
+  };
+  file.dataset.schema.push({ key: 'Year2', label: 'Year2', appliesTo: 'node', valueType: 'date' });
+  for (const node of file.dataset.nodes) node.attrs.Year2 = node.attrs.Year;
+  const wide = { from: 0, to: 5_000_000, match: 'overlaps', missing: 'include' };
+  file.view.filter.filters = [
+    { id: 'other', kind: 'time', target: 'node', source: { kind: 'attr', attr: 'Year2' }, ...wide },
+    { id: 'same', kind: 'time', target: 'node', source: { kind: 'attr', attr: 'Year' }, ...wide },
+  ];
+  return {
+    name: 'two-time-filters.relata.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(file)),
+  };
+}
+
 test.describe('年表', () => {
   test.beforeEach(async ({ page }) => {
     await loadSample(page);
@@ -275,5 +300,54 @@ test.describe('年代なしの件数と保存', () => {
     });
     await page.getByRole('tab', { name: '年表' }).click();
     await expect(bottom(page).getByLabel('区切り')).toHaveValue('100');
+  });
+});
+
+test.describe('出どころの違う時間フィルタと、指している区切り', () => {
+  test('FR-FL-11: 同じ対象に出どころの違う時間フィルタが複数あるとき、今の出どころのものを帯で示し、範囲を選ぶとそれだけを置き換える', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await startApp(page);
+    await openProject(page, twoTimeFiltersProject());
+    await expect(conditions(page)).toContainText('フィルタ 2');
+    await openTimeline(page);
+    await bottom(page).getByLabel('日付の出どころ').selectOption({ label: '属性: Year (AH)' });
+    // 2 件目（同じ出どころ）のフィルタが年表の帯と状態の文に出る。
+    await expect(chart(page).locator('.tl-band')).toHaveCount(1);
+    await expect(status(page)).toContainText('適用中の範囲');
+    await drag(page, 0.3, 0.6);
+    // 置き換えたのは Year のフィルタだけで、Year2 のフィルタは元のまま残る（件数は 2 件のまま）。
+    await expect(conditions(page)).toContainText('フィルタ 2');
+    await waitForAutosave(page);
+    // 【なぜ】自動保存の JSON から、各フィルタの ID・出どころ・終わりを読む（型は必要な項目だけ）。
+    const readFilters = async () => {
+      const saved = JSON.parse((await readAutosave(page)) ?? '{}') as {
+        view?: { filter?: { filters?: { id: string; source: { attr?: string }; to?: number }[] } };
+      };
+      return saved.view?.filter?.filters ?? [];
+    };
+    await expect
+      .poll(async () => (await readFilters()).find((f) => f.id === 'same')?.to)
+      .not.toBe(5_000_000);
+    const filters = await readFilters();
+    expect(filters.map((f) => [f.id, f.source.attr])).toEqual([
+      ['other', 'Year2'],
+      ['same', 'Year'],
+    ]);
+    expect(filters.find((f) => f.id === 'other')?.to).toBe(5_000_000);
+  });
+
+  test('FR-TM-01: 棒の上にポインタを置くと、その区切りの件数を状態の文に示し、離れると消える', async ({
+    page,
+  }) => {
+    await loadSample(page);
+    await openTimeline(page);
+    const p = await pointAt(page, 0.5);
+    await page.mouse.move(p.x, p.y);
+    await expect(status(page)).toContainText('区切り');
+    await expect(status(page)).toContainText('件');
+    await page.mouse.move(p.x, p.y - 400);
+    await expect(status(page)).not.toContainText('区切り');
   });
 });

@@ -631,6 +631,7 @@ export const ja = {
   'missing.scope.whole': '全体',
   'missing.target.node': 'ノード',
   'missing.target.edge': 'エッジ',
+  'missing.target.typeSep': '・',
   'missing.reason.unrecorded': '記載なし',
   'missing.reason.lost': '失われた',
   'missing.reason.illegible': '判読不能',
