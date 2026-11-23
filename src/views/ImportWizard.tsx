@@ -125,6 +125,7 @@ export function ImportWizard() {
     if (preview?.dataset === null || preview?.dataset === undefined) return;
     const next = preview.dataset;
     // 設定とデータを一度に適用し、その後フィルタを初期化する。確認前はどのストアも書き換えない。
+    // 【なぜ】display（暦）は渡さない。暦は利用者の表示の好みで、データを替えても保つ（プロジェクトを開くときだけ復元する）。
     applySnapshot(
       { dataset: next, importSettings: preview.settings, view: { filter: DEFAULT_FILTER_STATE } },
       dataStore,

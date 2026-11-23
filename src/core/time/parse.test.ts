@@ -751,3 +751,35 @@ describe('ハイフンの異体（D-29 補足 12）', () => {
     expect(range('1640\u201341')).toEqual([g(1640, 1, 1), g(1641, 12, 31)]);
   });
 });
+
+describe('parseDate: 紀元前・ヒジュラ以前の月日つき（FR-DM-05、FR-FL-03）', () => {
+  it('FR-DM-05: 44-03-15 BC と 44-03 BC を年月日・年月に読む（-43 年）', () => {
+    expect(range('44-03-15 BC')).toEqual([g(-43, 3, 15), g(-43, 3, 15)]);
+    expect(range('44-03 BC')).toEqual([g(-43, 3, 1), g(-43, 3, 31)]);
+    expect(range('BC44-03-15')).toEqual([g(-43, 3, 15), g(-43, 3, 15)]);
+    expect(range('前44-03-15')).toEqual([g(-43, 3, 15), g(-43, 3, 15)]);
+    expect(range('5-3-1 BC')).toEqual([g(-4, 3, 1), g(-4, 3, 1)]);
+  });
+  it('FR-DM-05: 既存の BC の読みは変わらない（範囲、年だけ）', () => {
+    expect(range('44 BC')).toEqual([g(-43, 1, 1), g(-43, 12, 31)]);
+    expect(range('44-40 BC')).toEqual([g(-43, 1, 1), g(-39, 12, 31)]);
+    expect(range('BC44-BC40')).toEqual([g(-43, 1, 1), g(-39, 12, 31)]);
+    expect(failure('5-10 BC').code).toBe('range-reversed');
+  });
+  it('FR-DM-05: 月日つきの紀元前の失敗の理由', () => {
+    expect(failure('44-13-01 BC').code).toBe('invalid-month');
+    expect(failure('44-02-30 BC').code).toBe('invalid-day');
+  });
+  it('FR-DM-05: BH（ヒジュラ以前）。0 年以前のヒジュラ暦として年・年月日を読む', () => {
+    expect(range('23 BH')).toEqual([h(-22, 1, 1), h(-21, 1, 1) - 1]);
+    expect(ok('23 BH').value.calendar).toBe('hijri');
+    expect(range('23-03-15 BH')).toEqual([h(-22, 3, 15) - 2, h(-22, 3, 15) + 2]);
+    expect(range('23-03 BH')).toEqual([h(-22, 3, 1), h(-22, 4, 1) - 1]);
+    expect(range('BH 23')).toEqual([h(-22, 1, 1), h(-21, 1, 1) - 1]);
+    expect(range('1 BH')).toEqual([h(0, 1, 1), h(1, 1, 1) - 1]);
+  });
+  it('FR-DM-05: BH と西暦の印の混在、BH の 0 年は失敗', () => {
+    expect(failure('23 BH CE').code).toBe('unrecognized');
+    expect(failure('0 BH').code).toBe('invalid-year');
+  });
+});

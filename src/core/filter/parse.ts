@@ -97,6 +97,12 @@ function needDay(x: unknown, path: string): ParseResult<DayNumber> {
     : fail(path, '安全な整数が必要です');
 }
 
+// 日の値が無くてもよいとき（開いた端）。無ければ undefined、あれば安全な整数。
+//
+function optionalDay(x: unknown, path: string): ParseResult<DayNumber | undefined> {
+  return x === undefined ? ok(undefined) : needDay(x, path);
+}
+
 // 配列の各要素を組み立てる。最初に失敗した要素で止める。
 //
 function parseArray<T>(
@@ -221,23 +227,24 @@ function parseFilterDef(x: unknown, path: string): ParseResult<FilterDef> {
       //   ここで黙って補うと、版の番号と中身の対応が崩れる。
       const source = parseTimeSource(get(x, 'source'), child(path, 'source'));
       if (!source.ok) return source;
-      const from = needDay(get(x, 'from'), child(path, 'from'));
+      // 【なぜ】開いた端は項目を省いて保存する（JSON に Infinity は書けない）。両方なしは検査（check）で報告する。
+      const from = optionalDay(get(x, 'from'), child(path, 'from'));
       if (!from.ok) return from;
-      const to = needDay(get(x, 'to'), child(path, 'to'));
+      const to = optionalDay(get(x, 'to'), child(path, 'to'));
       if (!to.ok) return to;
       const match = needOneOf(get(x, 'match'), child(path, 'match'), TIME_MATCHES);
       if (!match.ok) return match;
       const missing = needOneOf(get(x, 'missing'), child(path, 'missing'), MISSING_POLICIES);
       if (!missing.ok) return missing;
-      if (from.value > to.value)
+      if (from.value !== undefined && to.value !== undefined && from.value > to.value)
         return fail(child(path, 'to'), 'to は from 以上でなければなりません');
       return ok({
         id,
         kind: 'time',
         target: target.value,
         source: source.value,
-        from: from.value,
-        to: to.value,
+        ...(from.value === undefined ? {} : { from: from.value }),
+        ...(to.value === undefined ? {} : { to: to.value }),
         match: match.value,
         missing: missing.value,
       });

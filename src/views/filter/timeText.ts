@@ -1,4 +1,6 @@
+import type { TimeBound } from '../../core/filter';
 import { HIJRI_MONTH_LABELS } from '../../core/time';
+import { assertNever } from '../../core/util/assertNever';
 import type { CalendarRendering, DateParts } from '../../core/time';
 import type { MessageKey } from '../../i18n';
 import type { Translate } from './labels';
@@ -28,6 +30,7 @@ const GREGORIAN_MONTH_KEYS = [
  *
  * 【歴史の事情】ヒジュラ暦の年は西暦と数え方が違うので、必ず「AH」を付けて取り違えを防ぐ。
  * 0 年以前は、西暦は「紀元前（BCE）」、ヒジュラ暦は「BH」（ヒジュラ以前）と書く。
+ * BH は、ヒジュラ暦を 1 年より前へ延ばした外挿（先発ヒジュラ暦）で、当時使われた暦ではない。
  *
  * @param t - 現在の言語の翻訳
  * @param p - 日付の部品（`core/time` の `jdnToParts` などの結果）
@@ -47,9 +50,13 @@ export function datePartsText(t: Translate, p: DateParts): string {
     { n },
   );
   if (p.month === undefined) return year;
+  // 範囲外の月は、西暦の月名を当てずに数字で出す（別の月名に見えるのを避ける）。
+  const monthKey = GREGORIAN_MONTH_KEYS[p.month - 1];
   const monthName = hijri
     ? (HIJRI_MONTH_LABELS[p.month - 1] ?? String(p.month))
-    : t(GREGORIAN_MONTH_KEYS[p.month - 1] ?? 'time.gMonth.1');
+    : monthKey === undefined
+      ? String(p.month)
+      : t(monthKey);
   if (p.day === undefined) {
     return t(hijri ? 'time.h.month' : 'time.g.month', { year, monthName });
   }
@@ -84,4 +91,32 @@ export function renderingsText(t: Translate, renderings: readonly CalendarRender
   const a = renderingText(t, first);
   if (second === undefined) return a;
   return t('time.both', { gregorian: a, hijri: renderingText(t, second) });
+}
+
+/**
+ * 時間フィルタの期間を、開いた端も含めて文字にする。
+ *
+ * 両端があれば「A〜B」、片側だけなら「A 以後」「B 以前」（開いた端は書かない）。
+ *
+ * @param t - 現在の言語の翻訳
+ * @param d - `describeTimeFilter` の結果
+ * @returns 表記。両端とも開いていれば空文字
+ */
+export function timeBoundText(
+  t: Translate,
+  d: { readonly bound: TimeBound; readonly range: readonly CalendarRendering[] },
+): string {
+  const range = renderingsText(t, d.range);
+  switch (d.bound) {
+    case 'both':
+      return range;
+    case 'from-only':
+      return t('filter.time.bound.from', { range });
+    case 'to-only':
+      return t('filter.time.bound.to', { range });
+    case 'none':
+      return '';
+    default:
+      return assertNever(d.bound, 'TimeBound');
+  }
 }

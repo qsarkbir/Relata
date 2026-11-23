@@ -2,7 +2,7 @@ import { useId, useMemo, useState } from 'react';
 import { dateAttributes, timeDataExtent } from '../../core/filter';
 import type { FilterDef, Target } from '../../core/filter';
 import type { MissingPolicy, TimeMatch } from '../../core/filter';
-import type { Dataset } from '../../core/model';
+import type { CalendarId, Dataset } from '../../core/model';
 import { describeDayRange, inputCalendarOf } from '../../core/time';
 import { useDisplay, useFilter, useT } from '../hooks';
 import { CollapsibleSection } from '../ui/CollapsibleSection';
@@ -16,6 +16,11 @@ import type { TimeInputError } from './timeInput';
 
 /** 左のパネルの「時間」の節の要素の ID。「適用中の条件」の行から、ここへ移る。 */
 export const TIME_SECTION_ID = 'filter-time';
+
+// 適用中の端を欄の文字にする。開いた端（undefined）は空欄。
+function endText(jdn: number | undefined, cal: CalendarId, side: 'start' | 'end'): string {
+  return jdn === undefined ? '' : formatTimeInput(jdn, cal, side);
+}
 
 /** {@link TimeControl} の入力。 */
 interface TimeControlProps {
@@ -63,12 +68,10 @@ export function TimeControl({ dataset, filters }: TimeControlProps) {
   const active = found[0];
 
   const [sourceChoice, setSourceChoice] = useState<string | null>(null);
-  const [start, setStart] = useState(() =>
-    active === undefined ? '' : formatTimeInput(active.from, inputCal, 'start'),
-  );
-  const [end, setEnd] = useState(() =>
-    active === undefined ? '' : formatTimeInput(active.to, inputCal, 'end'),
-  );
+  const [start, setStart] = useState(() => endText(active?.from, inputCal, 'start'));
+  const [end, setEnd] = useState(() => endText(active?.to, inputCal, 'end'));
+  // 【なぜ】適用中の条件が無いときの「重なる／収まる」と「欠損の扱い」は、この欄の中だけの下書き。
+  //   FilterState には入れず、「適用」で初めてフィルタに入る（適用前の値を条件の行や一覧に出さないため）。
   const [match, setMatch] = useState<TimeMatch>(active?.match ?? 'overlaps');
   const [missing, setMissing] = useState<MissingPolicy>(active?.missing ?? 'exclude');
   const [error, setError] = useState<TimeInputError | null>(null);
@@ -94,15 +97,20 @@ export function TimeControl({ dataset, filters }: TimeControlProps) {
       }
     } else {
       if (targetChanged || calChanged || prev.active?.from !== active.from) {
-        setStart(formatTimeInput(active.from, inputCal, 'start'));
+        setStart(endText(active.from, inputCal, 'start'));
       }
       if (targetChanged || calChanged || prev.active?.to !== active.to) {
-        setEnd(formatTimeInput(active.to, inputCal, 'end'));
+        setEnd(endText(active.to, inputCal, 'end'));
       }
       setMatch(active.match);
       setMissing(active.missing);
       setSourceChoice(sourceToValue(active.source));
-      if (targetChanged || prev.active?.from !== active.from || prev.active.to !== active.to) {
+      if (
+        targetChanged ||
+        calChanged ||
+        prev.active?.from !== active.from ||
+        prev.active?.to !== active.to
+      ) {
         setError(null);
       }
     }
@@ -150,12 +158,12 @@ export function TimeControl({ dataset, filters }: TimeControlProps) {
   const dirty =
     active === undefined
       ? start.trim() !== '' || end.trim() !== ''
-      : start !== formatTimeInput(active.from, inputCal, 'start') ||
-        end !== formatTimeInput(active.to, inputCal, 'end');
+      : start !== endText(active.from, inputCal, 'start') ||
+        end !== endText(active.to, inputCal, 'end');
 
   const submit = (): void => {
     if (source === undefined) return;
-    const outcome = resolveTimeInput(start, end, inputCal, extent, active !== undefined);
+    const outcome = resolveTimeInput(start, end, inputCal, active !== undefined);
     switch (outcome.kind) {
       case 'clear':
         if (active !== undefined) remove(active.id);
@@ -166,16 +174,17 @@ export function TimeControl({ dataset, filters }: TimeControlProps) {
       case 'apply':
         setError(null);
         // 空の側を埋めた値を欄に戻し、適用中の値と欄が一致した状態にする。
-        setStart(formatTimeInput(outcome.from, inputCal, 'start'));
-        setEnd(formatTimeInput(outcome.to, inputCal, 'end'));
+        setStart(endText(outcome.from, inputCal, 'start'));
+        setEnd(endText(outcome.to, inputCal, 'end'));
         add({
           // 【なぜ】適用中のものがあれば、その ID を使って置き換える（別の ID で入ったフィルタも 1 つのまま）。
           id: active?.id ?? timeFilterId(target),
           kind: 'time',
           target,
           source,
-          from: outcome.from,
-          to: outcome.to,
+          // 【なぜ】空の側は省く（開いた端）。データの範囲で埋めると、出どころを替えたときに前の範囲が残る。
+          ...(outcome.from === undefined ? {} : { from: outcome.from }),
+          ...(outcome.to === undefined ? {} : { to: outcome.to }),
           match,
           missing,
         });
@@ -328,14 +337,7 @@ export function TimeControl({ dataset, filters }: TimeControlProps) {
 
 // 入力のエラーを、どちらの欄かを添えた文にする。
 function errorMessage(t: ReturnType<typeof useT>, e: TimeInputError): string {
-  const message =
-    e.code === 'no-data'
-      ? t('filter.time.noData')
-      : e.code === 'beyond-start'
-        ? t('filter.time.beyondStart')
-        : e.code === 'beyond-end'
-          ? t('filter.time.beyondEnd')
-          : t(`filter.time.error.${e.code}`);
+  const message = t(`filter.time.error.${e.code}`);
   if (e.field === undefined) return message;
   return t('filter.time.errorField', {
     field: t(e.field === 'start' ? 'filter.time.start' : 'filter.time.end'),

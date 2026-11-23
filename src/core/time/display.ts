@@ -169,6 +169,49 @@ export function inferPrecision(range: DayRange, calendar: CalendarId): DatePreci
 }
 
 /**
+ * 範囲の片方の端（開始または終了）だけの精度を、暦ごとに推測する。
+ *
+ * 開始の端がその暦の年の初日なら年、月の初日なら月、終了の端が年の末日なら年、月の末日なら月。
+ * それ以外は日。「1600 年以後」を「1600 年 1 月 1 日以後」と書かないための推測。
+ *
+ * @param jdn - 端の JDN
+ * @param calendar - 暦
+ * @param side - 'start'（開始の端）か 'end'（終了の端）
+ * @returns 精度
+ */
+export function inferBoundPrecision(
+  jdn: DayNumber,
+  calendar: CalendarId,
+  side: 'start' | 'end',
+): DatePrecision {
+  const cal = getCalendar(calendar);
+  const d = cal.fromJdn(jdn);
+  const edge = side === 'start' ? d.day === 1 : d.day === cal.monthLength(d.year, d.month);
+  if (!edge) return 'day';
+  const yearEdge = side === 'start' ? d.month === 1 : d.month === cal.monthsPerYear;
+  return yearEdge ? 'year' : 'month';
+}
+
+/**
+ * 片方の端だけの JDN を、選んだ暦で表示用の部品にする。精度は暦ごとに `inferBoundPrecision` で決める。
+ *
+ * @param jdn - 端の JDN
+ * @param display - 表示の暦の選択
+ * @param side - 'start' か 'end'
+ * @returns 暦ごとの表示（範囲にならない）
+ */
+export function describeBound(
+  jdn: DayNumber,
+  display: CalendarDisplay,
+  side: 'start' | 'end',
+): CalendarRendering[] {
+  return calendarsOf(display).map((calendar) => ({
+    calendar,
+    from: jdnToParts(jdn, calendar, inferBoundPrecision(jdn, calendar, side)),
+  }));
+}
+
+/**
  * 日の幅を、選んだ暦で表示用の部品にする。
  *
  * 暦ごとに、始点（`earliest`）と終点（`latest`）を同じ精度の部品にし、同じなら 1 つの日付、

@@ -6,7 +6,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { appliedRegion, openProject, saveProjectFile, startApp } from './support';
+import { appliedRegion, fixturePath, openProject, saveProjectFile, startApp } from './support';
 
 test.use({ locale: 'ja-JP' });
 
@@ -119,8 +119,8 @@ test.describe('日本語の画面', () => {
     await section.getByLabel('開始').press('Enter');
     await expect(conditions(page)).toContainText('時間（ノード）');
     await expect(section).not.toContainText('未適用の変更があります');
-    // 空の端はデータの最大値で埋まる（欄に戻る）。
-    await expect(section.getByLabel('終了')).not.toHaveValue('');
+    // 空の端は開いたまま（データの範囲で埋めない）。
+    await expect(section.getByLabel('終了')).toHaveValue('');
   });
 
   test('FR-TM-09: ヒジュラ暦の入力は、印がなくてもヒジュラ暦の年として読む', async ({ page }) => {
@@ -242,3 +242,107 @@ for (const width of [1280, 1024]) {
     expect(overflow.controls).toBe(0);
   });
 }
+
+/** 小さな見本（ノード 15）に、期間（time）を足したプロジェクトを作る。 */
+function projectWithSpans(view: Record<string, unknown>): {
+  name: string;
+  mimeType: string;
+  buffer: Buffer;
+} {
+  const source: unknown = JSON.parse(readFileSync(fixturePath('maghrib.relata.json'), 'utf8'));
+  if (typeof source !== 'object' || source === null || Array.isArray(source))
+    throw new Error('fixture');
+  const dataset = (source as { dataset: { nodes: Record<string, unknown>[] } }).dataset; // 理由: 自作の見本の形
+  const day = (jdn: number) => ({
+    earliest: jdn,
+    latest: jdn,
+    certainty: 'certain',
+    calendar: 'gregorian',
+    label: String(jdn),
+  });
+  // 1 つ目: 1600 年 1 月 1 日から、終わりが分からない期間。2 つ目: 1590 年頃の 1 点。
+  const nodes = dataset.nodes.map((n, i) =>
+    i === 0
+      ? {
+          ...n,
+          time: {
+            kind: 'span',
+            start: day(2305448),
+            end: { kind: 'missing', reason: 'unrecorded' },
+          },
+        }
+      : i === 1
+        ? { ...n, time: { kind: 'span', start: day(2305448 - 3650) } }
+        : n,
+  );
+  return {
+    name: 'spans.relata.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ ...source, dataset: { ...dataset, nodes }, view })),
+  };
+}
+
+test.describe('開いた端と、ヒジュラ以前の日付', () => {
+  test('FR-FL-03: 終了を空にして「収まる」にすると、終わりの分からない期間も通る', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await startApp(page);
+    await openProject(
+      page,
+      projectWithSpans({ filter: { filters: [], edgeRule: 'both-ends', showIsolated: true } }),
+    );
+    const section = timeSection(page);
+    await expect(conditions(page)).toContainText('ノード 15 / 15');
+    await section.getByLabel('範囲との関係').selectOption('within');
+    await applyTime(page, '1600', '');
+    // 1590 年の 1 点は開始より前なので除かれる。終わりの分からない期間は、終了が開いているので通る。
+    await expect(conditions(page)).toContainText('ノード 14 / 15');
+    await expect(conditions(page)).toContainText('1600年1月1日以後（収まる）');
+    await expect(section.getByLabel('終了')).toHaveValue('');
+    // 終了を入れると、終わりの分からない期間は収まると言えないので除かれる。
+    await applyTime(page, '1600', '1650');
+    await expect(conditions(page)).toContainText('ノード 13 / 15');
+  });
+
+  test('FR-TM-09: ヒジュラ暦の表示でヒジュラ以前の日付を欄に戻して再適用しても、範囲が変わらない', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await startApp(page);
+    // 西暦 600 年 6 月 1 日（JDN 1940357）以後。ヒジュラ暦の 1 年（西暦 622 年）より前。
+    await openProject(
+      page,
+      projectWithSpans({
+        filter: {
+          filters: [
+            {
+              id: 't',
+              kind: 'time',
+              target: 'node',
+              source: { kind: 'span' },
+              from: 1940357,
+              match: 'overlaps',
+              missing: 'include',
+            },
+          ],
+          edgeRule: 'both-ends',
+          showIsolated: true,
+        },
+        display: { calendar: 'hijri' },
+      }),
+    );
+    const section = timeSection(page);
+    const start = section.getByLabel('開始');
+    await expect(start).toHaveValue(/ BH$/);
+    const before = await appliedRegion(page).textContent();
+    const count = await conditions(page).textContent();
+    await section.getByRole('button', { name: '適用' }).click();
+    await expect(start).toHaveValue(/ BH$/);
+    expect(await appliedRegion(page).textContent()).toBe(before);
+    expect(await conditions(page).textContent()).toBe(count);
+    // 西暦の表示に切り替えても、範囲は同じ（西暦 600 年）。
+    await calendarSelect(page).selectOption('gregorian');
+    await expect(appliedRegion(page)).toContainText('600年6月1日以後');
+  });
+});

@@ -3,7 +3,7 @@ import { CALENDAR_DISPLAYS, isCalendarDisplay } from '../core/time';
 import { selectFilterState, getFilterResult, displayStore } from '../state';
 import { APPLIED_LIST_ID, FILTER_RULES_ID } from './filter/AppliedList';
 import { TIME_SECTION_ID } from './filter/TimeControl';
-import { renderingsText } from './filter/timeText';
+import { timeBoundText } from './filter/timeText';
 import { useData, useDisplay, useFilter, useT, useUi } from './hooks';
 import { getNumberFormat } from './intl';
 import { Chip } from './ui/Chip';
@@ -109,7 +109,7 @@ export function ConditionsBar() {
         const d = describeTimeFilter(f, dataset, calendar);
         const text = t('conditions.time', {
           target: t(f.target === 'node' ? 'filter.target.node' : 'filter.target.edge'),
-          range: `${renderingsText(t, d.range)}${t('filter.time.matchWrap', {
+          range: `${timeBoundText(t, d)}${t('filter.time.matchWrap', {
             match: t(`filter.time.match.${d.match}`),
           })}`,
         });

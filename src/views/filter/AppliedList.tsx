@@ -7,7 +7,7 @@ import type { Dataset } from '../../core/model';
 import { useDisplay, useFilter, useT, useUi } from '../hooks';
 import { getNumberFormat } from '../intl';
 import { categoryKeyText } from './labels';
-import { renderingsText } from './timeText';
+import { timeBoundText } from './timeText';
 import type { Translate } from './labels';
 
 /** 適用中のフィルタの一覧の要素の ID。「適用中の条件」の行から、ここへフォーカスを移す。 */
@@ -175,7 +175,7 @@ function summary(
           ) : (
             <bdi>{d.source.label ?? d.source.attr}</bdi>
           )}
-          : {renderingsText(t, d.range)}
+          : {timeBoundText(t, d)}
           {t('filter.time.matchWrap', { match: t(`filter.time.match.${d.match}`) })}
           {d.reversed && <> {t('filter.time.reversed')}</>}
         </>
@@ -233,12 +233,9 @@ function plainSummary(
       const d = describeTimeFilter(f, dataset, calendar);
       const source =
         d.source.kind === 'span' ? t('filter.time.source.span') : (d.source.label ?? d.source.attr);
-      return `${targetText(t, f)} ${source}: ${renderingsText(t, d.range)}${t(
-        'filter.time.matchWrap',
-        {
-          match: t(`filter.time.match.${d.match}`),
-        },
-      )}`;
+      return `${targetText(t, f)} ${source}: ${timeBoundText(t, d)}${t('filter.time.matchWrap', {
+        match: t(`filter.time.match.${d.match}`),
+      })}${d.reversed ? ` ${t('filter.time.reversed')}` : ''}`;
     }
     case 'text':
       return `${targetText(t, f)} ${t('filter.summary.text', { query: f.query })}`;
@@ -283,6 +280,8 @@ function issueText(t: Translate, i: FilterIssue): ReactNode {
       return t('filter.issue.attr-not-date');
     case 'unknown-node-id':
       return t('filter.issue.unknown-node-id');
+    case 'time-unbounded':
+      return t('filter.issue.time-unbounded');
     default:
       return assertNever(i, 'FilterIssue');
   }

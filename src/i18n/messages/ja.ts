@@ -530,11 +530,8 @@ export const ja = {
   'filter.time.apply': '適用',
   'filter.time.noSource':
     'この対象には、時間で絞り込める日付がありません（期間も日付の属性もありません）。',
-  'filter.time.noData': 'データに日付が無いため、空の側を埋められません。両側を入力してください。',
-  'filter.time.beyondStart': '開始が、データにある最後の日付より後です。',
-  'filter.time.beyondEnd': '終了が、データにある最初の日付より前です。',
   'filter.time.inputHint':
-    '例: 1500、1500-03、1500-03-15、c.1500、905 AH。印のない年は{calendar}として読みます。空の側は、データの日付の最小値・最大値で埋めます。',
+    '例: 1500、1500-03、1500-03-15、c.1500、905 AH。印のない年は{calendar}として読みます。空の側は開いたまま（以前・以後すべて）です。',
   'filter.time.extent': 'データの日付の範囲: {range}',
   'filter.time.errorField': '{field}: {message}',
   'filter.time.error.empty': '空です。',
@@ -584,6 +581,10 @@ export const ja = {
   'time.gMonth.10': '10月',
   'time.gMonth.11': '11月',
   'time.gMonth.12': '12月',
+  'filter.issue.time-unbounded':
+    '時間フィルタに開始も終了もありません。すべての日付が条件に合うとは限りません。確認してください。',
+  'filter.time.bound.from': '{range}以後',
+  'filter.time.bound.to': '{range}以前',
 } as const;
 
 /**

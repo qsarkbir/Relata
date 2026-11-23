@@ -549,11 +549,8 @@ export const en = {
   'filter.time.apply': 'Apply',
   'filter.time.noSource':
     'This target has no dates to filter by (no period and no date attribute).',
-  'filter.time.noData': 'The data has no dates to fill the empty side. Enter both sides.',
-  'filter.time.beyondStart': 'The start is after the last date in the data.',
-  'filter.time.beyondEnd': 'The end is before the first date in the data.',
   'filter.time.inputHint':
-    'Examples: 1500, 1500-03, 1500-03-15, c.1500, 905 AH. A year without a mark is read as {calendar}. An empty side is filled with the earliest or latest date in the data.',
+    'Examples: 1500, 1500-03, 1500-03-15, c.1500, 905 AH. A year without a mark is read as {calendar}. An empty side stays open (no limit on that side).',
   'filter.time.extent': 'Dates in the data: {range}',
   'filter.time.errorField': '{field}: {message}',
   'filter.time.error.empty': 'It is empty.',
@@ -604,4 +601,8 @@ export const en = {
   'time.gMonth.10': 'Oct',
   'time.gMonth.11': 'Nov',
   'time.gMonth.12': 'Dec',
+  'filter.issue.time-unbounded':
+    'This time filter has neither a start nor an end. Please check it.',
+  'filter.time.bound.from': '{range} onward',
+  'filter.time.bound.to': 'up to {range}',
 } satisfies Record<MessageKey, string>;

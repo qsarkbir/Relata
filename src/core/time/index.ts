@@ -24,6 +24,8 @@ export {
   jdnToParts,
   inferPrecision,
   describeDayRange,
+  describeBound,
+  inferBoundPrecision,
   describeDay,
 } from './display';
 export type {

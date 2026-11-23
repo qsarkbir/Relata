@@ -7,7 +7,7 @@
 import { dateValues, getAttr, isMissing } from '../model';
 import type { AttributeDef, Dataset } from '../model';
 import type { CalendarDisplay, CalendarRendering } from '../time';
-import { describeDayRange } from '../time';
+import { describeBound, describeDayRange } from '../time';
 import { assertNever } from '../util/assertNever';
 import type { FilterDef, MissingPolicy, Target, TimeMatch, TimeSource } from './types';
 
@@ -35,20 +35,25 @@ export type TimeSourceDescription =
       readonly label: string | undefined;
     };
 
+/** 時間フィルタの端の状態。 */
+export type TimeBound = 'both' | 'from-only' | 'to-only' | 'none';
+
 /** 適用中の時間フィルタの説明（文字にする前の構造）。 */
 export interface TimeFilterDescription {
   readonly target: Target;
   readonly source: TimeSourceDescription;
-  /** 範囲の両端（JDN）。 */
-  readonly from: number;
-  readonly to: number;
+  /** 範囲の両端（JDN）。開いた端は `undefined`。 */
+  readonly from: number | undefined;
+  readonly to: number | undefined;
+  /** どちらの端が閉じているか。'from-only' は「from 以後」、'to-only' は「to 以前」。'none' は不正（check が報告）。 */
+  readonly bound: TimeBound;
   /** 重なる（'overlaps'）か、収まる（'within'）か。 */
   readonly match: TimeMatch;
   /** 欠損を含めるか除くか。 */
   readonly missing: MissingPolicy;
   /** 範囲が逆転していて何も通らない（欠損だけ通りうる）。 */
   readonly reversed: boolean;
-  /** 範囲を選んだ暦で表した部品。逆転しているときも、そのまま出す。 */
+  /** 範囲を選んだ暦で表した部品。両端あれば範囲、片側だけならその端の 1 点（精度は暦ごとに推測。開始が年初なら年、終了が年末なら年）、'none' なら空。逆転しているときは並べ替えて出す。 */
   readonly range: CalendarRendering[];
 }
 
@@ -65,19 +70,36 @@ export function describeTimeFilter(
   dataset: Dataset | undefined,
   display: CalendarDisplay,
 ): TimeFilterDescription {
-  const reversed = def.from > def.to;
+  const { from, to } = def;
+  const reversed = from !== undefined && to !== undefined && from > to;
   // 【なぜ】逆転した範囲は describeDayRange の前提（earliest <= latest）を満たさないので、並べ替えて表記にする。
-  const lo = Math.min(def.from, def.to);
-  const hi = Math.max(def.from, def.to);
+  //   片側だけ開いているときは、分かっている端を 1 点として表記にする（開いた側は ui が「以前」「以後」と書く）。
+  let range: CalendarRendering[] = [];
+  if (from !== undefined && to !== undefined) {
+    range = describeDayRange({ earliest: Math.min(from, to), latest: Math.max(from, to) }, display);
+  } else if (from !== undefined) {
+    range = describeBound(from, display, 'start');
+  } else if (to !== undefined) {
+    range = describeBound(to, display, 'end');
+  }
+  const bound: TimeBound =
+    from !== undefined && to !== undefined
+      ? 'both'
+      : from !== undefined
+        ? 'from-only'
+        : to !== undefined
+          ? 'to-only'
+          : 'none';
   return {
     target: def.target,
     source: describeSource(def, dataset),
-    from: def.from,
-    to: def.to,
+    from,
+    to,
+    bound,
     match: def.match,
     missing: def.missing,
     reversed,
-    range: describeDayRange({ earliest: lo, latest: hi }, display),
+    range,
   };
 }
 
