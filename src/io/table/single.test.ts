@@ -418,3 +418,37 @@ it('FR-IN-04: 明示的undefinedの任意列設定でも空表を受け付ける
   expect(result.dataset?.nodes).toEqual([]);
   expect(result.warnings).toEqual([]);
 });
+
+describe('FR-DM-06: 1 表の確からしさの列', () => {
+  it('FR-DM-06: エッジの certainty になり、読めない値は行番号つきの警告にする', () => {
+    const result = importSingleTable(
+      parseTextTable('a,b,c,city\nA,B,おそらく,Basra?\nA,C,??,\nB,C,xx,'),
+      {
+        source: {
+          column: 0,
+          type: 'p',
+          attributes: [
+            { column: 3, key: 'city', label: 'city', type: 'string', possibleSuffix: true },
+          ],
+        },
+        target: { column: 1, type: 'p', attributes: [] },
+        edge: { fields: { certainty: 2 }, attributes: [] },
+      },
+    );
+    const w = result.warnings.filter((x) => x.code === 'invalid-certainty');
+    expect(w.map((x) => [x.table, x.row, x.column])).toEqual([['single', 4, 'c']]);
+    expect(result.dataset?.edges.map((e) => e.certainty)).toEqual([
+      'probable',
+      'possible',
+      undefined,
+    ]);
+    expect(result.dataset?.edges[2]).not.toHaveProperty('certainty');
+    const a = result.dataset?.nodes.find((n) => n.label === 'A');
+    expect(a && getAttr(a.attrs, 'city')).toEqual({
+      kind: 'value',
+      value: 'Basra',
+      certainty: 'possible',
+    });
+    expect(parseDataset(result.dataset).ok).toBe(true);
+  });
+});

@@ -141,6 +141,7 @@ export const cleanFilter: FilterState = {
       id: toFilterId('t'),
       kind: 'time',
       target: 'edge',
+      source: { kind: 'span' },
       from: 2000000,
       to: 2400000,
       match: 'within',

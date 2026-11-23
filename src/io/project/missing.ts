@@ -9,7 +9,9 @@ import type { MissingToken } from './types';
 //   アラビア文字やヘブライ文字の表では、セルの端に RLM などが紛れ込みやすく、目には同じ記号に見えるため。
 //   `\s` は Unicode の空白（NBSP、全角空白など）を含む。
 //   語の中の ZWNJ（U+200C。ペルシア語などで語の形を整える）は意味を持つので、端だけを落とし、中は残す。
-const EDGE_JUNK = '\\s\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069\\u061C\\u2060\\uFEFF\\u0085';
+/** 両端から落とす文字の一覧（正規表現の文字クラスの中身）。読み込みの `?` の判定も共有する。 */
+export const EDGE_JUNK =
+  '\\s\\u200B-\\u200F\\u202A-\\u202E\\u2066-\\u2069\\u061C\\u2060\\uFEFF\\u0085';
 const EDGE_JUNK_RE = new RegExp(`^[${EDGE_JUNK}]+|[${EDGE_JUNK}]+$`, 'gu');
 
 /**

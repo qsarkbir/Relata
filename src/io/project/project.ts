@@ -18,6 +18,7 @@ import {
   CURRENT_FORMAT_VERSION,
   DEFAULT_IMPORT_SETTINGS,
   type ColumnCalendar,
+  type ColumnRef,
   type ImportSettings,
   type MissingToken,
   type ProjectFile,
@@ -63,8 +64,39 @@ const TOP_KEYS: readonly string[] = [
   'view',
 ];
 
-/** 現在は版 1 だけなので、移行は無い。 */
-export const MIGRATIONS: Migrations = {};
+/**
+ * 版 1 → 2 の移行（D-36、FR-PJ-03）。時間フィルタに `source: { kind: 'span' }` を補う。
+ *
+ * 版 1 の時間フィルタは「要素の `time`」で絞っていた。版 2 の `source: span` は同じ意味なので、
+ * 補えば絞り込みの結果は変わらない。それ以外は変えない。
+ *
+ * 【なぜ】`unknown` を受け、期待した形のときだけ手を入れる。壊れた形（`filters` が配列でない、
+ * 要素がオブジェクトでないなど）は、そのまま返して後段の parse に失敗させる（ここで落とすと原因が隠れる）。
+ *
+ * @param old - 版 1 のファイル（`parseProject` が、オブジェクトであることは確かめてある）
+ * @returns 版 2 のファイル
+ */
+export function migrateV1ToV2(old: unknown): unknown {
+  // 【なぜ】オブジェクトでない入力は、例外にせずそのまま返す（後段の検査が「移行の結果が不正」と拒む）。
+  if (!isPlainObject(old)) return old;
+  const next: Record<string, unknown> = { ...old, formatVersion: 2 };
+  const view = get(old, 'view');
+  if (!isPlainObject(view)) return next;
+  const filter = get(view, 'filter');
+  if (!isPlainObject(filter)) return next;
+  const filters = get(filter, 'filters');
+  if (!Array.isArray(filters)) return next;
+  const fixed: unknown[] = filters.map((f: unknown) =>
+    isPlainObject(f) && get(f, 'kind') === 'time' && !Object.hasOwn(f, 'source')
+      ? { ...f, source: { kind: 'span' } }
+      : f,
+  );
+  next.view = { ...view, filter: { ...filter, filters: fixed } };
+  return next;
+}
+
+/** 版の移行の一覧。キー n は「版 n → n+1」。版が上がるたびに足す。 */
+export const MIGRATIONS: Migrations = { 1: migrateV1ToV2 };
 
 /**
  * プロジェクトを JSON 文字列にする。
@@ -160,6 +192,23 @@ export function parseImportSettings(x: unknown): ParseResult<ImportSettings> {
     }
   }
 
+  const suffixes: ColumnRef[] = [];
+  const sufRaw = get(x, 'possibleSuffixColumns');
+  if (sufRaw !== undefined) {
+    if (!Array.isArray(sufRaw))
+      return fail('importSettings.possibleSuffixColumns', '配列が必要です');
+    for (const [i, c] of sufRaw.entries()) {
+      const p = `importSettings.possibleSuffixColumns[${String(i)}]`;
+      if (!isPlainObject(c)) return fail(p, 'オブジェクトが必要です');
+      const column = get(c, 'column');
+      if (typeof column !== 'string') return fail(`${p}.column`, '文字列が必要です');
+      const table = get(c, 'table');
+      if (table !== undefined && table !== 'node' && table !== 'edge')
+        return fail(`${p}.table`, "'node' か 'edge' が必要です");
+      suffixes.push({ column, ...(table !== undefined && { table }) });
+    }
+  }
+
   const encoding = get(x, 'encoding');
   if (encoding !== undefined && typeof encoding !== 'string')
     return fail('importSettings.encoding', '文字列が必要です');
@@ -172,6 +221,8 @@ export function parseImportSettings(x: unknown): ParseResult<ImportSettings> {
       //       `encoding: undefined` という項目を作らずに済む（任意の項目は「無い」状態を保つ）。
       ...(encoding !== undefined && { encoding }),
       columnCalendars: calendars,
+      // 【なぜ】無ければ持たない（既定は無効。空の配列を勝手に足さず、往復で形が変わらないようにする）。
+      ...(sufRaw !== undefined && { possibleSuffixColumns: suffixes }),
     },
   };
 }

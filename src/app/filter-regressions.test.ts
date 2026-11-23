@@ -326,6 +326,7 @@ describe('filter-audit: 操作をまたぐ統合回帰', () => {
       id: toFilterId('time'),
       kind: 'time',
       target: 'edge',
+      source: { kind: 'span' },
       from: 110,
       to: 130,
       match: 'overlaps',

@@ -2,7 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { checkDataset, isPlainObject, toNodeId, type Dataset } from '../../core/model';
 import { DEFAULT_FILTER_STATE, toFilterId, type FilterState } from '../../core/filter';
 import { cleanDataset, cleanFilter, sampleSettings } from './fixtures/projectFixture';
-import { parseProject, serializeProject, type Migrations } from './project';
+import { applyFilters } from '../../core/filter';
+import { CURRENT_FORMAT_VERSION } from '../../core/project';
+import sampleV1 from '../../../tests/fixtures/io/project/v1/maghrib-v0.1.relata.json?raw';
+import {
+  MIGRATIONS,
+  migrateV1ToV2,
+  parseImportSettings,
+  parseProject,
+  serializeProject,
+  type Migrations,
+} from './project';
 import { DEFAULT_IMPORT_SETTINGS, PROJECT_VIEW_KEYS, type ProjectParts } from './types';
 
 import { DEFAULT_GRAPH_VIEW } from '../../core/project';
@@ -57,7 +67,7 @@ describe('プロジェクトの往復', () => {
     expect(r.value.importSettings).toEqual(sampleSettings);
     expect(r.value.view.filter).toEqual(cleanFilter);
     expect(r.value.savedAt).toBe(AT);
-    expect(r.value.formatVersion).toBe(1);
+    expect(r.value.formatVersion).toBe(2);
     expect(r.warnings).toEqual([]);
     const node = r.value.dataset.nodes[0];
     expect(node && Object.hasOwn(node.attrs, '__proto__')).toBe(true);
@@ -106,11 +116,11 @@ describe('プロジェクトの読み込みの失敗', () => {
     expect(failed('{"app":"Relata"}')).toEqual({ kind: 'broken', path: 'formatVersion' });
   });
   it('FR-PJ-03: 新しい版は読まずに断る', () => {
-    const r = parseProject('{"app":"Relata","formatVersion":2,"dataset":{}}');
+    const r = parseProject('{"app":"Relata","formatVersion":3,"dataset":{}}');
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.kind).toBe('newer-version');
-      expect(r.fileVersion).toBe(2);
+      expect(r.fileVersion).toBe(3);
     }
   });
   it('FR-PJ-01: 壊れた dataset は path を返す', () => {
@@ -244,7 +254,7 @@ describe('版の移行', () => {
     return { ...rest, dataset: data, formatVersion: 1 };
   };
   it('FR-PJ-03: 移行を当てて読める', () => {
-    expect(ok(v0(), { 0: m0 }).value.dataset).toEqual(parts.dataset);
+    expect(ok(v0(), { 0: m0 }, 1).value.dataset).toEqual(parts.dataset);
   });
   it('FR-PJ-03: 多段の移行（0 → 1 → 2）が順に当たる', () => {
     const order: number[] = [];
@@ -264,7 +274,7 @@ describe('版の移行', () => {
     expect(r.value.dataset).toEqual(parts.dataset);
   });
   it('FR-PJ-03: 移行が無い古い版は断る', () => {
-    expect(failed(v0()).kind).toBe('missing-migration');
+    expect(failed(v0(), {}, 1).kind).toBe('missing-migration');
   });
   it('FR-PJ-03: 移行が例外を投げても例外にならない', () => {
     const boom: Migrations = {
@@ -272,10 +282,136 @@ describe('版の移行', () => {
         throw new Error('boom');
       },
     };
-    expect(failed(v0(), boom).kind).toBe('migration-failed');
+    expect(failed(v0(), boom, 1).kind).toBe('migration-failed');
   });
   it('FR-PJ-03: 移行の結果が版を上げていない、またはオブジェクトでなければ失敗', () => {
-    expect(failed(v0(), { 0: (old) => old }).kind).toBe('migration-failed');
-    expect(failed(v0(), { 0: () => 5 }).kind).toBe('migration-failed');
+    expect(failed(v0(), { 0: (old) => old }, 1).kind).toBe('migration-failed');
+    expect(failed(v0(), { 0: () => 5 }, 1).kind).toBe('migration-failed');
+  });
+});
+
+describe('版 1 → 2 の移行（D-36）', () => {
+  // 版 1 のファイルを作る: 版を 1 に戻し、時間フィルタの source を消す。
+  const asV1 = (): string =>
+    mutated((o) => {
+      o.formatVersion = 1;
+      const filters = sub(sub(o, 'view'), 'filter').filters;
+      if (!Array.isArray(filters)) throw new Error('filters');
+      for (const f of filters) if (isPlainObject(f)) delete f.source;
+    });
+  it('FR-PJ-03: 現在の版は 2 で、移行は 1 → 2 だけを持つ', () => {
+    expect(CURRENT_FORMAT_VERSION).toBe(2);
+    expect(Object.keys(MIGRATIONS)).toEqual(['1']);
+  });
+  it('FR-PJ-03: 移行関数は source の無い時間フィルタにだけ span を補う', () => {
+    const out = migrateV1ToV2({
+      formatVersion: 1,
+      keep: 1,
+      view: {
+        filter: {
+          edgeRule: 'both-ends',
+          filters: [
+            { kind: 'time', from: 1 },
+            { kind: 'time', source: { kind: 'attr', attr: 'd' } },
+            { kind: 'text', query: 'x' },
+            5,
+          ],
+        },
+      },
+    });
+    expect(out).toEqual({
+      formatVersion: 2,
+      keep: 1,
+      view: {
+        filter: {
+          edgeRule: 'both-ends',
+          filters: [
+            { kind: 'time', from: 1, source: { kind: 'span' } },
+            { kind: 'time', source: { kind: 'attr', attr: 'd' } },
+            { kind: 'text', query: 'x' },
+            5,
+          ],
+        },
+      },
+    });
+  });
+  it('FR-PJ-03: 壊れた形は落とさずそのまま返し、後段の parse が拒む', () => {
+    for (const view of [5, { filter: 5 }, { filter: { filters: 'x' } }]) {
+      expect(migrateV1ToV2({ formatVersion: 1, view })).toEqual({ formatVersion: 2, view });
+    }
+    // オブジェクトでない入力は、例外にせずそのまま返す
+    expect(migrateV1ToV2(5)).toBe(5);
+    expect(migrateV1ToV2(null)).toBeNull();
+    expect(
+      failed(
+        JSON.stringify({ ...obj(serializeProject(parts, AT)), formatVersion: 1 }),
+        { 1: () => 5 },
+        2,
+      ).kind,
+    ).toBe('migration-failed');
+    const t = mutated((o) => {
+      o.formatVersion = 1;
+      sub(o, 'view').filter = { filters: 'x' };
+    });
+    expect(failed(t).kind).toBe('broken');
+  });
+  it('FR-PJ-03: 時間フィルタ付きの版 1 が source: span で読め、同じ絞り込み結果になる', () => {
+    const r = ok(asV1());
+    expect(r.value.formatVersion).toBe(2);
+    expect(r.value.view.filter).toEqual(cleanFilter);
+    const time = r.value.view.filter.filters.find((f) => f.kind === 'time');
+    expect(time?.kind === 'time' && time.source).toEqual({ kind: 'span' });
+    const a = applyFilters(r.value.dataset, r.value.view.filter);
+    const b = applyFilters(parts.dataset, cleanFilter);
+    expect([...a.nodeIds]).toEqual([...b.nodeIds]);
+    expect([...a.edgeIds]).toEqual([...b.edgeIds]);
+  });
+  it('FR-PJ-03: v0.1 の公開サンプル（版 1 の写し）が警告なしで読め、版 2 になる', () => {
+    expect(obj(sampleV1).formatVersion).toBe(1);
+    const r = ok(sampleV1);
+    expect(r.value.formatVersion).toBe(2);
+    expect(r.value.dataset.nodes).toHaveLength(219);
+    expect(r.warnings).toEqual([]);
+  });
+  it('FR-PJ-03: 版 2 で保存し、版 2 として読み直せる。版 3 以上は新しい版として拒む', () => {
+    const saved = serializeProject(parts, AT);
+    expect(obj(saved).formatVersion).toBe(2);
+    expect(ok(saved).value.view.filter).toEqual(cleanFilter);
+    for (const v of [3, 4, 999]) {
+      const r = parseProject(JSON.stringify({ ...obj(saved), formatVersion: v }));
+      expect(!r.ok && r.kind).toBe('newer-version');
+    }
+  });
+  it('FR-PJ-03: 版 1 を読んで保存し直すと版 2 になり、内容は変わらない', () => {
+    const r = ok(sampleV1);
+    const again = ok(serializeProject(r.value, AT));
+    expect(again.value.dataset).toEqual(r.value.dataset);
+    expect(again.value.view).toEqual(r.value.view);
+    expect(again.value.formatVersion).toBe(2);
+  });
+});
+
+describe('値の末尾の ? を可能性ありと読む列の設定（D-37）', () => {
+  it('FR-DM-06: possibleSuffixColumns は保存して読み直すと戻り、無ければ持たない', () => {
+    const settings = {
+      ...sampleSettings,
+      possibleSuffixColumns: [{ column: 'city', table: 'node' as const }, { column: 'note' }],
+    };
+    const r = ok(serializeProject({ ...parts, importSettings: settings }, AT));
+    expect(r.value.importSettings).toEqual(settings);
+    expect(
+      Object.hasOwn(ok(serializeProject(parts, AT)).value.importSettings, 'possibleSuffixColumns'),
+    ).toBe(false);
+  });
+  it('FR-DM-06: 壊れた指定は path つきで拒む', () => {
+    for (const [bad, path] of [
+      [5, 'importSettings.possibleSuffixColumns'],
+      [[5], 'importSettings.possibleSuffixColumns[0]'],
+      [[{ column: 1 }], 'importSettings.possibleSuffixColumns[0].column'],
+      [[{ column: 'a', table: 'x' }], 'importSettings.possibleSuffixColumns[0].table'],
+    ] as const) {
+      const r = parseImportSettings({ possibleSuffixColumns: bad });
+      expect(!r.ok && r.path).toBe(path);
+    }
   });
 });

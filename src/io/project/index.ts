@@ -2,6 +2,7 @@
 export type {
   MissingToken,
   ColumnCalendar,
+  ColumnRef,
   ImportSettings,
   ProjectView,
   ProjectParts,

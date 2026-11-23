@@ -335,3 +335,106 @@ describe('FR-IN-07: 2表のラベル・ID・端点の列の欠損記号', () => 
     expect(result.dataset?.nodes.map((n) => n.label)).toEqual(['〔欠〕']);
   });
 });
+
+describe('FR-DM-06: 確からしさの列', () => {
+  const edges = (rows: string): ReturnType<typeof parseTextTable> =>
+    parseTextTable('source,target,c\n' + rows);
+  it('FR-DM-06: ノード表の列は GraphNode.certainty、エッジ表の列は GraphEdge.certainty になる', () => {
+    const result = importTables(
+      parseTextTable('id,label,c\n1,محمد,おそらく\n2,東京,\n3,大阪,Certain'),
+      edges('1,2,??\n2,3,'),
+      { fields: { id: 0, label: 1, certainty: 2 }, attributes: [] },
+      { fields: { source: 0, target: 1, certainty: 2 }, attributes: [] },
+    );
+    expect(result.warnings).toEqual([]);
+    const d = result.dataset;
+    expect(d?.nodes.map((n) => n.certainty)).toEqual(['probable', undefined, 'certain']);
+    // 空欄は持たない（キー自体が無い）
+    expect(d?.nodes[1] && 'certainty' in d.nodes[1]).toBe(false);
+    expect(d?.edges.map((e) => e.certainty)).toEqual(['possible', undefined]);
+    expect(d?.edges[1] && 'certainty' in d.edges[1]).toBe(false);
+    expect(parseDataset(d).ok).toBe(true);
+  });
+  it('FR-DM-06: 欠損の記号に当たる値は持たず、警告も出さない', () => {
+    const result = importTables(
+      parseTextTable('id,label,c\n1,A,〔欠〕'),
+      edges(''),
+      {
+        fields: { id: 0, label: 1, certainty: 2 },
+        attributes: [],
+        missingTokens: [{ token: '〔欠〕', reason: 'lost' }],
+      },
+      edgeMapping,
+    );
+    expect(result.warnings).toEqual([]);
+    expect(result.dataset?.nodes[0]).not.toHaveProperty('certainty');
+  });
+  it('FR-DM-06: 読めない値は、行番号と列名つきの警告にする（黙って捨てない）', () => {
+    const result = importTables(
+      parseTextTable('id,label,c\n1,A,たぶん\n2,B,確実'),
+      edges('1,2,maybe'),
+      { fields: { id: 0, label: 1, certainty: 2 }, attributes: [] },
+      { fields: { source: 0, target: 1, certainty: 2 }, attributes: [] },
+    );
+    const w = result.warnings.filter((x) => x.code === 'invalid-certainty');
+    expect(w.map((x) => [x.table, x.row, x.column, x.severity])).toEqual([
+      ['node', 2, 'c', 'warning'],
+      ['edge', 2, 'c', 'warning'],
+    ]);
+    expect(w[0]?.message).toContain('たぶん');
+    // 警告だけなので Dataset は作られ、読めた行は残る
+    expect(result.dataset?.nodes.map((n) => n.certainty)).toEqual([undefined, 'certain']);
+    expect(result.dataset?.edges[0]).not.toHaveProperty('certainty');
+  });
+  it('FR-DM-06: 列ごとの選択: 有効な列の値だけ、末尾の ? を外して可能性ありにする', () => {
+    const result = importTables(
+      parseTextTable('id,label,city,town\n1,A,Basra?,Kufa?'),
+      edges(''),
+      {
+        fields: { id: 0, label: 1 },
+        attributes: [
+          { column: 2, key: 'city', label: 'city', type: 'string', possibleSuffix: true },
+          { column: 3, key: 'town', label: 'town', type: 'string' },
+        ],
+      },
+      edgeMapping,
+    );
+    expect(result.warnings).toEqual([]);
+    const attrs = result.dataset?.nodes[0]?.attrs;
+    expect(attrs && getAttr(attrs, 'city')).toEqual({
+      kind: 'value',
+      value: 'Basra',
+      certainty: 'possible',
+    });
+    expect(attrs && getAttr(attrs, 'town')).toEqual({ kind: 'value', value: 'Kufa?' });
+    expect(parseDataset(result.dataset).ok).toBe(true);
+  });
+  it('FR-DM-06: 確からしさの値が欠損の記号にも当たるときは、表ごとに 1 回だけ警告し、値は持たない', () => {
+    const result = importTables(
+      parseTextTable('id,label,c\n1,A,?\n2,B,?\n3,C,??'),
+      edges('1,2,?\n2,3,?'),
+      {
+        fields: { id: 0, label: 1, certainty: 2 },
+        attributes: [],
+        missingTokens: [{ token: '?', reason: 'unrecorded' }],
+      },
+      {
+        fields: { source: 0, target: 1, certainty: 2 },
+        attributes: [],
+        missingTokens: [{ token: '?', reason: 'unrecorded' }],
+      },
+    );
+    const w = result.warnings.filter((x) => x.code === 'invalid-certainty');
+    expect(w.map((x) => [x.table, x.row])).toEqual([
+      ['node', 2],
+      ['edge', 2],
+    ]);
+    expect(w[0]?.message).toContain('欠損の記号');
+    expect(result.dataset?.nodes.map((n) => n.certainty)).toEqual([
+      undefined,
+      undefined,
+      'possible',
+    ]);
+    expect(result.dataset?.edges.map((e) => e.certainty)).toEqual([undefined, undefined]);
+  });
+});

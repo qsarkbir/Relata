@@ -30,6 +30,7 @@ const all: FilterDef[] = [
     id: fid('t'),
     kind: 'time',
     target: 'edge',
+    source: { kind: 'attr', attr: 'date' },
     from: -5,
     to: 2_000_000,
     match: 'within',
@@ -173,6 +174,7 @@ describe('parseFilterState（D-21 (8)、D-24）', () => {
             id: 'a',
             kind: 'time',
             target: 'node',
+            source: { kind: 'span' },
             from: 1.5,
             to: 2,
             match: 'within',
@@ -205,7 +207,16 @@ describe('parseFilterState（D-21 (8)、D-24）', () => {
     expect(bad(range(1, 1))).toBeUndefined();
     const time = (from: number, to: number): unknown => ({
       filters: [
-        { id: 'a', kind: 'time', target: 'node', from, to, match: 'within', missing: 'include' },
+        {
+          id: 'a',
+          kind: 'time',
+          target: 'node',
+          source: { kind: 'span' },
+          from,
+          to,
+          match: 'within',
+          missing: 'include',
+        },
       ],
     });
     expect(bad(time(5, 4))).toEqual({ path: 'filters[0].to' });
