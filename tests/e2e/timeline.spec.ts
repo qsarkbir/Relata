@@ -338,16 +338,27 @@ test.describe('出どころの違う時間フィルタと、指している区�
     expect(filters.find((f) => f.id === 'other')?.to).toBe(5_000_000);
   });
 
-  test('FR-TM-01: 棒の上にポインタを置くと、その区切りの件数を状態の文に示し、離れると消える', async ({
+  test('FR-TM-01: 棒の上にポインタを置くと、その区切りの件数を別の行に示し、離れると消える。適用中の範囲は隠さない', async ({
     page,
   }) => {
     await loadSample(page);
     await openTimeline(page);
+    const hover = page.locator('.timeline-hover');
     const p = await pointAt(page, 0.5);
     await page.mouse.move(p.x, p.y);
-    await expect(status(page)).toContainText('区切り');
-    await expect(status(page)).toContainText('件');
-    await page.mouse.move(p.x, p.y - 400);
-    await expect(status(page)).not.toContainText('区切り');
+    await expect(hover).toContainText('区切り');
+    await expect(hover).toContainText('件');
+    // 範囲を選んで離した後、ポインタが棒の上に残っていても、適用中の範囲の文は出たまま。
+    await drag(page, 0.3, 0.6);
+    await expect(status(page)).toContainText('適用中の範囲');
+    // 離した後にポインタを動かすと、指している区切りの文がまた出るが、適用中の範囲の文はそのまま残る。
+    // 【なぜ】適用すると「範囲を解除」のボタンが出て、描画の領域の位置が変わりうるので、座標を測り直す。
+    const q = await pointAt(page, 0.5);
+    await page.mouse.move(q.x, q.y);
+    await expect(hover).toContainText('区切り');
+    await expect(status(page)).toContainText('適用中の範囲');
+    await page.mouse.move(q.x, q.y - 400);
+    await expect(hover).toHaveText('');
+    await expect(status(page)).toContainText('適用中の範囲');
   });
 });

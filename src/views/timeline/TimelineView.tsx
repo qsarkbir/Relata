@@ -424,7 +424,9 @@ export function TimelineView() {
     sel === null && hover !== null && hover < n
       ? `${t('timeline.cursor', { range: rangeText(hover, hover) })} — ${titles[hover] ?? ''}`
       : null;
-  const status = hoverText ?? baseStatus;
+  // 【なぜ】指している区切りの文は、状態の文（適用中の範囲・選択中の範囲）とは別の行に出す。同じ行に出すと、
+  //       範囲を選んで離した後もポインタが棒の上に残るため、適用中の範囲の表示を隠してしまう。
+  const status = baseStatus;
   const [announced, setAnnounced] = useState(baseStatus);
   if (sel?.dragging !== true && announced !== baseStatus) setAnnounced(baseStatus);
 
@@ -631,6 +633,10 @@ export function TimelineView() {
       {/* 見える文は常に更新する。読み上げ用の文は、ドラッグ中は更新せず、離したとき（確定時）だけ更新する。 */}
       <p className="timeline-status" aria-hidden="true" dir="auto">
         <bdi>{status}</bdi>
+      </p>
+      {/* 指している区切りの内容（棒の吹き出しの代わり）。行の高さを保ち、出し入れで下の要素が動かないようにする。 */}
+      <p className="timeline-hover hint" aria-hidden="true" dir="auto">
+        {hoverText !== null && <bdi>{hoverText}</bdi>}
       </p>
       <p className="visually-hidden" role="status" aria-live="polite" dir="auto">
         <bdi>{announced}</bdi>

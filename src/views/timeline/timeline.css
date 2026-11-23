@@ -52,7 +52,8 @@
 .timeline-nodate p {
   margin: 0 0 var(--rl-space-1);
 }
-.timeline-status {
+.timeline-status,
+.timeline-hover {
   margin: 0;
   min-block-size: 1.5em;
   font-size: var(--rl-font-sm);
