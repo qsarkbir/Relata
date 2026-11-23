@@ -60,6 +60,9 @@ export const ja = {
   'graph.geo.lat': '緯度の属性',
   'graph.geo.lon': '経度の属性',
   'graph.geo.none': '（選んでいない）',
+  'graph.geo.choose': '緯度・経度の属性を選んでください',
+  'graph.geo.notFound':
+    '保存された緯度・経度の属性が、今のデータに見つかりません。選び直してください。',
   'graph.relayout': '再配置する',
   'graph.layoutTask': 'グラフの配置を計算中',
   'graph.labels': 'ラベル',

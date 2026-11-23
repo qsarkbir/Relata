@@ -1,6 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { countNoCoordinates, resolveColumnOrder } from '../core/layout';
-import { geoInputsFor } from './geoInputs';
+import { geoCandidates, geoInputsFor, resolveGeoSelection } from './geoInputs';
 import type { Dataset } from '../core/model';
 import type { RelataGraph } from '../core/graph';
 import type { GraphViewSettings } from '../core/project';
@@ -16,22 +16,27 @@ interface NoteProps {
 
 /**
  * 地理座標の配置で、座標なしの列に置いたノードの件数を示す（FR-VG-02）。
+ * 緯度・経度が両方そろうまでは、選ぶよう促す（その間は配置を計算しない）。
  *
  * 【なぜ】絞り込みで除いた件数とは別の文言にする。座標なしのノードは図から消えず、端の列にある。
  * @param props - データ、表示中のグラフ、表示の設定
- * @returns 件数の文。地理座標の配置でなければ null
+ * @returns 件数の文。地理座標の配置でない、またはグラフが空なら null
  */
 export function NoCoordinatesNote({ dataset, graph, view }: NoteProps) {
   const t = useT();
+  const selection = resolveGeoSelection(dataset, view.geoAttrs);
+  const ready = selection.lat !== undefined && selection.lon !== undefined;
   const count = useMemo(
     () =>
-      view.layout === 'geo' ? countNoCoordinates(geoInputsFor(dataset, graph, view.geoAttrs)) : 0,
-    [dataset, graph, view.layout, view.geoAttrs],
+      view.layout === 'geo' && ready
+        ? countNoCoordinates(geoInputsFor(dataset, graph, view.geoAttrs))
+        : 0,
+    [dataset, graph, view.layout, view.geoAttrs, ready],
   );
-  if (view.layout !== 'geo') return null;
+  if (view.layout !== 'geo' || graph.order === 0) return null;
   return (
     <p className="graph-no-coordinates" role="status" data-testid="no-coordinates">
-      {t('graph.noCoordinates', { count })}
+      {!ready ? t('graph.geo.choose') : t('graph.noCoordinates', { count })}
     </p>
   );
 }
@@ -50,6 +55,22 @@ interface ControlsProps extends NoteProps {
  */
 export function LayoutMethodControls({ dataset, graph, view, onChange }: ControlsProps) {
   const t = useT();
+  const list = useRef<HTMLOListElement>(null);
+  // 【なぜ】↑↓で端まで動かすとそのボタンが無効になり、フォーカスが失われる。動かした列の、
+  // 押せる側のボタンへフォーカスを戻すため、動かした直後の再描画の後に移す。
+  const [focusTarget, setFocusTarget] = useState<{ type: string; dir: 'up' | 'down' } | null>(null);
+  useEffect(() => {
+    if (focusTarget === null || list.current === null) return;
+    const row = [...list.current.querySelectorAll('li')].find(
+      (li) => li.dataset.type === focusTarget.type,
+    );
+    const first = row?.querySelector<HTMLButtonElement>(`button[data-dir="${focusTarget.dir}"]`);
+    const other = row?.querySelector<HTMLButtonElement>(
+      `button[data-dir="${focusTarget.dir === 'up' ? 'down' : 'up'}"]`,
+    );
+    (first?.disabled === false ? first : other)?.focus();
+    setFocusTarget(null);
+  }, [focusTarget, view.columnOrder]);
   if (view.layout === 'layered') {
     const present = graph.nodes().map((id) => graph.getNodeAttribute(id, 'type'));
     const order = resolveColumnOrder(present, view.columnOrder ?? []);
@@ -60,19 +81,21 @@ export function LayoutMethodControls({ dataset, graph, view, onChange }: Control
       if (item === undefined) return;
       next.splice(index + delta, 0, item);
       onChange({ columnOrder: next });
+      setFocusTarget({ type: item, dir: delta === -1 ? 'up' : 'down' });
     };
     return (
       <div className="graph-layout-method">
         <p className="rl-section-note">{t('graph.layered.note')}</p>
         {order.length <= 1 && <p className="rl-section-note">{t('graph.layered.single')}</p>}
-        <ol className="graph-column-order" aria-label={t('graph.layered.order')}>
+        <ol className="graph-column-order" aria-label={t('graph.layered.order')} ref={list}>
           {order.map((type, i) => (
-            <li key={type}>
+            <li key={type} data-type={type}>
               <span className="graph-column-name">
                 <bdi>{name(type)}</bdi>
               </span>
               <button
                 type="button"
+                data-dir="up"
                 disabled={i === 0}
                 aria-label={t('graph.layered.up', { name: name(type) })}
                 onClick={() => {
@@ -83,6 +106,7 @@ export function LayoutMethodControls({ dataset, graph, view, onChange }: Control
               </button>
               <button
                 type="button"
+                data-dir="down"
                 disabled={i === order.length - 1}
                 aria-label={t('graph.layered.down', { name: name(type) })}
                 onClick={() => {
@@ -98,24 +122,25 @@ export function LayoutMethodControls({ dataset, graph, view, onChange }: Control
     );
   }
   if (view.layout === 'geo') {
-    // 【なぜ】数値の属性を先に並べる。緯度・経度は数値の列のことが多いが、文字列として読み込まれた
-    // 列（"33.3"）も使えるので、日付と真偽値以外の属性を選べるようにする。
-    const candidates = dataset.schema
-      .filter((a) => a.appliesTo === 'node' && a.valueType !== 'date' && a.valueType !== 'boolean')
-      .sort((a, b) => Number(b.valueType === 'number') - Number(a.valueType === 'number'));
+    const candidates = geoCandidates(dataset);
+    const selection = resolveGeoSelection(dataset, view.geoAttrs);
     const select = (which: 'lat' | 'lon') => {
-      const current = view.geoAttrs?.[which] ?? '';
+      const label = t(which === 'lat' ? 'graph.geo.lat' : 'graph.geo.lon');
       return (
-        <Field label={t(which === 'lat' ? 'graph.geo.lat' : 'graph.geo.lon')}>
+        <Field label={label}>
           <select
-            aria-label={t(which === 'lat' ? 'graph.geo.lat' : 'graph.geo.lon')}
-            value={current}
+            aria-label={label}
+            value={selection[which] ?? ''}
             onChange={(e) => {
               const value = e.currentTarget.value;
-              const other = view.geoAttrs?.[which === 'lat' ? 'lon' : 'lat'] ?? '';
-              onChange({
-                geoAttrs: which === 'lat' ? { lat: value, lon: other } : { lat: other, lon: value },
-              });
+              // 【なぜ】選んでいない側は項目ごと省く（空の文字列は保存しない）。画面に出ている有効な選択だけを引き継ぐ。
+              const lat = which === 'lat' ? value : selection.lat;
+              const lon = which === 'lon' ? value : selection.lon;
+              const next = {
+                ...(lat === undefined || lat === '' ? {} : { lat }),
+                ...(lon === undefined || lon === '' ? {} : { lon }),
+              };
+              onChange({ geoAttrs: next });
             }}
           >
             <option value="">{t('graph.geo.none')}</option>
@@ -131,6 +156,11 @@ export function LayoutMethodControls({ dataset, graph, view, onChange }: Control
     return (
       <div className="graph-layout-method">
         <p className="rl-section-note">{t('graph.geo.note')}</p>
+        {selection.missing && (
+          <p className="rl-section-note" role="alert">
+            {t('graph.geo.notFound')}
+          </p>
+        )}
         {select('lat')}
         {select('lon')}
       </div>

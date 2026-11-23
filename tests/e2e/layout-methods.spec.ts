@@ -144,9 +144,18 @@ test('FR-VG-02: 地理座標は座標なしのノードを右端の列にまと�
 }) => {
   const drawer = await openGraphSettings(page);
   await drawer.getByLabel('配置方法').selectOption('geo');
-  // 属性が未選択のあいだは全ノードが座標なし。
-  await expect(page.getByTestId('no-coordinates')).toHaveText(/座標なし 6 件/);
+  // 緯度・経度の両方が選ばれるまでは計算せず、選ぶよう促す。
+  await expect(page.getByTestId('no-coordinates')).toHaveText('緯度・経度の属性を選んでください');
   await drawer.getByLabel('緯度の属性').selectOption('Lat');
+  await expect(page.getByTestId('no-coordinates')).toHaveText('緯度・経度の属性を選んでください');
+  // 片方だけ選んだ状態を自動保存しても、再読み込みで開ける（プロジェクトが壊れない）。
+  await waitForAutosave(page, (saved) =>
+    JSON.stringify(saved).includes('"geoAttrs":{"lat":"Lat"}'),
+  );
+  await page.reload();
+  const half = await openGraphSettings(page);
+  await expect(half.getByLabel('緯度の属性')).toHaveValue('Lat');
+  await expect(half.getByLabel('経度の属性')).toHaveValue('');
   await drawer.getByLabel('経度の属性').selectOption('Lon');
   const note = page.getByTestId('no-coordinates');
   await expect(note).toHaveText(/座標なし 4 件/);
@@ -165,7 +174,7 @@ test('FR-VG-02: 地理座標は座標なしのノードを右端の列にまと�
       );
     })
     .toBe(true);
-  await waitForAutosave(page);
+  await waitForAutosave(page, (saved) => JSON.stringify(saved).includes('"lon":"Lon"'));
   await page.reload();
   const again = await openGraphSettings(page);
   await expect(again.getByLabel('緯度の属性')).toHaveValue('Lat');

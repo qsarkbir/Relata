@@ -262,6 +262,20 @@ describe('プロジェクトの読み込みの補完と警告', () => {
     const r = ok(mutated((o) => (o.view = {})));
     expect(r.value.view.filter).toEqual(DEFAULT_FILTER_STATE);
   });
+  it('FR-VG-02: view.graph の columnOrder と geoAttrs は既知の項目で、警告なしに往復する', () => {
+    const r = ok(
+      mutated((o) => {
+        sub(o, 'view').graph = {
+          layout: 'geo',
+          columnOrder: ['org', 'person'],
+          geoAttrs: { lat: 'Lat' },
+        };
+      }),
+    );
+    expect(r.warnings).toEqual([]);
+    expect(r.value.view.graph?.columnOrder).toEqual(['org', 'person']);
+    expect(r.value.view.graph?.geoAttrs).toEqual({ lat: 'Lat' });
+  });
   it('FR-PJ-01: savedAt が無ければ結果にも持たない（空文字で補わない）', () => {
     const r = ok(mutated((o) => delete o.savedAt));
     expect(Object.hasOwn(r.value, 'savedAt')).toBe(false);

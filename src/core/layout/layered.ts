@@ -101,6 +101,8 @@ export function layeredLayout(
     const a = typeOf.get(e.source);
     const b = typeOf.get(e.target);
     if (a === undefined || b === undefined || a === b) continue;
+    // 【TS】`as const` で配列を読み取り専用のタプル（長さ 2 の固定配列）にする。これで下の分割代入の
+    //       from と to が string 型に決まり、`undefined` の可能性を考えなくてよい。
     for (const [from, to] of [
       [e.source, e.target],
       [e.target, e.source],
@@ -140,7 +142,8 @@ export function layeredLayout(
   for (let round = 0; round < MAX_ROUNDS; round++) {
     let changed = false;
     const forward = columns.map((_, i) => i);
-    for (const i of [...forward, ...forward.reverse()]) changed = sweep(i) || changed;
+    // 【なぜ】reverse() は配列そのものを書き換える。コピーしてから反転し、forward を変えない。
+    for (const i of [...forward, ...[...forward].reverse()]) changed = sweep(i) || changed;
     if (!changed) break;
   }
   // (4) 座標。

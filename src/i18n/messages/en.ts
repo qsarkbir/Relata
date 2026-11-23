@@ -63,6 +63,9 @@ export const en = {
   'graph.geo.lat': 'Latitude attribute',
   'graph.geo.lon': 'Longitude attribute',
   'graph.geo.none': '(none)',
+  'graph.geo.choose': 'Choose the latitude and longitude attributes',
+  'graph.geo.notFound':
+    'The saved latitude or longitude attribute was not found in the current data. Please choose again.',
   'graph.relayout': 'Recompute layout',
   'graph.layoutTask': 'Computing graph layout',
   'graph.labels': 'Labels',

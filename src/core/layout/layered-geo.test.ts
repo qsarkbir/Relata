@@ -162,3 +162,124 @@ describe('FR-VG-02: 配置の session', () => {
     );
   });
 });
+
+describe('FR-VG-02: 層状（1 つ飛ばしの列）', () => {
+  it('FR-VG-02: A-B-C の 3 列で A-C の辺があっても、全列の隣接で交差を減らす', () => {
+    const nodes = [
+      ...['a1', 'a2'].map((id) => ({ id, type: 'A' })),
+      ...['b1', 'b2'].map((id) => ({ id, type: 'B' })),
+      ...['c1', 'c2'].map((id) => ({ id, type: 'C' })),
+    ];
+    // ID 順では a1-c2 と a2-c1 が交差する（A と C は 1 つ飛ばし）。b は a と c の中間の位置を保つ。
+    const edges = [
+      { source: 'a1', target: 'c2' },
+      { source: 'a2', target: 'c1' },
+      { source: 'a1', target: 'b2' },
+      { source: 'a2', target: 'b1' },
+    ];
+    const r = layeredLayout(nodes, edges, ['A', 'B', 'C']);
+    const y = (id: string) => r.coordinates.get(id)?.y ?? 0;
+    expect(r.columns).toEqual(['A', 'B', 'C']);
+    // A-C の辺が交差しない（a1 が上なら c2 も上）。
+    expect(Math.sign(y('a1') - y('a2'))).toBe(Math.sign(y('c2') - y('c1')));
+    expect(
+      crossings(r.coordinates, [
+        ['a1', 'c2'],
+        ['a2', 'c1'],
+      ]),
+    ).toBe(0);
+    expect(
+      crossings(r.coordinates, [
+        ['a1', 'b2'],
+        ['a2', 'b1'],
+      ]),
+    ).toBe(0);
+  });
+});
+
+describe('FR-VG-02: 地理座標の縮尺と折り返し', () => {
+  const spread = (ids: string[], f: (i: number) => { lat: number; lon: number } | null) =>
+    ids.map((id, i) => ({ id, point: f(i) }));
+  it('FR-VG-02: 地域の点（1 度の範囲）も、長辺が 40·√V になるまで拡大する', () => {
+    const inputs = spread(['a', 'b', 'c', 'd'], (i) => ({ lat: 33 + i * 0.1, lon: 44 + i * 0.1 }));
+    const r = geoLayout(inputs);
+    const xs = [...r.coordinates.values()].map((p) => p.x);
+    const ys = [...r.coordinates.values()].map((p) => p.y);
+    const w = Math.max(...xs) - Math.min(...xs);
+    const h = Math.max(...ys) - Math.min(...ys);
+    expect(Math.max(w, h)).toBeCloseTo(40 * Math.sqrt(4), 6);
+    // 最も近い点同士が、ノードの直径（32）より離れる。
+    const a = r.coordinates.get('a');
+    const b = r.coordinates.get('b');
+    expect(Math.hypot((a?.x ?? 0) - (b?.x ?? 0), (a?.y ?? 0) - (b?.y ?? 0))).toBeGreaterThan(32);
+  });
+  it('FR-VG-02: 縦横比を保つ（経度の差と緯度の差の比が拡大の前後で同じ）', () => {
+    const r = geoLayout(spread(['a', 'b'], (i) => ({ lat: 10, lon: i * 20 })));
+    expect(r.coordinates.get('a')?.y).toBe(r.coordinates.get('b')?.y);
+  });
+  it('FR-VG-02: 点が 1 つだけ、または全点が同じ座標でも、0 除算せず有限の座標になる', () => {
+    const one = geoLayout([{ id: 'a', point: { lat: 33, lon: 44 } }]);
+    expect(one.coordinates.get('a')?.x).toBe(220);
+    const same = geoLayout(spread(['a', 'b', 'c'], () => ({ lat: 33, lon: 44 })));
+    for (const p of same.coordinates.values()) {
+      expect(Number.isFinite(p.x) && Number.isFinite(p.y)).toBe(true);
+    }
+    expect(same.coordinates.get('a')).toEqual(same.coordinates.get('b'));
+  });
+  it('FR-VG-02: 座標なしが多いときは複数列に折り返し、行の間隔はノードの直径より広い', () => {
+    const inputs = [
+      { id: 'a', point: { lat: 30, lon: 40 } },
+      { id: 'b', point: { lat: 31, lon: 41 } },
+      ...Array.from({ length: 30 }, (_, i) => ({
+        id: `n${String(i).padStart(2, '0')}`,
+        point: null,
+      })),
+    ];
+    const r = geoLayout(inputs);
+    const none = [...r.coordinates].filter(([id]) => id.startsWith('n')).map(([, p]) => p);
+    const columns = new Set(none.map((p) => p.x));
+    expect(columns.size).toBeGreaterThan(1);
+    const rows = [...new Set(none.filter((p) => p.x === none[0]?.x).map((p) => p.y))].sort(
+      (p, q) => p - q,
+    );
+    for (let i = 1; i < rows.length; i++)
+      expect((rows[i] ?? 0) - (rows[i - 1] ?? 0)).toBeGreaterThan(32);
+    // 同じ座標に重ならない。
+    expect(new Set(none.map((p) => `${String(p.x)},${String(p.y)}`)).size).toBe(30);
+  });
+  it('FR-VG-02: Worker 側でも点を検査し直す（範囲外・NaN は座標なし）', () => {
+    const r = geoLayout([
+      { id: 'a', point: { lat: 200, lon: 0 } },
+      { id: 'b', point: { lat: Number.NaN, lon: 0 } },
+      { id: 'c', point: { lat: 1, lon: 1 } },
+    ]);
+    expect(r.noCoordinates).toBe(2);
+  });
+});
+
+describe('FR-VG-02: 数値の属性の読み取り', () => {
+  const v = (value: string | number | readonly (string | number)[]) =>
+    ({ kind: 'value', value }) as const;
+  it('FR-VG-02: 10 進だけを通し、アラビア・インド数字・ペルシア数字を受け付け、0x21 は拒む', () => {
+    const read = (value: string | number | readonly (string | number)[]) =>
+      extractGeoInputs(
+        [
+          {
+            id: 'x',
+            attrs: makeAttrs([
+              ['lat', v(value)],
+              ['lon', v(value)],
+            ]),
+          },
+        ],
+        'lat',
+        'lon',
+      )[0]?.point;
+    expect(read('0x21')).toBeNull();
+    expect(read('٣٣٫٣')?.lat).toBe(33.3);
+    expect(read('−۱۰')?.lat).toBe(-10);
+    expect(read([12])?.lat).toBe(12);
+    expect(read(['12', '13'])).toBeNull();
+    expect(read([])).toBeNull();
+  });
+});
