@@ -539,6 +539,17 @@ export function GraphView() {
     );
   // カードの見出し。ノードを選んでいればその名前、エッジだけなら選んだ本数。
   // 複数選択のときは件数にする（先頭のノード名にすると、本文の一覧と重なる）。
+  // 選択の要約と「選択したノードで絞り込む」のボタン。件数に応じてカードの中の位置を変える。
+  const rangeSummary =
+    selected.size >= 1 ? (
+      <RangeSelectSummary
+        ids={selected}
+        nodeLabel={nodeLabel}
+        passTypes={network?.projection.kind === 'applied' ? [network.projection.options.via] : []}
+        typeLabel={(id) => dataset.nodeTypes.find((nt) => nt.id === id)?.label ?? id}
+        isVisible={(id) => graph.hasNode(id)}
+      />
+    ) : null;
   const cardHeading =
     selected.size > 1
       ? t('graph.selection.count', { count: nf.format(selected.size) })
@@ -847,19 +858,8 @@ export function GraphView() {
                       <bdi>{selectedId}</bdi>
                     </p>
                   )}
-                  {selected.size >= 1 && (
-                    <RangeSelectSummary
-                      ids={selected}
-                      nodeLabel={nodeLabel}
-                      passTypes={
-                        network?.projection.kind === 'applied'
-                          ? [network.projection.options.via]
-                          : []
-                      }
-                      typeLabel={(id) => dataset.nodeTypes.find((nt) => nt.id === id)?.label ?? id}
-                      isVisible={(id) => graph.hasNode(id)}
-                    />
-                  )}
+                  {/* 【なぜ】複数選択では、絞り込みのボタンをカードの先頭に置く（単一ノードの操作は出さないため）。 */}
+                  {selected.size > 1 && rangeSummary}
                   {selectedEdgeKeys.length > 0 && (
                     <SelectedEdges graph={graph} edgeKeys={selectedEdgeKeys} />
                   )}
@@ -921,6 +921,8 @@ export function GraphView() {
                     // 【なぜ】フィルタで見えなくなっても選択は消さない（R-19）。理由を文で示し、色だけに頼らない。
                     <p className="graph-card-hidden">{t('graph.selection.hidden')}</p>
                   )}
+                  {/* 【なぜ】1 件の選択では、主な操作（固定）を先に置き、絞り込みはカードの末尾に置く（キーボードの順を変えない）。 */}
+                  {selected.size === 1 && rangeSummary}
                 </div>
               </section>
             )}

@@ -83,7 +83,7 @@ test('FR-VG-12: 「欠損の表示」で選んだ属性が欠損しているノ�
 });
 
 test('FR-VG-12: キーボードだけで、タブの切り替えと欠損の表示の選択ができる', async ({ page }) => {
-  await page.getByRole('tab', { name: '表' }).focus();
+  await page.getByRole('tab', { name: '表', exact: true }).focus();
   await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('tab', { name: '欠損' })).toHaveAttribute('aria-selected', 'true');
   await openGraphSection(page, '欠損の表示');
