@@ -8,6 +8,12 @@ import { categoryKeyText } from './labels';
 import { timeText } from './timeText';
 import type { Translate } from './labels';
 
+/** 適用中のフィルタの一覧の要素の ID。「適用中の条件」の行から、ここへフォーカスを移す。 */
+export const APPLIED_LIST_ID = 'applied-filters';
+
+/** 表示の規則（エッジの条件、孤立ノード）の要素の ID。「適用中の条件」の行から移る。 */
+export const FILTER_RULES_ID = 'filter-rules';
+
 /** 適用中のフィルタの一覧の入力。 */
 interface AppliedListProps {
   readonly dataset: Dataset;
@@ -36,7 +42,13 @@ export function AppliedList({ dataset, filters, issues, missingExcluded }: Appli
   const nf = getNumberFormat(locale);
 
   return (
-    <section className="applied" aria-labelledby="applied-title">
+    <section
+      className="applied"
+      id={APPLIED_LIST_ID}
+      // 【なぜ】tabIndex={-1} は、Tab の順には入れず、プログラムからフォーカスだけ移せる指定。
+      tabIndex={-1}
+      aria-labelledby="applied-title"
+    >
       <div className="applied-head">
         <h3 id="applied-title">{t('filter.applied')}</h3>
         <button type="button" disabled={filters.length === 0} onClick={clearAll}>

@@ -81,6 +81,21 @@ describe('uiStore', () => {
     s.getState().togglePanel('filters');
     expect(s.getState().collapsedPanels).toEqual({ filters: false, metrics: true });
   });
+
+  it('FR-UI-02: setPanelCollapsed は状態を指定して開閉し、同じ値なら購読を呼ばない', () => {
+    const s = createUiStore();
+    let calls = 0;
+    s.subscribe(() => {
+      calls += 1;
+    });
+    s.getState().setPanelCollapsed('filters', false);
+    expect(calls).toBe(0);
+    s.getState().setPanelCollapsed('filters', true);
+    expect(s.getState().collapsedPanels.filters).toBe(true);
+    s.getState().setPanelCollapsed('filters', false);
+    expect(s.getState().collapsedPanels).toEqual({ filters: false, metrics: false });
+    expect(calls).toBe(2);
+  });
 });
 
 describe('dataStore', () => {

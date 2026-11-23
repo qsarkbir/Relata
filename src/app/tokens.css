@@ -1,0 +1,48 @@
+/*
+ * デザイントークン（フェーズ 2 の方針 §6）。
+ *
+ * 【なぜ】色・余白・文字の大きさを 1 か所に集め、新しい画面（適用中の条件の行、図のツールバー、
+ * 表示の設定の引き出し、選択中のカード）だけが使う。既存の CSS には適用しない（全体の置き換えは
+ * UI 刷新の課題。方針 §9）。
+ * 色は 2 系統に分ける。操作の色（--rl-accent, --rl-focus, --rl-selected）は選択・フォーカス・押された
+ * ボタンだけに使い、データの色（core/encode の配色と、入／出の強調色）には使わない。
+ */
+:root {
+  /* 文字と面 */
+  --rl-text: #1f2328;
+  --rl-text-muted: #59636e;
+  --rl-surface: #ffffff;
+  --rl-surface-subtle: #f6f8fa;
+  --rl-border: #d1d9e0;
+  --rl-border-strong: #8c959f;
+
+  /* 操作の色（データの色とは別系統） */
+  --rl-accent: #0b57d0;
+  --rl-accent-text: #ffffff;
+  --rl-selected: #e8f0fe;
+  --rl-focus: #0b57d0;
+  --rl-danger: #b3261e;
+
+  /* 余白（4px 基準） */
+  --rl-space-1: 0.25rem;
+  --rl-space-2: 0.5rem;
+  --rl-space-3: 0.75rem;
+  --rl-space-4: 1rem;
+
+  /* 文字（本文 14〜15px 相当、行間 1.5 前後。アラビア文字の記号が切れないよう詰めすぎない） */
+  --rl-font-sm: 0.8125rem;
+  --rl-font-md: 0.9375rem;
+  --rl-font-lg: 1.0625rem;
+  --rl-leading: 1.5;
+
+  /* 形 */
+  --rl-radius: 6px;
+  --rl-border-width: 1px;
+  --rl-shadow: 0 4px 16px rgb(31 35 40 / 0.16);
+
+  /* 操作の大きさ（クリックの領域は 32px 以上） */
+  --rl-control-size: 2rem;
+
+  /* フォーカスの線（既存の :focus-visible と同じ太さ） */
+  --rl-focus-ring: 3px solid var(--rl-focus);
+}

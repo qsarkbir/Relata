@@ -7,6 +7,9 @@ import {
   waitForAutosave,
   saveProjectFile,
   saveSvgFile,
+  openGraphSettings,
+  openGraphSection,
+  selectNode,
 } from './support';
 
 test.use({ locale: 'ja-JP' });
@@ -23,12 +26,13 @@ test('FR-VG-09/11: Workerで表示し検索・選択・向きの強調と拡大�
   await page.getByRole('button', { name: '拡大', exact: true }).click();
   await expect(figure).not.toHaveAttribute('data-zoom', initial ?? '');
   await page.getByLabel('ノードを検索', { exact: true }).fill('ابن');
-  await expect(page.locator('.graph-search-results button').first()).toBeVisible();
-  await page.locator('.graph-search-results button').first().click();
+  await expect(page.locator('.graph-search-results [role="option"]').first()).toBeVisible();
+  await page.locator('.graph-search-results [role="option"]').first().click();
   await expect(page.getByRole('region', { name: '選択したノードの詳細' })).toBeVisible();
   await page.getByLabel('関係の強調', { exact: true }).selectOption('out');
   await page.getByRole('button', { name: '位置を固定', exact: true }).click();
   await expect(page.getByRole('button', { name: '固定を解除', exact: true })).toBeVisible();
+  await openGraphSettings(page);
   await page.getByLabel('ラベル', { exact: true }).selectOption('selected');
   const selectedLabel = await page
     .locator('.graph-canvas #graph-view-labels text')
@@ -69,8 +73,9 @@ test('FR-PJ-01/02 / NFR-08: 配置・固定点・拡大と表示設定をファ�
   await startApp(page);
   await openProject(page, 'maghrib.relata.json');
   await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]')).toHaveCount(14);
-  await page.getByLabel('ノードを選択', { exact: true }).selectOption('p6');
+  await selectNode(page, 'p6');
   await page.getByRole('button', { name: '位置を固定', exact: true }).click();
+  await openGraphSettings(page);
   await page.getByLabel('向きの表現').selectOption('gradient');
   await page.getByLabel('ラベル', { exact: true }).selectOption('selected');
   await page.getByRole('button', { name: '拡大', exact: true }).click();
@@ -86,6 +91,7 @@ test('FR-PJ-01/02 / NFR-08: 配置・固定点・拡大と表示設定をファ�
   await waitForAutosave(page);
   await expect.poll(() => readAutosave(page)).toContain('"direction":"gradient"');
   await page.reload();
+  await openGraphSettings(page);
   await expect(page.getByLabel('向きの表現')).toHaveValue('gradient');
   await expect(page.getByRole('img', { name: 'ネットワーク図' })).toHaveAttribute(
     'data-zoom',
@@ -137,7 +143,7 @@ test('FR-VG-11 / NFR-08: ドラッグした位置を固定し、ファイルと�
   await page.mouse.down();
   await page.mouse.move(box.x + box.width / 2 + 35, box.y + box.height / 2 + 20, { steps: 4 });
   await page.mouse.up();
-  await page.getByLabel('ノードを選択', { exact: true }).selectOption(id);
+  await selectNode(page, id);
   await expect(page.getByRole('button', { name: '固定を解除', exact: true })).toBeVisible();
   const before = await saveGraph();
   expect(before.position.fixed).toBe(true);
@@ -145,6 +151,7 @@ test('FR-VG-11 / NFR-08: ドラッグした位置を固定し、ファイルと�
     Math.abs(before.position.x - initial.position.x) +
       Math.abs(before.position.y - initial.position.y),
   ).toBeGreaterThan(0);
+  await openGraphSettings(page);
   await page.getByRole('button', { name: '再配置する', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'ノードを表示' })).toBeVisible();
   const after = await saveGraph();
@@ -156,7 +163,7 @@ test('FR-VG-11 / NFR-08: ドラッグした位置を固定し、ファイルと�
     buffer: Buffer.from(after.text),
   });
   await expect(page.locator('.task-panel')).toBeHidden();
-  await page.getByLabel('ノードを選択', { exact: true }).selectOption(id);
+  await selectNode(page, id);
   await expect(page.getByRole('button', { name: '固定を解除', exact: true })).toBeVisible();
 });
 
@@ -166,7 +173,7 @@ test('FR-VG-03/04/08/09: 次数サイズ・属性色・型形・スケールとp
   await startApp(page);
   await openProject(page, 'maghrib.relata.json');
   await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]')).toHaveCount(14);
-  await page.getByText('見た目の設定', { exact: true }).click();
+  await openGraphSection(page, '見た目');
   await page.getByLabel('ノードサイズの元', { exact: true }).selectOption('metric:degree');
   await page.getByLabel('サイズのスケール', { exact: true }).selectOption('log');
   await page.getByLabel('ノード最小半径', { exact: true }).fill('5');
@@ -176,7 +183,7 @@ test('FR-VG-03/04/08/09: 次数サイズ・属性色・型形・スケールとp
   await page.getByLabel('線幅のスケール', { exact: true }).selectOption('linear');
   await page.getByLabel('エッジ最小幅', { exact: true }).fill('0.5');
   await page.getByLabel('エッジ最大幅', { exact: true }).fill('5');
-  await page.getByLabel('ノードを選択', { exact: true }).selectOption('p6');
+  await selectNode(page, 'p6');
   const edges = page.locator('.graph-canvas #graph-view-edges');
   await expect(edges.locator('[stroke="#d55e00"]')).not.toHaveCount(0);
   await expect(edges.locator('[stroke="#0072b2"]')).not.toHaveCount(0);
@@ -227,7 +234,8 @@ test('FR-VG-11: 再配置の応答待ち中でも固定・解除を失わず、�
   await startApp(page);
   await openProject(page, 'maghrib.relata.json');
   await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]')).toHaveCount(14);
-  await page.getByLabel('ノードを選択', { exact: true }).selectOption('p6');
+  await selectNode(page, 'p6');
+  await openGraphSettings(page);
   for (const fixed of [true, false]) {
     await page.evaluate(() => window.dispatchEvent(new Event('relata-test-hold-layout')));
     await page.getByRole('button', { name: '再配置する', exact: true }).click();
@@ -280,7 +288,9 @@ test('FR-VG-11: ホイールで拡大してもページはスクロールしな�
   expect(await page.evaluate(() => window.scrollY)).toBe(before);
 });
 
-test('FR-VG-11: 図の枠の高さを変えると描画範囲が追従し、設定を折りたためる', async ({ page }) => {
+test('FR-VG-11: 図の枠の高さを変えると描画範囲が追従し、表示の設定を開閉できる', async ({
+  page,
+}) => {
   await startApp(page);
   await openProject(page, 'maghrib.relata.json');
   const figure = page.getByRole('img', { name: 'ネットワーク図' });
@@ -290,10 +300,13 @@ test('FR-VG-11: 図の枠の高さを変えると描画範囲が追従し、設�
     if (element instanceof HTMLElement) element.style.height = '640px';
   });
   await expect(figure).toHaveAttribute('viewBox', /^0 0 \d+ 64\d$/u);
-  const settings = page.locator('details.graph-settings');
-  await expect(settings).toHaveAttribute('open', '');
-  await settings.locator('> summary').click();
-  await expect(page.getByRole('button', { name: '全体を表示', exact: true })).toBeHidden();
+  // 表示の設定は既定で閉じ、開閉しても図は見えたまま（ツールバーの操作も残る）。
+  const toggle = page.getByRole('button', { name: '表示の設定', exact: true });
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  const drawer = await openGraphSettings(page);
+  await toggle.click();
+  await expect(drawer).toBeHidden();
+  await expect(page.getByRole('button', { name: '全体を表示', exact: true })).toBeVisible();
   await expect(figure).toBeVisible();
 });
 
@@ -344,7 +357,7 @@ test('FR-VG-11: 位置の欠けたノードの計算中に固定を切り替え�
   await expect(nodes).toHaveCount(13);
   await expect(page.getByRole('status').filter({ hasText: '配置を計算しています' })).toBeVisible();
   // 操作: 計算中に p6 の固定を切り替える（計算は中止される）。
-  await page.getByLabel('ノードを選択', { exact: true }).selectOption('p6');
+  await selectNode(page, 'p6');
   await page.getByRole('button', { name: /^(位置を固定|固定を解除)$/ }).click();
   await page.evaluate(() => window.dispatchEvent(new Event('relata-test-release-layout')));
   // 期待: 操作の後に計算をやり直し、p1 にも位置が付いて 14 個すべてが描かれる。
