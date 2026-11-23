@@ -126,7 +126,8 @@ test.describe('T2-08: 書き出し', () => {
     // 2 回目は読み込み直さない。
     await download(page, 'PDF');
     expect(fonts).toHaveLength(3);
-    expect([...hosts]).toEqual(['localhost:' + (process.env.RELATA_E2E_PORT ?? '4173')]);
+    // 【なぜ】比べる相手は、アプリを開いた先のホスト（手元のサーバーでも公開サイトでも同じテストを使うため）。
+    expect([...hosts]).toEqual([new URL(page.url()).host]);
   });
 
   test('FR-OUT-05: GraphML と GEXF は、表示中のグラフ（アラビア文字のラベル、向き、重み）を含む', async ({
