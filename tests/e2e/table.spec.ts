@@ -78,12 +78,12 @@ test.describe('日本語の画面', () => {
     await expect(workspace(page)).toContainText('データがありません');
   });
 
-  test('FR-UI-02: 下の段は既定で閉じ、タブは「表」だけで、開閉してもフィルタ・選択・viewport・並べ替えが変わらない', async ({
+  test('FR-UI-02: 下の段は既定で閉じ、タブは「表」と「欠損」で、開閉してもフィルタ・選択・viewport・並べ替えが変わらない', async ({
     page,
   }) => {
     await openProject(page, 'maghrib.relata.json');
-    // 既定は閉じている。タブは「表」だけ（空のタブを置かない）。
-    await expect(page.getByRole('tab')).toHaveCount(1);
+    // 既定は閉じている。タブは「表」と「欠損」（空のタブを置かない）。
+    await expect(page.getByRole('tab')).toHaveCount(2);
     await expect(page.getByRole('tab', { name: '表' })).toBeVisible();
     await expect(table(page)).toBeHidden();
     // 状態を作る: フィルタ、選択、ズーム。

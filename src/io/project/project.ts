@@ -444,6 +444,7 @@ export function parseProject(
             'largeLabelCount',
             'direction',
             'viewport',
+            'missingDisplay',
           ],
           'view.graph.',
         )

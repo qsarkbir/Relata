@@ -234,3 +234,19 @@
 .table-pager button {
   min-block-size: var(--rl-control-size);
 }
+
+/* ---- 欠損の一覧（T2-04） ---- */
+.missing-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rl-space-2);
+  min-block-size: 0;
+  flex: 1 1 auto;
+}
+.missing-target {
+  color: var(--rl-text-muted);
+  font-weight: 400;
+}
+.missing-view tbody tr[data-scope='whole'] {
+  color: var(--rl-text-muted);
+}

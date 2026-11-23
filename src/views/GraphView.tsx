@@ -1,4 +1,5 @@
 import { EncodingControls } from './EncodingControls';
+import { MissingDisplayControls } from './MissingDisplayControls';
 import { graphEncoding } from './graphEncoding';
 import { createGraphMeasure } from './graphMeasure';
 /** グラフ表示と操作。元データとフィルタは既存ストアを参照する（T1-19）。 */
@@ -9,6 +10,7 @@ import { DEFAULT_GRAPH_VIEW } from '../core/project';
 import type { GraphViewSettings } from '../core/project';
 import type { NodeId } from '../core/model';
 import { toNodeId } from '../core/model';
+import { findMissingElements } from '../core/missing';
 import { matchIncludes, LOOSE_MATCH } from '../core/text';
 import { buildScene, renderSvg } from '../render';
 import { createSvgExport, downloadSvg } from '../io/export';
@@ -147,6 +149,22 @@ export function GraphView() {
     () => (graph === null || dataset === null ? {} : graphEncoding(dataset, graph, view.encoding)),
     [graph, dataset, view.encoding],
   );
+  // 【なぜ】「欠損の表示」の判定は core の関数で行う。図のエッジはまとめた後のものなので、元のエッジのどれかが
+  // 欠損していれば、そのエッジ（グラフのキー）を破線にする。位置や配置の計算には関わらない（再配置しない）。
+  const missingMarks = useMemo(() => {
+    if (graph === null || dataset === null) return { nodes: undefined, edges: undefined };
+    const found = findMissingElements(
+      dataset,
+      view.missingDisplay.nodeAttrs,
+      view.missingDisplay.edgeAttrs,
+    );
+    const edges = new Set<string>();
+    if (found.edges.size > 0)
+      graph.forEachEdge((key, attrs) => {
+        if (attrs.edgeIds.some((id) => found.edges.has(id))) edges.add(key);
+      });
+    return { nodes: found.nodes, edges };
+  }, [graph, dataset, view.missingDisplay]);
   const visibleSelected = useMemo(
     () => new Set([...selected].filter((id) => graph?.hasNode(id))),
     [selected, graph],
@@ -164,8 +182,11 @@ export function GraphView() {
             includeSelection: true,
             directedStyle: view.direction,
             measureText,
+            ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
+            ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
           }),
     [
+      missingMarks,
       graph,
       positions,
       encoding,
@@ -316,6 +337,8 @@ export function GraphView() {
           includeSelection: false,
           directedStyle: view.direction,
           measureText,
+          ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
+          ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
           title: dataset.meta.title,
         }),
       );
@@ -334,6 +357,7 @@ export function GraphView() {
     view.direction,
     visibleSelected,
     measureText,
+    missingMarks,
   ]);
   useEffect(() => {
     const element = svg.current;
@@ -927,6 +951,15 @@ export function GraphView() {
                 <option value="gradient">{t('graph.gradient')}</option>
               </select>
             </Field>
+          </CollapsibleSection>
+          <CollapsibleSection title={t('graph.section.missing')} note={t('missing.display.note')}>
+            <MissingDisplayControls
+              dataset={dataset}
+              settings={view.missingDisplay}
+              onChange={(value) => {
+                patch({ missingDisplay: value });
+              }}
+            />
           </CollapsibleSection>
         </aside>
       </div>

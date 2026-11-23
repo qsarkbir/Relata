@@ -79,6 +79,14 @@ export interface BuildSceneOptions {
   readonly selected?: ReadonlySet<NodeId>;
   /** 選択の強調を図に含めるか。既定は含めない（D-31）。 */
   readonly includeSelection?: boolean;
+  /**
+   * 「欠損の表示」で指定した属性が欠損しているノード（FR-VG-12）。枠線を破線にする。
+   * 【なぜ】render は属性やデータセットを知らない。判定は core（`findMissingElements`）で済ませ、
+   * シーンには「破線にするかどうか」だけを渡す。
+   */
+  readonly missingNodes?: ReadonlySet<NodeId>;
+  /** 同じく欠損しているエッジの、グラフのエッジのキー（`graph.edges()` の値。元の `EdgeId` ではない）。線を破線にする。 */
+  readonly missingEdges?: ReadonlySet<string>;
   /** ラベルの表示。既定 `all`。 */
   readonly labels?: LabelMode;
   /** `large` のときの候補数の上限（大きい順）。既定20。衝突で減っても次点を補充しない。 */
@@ -238,6 +246,7 @@ export function buildScene(
       normalizeColor(encoding.typeColors?.get(attrs.type)) ??
       (color?.missing === true ? MISSING_COLOR : OTHER_COLOR);
     const isSel = showSel && selected.has(id);
+    const flagged = options.missingNodes?.has(id) === true;
     rawNodes.push({
       id,
       x: pos.x,
@@ -246,8 +255,9 @@ export function buildScene(
       shape: encoding.shapes?.get(attrs.type) ?? 'circle',
       fill,
       stroke: isSel ? SELECTED_STROKE : NODE_STROKE,
-      strokeWidth: isSel ? 3 : 1,
-      dashed: size?.missing === true || color?.missing === true,
+      // 【なぜ】細い破線は見分けにくいので、欠損の印を付けたノードは枠線を少し太くする（色だけに頼らない）。
+      strokeWidth: isSel ? 3 : flagged ? 1.5 : 1,
+      dashed: size?.missing === true || color?.missing === true || flagged,
       selected: isSel,
     });
   });
@@ -303,7 +313,7 @@ export function buildScene(
       color: DEFAULT_EDGE_COLOR,
       opacity: 0.6,
       directed: attrs.directed,
-      dashed: w?.missing === true,
+      dashed: w?.missing === true || options.missingEdges?.has(key) === true,
     });
   });
 
