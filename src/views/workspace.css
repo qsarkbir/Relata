@@ -266,3 +266,13 @@
 .missing-view > .table-scroll {
   flex: 0 0 auto;
 }
+/* 欠損タブの表は、表の中でスクロールさせ、見出し（sticky）を固定する。行は選べないので、クリックできる見た目にしない。 */
+.missing-view .table-scroll {
+  max-block-size: 60vh;
+}
+.missing-view .table-scroll tbody tr {
+  cursor: default;
+}
+.missing-view .table-scroll tbody tr:hover {
+  background: transparent;
+}

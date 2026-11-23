@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Dataset } from '../model';
-import { gregorianToJdn } from '../time';
+import { gregorianToJdn, hijriToJdn } from '../time';
 import { MAX_TIMELINE_BINS } from '../filter';
-import { mkNode, person, span } from '../filter/fixtures/filterDataset';
+import { mkNode, person, place, span } from '../filter/fixtures/filterDataset';
 import { countMissingByPeriod } from './index';
 
 const g = (y: number, m = 1, d = 1): number => gregorianToJdn(y, m, d);
@@ -93,5 +93,110 @@ describe('FR-VG-12: 時期ごとの欠損率', () => {
     );
     expect(r.tooManyBins).toBe(true);
     expect(r.rows).toEqual([]);
+  });
+  it(
+    'FR-VG-12: 幅の極端に広い要素でも、上限の判定の前に区切りの一覧を作らず、すぐ「多すぎる」を返す',
+    { timeout: 300 },
+    () => {
+      const wide: Dataset = {
+        ...ds,
+        nodes: [mkNode('w', person, 'W', [], { kind: 'span', start: span(g(1), g(3_000_000)) })],
+      };
+      const r = countMissingByPeriod(
+        wide,
+        'node',
+        new Set(['w']),
+        { kind: 'span' },
+        'gregorian',
+        1,
+      );
+      expect(r.tooManyBins).toBe(true);
+      expect(r.extent).toEqual({ earliest: g(1), latest: g(3_000_000) });
+    },
+  );
+  it('FR-VG-12: 絞り込み後が年代なしだけでも、年代なしの行を返す（区切りの行は空）', () => {
+    const r = run(new Set(['d']));
+    expect(r.rows).toEqual([]);
+    expect(r.noDate.items).toBe(1);
+    expect(r.extent).toBeUndefined();
+    expect(r.tooManyBins).toBe(false);
+  });
+  it('FR-VG-12: ヒジュラ暦で区切ると、ヒジュラ暦の年の境界で数える', () => {
+    const h: Dataset = {
+      ...ds,
+      nodes: [
+        mkNode('h', person, 'H', [['born', lost]], {
+          kind: 'span',
+          start: span(hijriToJdn(1050, 1, 1), hijriToJdn(1050, 12, 29)),
+        }),
+      ],
+    };
+    const r = countMissingByPeriod(h, 'node', new Set(['h']), { kind: 'span' }, 'hijri', 10);
+    expect(r.rows.map((x) => x.startYear)).toEqual([1050]);
+    expect(r.rows[0]?.counts[0]?.missing).toBe(1);
+  });
+  it('FR-VG-12: ノード型を限る属性は、その型のノードだけを分母にする', () => {
+    const typed: Dataset = {
+      ...ds,
+      schema: [
+        { key: 'born', label: '生年', appliesTo: 'node', nodeType: person, valueType: 'string' },
+      ],
+      nodes: [
+        mkNode('a', person, 'A', [['born', lost]], { kind: 'span', start: yearSpan(1505) }),
+        mkNode('p', place, 'P', [], { kind: 'span', start: yearSpan(1505) }),
+      ],
+    };
+    const r = countMissingByPeriod(
+      typed,
+      'node',
+      new Set(['a', 'p']),
+      { kind: 'span' },
+      'gregorian',
+      10,
+    );
+    expect(r.rows[0]?.items).toBe(2);
+    expect(r.rows[0]?.counts[0]).toMatchObject({ total: 1, missing: 1 });
+  });
+  it('FR-VG-12: 終了が欠損の期間は、開始の区切りだけに数える', () => {
+    const open: Dataset = {
+      ...ds,
+      nodes: [
+        mkNode('o', person, 'O', [['born', val]], {
+          kind: 'span',
+          start: yearSpan(1650),
+          end: unrec,
+        }),
+      ],
+    };
+    const r = countMissingByPeriod(open, 'node', new Set(['o']), { kind: 'span' }, 'gregorian', 10);
+    expect(r.rows.map((x) => x.startYear)).toEqual([1650]);
+  });
+  it('FR-VG-12: 日付の属性が出どころなら、その属性は列から除き、複数値が同じ区切りなら 1 回だけ数える', () => {
+    const dateAttr = (...d: ReturnType<typeof span>[]) => ({ kind: 'date', value: d }) as const;
+    const a: Dataset = {
+      ...ds,
+      schema: [
+        { key: 'visited', label: '訪問', appliesTo: 'node', valueType: 'date' },
+        { key: 'note', label: '備考', appliesTo: 'node', valueType: 'string' },
+      ],
+      nodes: [
+        mkNode('v', person, 'V', [
+          ['visited', dateAttr(yearSpan(1501), yearSpan(1503))],
+          ['note', lost],
+        ]),
+      ],
+    };
+    const r = countMissingByPeriod(
+      a,
+      'node',
+      new Set(['v']),
+      { kind: 'attr', attr: 'visited' },
+      'gregorian',
+      10,
+    );
+    expect(r.attrs.map((x) => x.key)).toEqual(['note']);
+    expect(r.rows.map((x) => x.startYear)).toEqual([1500]);
+    expect(r.rows[0]?.items).toBe(1);
+    expect(r.rows[0]?.counts[0]?.missing).toBe(1);
   });
 });

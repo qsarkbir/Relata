@@ -169,4 +169,24 @@ test.describe('時期ごとの欠損率（サンプル）', () => {
     await expect(page.getByText('時期ごとの欠損率は数えられません')).toBeVisible();
     await expect(periodTable(page)).toHaveCount(0);
   });
+
+  test('FR-VG-12: 日付のある要素が無くても、年代なしの行は出る（「日付のある区切りが無い」とは言わない）', async ({
+    page,
+  }) => {
+    await page.goto('./');
+    const file = JSON.parse(readFileSync('public/samples/maghrib.relata.json', 'utf8')) as {
+      dataset: { nodes: { attrs: Record<string, unknown> }[] };
+    }; // 理由: 自分たちの見本ファイル
+    for (const node of file.dataset.nodes)
+      node.attrs.Year = { kind: 'missing', reason: 'unrecorded' };
+    await openProject(page, {
+      name: 'all-undated.relata.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(file)),
+    });
+    await page.getByRole('checkbox', { name: '孤立ノードを表示する' }).check();
+    await page.getByRole('tab', { name: '欠損' }).click();
+    await expect(page.getByText('日付のあるものがありません')).toBeVisible();
+    await expect(periodTable(page).locator('tr[data-period="noDate"]')).toBeVisible();
+  });
 });

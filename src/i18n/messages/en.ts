@@ -669,6 +669,14 @@ export const en = {
   'missing.period.calendar.gregorian': 'Periods follow Gregorian years.',
   'missing.period.calendar.hijri': 'Periods follow Hijri years.',
   'missing.period.noSource': 'There are no dates, so nothing can be counted by period.',
+  'missing.period.tooMany':
+    'The date range is too wide and would make too many bins, so nothing is counted by period.',
+  'missing.period.tooManyWide':
+    'Dates range from {from} to {to}, which makes too many bins even at 100 years, so nothing is counted.',
+  'missing.period.tooMany.hint':
+    'Widen the bins in the Timeline tab, or check for a distant date (for example a typing mistake).',
+  'missing.period.noDated': 'None of the items left by the filters has a date.',
+  'missing.period.others': 'Items that cannot be placed in a period',
   'missing.period.noAttrs': 'This target has no attributes.',
   'missing.period.filteredOut': 'The filters leave 0 items, so nothing can be counted by period.',
   'missing.period.note':

@@ -648,6 +648,14 @@ export const ja = {
   'missing.period.calendar.gregorian': '時期は西暦の年で区切ります。',
   'missing.period.calendar.hijri': '時期はヒジュラ暦の年で区切ります。',
   'missing.period.noSource': '日付がないため、時期ごとには数えられません。',
+  'missing.period.tooMany':
+    '日付の範囲が広すぎて、区切りが多くなりすぎるため、時期ごとには数えません。',
+  'missing.period.tooManyWide':
+    '日付が {from} から {to} まで離れていて、100 年区切りでも区切りが多くなりすぎるため、数えません。',
+  'missing.period.tooMany.hint':
+    '年表のタブで区切りの幅を大きくするか、離れた日付（入力の誤りなど）がないか確かめてください。',
+  'missing.period.noDated': '絞り込み後の要素に、日付のあるものがありません。',
+  'missing.period.others': '日付で区切れない要素',
   'missing.period.noAttrs': 'この対象には属性がありません。',
   'missing.period.filteredOut': '絞り込みで 0 件です。時期ごとの欠損率は数えられません。',
   'missing.period.note':

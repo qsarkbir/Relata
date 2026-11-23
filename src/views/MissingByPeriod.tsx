@@ -9,20 +9,10 @@ import { binCalendarOf, describeDayRange } from '../core/time';
 import { getFilterResult, selectFilterState } from '../state';
 import { useDisplay, useFilter, useT, useTimelineView, useUi } from './hooks';
 import { getNumberFormat } from './intl';
+import { formatPercent } from './percent';
 import { renderingsText } from './filter/timeText';
 import { StatusMessage } from './ui/StatusMessage';
 import './workspace.css';
-
-/** 割合の書式（言語ごとに 1 つ）。 */
-const percentFormats = new Map<string, Intl.NumberFormat>();
-function percent(locale: string, rate: number): string {
-  let f = percentFormats.get(locale);
-  if (f === undefined) {
-    f = new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 1 });
-    percentFormats.set(locale, f);
-  }
-  return f.format(rate);
-}
 
 /**
  * 時期ごとの欠損率（FR-VG-12、D-42）。「欠損」タブの、属性ごとの一覧の下の節。
@@ -50,6 +40,8 @@ export function MissingByPeriod({ dataset }: { readonly dataset: Dataset }) {
   const result = getFilterResult(dataset, filters);
   const ids = target === 'node' ? result.nodeIds : result.edgeIds;
   // 【なぜ】絞り込み後の集合から毎回数え直す（差分で更新しない）。入力が同じ間は前の結果を使う。
+  // 【TS】`useMemo` の第 2 引数（依存配列）は、中で使う値をすべて並べる。どれかが変わった時だけ計算し直す。
+  //       `ids` は `FilterResult` の集合そのもの（参照）なので、絞り込みが変わらない間は同じ参照のまま。
   const period = useMemo(
     () =>
       source === undefined
@@ -63,23 +55,51 @@ export function MissingByPeriod({ dataset }: { readonly dataset: Dataset }) {
     const label = dataset.schema.find((a) => a.key === s.attr && a.appliesTo === target)?.label;
     return t('filter.time.source.attr', { label: label ?? s.attr });
   };
+  // 【TS】`ReactNode` は React が描ける値の型（文字列、要素、null など）。セルの中身を返す関数の戻り値に使う。
   const cell = (c: MissingCounts | undefined): ReactNode => {
     if (c === undefined) return null;
     return t('missing.period.cell', {
       missing: nf.format(c.missing),
       total: nf.format(c.total),
-      rate: c.total === 0 ? t('missing.noRate') : percent(locale, c.missing / c.total),
+      rate: c.total === 0 ? t('missing.noRate') : formatPercent(locale, c.missing / c.total),
     });
   };
 
-  // 状態の区別: 出どころなし、上限超え、絞り込みで 0 件、日付が全く無い、属性なし。
-  let message: string | null = null;
-  if (source === undefined) message = t('missing.period.noSource');
-  else if (period?.tooManyBins === true) message = t('timeline.tooMany');
-  else if (period !== null && period.shownItems === 0) message = t('missing.period.filteredOut');
-  else if (period !== null && period.attrs.length === 0) message = t('missing.period.noAttrs');
-  else if (period !== null && period.rows.length === 0 && period.inconsistent.items === 0)
-    message = t('timeline.noBins');
+  const dateText = (jdn: number): string =>
+    renderingsText(t, describeDayRange({ earliest: jdn, latest: jdn }, display, 'year'));
+  // 【なぜ】時期の見出しの文字は、行ごとに毎回作らず、結果・暦・言語が変わった時だけ作り直す。
+  const rowLabels = useMemo(
+    () =>
+      (period?.rows ?? []).map((r) =>
+        renderingsText(
+          t,
+          describeDayRange({ earliest: r.earliest, latest: r.latest }, display, 'year'),
+        ),
+      ),
+    [period, display, t],
+  );
+
+  // 状態の区別: 出どころなし、上限超え、絞り込みで 0 件、属性なし。日付のある要素が無くても、年代なし・不整合の行は出す。
+  let message: { kind: 'empty' | 'no-results' | 'error'; text: string; hint?: string } | null =
+    null;
+  if (source === undefined) message = { kind: 'empty', text: t('missing.period.noSource') };
+  else if (period?.tooManyBins === true)
+    message = {
+      kind: 'error',
+      text:
+        width === 100 && period.extent !== undefined
+          ? t('missing.period.tooManyWide', {
+              from: dateText(period.extent.earliest),
+              to: dateText(period.extent.latest),
+            })
+          : t('missing.period.tooMany'),
+      hint: t('missing.period.tooMany.hint'),
+    };
+  else if (period !== null && period.shownItems === 0)
+    message = { kind: 'no-results', text: t('missing.period.filteredOut') };
+  else if (period !== null && period.attrs.length === 0)
+    message = { kind: 'empty', text: t('missing.period.noAttrs') };
+  const noDated = period !== null && message === null && period.rows.length === 0;
 
   const special = (label: string, row: PeriodSpecialRow, key: string): ReactNode =>
     row.items === 0 ? null : (
@@ -113,11 +133,13 @@ export function MissingByPeriod({ dataset }: { readonly dataset: Dataset }) {
       {message !== null && (
         <StatusMessage
           state={{
-            kind: source === undefined || period?.shownItems !== 0 ? 'empty' : 'no-results',
-            message,
+            kind: message.kind,
+            message: message.text,
+            ...(message.hint === undefined ? {} : { hint: message.hint }),
           }}
         />
       )}
+      {noDated && <p className="table-count">{t('missing.period.noDated')}</p>}
       {period !== null && message === null && (
         <>
           <p className="table-count">{t('missing.period.note')}</p>
@@ -128,7 +150,7 @@ export function MissingByPeriod({ dataset }: { readonly dataset: Dataset }) {
             aria-label={t('missing.period.region')}
             data-testid="missing-period-table"
           >
-            <table>
+            <table aria-labelledby="missing-period-title">
               <thead>
                 <tr>
                   <th scope="col">{t('missing.period.col.period')}</th>
@@ -141,19 +163,10 @@ export function MissingByPeriod({ dataset }: { readonly dataset: Dataset }) {
                 </tr>
               </thead>
               <tbody>
-                {period.rows.map((r) => (
+                {period.rows.map((r, ri) => (
                   <tr key={r.startYear} data-period={String(r.startYear)}>
                     <th scope="row">
-                      <bdi>
-                        {renderingsText(
-                          t,
-                          describeDayRange(
-                            { earliest: r.earliest, latest: r.latest },
-                            display,
-                            'year',
-                          ),
-                        )}
-                      </bdi>{' '}
+                      <bdi>{rowLabels[ri]}</bdi>{' '}
                       <span className="missing-target">({nf.format(r.items)})</span>
                     </th>
                     {r.counts.map((c, i) => (
@@ -166,6 +179,13 @@ export function MissingByPeriod({ dataset }: { readonly dataset: Dataset }) {
               </tbody>
               {/* 区切りに入らない要素は、別のグループ（<tbody>）の行にする。 */}
               <tbody>
+                {(period.noDate.items > 0 || period.inconsistent.items > 0) && (
+                  <tr>
+                    <th scope="rowgroup" colSpan={period.attrs.length + 1}>
+                      {t('missing.period.others')}
+                    </th>
+                  </tr>
+                )}
                 {special(t('missing.period.noDate'), period.noDate, 'noDate')}
                 {special(t('missing.period.inconsistent'), period.inconsistent, 'inconsistent')}
               </tbody>

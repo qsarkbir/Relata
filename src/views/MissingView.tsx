@@ -6,6 +6,7 @@ import type { AttrMissingRow, MissingCounts } from '../core/missing';
 import { getFilterResult, getMissingRows, selectFilterState } from '../state';
 import { MissingByPeriod } from './MissingByPeriod';
 import { getNumberFormat } from './intl';
+import { formatPercent } from './percent';
 import { useData, useFilter, useT, useUi } from './hooks';
 import { StatusMessage } from './ui/StatusMessage';
 import './workspace.css';
@@ -19,16 +20,6 @@ const REASON_KEYS = {
   illegible: 'missing.reason.illegible',
   'not-applicable': 'missing.reason.not-applicable',
 } as const satisfies Record<MissingReason, MessageKey>;
-
-const percentFormats = new Map<string, Intl.NumberFormat>();
-function percent(locale: string, rate: number): string {
-  let f = percentFormats.get(locale);
-  if (f === undefined) {
-    f = new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 1 });
-    percentFormats.set(locale, f);
-  }
-  return f.format(rate);
-}
 
 /**
  * 属性ごとの欠損率の一覧（FR-VG-12、R-21）。下の段の「欠損」タブの中身。
@@ -62,7 +53,7 @@ export function MissingView() {
     const rate = counts.total === 0 ? null : n / counts.total;
     return t('missing.cell', {
       count: nf.format(n),
-      rate: rate === null ? t('missing.noRate') : percent(locale, rate),
+      rate: rate === null ? t('missing.noRate') : formatPercent(locale, rate),
     });
   };
   const body = (row: AttrMissingRow): ReactNode => {
