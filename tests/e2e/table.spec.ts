@@ -265,10 +265,11 @@ test.describe('日本語の画面', () => {
     await page.keyboard.press('Enter');
     await expect(row(page, 'p7')).toHaveAttribute('data-selected', 'true');
     // エッジの行を選ぶと、エッジだけが選択に入る（端のノードは選択中にならない）。
-    // 図のカードの表示は、エッジだけの選択に対応する T2-02 との統合のときに足す。
     await workspace(page).getByRole('button', { name: 'エッジ表' }).click();
     await row(page, 'e1').locator('td').nth(1).click();
     await expect(row(page, 'e1')).toHaveAttribute('data-selected', 'true');
+    // 表で選んだエッジは、図の選択中のカードにも出る（D-40。選択は selectionStore の 1 か所）。
+    await expect(page.getByRole('region', { name: '選択中のエッジ' })).toBeVisible();
     await workspace(page).getByRole('button', { name: 'ノード表' }).click();
     await expect(row(page, 'p1')).toHaveAttribute('data-selected', 'false');
     await expect(table(page).locator('tr[data-selected="true"]')).toHaveCount(0);
