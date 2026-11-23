@@ -4,6 +4,7 @@
  * 見本は maghrib.relata.json（ノード 15。既定では孤立の p20 を除いて 14）。
  * 属性「地名」が欠損するのは p7、p40、p35b、anon の 4 つ。属性「年」（キーは Year）は p39、p20、p35b、anon の 4 つ（p20 は既定で除かれる）。
  */
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { openGraphSection, openProject, readAutosave, startApp } from './support';
 
@@ -83,7 +84,7 @@ test('FR-VG-12: 「欠損の表示」で選んだ属性が欠損しているノ�
 });
 
 test('FR-VG-12: キーボードだけで、タブの切り替えと欠損の表示の選択ができる', async ({ page }) => {
-  await page.getByRole('tab', { name: '表' }).focus();
+  await page.getByRole('tab', { name: '表', exact: true }).focus();
   await page.keyboard.press('ArrowRight');
   await expect(page.getByRole('tab', { name: '欠損' })).toHaveAttribute('aria-selected', 'true');
   await openGraphSection(page, '欠損の表示');
@@ -107,4 +108,65 @@ test('FR-VG-12: 絞り込みで 0 件のとき、データなしと区別して�
       .locator('tr[data-attr="地名"][data-scope="filtered"]')
       .getByTestId('missing-total'),
   ).toHaveText('0（割合なし）');
+});
+
+test.describe('時期ごとの欠損率（サンプル）', () => {
+  /** 公開サンプル（日付は属性 Year、ノード 219）を開く。 */
+  async function loadSample(page: Page): Promise<void> {
+    await page.getByRole('button', { name: 'サンプルを読み込む' }).click();
+    await expect(page.getByRole('region', { name: '適用中の条件' })).toContainText('/ 219');
+    await page.getByRole('checkbox', { name: '孤立ノードを表示する' }).check();
+  }
+  const periodTable = (page: Page) => page.getByTestId('missing-period-table');
+
+  test('FR-VG-12: 年表の設定に従い、時期ごと・属性ごとに欠損の件数と割合を示す。区切りを変えると数え直す', async ({
+    page,
+  }) => {
+    await page.goto('./');
+    await loadSample(page);
+    await page.getByRole('tab', { name: '欠損' }).click();
+    await expect(page.getByTestId('missing-period-basis')).toContainText('区切り: 10 年');
+    await expect(periodTable(page)).toBeVisible();
+    const rows = periodTable(page).locator('tbody tr[data-period]');
+    const before = await rows.count();
+    expect(before).toBeGreaterThan(1);
+    await expect(rows.first().locator('td').first()).toHaveText(/^\d+ \/ \d+（.+）$/);
+    // 年表のタブで区切りを 100 年にすると、欠損の時期ごとの行も数え直される。
+    await page.getByRole('tab', { name: '年表' }).click();
+    await page.getByLabel('区切り').selectOption('100');
+    await page.getByRole('tab', { name: '欠損' }).click();
+    await expect(page.getByTestId('missing-period-basis')).toContainText('区切り: 100 年');
+    expect(await rows.count()).toBeLessThan(before);
+  });
+
+  test('FR-VG-12: 年代のない要素は、区切りとは別の行に数える', async ({ page }) => {
+    await page.goto('./');
+    const file = JSON.parse(readFileSync('public/samples/maghrib.relata.json', 'utf8')) as {
+      dataset: { nodes: { attrs: Record<string, unknown> }[] };
+    }; // 理由: 自分たちの見本ファイル
+    for (const node of file.dataset.nodes.slice(0, 3))
+      node.attrs.Year = { kind: 'missing', reason: 'unrecorded' };
+    await openProject(page, {
+      name: 'undated.relata.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(file)),
+    });
+    await page.getByRole('checkbox', { name: '孤立ノードを表示する' }).check();
+    await page.getByRole('tab', { name: '欠損' }).click();
+    // サンプルにも日付のないノードが 1 つあるので、合わせて 4。
+    await expect(periodTable(page).locator('tr[data-period="noDate"] th')).toContainText('(4)');
+  });
+
+  test('FR-VG-12: 絞り込みで 0 件のときは、時期ごとの節でもデータなしと区別して示す', async ({
+    page,
+  }) => {
+    await page.goto('./');
+    await loadSample(page);
+    const search = page.getByRole('search', { name: 'ノードのテキスト検索' });
+    await search.getByRole('searchbox').fill('zzzz-none');
+    await search.getByRole('button', { name: '検索', exact: true }).click();
+    await page.getByRole('tab', { name: '欠損' }).click();
+    await expect(page.getByText('時期ごとの欠損率は数えられません')).toBeVisible();
+    await expect(periodTable(page)).toHaveCount(0);
+  });
 });

@@ -250,3 +250,19 @@
 .missing-view tbody tr[data-scope='whole'] {
   color: var(--rl-text-muted);
 }
+.missing-period {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rl-space-2);
+}
+.missing-period h3 {
+  margin: var(--rl-space-2) 0 0;
+  font-size: var(--rl-font-md);
+}
+/* 時期ごとの節を下に足したので、タブの中身全体をスクロールさせる。 */
+.missing-view {
+  overflow: auto;
+}
+.missing-view > .table-scroll {
+  flex: 0 0 auto;
+}

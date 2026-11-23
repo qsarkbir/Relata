@@ -4,6 +4,7 @@ import type { MissingReason } from '../core/model';
 import type { MessageKey } from '../i18n';
 import type { AttrMissingRow, MissingCounts } from '../core/missing';
 import { getFilterResult, getMissingRows, selectFilterState } from '../state';
+import { MissingByPeriod } from './MissingByPeriod';
 import { getNumberFormat } from './intl';
 import { useData, useFilter, useT, useUi } from './hooks';
 import { StatusMessage } from './ui/StatusMessage';
@@ -147,6 +148,7 @@ export function MissingView() {
           {rows.map(body)}
         </table>
       </div>
+      <MissingByPeriod dataset={dataset} />
     </div>
   );
 }

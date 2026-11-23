@@ -658,6 +658,21 @@ export const en = {
   'missing.display.legend':
     'Dash styles: long dashes mean the chosen attribute is missing. Short dashes mean a value used for size, color, or width is missing.',
   'missing.filteredOut': 'The filters leave 0 items. The Filtered rows show no rates.',
+  'missing.period.title': 'By period',
+  'missing.period.basis':
+    'Counted with the timeline settings (change them in the Timeline tab). Target: {target}; date source: {source}; bins: {width} years.',
+  'missing.period.region': 'Missing values by period',
+  'missing.period.col.period': 'Period (items counted)',
+  'missing.period.cell': '{missing} / {total} ({rate})',
+  'missing.period.noDate': 'No date',
+  'missing.period.inconsistent': 'Inconsistent dates',
+  'missing.period.calendar.gregorian': 'Periods follow Gregorian years.',
+  'missing.period.calendar.hijri': 'Periods follow Hijri years.',
+  'missing.period.noSource': 'There are no dates, so nothing can be counted by period.',
+  'missing.period.noAttrs': 'This target has no attributes.',
+  'missing.period.filteredOut': 'The filters leave 0 items, so nothing can be counted by period.',
+  'missing.period.note':
+    'Each cell is missing / items counted in that period that the attribute applies to (rate). An item with a date range is counted in every bin it overlaps. Items without the key are not counted as missing.',
   'missing.display.nodes': 'Node attributes',
   'missing.display.edges': 'Edge attributes',
   'missing.display.none': 'No attributes to choose from.',
