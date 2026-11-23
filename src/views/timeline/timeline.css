@@ -113,3 +113,55 @@
   margin: 0;
   font-weight: 600;
 }
+
+/* ---- 時間の再生（T2-06）: 操作、年表のカーソルと窓の帯 ---- */
+/* 【なぜ】下の段は低いので、操作は 1 行（折り返しても 2 行）に詰め、ラベルは横に並べる。 */
+.time-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rl-space-1);
+}
+.time-controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rl-space-2);
+}
+.time-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rl-space-1);
+  font-size: var(--rl-font-sm);
+}
+.time-slider {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rl-space-1);
+  font-size: var(--rl-font-sm);
+  min-inline-size: 9rem;
+  flex: 1 1 9rem;
+}
+.time-slider input {
+  flex: 1;
+  min-inline-size: 0;
+}
+.time-state {
+  margin: 0;
+  font-size: var(--rl-font-sm);
+}
+/* カーソルは実線と三角の頭で示す（色だけに頼らない）。窓は帯と両端の線。 */
+.tl-time-cursor {
+  stroke: var(--rl-text);
+  stroke-width: 2;
+}
+.tl-time-head {
+  fill: var(--rl-text);
+}
+.tl-time-window {
+  fill: var(--rl-text);
+  fill-opacity: 0.1;
+  stroke: var(--rl-text);
+  stroke-width: 1;
+  stroke-dasharray: 1 3;
+  pointer-events: none;
+}

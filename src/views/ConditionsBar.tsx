@@ -5,6 +5,7 @@ import { APPLIED_LIST_ID, FILTER_RULES_ID } from './filter/AppliedList';
 import { TIME_SECTION_ID } from './filter/TimeControl';
 import { timeBoundText } from './filter/timeText';
 import { useData, useDisplay, useFilter, useT, useUi } from './hooks';
+import { TimeChips } from './TimeChips';
 import { getNumberFormat } from './intl';
 import { Chip } from './ui/Chip';
 import { BuildControl } from './BuildControl';
@@ -127,6 +128,9 @@ export function ConditionsBar() {
           </Chip>
         );
       })}
+      {/* 再生中の時刻と再生の操作（FR-TM-02）。時刻は毎コマ変わるので、別の部品に分けて、
+          この行の他の項目を再描画しない（NFR-05）。 */}
+      <TimeChips />
       {/* 構築（重み・自己ループ・射影）。実際に適用されている値だけを出し、押すと小さなパネルが開く。 */}
       <BuildControl />
       {/* 表示する暦（R-24）。軽い表示の変更なので、選んだらすぐ反映する。 */}

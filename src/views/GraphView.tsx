@@ -12,7 +12,7 @@ import type { NodeId } from '../core/model';
 import { toNodeId } from '../core/model';
 import { findMissingElements } from '../core/missing';
 import { matchIncludes, LOOSE_MATCH } from '../core/text';
-import { buildScene, renderSvg } from '../render';
+import { buildScene, markOutOfTime, renderSvg } from '../render';
 import { createSvgExport, downloadSvg } from '../io/export';
 import { setSvgExporter } from './svgExport';
 import { Icon, IconButton } from './ui/icons';
@@ -34,6 +34,8 @@ import {
   uiStore,
 } from '../state';
 import { useData, useSelection, useT, useUi } from './hooks';
+import { TimeFadeNote } from './TimeFadeNote';
+import { useTimeFade } from './timeFade';
 import { useNetwork } from './useNetwork';
 import { clientToSvg, useRangeSelect } from './useRangeSelect';
 import { RangeSelectSummary } from './RangeSelectSummary';
@@ -185,6 +187,9 @@ export function GraphView() {
   );
   const positions = useMemo(() => new Map(view.positions.map((p) => [p.id, p])), [view.positions]);
   const measureText = useMemo(() => createGraphMeasure(), []);
+  // 【なぜ】再生の「時刻の外」は、配置やシーンの組み立てには入れない（再生のたびに再配置・再構築しない。R-17）。
+  //   組み立て済みのシーンに、薄くする印だけを後から付ける。フィルタ、件数、指標には関わらない。
+  const timeFade = useTimeFade();
   const scene = useMemo(
     () =>
       graph === null
@@ -441,12 +446,13 @@ export function GraphView() {
               matchIncludes(id, query, LOOSE_MATCH),
           ),
     );
+    const marked = markOutOfTime(scene, timeFade.nodes, timeFade.edges);
     const display = {
-      ...scene,
-      nodes: scene.nodes.map((node) =>
+      ...marked,
+      nodes: marked.nodes.map((node) =>
         matchSet.has(node.id) ? { ...node, fill: '#ffcc00' } : node,
       ),
-      edges: scene.edges.map((edge) => ({
+      edges: marked.edges.map((edge) => ({
         ...edge,
         // 選んだエッジは、色に加えて太さでも示す（色だけで伝えない）。
         ...(selectedEdgeSet.has(edge.id) ? { width: Math.max(edge.width * 2, 3) } : {}),
@@ -474,7 +480,7 @@ export function GraphView() {
     const markup = renderSvg(display, { idPrefix: 'graph-view-' });
     // 生成器が検証・エスケープしたSVGの中身だけを使う。任意の利用者HTMLは挿入しない。
     return markup.slice(markup.indexOf('>') + 1, markup.lastIndexOf('</svg>'));
-  }, [scene, graph, query, visibleSelected, selectedEdgeSet, highlight]);
+  }, [scene, graph, query, visibleSelected, selectedEdgeSet, highlight, timeFade]);
   if (dataset === null || graph === null || scene === null) return null;
   const matches = graph
     .nodes()
@@ -656,6 +662,7 @@ export function GraphView() {
       </Toolbar>
       {network !== null && !buildPanelOpen && <ProjectionIssues status={network.projection} />}
       <NoCoordinatesNote dataset={dataset} graph={graph} view={view} />
+      <TimeFadeNote fade={timeFade} />
       {graph.order === 0 && (
         <StatusMessage
           state={

@@ -8,6 +8,7 @@ import {
   filterStore,
   selectionStore,
   timelineStore,
+  timeStore,
   uiStore,
   workspaceStore,
 } from '../state';
@@ -17,6 +18,7 @@ import type {
   FilterStoreState,
   SelectionState,
   TimelineViewState,
+  TimeStoreState,
   UiState,
   WorkspaceViewState,
 } from '../state';
@@ -114,4 +116,16 @@ export function useDisplay<T>(selector: (s: DisplayState) => T): T {
  */
 export function useTimelineView<T>(selector: (s: TimelineViewState) => T): T {
   return useStore(timelineStore, selector);
+}
+
+/**
+ * timeStore（時間の再生の状態。時刻、方式、窓の幅、速度、再生中か）の一部を購読する。
+ *
+ * 【なぜ】グラフ、年表、適用中の条件の行が同じこの状態を読む（FR-TM-03）。自分の時計や写しは持たない。
+ *
+ * @param selector - 取り出す値を選ぶ関数
+ * @returns 選んだ値
+ */
+export function useTime<T>(selector: (s: TimeStoreState) => T): T {
+  return useStore(timeStore, selector);
 }

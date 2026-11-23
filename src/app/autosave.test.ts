@@ -1,11 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { toFilterId } from '../core/filter';
+import { binDayRange, makeTimeAxis } from '../core/time';
 import { sampleDataset } from '../core/model/fixtures/sampleDataset';
 import {
   bindFilterToData,
   createDataStore,
   createDisplayStore,
   createFilterStore,
+  createTimeStore,
   createUiStore,
   selectFilterState,
 } from '../state';
@@ -309,5 +311,80 @@ describe('autosave', () => {
     await b.auto.restore();
     await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS * 2);
     expect(src.saves).toBe(saves);
+  });
+
+  describe('FR-TM-02: 時間の再生の保存（view.time）', () => {
+    const axis = makeTimeAxis(
+      'gregorian',
+      [1500, 1510, 1520].map((y) => binDayRange('gregorian', y, 10)),
+    );
+    function withTime() {
+      const mem = memory();
+      const data = createDataStore();
+      const filter = createFilterStore();
+      bindFilterToData(filter, data);
+      const time = createTimeStore(() => axis);
+      const auto = createAutosave({
+        targets: { data, filter, notice: createProjectNoticeStore(), time },
+        storage: mem,
+        now: () => '2026-11-19T00:00:00.000Z',
+        onProblem: vi.fn(),
+      });
+      auto.start();
+      data.getState().setDataset(sampleDataset());
+      return { mem, data, time };
+    }
+
+    it('FR-TM-02: 再生中のコマでは保存を予約しない。一時停止したときに 1 回だけ予約する', async () => {
+      const { mem, time } = withTime();
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS); // データの読み込みの保存
+      const before = mem.saves;
+      time.getState().play();
+      // 再生中は 1 秒より長く、何コマ動いても保存しない
+      for (let i = 0; i < 5; i++) {
+        time.getState().tick(400);
+        await vi.advanceTimersByTimeAsync(400);
+      }
+      expect(time.getState().playing).toBe(true);
+      expect(mem.saves).toBe(before);
+      time.getState().pause();
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      expect(mem.saves).toBe(before + 1);
+      expect(mem.value).toContain('"time":{"at":');
+      expect(mem.value).not.toContain('playing');
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS * 3);
+      expect(mem.saves).toBe(before + 1);
+    });
+
+    it('FR-TM-02: 終わりに達して止まったときも 1 回だけ予約する', async () => {
+      const { mem, time } = withTime();
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      const before = mem.saves;
+      time.getState().setSpeed(100);
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      const afterSpeed = mem.saves; // 速度の変更も保存の対象
+      expect(afterSpeed).toBe(before + 1);
+      time.getState().play();
+      time.getState().tick(60_000); // 終わりを超える
+      expect(time.getState().playing).toBe(false);
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      expect(mem.saves).toBe(afterSpeed + 1);
+    });
+
+    it('FR-TM-02: データの置き換えで時刻が解除されると、保存を予約し、時刻は書かれない', async () => {
+      const { mem, data, time } = withTime();
+      // 【なぜ】時間のストアは bindTimeToData で結ぶ（本番と同じ）。
+      const { bindTimeToData } = await import('../state');
+      bindTimeToData(time, data);
+      time.getState().step(1);
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      expect(mem.value).toContain('"time":{"at":');
+      const before = mem.saves;
+      data.getState().setDataset(sampleDataset()); // 置き換え → clear
+      expect(time.getState().at).toBeNull();
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      expect(mem.saves).toBe(before + 1);
+      expect(mem.value).not.toContain('"time":{"at"');
+    });
   });
 });

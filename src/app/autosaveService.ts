@@ -5,6 +5,7 @@ import {
   uiStore,
   graphViewStore,
   timelineStore,
+  timeStore,
   workspaceStore,
 } from '../state';
 import { projectNoticeStore } from '../views/projectNotice';
@@ -32,6 +33,7 @@ export const autosave = createAutosave({
     workspace: workspaceStore,
     display: displayStore,
     timeline: timelineStore,
+    time: timeStore,
     data: dataStore,
     filter: filterStore,
     notice: projectNoticeStore,

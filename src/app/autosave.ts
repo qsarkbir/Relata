@@ -114,6 +114,7 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
       ...(deps.targets.workspace === undefined ? {} : { workspace: deps.targets.workspace }),
       ...(deps.targets.display === undefined ? {} : { display: deps.targets.display }),
       ...(deps.targets.timeline === undefined ? {} : { timeline: deps.targets.timeline }),
+      ...(deps.targets.time === undefined ? {} : { time: deps.targets.time }),
     });
     if (snapshot === null) return;
     let text: string;
@@ -197,6 +198,19 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
       const unsubTimeline = deps.targets.timeline?.subscribe((s, prev) => {
         if (s.timeline !== prev.timeline) schedule();
       });
+      const unsubTime = deps.targets.time?.subscribe((s, prev) => {
+        // 【なぜ】再生中は 1 コマごとに時刻が変わる。そのたびに保存の予約を取り直さず、止まったとき
+        //   （一時停止、終わりへの到達）に 1 度だけ予約する。再生中かどうか自体は保存しない。
+        if (s.playing) return;
+        if (
+          prev.playing ||
+          s.at !== prev.at ||
+          s.mode !== prev.mode ||
+          s.windowYears !== prev.windowYears ||
+          s.speed !== prev.speed
+        )
+          schedule();
+      });
       const unsubDisplay = deps.targets.display?.subscribe((s, prev) => {
         if (s.calendar !== prev.calendar) schedule();
       });
@@ -204,6 +218,7 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
         unsubWorkspace?.();
         unsubDisplay?.();
         unsubTimeline?.();
+        unsubTime?.();
         unsubGraph?.();
         unsubData();
         unsubFilter();

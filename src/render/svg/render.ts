@@ -8,6 +8,7 @@
 import { assertNever } from '../../core/util/assertNever';
 import type { NodeShape } from '../../core/model';
 import { shapeExtent } from '../scene/build';
+import { FADED_OPACITY } from '../scene/timeFade';
 import type { PathCommand, Scene, SceneEdge, SceneLabel, SceneNode } from '../scene/types';
 import { escapeXml, num, safeColor, safeIdPrefix } from './escape';
 
@@ -77,17 +78,28 @@ function nodeSvg(n: SceneNode, index: number, prefix: string): string {
     ` stroke-width="${num(n.strokeWidth)}"` +
     (n.dashed ? ` stroke-dasharray="${n.attrMissing === true ? '6 3' : '3 2'}"` : '') +
     ` id="${prefix}node-${String(index)}" data-id="${escapeXml(n.id)}"` +
-    (n.selected ? ' class="selected"' : '');
+    (n.selected ? ' class="selected"' : '') +
+    // 【なぜ】再生の時刻の外は薄くする（消さない。D-38）。`data-out-of-time` は色や濃さに頼らず、
+    //   画面の図と支援技術、テストから「時刻の外」と分かる印。書き出しには印を付けない
+    //   （書き出しは再生の薄い表示を含めない方針。呼ぶ側が `markOutOfTime` を通さない）。
+    (n.faded === true ? ` opacity="${num(FADED_OPACITY)}" data-out-of-time="true"` : '');
   return shapeElement(n.shape, n.x, n.y, n.r, attrs);
 }
 
 function edgeSvg(e: SceneEdge, index: number, prefix: string): string {
   const key = prefix + 'edge-' + String(index);
   const color = safeColor(e.color, '#999999');
-  const opacity = num(Math.min(1, Math.max(0, e.opacity)));
+  // 【なぜ】時刻の外のエッジは、元の不透明度（選択の強調など）にさらに掛けて薄くする。
+  const opacity = num(Math.min(1, Math.max(0, e.opacity)) * (e.faded === true ? FADED_OPACITY : 1));
   const points = (ps: readonly { readonly x: number; readonly y: number }[]) =>
     ps.map((p) => num(p.x) + ',' + num(p.y)).join(' ');
-  const attrs = ' id="' + key + '" data-id="' + escapeXml(e.id) + '"';
+  const attrs =
+    ' id="' +
+    key +
+    '" data-id="' +
+    escapeXml(e.id) +
+    '"' +
+    (e.faded === true ? ' data-out-of-time="true"' : '');
   // 【なぜ】値の欠損（重み）と指定した属性の欠損は、破線の間隔を変えて見分けられるようにする。
   const dash = e.attrMissing === true ? '9 4' : '4 3';
   if (e.ribbon !== undefined)
@@ -207,7 +219,13 @@ export function renderSvg(scene: Scene, options: RenderSvgOptions = {}): string 
   out.push(`<g id="${p}nodes">`, ...scene.nodes.map((n, i) => nodeSvg(n, i, p)), '</g>');
   out.push(
     `<g id="${p}labels" fill="#222222">`,
-    ...scene.labels.map((l, i) => textSvg(l, ` id="${p}label-${String(i)}"`)),
+    ...scene.labels.map((l, i) =>
+      textSvg(
+        l,
+        ` id="${p}label-${String(i)}"` +
+          (l.faded === true ? ` opacity="${num(FADED_OPACITY)}" data-out-of-time="true"` : ''),
+      ),
+    ),
     '</g>',
   );
   if (scene.legend !== undefined) {

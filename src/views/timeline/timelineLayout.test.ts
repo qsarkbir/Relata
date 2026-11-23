@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { TimelineBin } from '../../core/filter';
-import { bandIndexes, binIndexAt, tickIndexes } from './timelineLayout';
+import { bandIndexes, binIndexAt, dayBoundary, tickIndexes } from './timelineLayout';
 
 const bin = (i: number): TimelineBin => ({
   startYear: i * 10,
@@ -33,5 +33,20 @@ describe('FR-FL-11: 年表の座標と区切りの対応', () => {
     expect(bandIndexes(bins, 1000, 2000)).toBeNull();
     expect(bandIndexes(bins, -500, -100)).toBeNull();
     expect(bandIndexes([], 0, 1)).toBeNull();
+  });
+});
+
+describe('FR-TM-03: 再生のカーソルの位置', () => {
+  it('FR-TM-03: 日の始まりの位置を、区切りの割合で内挿する', () => {
+    expect(dayBoundary(bins, 0)).toBe(0);
+    expect(dayBoundary(bins, 50)).toBe(0.5);
+    expect(dayBoundary(bins, 100)).toBe(1);
+    expect(dayBoundary(bins, 350)).toBe(3.5);
+  });
+  it('FR-TM-03: 区切りの外は両端に寄せる。最後の日の終わり（翌日の始まり）は右端', () => {
+    expect(dayBoundary(bins, -500)).toBe(0);
+    expect(dayBoundary(bins, 499 + 1)).toBe(5);
+    expect(dayBoundary(bins, 9999)).toBe(5);
+    expect(dayBoundary([], 5)).toBe(0);
   });
 });
