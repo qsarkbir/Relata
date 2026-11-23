@@ -234,11 +234,16 @@ function compile(def: FilterDef): Compiled {
     }
     case 'nodeSet': {
       const ids = new Set<string>(def.include);
+      const pass = new Set<string>(def.passTypes ?? []);
       return {
         id: def.id,
         target: 'node',
         // 【なぜ】include が空なら何も通さない（nodeType と同じ）。ID で照合し、ラベルは見ない。
-        test: (s) => verdict(s.nodeId !== undefined && ids.has(s.nodeId)),
+        test: (s) =>
+          verdict(
+            (s.nodeId !== undefined && ids.has(s.nodeId)) ||
+              (s.typeId !== undefined && pass.has(s.typeId)),
+          ),
       };
     }
     case 'certainty': {

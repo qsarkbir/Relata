@@ -286,7 +286,20 @@ function parseFilterDef(x: unknown, path: string): ParseResult<FilterDef> {
         },
       );
       if (!include.ok) return include;
-      return ok({ id, kind: 'nodeSet', include: include.value });
+      // passTypes は任意。無ければ項目ごと作らない（往復で同じ形に戻すため）。
+      if (get(x, 'passTypes') === undefined) {
+        return ok({ id, kind: 'nodeSet', include: include.value });
+      }
+      const passTypes = parseArray<NodeTypeId>(
+        get(x, 'passTypes'),
+        child(path, 'passTypes'),
+        (item, itemPath) => {
+          const s = needString(item, itemPath, true);
+          return s.ok ? ok(toNodeTypeId(s.value)) : s;
+        },
+      );
+      if (!passTypes.ok) return passTypes;
+      return ok({ id, kind: 'nodeSet', include: include.value, passTypes: passTypes.value });
     }
     case 'certainty': {
       const target = needOneOf(get(x, 'target'), child(path, 'target'), TARGETS);

@@ -102,6 +102,11 @@ export function checkFilterState(dataset: Dataset, state: FilterState): FilterIs
           if (!nodeIds.has(id))
             issues.push({ kind: 'unknown-node-id', filterId: f.id, nodeId: id });
         }
+        // 存在しない型は nodeType と同じ報告にする。
+        for (const t of f.passTypes ?? []) {
+          if (!typeIds.has(t))
+            issues.push({ kind: 'unknown-node-type', filterId: f.id, nodeType: t });
+        }
         break;
       }
       case 'certainty':

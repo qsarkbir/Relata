@@ -172,11 +172,6 @@
   white-space: nowrap;
   font-size: var(--rl-font-md);
 }
-.graph-card-more {
-  color: var(--rl-text-muted);
-  font-weight: normal;
-  font-size: var(--rl-font-sm);
-}
 .graph-card-body[hidden] {
   display: none;
 }
@@ -308,4 +303,15 @@
 }
 .graph-column-name {
   flex: 1;
+}
+.graph-range {
+  fill: color-mix(in srgb, var(--rl-accent, #2563eb) 15%, transparent);
+  stroke: var(--rl-accent, #2563eb);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+  pointer-events: none;
+}
+.graph-range-summary ul {
+  margin-block: 0 var(--rl-space-2);
+  padding-inline-start: 1.2em;
 }
