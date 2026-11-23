@@ -63,6 +63,7 @@ export {
   aggregateTimeline,
   itemDayRanges,
   binStartYearsOf,
+  isInconsistentSpan,
   resolveTimelineSource,
   sameTimeSource,
   timelineSourceOptions,

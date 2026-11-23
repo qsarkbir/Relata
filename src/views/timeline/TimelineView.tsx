@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent } from 'react';
 import {
   aggregateTimeline,
@@ -7,7 +7,7 @@ import {
   sameTimeSource,
   timelineSourceOptions,
 } from '../../core/filter';
-import type { FilterDef, TimeSource } from '../../core/filter';
+import type { FilterDef, TimeSource, TimelineBin } from '../../core/filter';
 import {
   TIME_BIN_WIDTHS,
   binCalendarOf,
@@ -17,6 +17,7 @@ import {
 } from '../../core/time';
 import { getFilterResult, selectFilterState, timelineStore } from '../../state';
 import { useData, useDisplay, useFilter, useT, useTimelineView } from '../hooks';
+import type { MessageKey } from '../../i18n';
 import { findFilters } from '../filter/activeFilters';
 import { timeFilterId } from '../filter/filterIds';
 import { datePartsText, renderingsText, timeBoundText } from '../filter/timeText';
@@ -31,6 +32,8 @@ const MARGIN = { left: 40, right: 12, top: 8, bottom: 24 } as const;
 /** 年の目盛りの文字の間の最小の距離（CSS ピクセル）。 */
 const TICK_GAP = 72;
 
+// 【TS】`interface` はオブジェクトの形を表す型。`readonly` を付けた項目は、作った後で代入できない
+//       （状態は書き換えず、`setSel` で新しいオブジェクトに置き換える、という約束を型で守る）。
 /** 選択中の範囲。ドラッグ中とキーボードの操作で共通。 */
 interface Selection {
   /** 範囲の起点の区切りの番号。 */
@@ -48,6 +51,8 @@ interface Selection {
  *
  * @returns 測る要素に付ける ref と、測った大きさ
  */
+// 【TS】`<T extends HTMLElement>` はジェネリクス。「T は HTMLElement の仲間なら何でもよい」という制約で、
+//       呼ぶ側が `useElementSize<HTMLDivElement>()` と指定すると、ref の型も div 用になる。
 function useElementSize<T extends HTMLElement>() {
   const ref = useRef<T>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -67,6 +72,99 @@ function useElementSize<T extends HTMLElement>() {
   }, []);
   return { ref, size };
 }
+
+/** {@link TimelineBars} の props。 */
+interface BarsProps {
+  readonly bins: readonly TimelineBin[];
+  /** 区切りごとの吹き出し（`<title>`）の文。`bins` と同じ並び。 */
+  readonly titles: readonly string[];
+  /** 目盛りの文字。0 以上の区切りの番号 → 文字。`ticks` の番号だけ使う。 */
+  readonly tickLabels: ReadonlyMap<number, string>;
+  readonly barW: number;
+  readonly plotW: number;
+  readonly plotH: number;
+  readonly maxTotal: number;
+  readonly patternId: string;
+}
+
+// 【TS】`memo(関数)` は、props が前と同じ（各項目が `Object.is` で等しい）間は再描画を飛ばす React の部品。
+//       ドラッグ中は選択の矩形だけが変わるので、数百本の棒を描き直さないように棒の層を分ける。
+/**
+ * 棒、軸、目盛りの層。ドラッグやカーソルの移動では変わらないので、`memo` で再描画を避ける。
+ *
+ * @param props - 区切り、吹き出しの文、目盛りの文字、大きさ
+ * @returns SVG の `<g>`
+ */
+const TimelineBars = memo(function TimelineBars({
+  bins,
+  titles,
+  tickLabels,
+  barW,
+  plotW,
+  plotH,
+  maxTotal,
+  patternId,
+}: BarsProps) {
+  const yOf = (count: number): number => (count / maxTotal) * plotH;
+  return (
+    <g>
+      {bins.map((b, i) => {
+        const x = i * barW;
+        const inner = Math.max(0, barW - (barW > 4 ? 1 : 0));
+        const hContained = yOf(b.contained);
+        const hCount = yOf(b.count);
+        return (
+          <g key={b.startYear}>
+            <title>{titles[i]}</title>
+            {b.total > b.count && (
+              <rect
+                className="tl-total"
+                x={x}
+                width={inner}
+                y={plotH - yOf(b.total)}
+                height={yOf(b.total)}
+              />
+            )}
+            {b.count > b.contained && (
+              <rect
+                className="tl-bar-spanning"
+                x={x}
+                width={inner}
+                y={plotH - hCount}
+                height={hCount - hContained}
+                fill={`url(#${patternId})`}
+              />
+            )}
+            {b.contained > 0 && (
+              <rect
+                className="tl-bar-contained"
+                x={x}
+                width={inner}
+                y={plotH - hContained}
+                height={hContained}
+              />
+            )}
+          </g>
+        );
+      })}
+      <line className="tl-axis" x1={0} x2={plotW} y1={plotH} y2={plotH} />
+      {[...tickLabels].map(([i, label]) => (
+        <g key={i} transform={`translate(${String(i * barW)} ${String(plotH)})`}>
+          <line className="tl-axis" y2={4} />
+          <text className="tl-tick" y={16}>
+            {label}
+          </text>
+        </g>
+      ))}
+      <text className="tl-tick tl-y" x={-6} y={4} textAnchor="end">
+        {maxTotal}
+      </text>
+      <text className="tl-tick tl-y" x={-6} y={plotH} textAnchor="end">
+        0
+      </text>
+    </g>
+  );
+});
 
 /**
  * 年表（FR-TM-01、FR-TM-04、FR-TM-05、FR-FL-11、D-41、D-42）。
@@ -122,11 +220,17 @@ export function TimelineView() {
 
   const { ref: chartRef, size } = useElementSize<HTMLDivElement>();
   const [sel, setSel] = useState<Selection | null>(null);
-  // 【なぜ】区切りの並びが変わる（絞り込み、出どころ、幅、暦の変更）と、番号が別の区切りを指すので、
-  //   選択を捨てる。描画の途中で前の値と比べて調整する（TimeControl と同じ書き方）。
-  const [seenBins, setSeenBins] = useState(bins);
-  if (seenBins !== bins) {
-    setSeenBins(bins);
+  // 【なぜ】選択の番号は「区切りの何番目か」なので、軸（先頭の年、幅、暦、区切りの数、対象）が変わると
+  //   別の区切りを指してしまう。その時だけ選択を捨てる。`bins` の参照では比べない: 絞り込みや Enter での
+  //   確定のたびに集計し直されて参照が変わるが、軸は変わらず、キーボードの選択を残したいため。
+  //   描画の途中で前の値と比べて調整する（TimeControl と同じ書き方）。
+  const axisKey =
+    bins === undefined || bins.length === 0
+      ? ''
+      : `${target}|${calendar}|${String(width)}|${String(bins[0]?.startYear)}|${String(bins.length)}`;
+  const [seenAxis, setSeenAxis] = useState(axisKey);
+  if (seenAxis !== axisKey) {
+    setSeenAxis(axisKey);
     if (sel !== null) setSel(null);
   }
 
@@ -152,7 +256,6 @@ export function TimelineView() {
   const plotH = Math.max(0, size.height - MARGIN.top - MARGIN.bottom);
   const barW = n > 0 ? plotW / n : 0;
   const maxTotal = Math.max(1, result?.maxTotal ?? 1);
-  const yOf = (count: number): number => (count / maxTotal) * plotH;
 
   const rangeText = (first: number, last: number): string => {
     const a = bins?.[first];
@@ -163,16 +266,32 @@ export function TimelineView() {
       describeDayRange(binsDayRange(calendar, a.startYear, b.startYear, width), display, 'year'),
     );
   };
-  const binText = (i: number): string => {
-    const b = bins?.[i];
-    if (b === undefined) return '';
-    return t('timeline.bin', {
-      range: rangeText(i, i),
-      count: String(b.count),
-      spanning: String(b.count - b.contained),
-      excluded: String(b.total - b.count),
-    });
-  };
+  // 吹き出しと目盛りの文字は、区切りや言語、暦が変わったときだけ作り直す（棒の層を memo で守るため）。
+  const titles = useMemo(
+    () =>
+      (bins ?? []).map((b) =>
+        t('timeline.bin', {
+          range: renderingsText(
+            t,
+            describeDayRange({ earliest: b.earliest, latest: b.latest }, display, 'year'),
+          ),
+          count: String(b.count),
+          spanning: String(b.count - b.contained),
+          excluded: String(b.total - b.count),
+        }),
+      ),
+    [bins, t, display],
+  );
+  const ticks = bins === undefined ? [] : tickIndexes(n, plotW, TICK_GAP);
+  const tickKey = ticks.join(',');
+  const tickLabels = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const i of tickKey === '' ? [] : tickKey.split(',').map(Number)) {
+      const b = bins?.[i];
+      if (b !== undefined) m.set(i, datePartsText(t, jdnToParts(b.earliest, calendar, 'year')));
+    }
+    return m;
+  }, [bins, tickKey, t, calendar]);
 
   // 範囲を時間フィルタにする（D-41）。適用中のものがあれば、その ID と「重なる／収まる」「欠損」を
   // 引き継いで置き換え、無ければ足す。FilterState に入るので、Undo で戻せる。
@@ -274,24 +393,41 @@ export function TimelineView() {
         ? t('timeline.applied', { range: activeDescription(active) })
         : ''
       : selFirst === selLast
-        ? `${t('timeline.cursor', { range: rangeText(selFirst, selFirst) })} — ${binText(selFirst)}`
+        ? `${t('timeline.cursor', { range: rangeText(selFirst, selFirst) })} — ${titles[selFirst] ?? ''}`
         : t('timeline.selection', { range: rangeText(selFirst, selLast) });
+  const [announced, setAnnounced] = useState(status);
+  if (sel?.dragging !== true && announced !== status) setAnnounced(status);
 
+  // 【なぜ】`{ [target]: … }` の計算キーだと、TypeScript がキー名を `string` に広げて型検査が効かなくなる。
+  //   対象ごとに分岐して、`node` と `edge` のどちらも `TimeSource | null` として検査させる。
   const setSource = (value: string) => {
-    patch({ [target]: valueToSource(value) });
+    const next = valueToSource(value);
+    patch(target === 'node' ? { node: next } : { edge: next });
   };
   const sourceValue = source === undefined ? '' : sourceToValue(source);
 
-  const message =
-    source === undefined
-      ? t('timeline.noSource')
-      : result?.tooManyBins === true
-        ? t('timeline.tooMany')
-        : result !== null && result.bins.length === 0
-          ? t('timeline.noBins')
-          : null;
+  const hasData = dataset !== null;
+  // 日付がまったく無い（出どころの候補が無い）ときは、絞り込み後の全要素が年代なし（FR-TM-05）。
+  const noDate = result?.noDate ?? (source === undefined ? (shownIds?.size ?? 0) : 0);
+  let message: string | null = null;
+  if (!hasData) message = t('timeline.noData');
+  else if (source === undefined) message = t('timeline.noSource');
+  else if (result?.tooManyBins === true) {
+    const [from, to] = extentParts(result.extent);
+    message = width === 100 ? t('timeline.tooManyWide', { from, to }) : t('timeline.tooMany');
+  } else if (result !== null && result.bins.length === 0) message = t('timeline.noBins');
 
-  const ticks = bins === undefined ? [] : tickIndexes(n, plotW, TICK_GAP);
+  // 【TS】関数の中の関数。`extent` が undefined のときは空の文字を返し、呼ぶ側は分岐しなくてよい。
+  function extentParts(
+    e: { readonly earliest: number; readonly latest: number } | undefined,
+  ): [string, string] {
+    if (e === undefined) return ['', ''];
+    const one = (jdn: number): string =>
+      renderingsText(t, describeDayRange({ earliest: jdn, latest: jdn }, display, 'year'));
+    return [one(e.earliest), one(e.latest)];
+  }
+
+  const roleKey: MessageKey = 'timeline.chart.role';
 
   return (
     <div className="timeline-view">
@@ -342,7 +478,9 @@ export function TimelineView() {
         <InfoTip topic={t('timeline.info.topic')}>
           <p>{t('timeline.chartHint')}</p>
           <p>{t('timeline.countNote')}</p>
+          <p>{t('timeline.info.binCalendar')}</p>
           <p>{t('timeline.noDate.hint')}</p>
+          <p>{t('timeline.inconsistent.hint')}</p>
         </InfoTip>
         {active !== undefined && (
           <button
@@ -357,10 +495,12 @@ export function TimelineView() {
       </div>
       {message !== null && <p className="hint">{message}</p>}
       <div className="timeline-main">
+        {/* 【なぜ】`role="application"`: 矢印キーなどをスクリーンリーダーの閲覧モードに奪われず、この部品に届ける。 */}
         <div
           ref={chartRef}
           className="timeline-chart"
-          role="group"
+          role="application"
+          aria-roledescription={t(roleKey)}
           aria-label={t('timeline.chart')}
           aria-describedby={hintId}
           tabIndex={n > 0 ? 0 : -1}
@@ -391,45 +531,16 @@ export function TimelineView() {
                     height={plotH}
                   />
                 )}
-                {bins.map((b, i) => {
-                  const x = i * barW;
-                  const inner = Math.max(0, barW - (barW > 4 ? 1 : 0));
-                  const hContained = yOf(b.contained);
-                  const hCount = yOf(b.count);
-                  return (
-                    <g key={b.startYear}>
-                      <title>{binText(i)}</title>
-                      {b.total > b.count && (
-                        <rect
-                          className="tl-total"
-                          x={x}
-                          width={inner}
-                          y={plotH - yOf(b.total)}
-                          height={yOf(b.total)}
-                        />
-                      )}
-                      {b.count > b.contained && (
-                        <rect
-                          className="tl-bar-spanning"
-                          x={x}
-                          width={inner}
-                          y={plotH - hCount}
-                          height={hCount - hContained}
-                          fill={`url(#${patternId})`}
-                        />
-                      )}
-                      {b.contained > 0 && (
-                        <rect
-                          className="tl-bar-contained"
-                          x={x}
-                          width={inner}
-                          y={plotH - hContained}
-                          height={hContained}
-                        />
-                      )}
-                    </g>
-                  );
-                })}
+                <TimelineBars
+                  bins={bins}
+                  titles={titles}
+                  tickLabels={tickLabels}
+                  barW={barW}
+                  plotW={plotW}
+                  plotH={plotH}
+                  maxTotal={maxTotal}
+                  patternId={patternId}
+                />
                 {sel !== null && (
                   <rect
                     className="tl-selection"
@@ -439,28 +550,6 @@ export function TimelineView() {
                     height={plotH}
                   />
                 )}
-                <line className="tl-axis" x1={0} x2={plotW} y1={plotH} y2={plotH} />
-                {ticks.map((i) => {
-                  const b = bins[i];
-                  if (b === undefined) return null;
-                  return (
-                    <g
-                      key={b.startYear}
-                      transform={`translate(${String(i * barW)} ${String(plotH)})`}
-                    >
-                      <line className="tl-axis" y2={4} />
-                      <text className="tl-tick" y={16}>
-                        {datePartsText(t, jdnToParts(b.earliest, calendar, 'year'))}
-                      </text>
-                    </g>
-                  );
-                })}
-                <text className="tl-tick tl-y" x={-6} y={4} textAnchor="end">
-                  {maxTotal}
-                </text>
-                <text className="tl-tick tl-y" x={-6} y={plotH} textAnchor="end">
-                  0
-                </text>
                 {/* 描画の領域全体でポインタを受ける（棒のない場所でもドラッグを始められる）。 */}
                 <rect
                   className="tl-hit"
@@ -477,23 +566,36 @@ export function TimelineView() {
             </svg>
           )}
         </div>
-        <aside
-          className="timeline-nodate"
-          aria-label={t('timeline.noDate', { n: String(result?.noDate ?? 0) })}
-        >
-          <p className="timeline-nodate-count">
-            <strong>{t('timeline.noDate', { n: String(result?.noDate ?? 0) })}</strong>
-          </p>
-          {result !== null && result.noDateTotal !== result.noDate && (
-            <p className="hint">{t('timeline.noDate.total', { n: String(result.noDateTotal) })}</p>
-          )}
-        </aside>
+        {hasData && (
+          <aside
+            className="timeline-nodate"
+            aria-label={t('timeline.noDate', { n: String(noDate) })}
+          >
+            <p className="timeline-nodate-count">
+              <strong>{t('timeline.noDate', { n: String(noDate) })}</strong>
+            </p>
+            {result !== null && result.noDateTotal !== result.noDate && (
+              <p className="hint">
+                {t('timeline.noDate.total', { n: String(result.noDateTotal) })}
+              </p>
+            )}
+            {result !== null && result.inconsistentTotal > 0 && (
+              <p className="timeline-inconsistent">
+                {t('timeline.inconsistent', { n: String(result.inconsistent) })}
+              </p>
+            )}
+          </aside>
+        )}
       </div>
       <p className="hint" id={hintId}>
         {t('timeline.chartHintShort')}
       </p>
-      <p className="timeline-status" role="status" aria-live="polite" dir="auto">
+      {/* 見える文は常に更新する。読み上げ用の文は、ドラッグ中は更新せず、離したとき（確定時）だけ更新する。 */}
+      <p className="timeline-status" aria-hidden="true" dir="auto">
         <bdi>{status}</bdi>
+      </p>
+      <p className="visually-hidden" role="status" aria-live="polite" dir="auto">
+        <bdi>{announced}</bdi>
       </p>
       <div className="timeline-legend hint" hidden={n === 0}>
         <span>

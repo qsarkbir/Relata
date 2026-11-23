@@ -108,3 +108,7 @@
   cursor: crosshair;
   touch-action: none;
 }
+.timeline-inconsistent {
+  margin: 0;
+  font-weight: 600;
+}

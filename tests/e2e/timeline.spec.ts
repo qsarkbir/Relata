@@ -19,7 +19,7 @@ function bottom(page: Page) {
   return page.getByRole('region', { name: '下の段' });
 }
 function chart(page: Page) {
-  return page.getByRole('group', { name: '年表の棒グラフ' });
+  return page.getByRole('application', { name: '年表の棒グラフ' });
 }
 /** 描画の領域全体（ポインタを受ける矩形）。 */
 function plot(page: Page): Locator {
@@ -206,10 +206,23 @@ test.describe('年表', () => {
       page.getByText('日付を持つ要素も日付の属性もないため、年表を描けません。'),
     ).toBeVisible();
     await expect(chart(page)).toBeHidden();
+    // 日付がまったく無いときは、絞り込み後の全要素が年代なし（0 件とは出さない）。
+    await expect(noDate(page)).toContainText('年代なし 204 件');
   });
 });
 
 test.describe('年代なしの件数と保存', () => {
+  test('FR-TM-05: データが無いときは「日付が無い」ではなくデータなしの文を出し、年代なしの欄を出さない', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await startApp(page);
+    await page.getByRole('tab', { name: '年表', exact: true }).click();
+    await expect(bottom(page)).toContainText('データがありません');
+    await expect(bottom(page)).not.toContainText('年表を描けません');
+    await expect(noDate(page)).toHaveCount(0);
+  });
+
   test('FR-TM-05: 年代のないノードの件数を軸の外に示し、絞り込みで除いた件数とは別の数', async ({
     page,
   }) => {

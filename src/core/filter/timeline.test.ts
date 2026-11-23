@@ -6,6 +6,7 @@ import {
   MAX_TIMELINE_BINS,
   aggregateTimeline,
   binStartYearsOf,
+  isInconsistentSpan,
   itemDayRanges,
   resolveTimelineSource,
   sameTimeSource,
@@ -246,6 +247,38 @@ describe('FR-TM-01 / FR-TM-04: 年表の集計', () => {
     expect(
       aggregateTimeline(far, 'node', undefined, { kind: 'span' }, 'gregorian', 25).tooManyBins,
     ).toBe(false);
+  });
+});
+
+describe('FR-TM-05: 不整合な期間（終了が開始より前）', () => {
+  const bad = mkNode('x', person, 'X', [], {
+    kind: 'span',
+    start: yearSpan(1600),
+    end: yearSpan(1500),
+  });
+  it('FR-TM-05: 幅を持たず、不整合として判定される（時間フィルタと同じ扱い）', () => {
+    expect(itemDayRanges(bad, { kind: 'span' })).toEqual([]);
+    expect(isInconsistentSpan(bad, { kind: 'span' })).toBe(true);
+    expect(isInconsistentSpan(bad, { kind: 'attr', attr: 'born' })).toBe(false);
+    const ok = ds.nodes[2];
+    if (ok === undefined) throw new Error('fixture');
+    expect(isInconsistentSpan(ok, { kind: 'span' })).toBe(false);
+  });
+  it('FR-TM-05: 年代なしとは別に数え、区切りには入れない', () => {
+    const d: Dataset = { ...ds, nodes: [...ds.nodes, bad] };
+    const r = aggregateTimeline(d, 'node', undefined, { kind: 'span' }, 'gregorian', 10);
+    expect(r.inconsistent).toBe(1);
+    expect(r.inconsistentTotal).toBe(1);
+    expect(r.noDate).toBe(2);
+    expect(r.bins.find((b) => b.startYear === 1600)?.total).toBe(0);
+    const shown = aggregateTimeline(d, 'node', new Set(['a']), { kind: 'span' }, 'gregorian', 10);
+    expect(shown.inconsistent).toBe(0);
+    expect(shown.inconsistentTotal).toBe(1);
+  });
+  it('FR-TM-04: 終了が欠損の期間は開始の区切りだけに数える（終わりを +∞ とはしない）', () => {
+    const r = aggregateTimeline(ds, 'node', undefined, { kind: 'span' }, 'gregorian', 10);
+    expect(r.bins.at(-1)?.startYear).toBe(1650);
+    expect(r.extent).toEqual({ earliest: g(1498), latest: g(1650, 12, 31) });
   });
 });
 

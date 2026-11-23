@@ -52,6 +52,8 @@ export function isDefaultTimeline(t: TimelineSettings): boolean {
  *
  * @returns 新しいストア
  */
+// 【TS】`createStore<型>()(…)` の `()` が 2 つ続くのは、型引数だけを先に渡し、続く関数の型は推論させるための書き方。
+//       `Partial<T>` は T の全項目を「あっても無くてもよい」にした型で、一部だけ変える `patchTimeline` に使う。
 export function createTimelineStore() {
   return createStore<TimelineViewState>()((set, get) => ({
     timeline: DEFAULT_TIMELINE,

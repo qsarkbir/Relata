@@ -615,7 +615,6 @@ export const en = {
   'workspace.resize.hint':
     'Use the up and down arrow keys to change the height (Home for minimum, End for maximum)',
   'workspace.tab.timeline': 'Timeline',
-  'timeline.region': 'Timeline',
   'timeline.target': 'Target',
   'timeline.source': 'Date source',
   'timeline.width': 'Bin width',
@@ -624,6 +623,17 @@ export const en = {
   'timeline.calendarNote.hijri': 'Bins follow Hijri year boundaries.',
   'timeline.chartHintShort': 'Drag, or use the arrow keys, to choose a period.',
   'timeline.info.topic': 'How to read and use the timeline',
+  'timeline.noData': 'No data. Load data or a project and the timeline will appear here.',
+  'timeline.tooManyWide':
+    'The dates range from {from} to {to}, which would make too many bins even at 100 years. Check for dates that are far apart (such as typing mistakes).',
+  'timeline.inconsistent': 'Inconsistent dates: {n}',
+  'timeline.inconsistent.hint':
+    'Periods whose end is before the start. As in the time filter, they overlap no range, so they are not counted in any bin and are shown apart from undated elements.',
+  'timeline.chart.role': 'timeline range selector',
+  'timeline.countNote':
+    'A wide date is counted once in every bin it overlaps, so the bar heights do not add up to the number of elements. A period with an unknown end is counted only in its start bin, but the time filter treats its end as open (everything after), so it still passes a range after the start. Elements counted in the bins you choose remain only when the time filter is set to "overlaps" ("fits within" removes elements whose span sticks out).',
+  'timeline.info.binCalendar':
+    'Bins follow year boundaries of the chosen calendar. For example, with 1-year Hijri bins, a date known only as a Gregorian year (such as 1500) spans two Hijri years and is counted in two bins.',
   'timeline.chart': 'Timeline bar chart',
   'timeline.chartHint':
     'Drag to choose a period; on release the time filter is replaced (you can undo it). With the keyboard, use the left and right arrow keys to move between bins, hold Shift to extend the range, press Enter to filter and Escape to start over.',
@@ -639,7 +649,6 @@ export const en = {
   'timeline.legend.contained': 'Date fits in the bin',
   'timeline.legend.spanning': 'Wide date (crosses bins)',
   'timeline.legend.excluded': 'Removed by filters',
-  'timeline.countAxis': 'Count',
   'timeline.bin': '{range}: {count} (wide dates: {spanning}; removed by filters: {excluded})',
   'timeline.cursor': 'Bin {range}',
   'timeline.selection': 'Selected: {range} (press Enter to filter)',
@@ -647,8 +656,6 @@ export const en = {
   'timeline.appliedOther':
     'The applied time filter uses a different date source. Choosing a range replaces it with this source.',
   'timeline.clearRange': 'Clear range',
-  'timeline.countNote':
-    'A wide date is counted once in every bin it overlaps, so the bar heights do not add up to the number of elements.',
   'table.target': 'Table type',
   'table.target.node': 'Node table',
   'table.target.edge': 'Edge table',

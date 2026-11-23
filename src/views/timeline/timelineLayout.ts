@@ -49,6 +49,8 @@ export function tickIndexes(count: number, plotWidth: number, minGap: number): n
  * @param to - 範囲の終わり（JDN）。開いた端は undefined
  * @returns 先頭と末尾の番号。重ならなければ null
  */
+// 【TS】戻り値の型 `{ … } | null` は「該当なし」を null で表す書き方。呼ぶ側は `if (band !== null)` で絞り込んでから使う。
+//       `readonly` の項目は代入できない。
 export function bandIndexes(
   bins: readonly TimelineBin[],
   from: number | undefined,
