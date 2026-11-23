@@ -116,6 +116,9 @@ export function exportDatasetCsv(
       'time',
       'time.missing',
       'time.kind',
+      // 【なぜ】確からしさ（D-37、FR-DM-06）は予約列 `certainty`。属性の列は `attr.` などの接頭辞が付くので、
+      // 属性のキーが `certainty` でも名前が衝突しない。空欄は「指定なし」。
+      'certainty',
       ...headers('node'),
     ],
   ];
@@ -129,6 +132,7 @@ export function exportDatasetCsv(
         node.geo?.kind === 'point' ? node.geo.lon : '',
         node.geo?.kind === 'missing' ? node.geo.reason : '',
         ...time(node.time),
+        node.certainty ?? '',
         ...values('node', node),
       ]);
     }
@@ -143,6 +147,7 @@ export function exportDatasetCsv(
       'time',
       'time.missing',
       'time.kind',
+      'certainty',
       ...headers('edge'),
     ],
   ];
@@ -156,6 +161,7 @@ export function exportDatasetCsv(
         edge.relation ?? '',
         edge.weight,
         ...time(edge.time),
+        edge.certainty ?? '',
         ...values('edge', edge),
       ]);
   return { nodes: file('nodes.csv', nodes, options), edges: file('edges.csv', edges, options) };

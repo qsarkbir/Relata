@@ -1,0 +1,152 @@
+/* 共通部品（フェーズ 2 の新しい画面だけが使う）。値は src/app/tokens.css の --rl-… から取る。 */
+
+/* 折りたたみの節 */
+.rl-section {
+  border-block-end: var(--rl-border-width) solid var(--rl-border);
+}
+.rl-section > summary {
+  display: flex;
+  align-items: center;
+  min-block-size: var(--rl-control-size);
+  padding-inline: var(--rl-space-2);
+  cursor: pointer;
+  font-size: var(--rl-font-md);
+  font-weight: 600;
+  line-height: var(--rl-leading);
+}
+.rl-section > summary:hover {
+  background: var(--rl-surface-subtle);
+}
+.rl-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rl-space-2);
+  padding: var(--rl-space-2);
+}
+.rl-section-note {
+  margin: 0;
+  color: var(--rl-text-muted);
+  font-size: var(--rl-font-sm);
+}
+
+/* ラベルつきの欄 */
+.rl-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rl-space-1);
+  font-size: var(--rl-font-md);
+}
+.rl-field-label {
+  color: var(--rl-text-muted);
+  font-size: var(--rl-font-sm);
+}
+.rl-field input:not([type='checkbox']),
+.rl-field select {
+  min-block-size: var(--rl-control-size);
+  max-inline-size: 100%;
+  box-sizing: border-box;
+}
+.rl-field-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--rl-space-2);
+  min-block-size: var(--rl-control-size);
+}
+
+/* ツールバー（1 行。狭いときは折り返す） */
+.rl-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--rl-space-2) var(--rl-space-3);
+}
+.rl-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: var(--rl-space-1);
+}
+.rl-toolbar-spacer {
+  flex: 1;
+}
+
+/* 条件の項目（チップ） */
+.rl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rl-space-1);
+  min-block-size: var(--rl-control-size);
+  max-inline-size: 100%;
+  box-sizing: border-box;
+  padding-inline: var(--rl-space-2);
+  border: var(--rl-border-width) solid var(--rl-border);
+  border-radius: var(--rl-radius);
+  background: var(--rl-surface);
+  color: var(--rl-text);
+  font: inherit;
+  font-size: var(--rl-font-sm);
+  line-height: var(--rl-leading);
+}
+button.rl-chip {
+  cursor: pointer;
+}
+button.rl-chip:hover {
+  background: var(--rl-selected);
+}
+.rl-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rl-chip-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--rl-control-size);
+  min-block-size: var(--rl-control-size);
+  margin-inline-end: calc(var(--rl-space-2) * -1);
+  padding: 0;
+  border: 0;
+  border-radius: var(--rl-radius);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.rl-chip-remove:hover {
+  background: var(--rl-selected);
+}
+
+/* 状態の表示（処理中／データなし／該当なし／エラー） */
+.rl-status {
+  margin: 0;
+  padding: var(--rl-space-2) var(--rl-space-3);
+  border: var(--rl-border-width) dashed var(--rl-border-strong);
+  border-radius: var(--rl-radius);
+  color: var(--rl-text-muted);
+  font-size: var(--rl-font-md);
+  line-height: var(--rl-leading);
+}
+/* 色だけで区別しない: エラーは実線の枠と太字にもする。 */
+.rl-status[data-kind='error'] {
+  border-style: solid;
+  border-color: var(--rl-danger);
+  color: var(--rl-danger);
+  font-weight: 600;
+}
+.rl-status-hint {
+  display: block;
+  color: var(--rl-text-muted);
+  font-size: var(--rl-font-sm);
+  font-weight: normal;
+}
+/* display:flex にすると標準の開閉の印が消えるので、自前で付ける（色に頼らず形で開閉を示す）。 */
+.rl-section > summary::before {
+  content: '▸';
+  inline-size: 1.25em;
+  flex: none;
+}
+.rl-section[open] > summary::before {
+  content: '▾';
+}
+.rl-section > summary::-webkit-details-marker {
+  display: none;
+}

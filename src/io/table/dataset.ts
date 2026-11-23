@@ -10,10 +10,12 @@ import type {
   TimeValue,
   GeoValue,
   FuzzyDate,
+  Certainty,
   Missing,
 } from '../../core/model';
 import {
   makeAttrs,
+  parseCertainty,
   makeNodeIdFromTypeAndKey,
   makeNodeIdFromTypeAndLabel,
   toEdgeId,
@@ -32,7 +34,12 @@ export interface AttributeColumn extends ColumnOptions {
   readonly key: string;
   readonly label: string;
 }
-/** 特殊列への対応。省略した列は存在しないものとして扱う。 */
+/**
+ * 特殊列への対応。省略した列は存在しないものとして扱う。
+ *
+ * `certainty`（D-37、FR-DM-06）は「確からしさ」の列。ノード表ではノードの、エッジ表ではエッジの
+ * `certainty` になる。受け付ける表記は `parseCertainty` に従う。
+ */
 export interface TableMapping {
   readonly fields: Readonly<
     Partial<
@@ -51,7 +58,8 @@ export interface TableMapping {
         | 'lon'
         | 'date'
         | 'start'
-        | 'end',
+        | 'end'
+        | 'certainty',
         number
       >
     >
@@ -78,6 +86,7 @@ export interface ImportWarning {
     | 'unknown-node'
     | 'ambiguous-node'
     | 'invalid-date'
+    | 'invalid-certainty'
     | 'invalid-coordinate'
     | 'date-warning';
   readonly severity: 'warning' | 'error';
@@ -181,6 +190,7 @@ export function importTables(
     // 【なぜ】ラベル・ID・端点の列が欠損記号（「〔欠〕」など）なら、実在の名前として扱わない。
     // 扱うと、不明の人物がすべて「〔欠〕」という 1 つのノードに合流してしまう（1 表の読み込みと同じ扱い）。
     // 空欄はここでは数えない（空欄は、空のラベルや参照先の無いエッジとして、それぞれ別に報告する）。
+    let certaintyTokenWarned = false;
     const compiledMissing = compileMissingTokens(mapping.missingTokens ?? []);
     const isMissingToken = (text: string): boolean =>
       text.trim() !== '' && matchMissingToken(text, compiledMissing) !== undefined;
@@ -268,6 +278,34 @@ export function importTables(
         }
       }
       const timePart = time === undefined ? {} : { time };
+      // 確からしさの列（D-37）。空欄と欠損の記号は「指定なし」として持たない。読めない値は警告にして捨てない
+      // （行番号と列名つきで利用者に見せる）。原文を持つ場所が無いので、値は持たず警告だけが残る。
+      let certainty: Certainty | undefined;
+      if (mapping.fields.certainty !== undefined) {
+        const text = cell('certainty');
+        const parsed = parseCertainty(text);
+        if (isMissingToken(text)) {
+          // 【なぜ】「?」などを欠損の記号にも登録していると、どちらの意味か決まらない。欠損を優先し、
+          // 確からしさとしては読まない。行ごとに出すと数万行で警告があふれるので、表ごとに 1 回だけ知らせる。
+          if (parsed.kind === 'ok' && !certaintyTokenWarned) {
+            certaintyTokenWarned = true;
+            warn(
+              'invalid-certainty',
+              `「${text.trim()}」は欠損の記号として登録されているので、確からしさとしては読みません。以降の同じ値の行にも警告は出しません。`,
+              'warning',
+              table.headers[mapping.fields.certainty],
+            );
+          }
+        } else if (parsed.kind === 'ok') certainty = parsed.value;
+        else if (parsed.kind === 'invalid')
+          warn(
+            'invalid-certainty',
+            `確からしさ「${parsed.text}」を読めません。確実／おそらく／可能性あり、certain／probable／possible、?（？、؟）のどれかにしてください。この値は持ちません。`,
+            'warning',
+            table.headers[mapping.fields.certainty],
+          );
+      }
+      const certaintyPart = certainty === undefined ? {} : { certainty };
       if (target === 'node') {
         let geo: GeoValue | undefined;
         if (mapping.fields.lat !== undefined || mapping.fields.lon !== undefined) {
@@ -336,7 +374,15 @@ export function importTables(
         matches.push(id);
         references.set(reference, matches);
         typedReferences.set(JSON.stringify([typeText, reference]), id);
-        nodes.push({ id, type, label, attrs, ...timePart, ...(geo === undefined ? {} : { geo }) });
+        nodes.push({
+          id,
+          type,
+          label,
+          attrs,
+          ...timePart,
+          ...certaintyPart,
+          ...(geo === undefined ? {} : { geo }),
+        });
       } else {
         const resolve = (field: 'source' | 'target'): NodeId | undefined => {
           if (isMissingToken(cell(field))) {
@@ -409,6 +455,7 @@ export function importTables(
             weight,
             attrs,
             ...timePart,
+            ...certaintyPart,
             ...(cell('relation') === '' ? {} : { relation: cell('relation') }),
           });
       }

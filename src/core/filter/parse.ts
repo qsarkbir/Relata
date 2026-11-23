@@ -12,15 +12,19 @@
 import {
   isMissingReason,
   isPlainObject,
+  toNodeId,
   toNodeTypeId,
   type DayNumber,
+  type NodeId,
   type NodeTypeId,
   type ParseResult,
 } from '../model';
 import {
   DEFAULT_FILTER_STATE,
   toFilterId,
+  CERTAINTY_KEYS,
   type CategoryKey,
+  type CertaintyKey,
   type EdgeRule,
   type FilterDef,
   type FilterId,
@@ -29,6 +33,7 @@ import {
   type Target,
   type TextMatching,
   type TimeMatch,
+  type TimeSource,
 } from './types';
 
 // 失敗と成功の結果を作る。
@@ -146,6 +151,19 @@ function parseOptionalNumber(
   return needFinite(raw, child(path, key));
 }
 
+// 時間フィルタの出どころ（D-35）を組み立てる。
+//
+function parseTimeSource(x: unknown, path: string): ParseResult<TimeSource> {
+  if (!isPlainObject(x)) return fail(path, 'オブジェクトが必要です');
+  const kind = get(x, 'kind');
+  if (kind === 'span') return ok({ kind: 'span' });
+  if (kind === 'attr') {
+    const attr = needString(get(x, 'attr'), child(path, 'attr'), true);
+    return attr.ok ? ok({ kind: 'attr', attr: attr.value }) : attr;
+  }
+  return fail(child(path, 'kind'), "'span' か 'attr' が必要です");
+}
+
 // フィルタ 1 つを組み立てる。
 //
 function parseFilterDef(x: unknown, path: string): ParseResult<FilterDef> {
@@ -199,6 +217,10 @@ function parseFilterDef(x: unknown, path: string): ParseResult<FilterDef> {
     case 'time': {
       const target = needOneOf(get(x, 'target'), child(path, 'target'), TARGETS);
       if (!target.ok) return target;
+      // 【なぜ】source は必須。版 1 のファイルには io の移行関数が `{ kind: 'span' }` を補う（D-36）。
+      //   ここで黙って補うと、版の番号と中身の対応が崩れる。
+      const source = parseTimeSource(get(x, 'source'), child(path, 'source'));
+      if (!source.ok) return source;
       const from = needDay(get(x, 'from'), child(path, 'from'));
       if (!from.ok) return from;
       const to = needDay(get(x, 'to'), child(path, 'to'));
@@ -213,6 +235,7 @@ function parseFilterDef(x: unknown, path: string): ParseResult<FilterDef> {
         id,
         kind: 'time',
         target: target.value,
+        source: source.value,
         from: from.value,
         to: to.value,
         match: match.value,
@@ -245,6 +268,29 @@ function parseFilterDef(x: unknown, path: string): ParseResult<FilterDef> {
       );
       if (!include.ok) return include;
       return ok({ id, kind: 'nodeType', include: include.value });
+    }
+    case 'nodeSet': {
+      const include = parseArray<NodeId>(
+        get(x, 'include'),
+        child(path, 'include'),
+        (item, itemPath) => {
+          const s = needString(item, itemPath, true);
+          return s.ok ? ok(toNodeId(s.value)) : s;
+        },
+      );
+      if (!include.ok) return include;
+      return ok({ id, kind: 'nodeSet', include: include.value });
+    }
+    case 'certainty': {
+      const target = needOneOf(get(x, 'target'), child(path, 'target'), TARGETS);
+      if (!target.ok) return target;
+      const include = parseArray<CertaintyKey>(
+        get(x, 'include'),
+        child(path, 'include'),
+        (item, itemPath) => needOneOf(item, itemPath, CERTAINTY_KEYS),
+      );
+      if (!include.ok) return include;
+      return ok({ id, kind: 'certainty', target: target.value, include: include.value });
     }
     default:
       return fail(child(path, 'kind'), 'フィルタの種類が正しくありません');

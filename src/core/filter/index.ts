@@ -7,11 +7,13 @@ export type {
   CategoryKey,
   TextMatching,
   TimeMatch,
+  TimeSource,
+  CertaintyKey,
   FilterDef,
   EdgeRule,
   FilterState,
 } from './types';
-export { toFilterId, FILTER_KINDS, DEFAULT_FILTER_STATE } from './types';
+export { toFilterId, FILTER_KINDS, CERTAINTY_KEYS, DEFAULT_FILTER_STATE } from './types';
 
 export {
   addFilter,
@@ -26,7 +28,8 @@ export type { FilterResult, FilterCounts } from './apply';
 export { applyFilters } from './apply';
 
 export type { FacetCount } from './facets';
-export { facetCounts } from './facets';
+export { facetCounts, certaintyFacetCounts } from './facets';
+export type { CertaintyFacetCount } from './facets';
 
 export type { FilterIssue } from './check';
 export { checkFilterState } from './check';

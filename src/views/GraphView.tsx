@@ -14,10 +14,17 @@ import { matchIncludes, LOOSE_MATCH } from '../core/text';
 import { buildScene, renderSvg } from '../render';
 import { createSvgExport, downloadSvg } from '../io/export';
 import { setSvgExporter } from './svgExport';
-import { IconButton } from './ui/icons';
+import { Icon, IconButton } from './ui/icons';
 import { InfoTip } from './ui/InfoTip';
-import { graphViewStore, layoutController, uiStore } from '../state';
-import { useData, useFilter, useT } from './hooks';
+import { CollapsibleSection } from './ui/CollapsibleSection';
+import { Field } from './ui/Field';
+import { GraphSearch } from './GraphSearch';
+import { getNumberFormat } from './intl';
+import { StatusMessage } from './ui/StatusMessage';
+import { Toolbar, ToolbarGroup } from './ui/Toolbar';
+import { Chip } from './ui/Chip';
+import { graphViewStore, layoutController, selectionStore, uiStore } from '../state';
+import { useData, useFilter, useSelection, useT, useUi } from './hooks';
 import './graph.css';
 
 /** 図の枠の既定の大きさ（CSS ピクセル）。枠の大きさを測るまでと、測れない環境で使う。 */
@@ -74,8 +81,19 @@ export function GraphView() {
   const stored = useStore(graphViewStore, (s) => s.view);
   const view = stored ?? DEFAULT_GRAPH_VIEW;
   const t = useT();
-  const [selected, setSelected] = useState<ReadonlySet<NodeId>>(new Set());
+  const locale = useUi((s) => s.locale);
+  const nf = getNumberFormat(locale);
+  // 【なぜ】選択は state の selectionStore に置く（D-40）。表ビューなど他のビューと共有し、
+  // 設定の引き出しやカードの開閉では変わらない。データを置き換えると、ストア側が空にする。
+  const selected = useSelection((s) => s.nodes);
   const [query, setQuery] = useState('');
+  // 【なぜ】引き出しとカードの開閉は、この部品の一時的な状態。開閉しても、viewport・選択・配置・フィルタは
+  // 別の場所（ストア）にあるので変わらない。閉じても中身は描いたまま隠す（hidden）。
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [cardOpen, setCardOpen] = useState(true);
+  const drawer = useRef<HTMLElement>(null);
+  const cardTitle = useRef<HTMLHeadingElement>(null);
+  const drawerToggle = useRef<HTMLButtonElement>(null);
   const [highlight, setHighlight] = useState<'both' | 'in' | 'out'>('both');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
@@ -180,7 +198,6 @@ export function GraphView() {
   const [previousDataset, setPreviousDataset] = useState(dataset);
   if (previousDataset !== dataset) {
     setPreviousDataset(dataset);
-    setSelected(new Set());
     setQuery('');
   }
 
@@ -349,12 +366,12 @@ export function GraphView() {
         (matchIncludes(graph.getNodeAttribute(id, 'label'), query, LOOSE_MATCH) ||
           matchIncludes(id, query, LOOSE_MATCH)),
     );
-  const selectedId = [...visibleSelected][0];
+  const matchSet = new Set(matches);
+  // 表示中の選択を優先し、無ければ（絞り込みで見えなくなった）選択の先頭をカードに出す。
+  const selectedId = [...visibleSelected][0] ?? [...selected][0];
   const display = {
     ...scene,
-    nodes: scene.nodes.map((node) =>
-      matches.includes(node.id) ? { ...node, fill: '#ffcc00' } : node,
-    ),
+    nodes: scene.nodes.map((node) => (matchSet.has(node.id) ? { ...node, fill: '#ffcc00' } : node)),
     edges: scene.edges.map((edge) => ({
       ...edge,
       color:
@@ -388,141 +405,111 @@ export function GraphView() {
     zoomAround(factor, canvas.width / 2, canvas.height / 2);
   };
   const choose = (id: string) => {
-    setSelected(id === '' ? new Set() : new Set([toNodeId(id)]));
+    if (id === '') {
+      selectionStore.getState().clear();
+      return;
+    }
+    selectionStore.getState().select({ nodes: [toNodeId(id)] });
+    // 【なぜ】カードを畳んだ後に別のノードを選んでも閉じたままだと、選んでも反応が無いように見える。
+    //   選び直したら開く（畳むのは「今の選択の詳細を隠す」操作で、以後ずっと隠す設定ではない）。
+    setCardOpen(true);
   };
+  // 選択中のノードの名前。表示されていなければ元のデータから引く（選択は消さない）。
+  const nodeLabel = (id: NodeId): string =>
+    graph.hasNode(id)
+      ? graph.getNodeAttribute(id, 'label')
+      : (dataset.nodes.find((n) => n.id === id)?.label ?? id);
+  const openDrawer = () => {
+    const next = !drawerOpen;
+    setDrawerOpen(next);
+    // 【なぜ】開いたら引き出しへフォーカスを移す。引き出しは図の後ろにあるので、移さないと
+    // キーボードの利用者が図を通り過ぎるまで Tab を押すことになる。
+    if (next) {
+      requestAnimationFrame(() => {
+        drawer.current?.focus();
+      });
+    }
+  };
+
+  const hasSelection = selected.size > 0;
+  const selectedFirst = [...selected][0];
+  const selectionText =
+    selected.size === 1 && selectedFirst !== undefined ? (
+      <>
+        <bdi>{nodeLabel(selectedFirst)}</bdi>
+        {!visibleSelected.has(selectedFirst) && <> ({t('graph.selection.hiddenShort')})</>}
+      </>
+    ) : (
+      t('graph.selection.count', { count: nf.format(selected.size) })
+    );
+  const selectedVisible = selectedId !== undefined && graph.hasNode(selectedId);
   return (
     <section className="graph-view" aria-labelledby="graph-title">
       <h2 id="graph-title">{t('graph.title')}</h2>
-      {/* 【なぜ】図を広く使えるよう、図の上の設定と操作をまとめて折りたためるようにする。既定は開く。 */}
-      <details className="graph-settings" open>
-        <summary>{t('graph.settings')}</summary>
-        <div className="graph-controls">
-          <label>
-            {t('graph.layout')}{' '}
-            <select
-              aria-label={t('graph.layout')}
-              value={view.layout}
-              onChange={(e) => {
-                const value = e.currentTarget.value;
-                if (value === 'forceatlas2' || value === 'circular' || value === 'fixed') {
-                  patch({ layout: value });
-                  setIteration((v) => v + 1);
-                }
-              }}
-            >
-              <option value="forceatlas2">ForceAtlas2</option>
-              <option value="circular">{t('graph.circular')}</option>
-              <option value="fixed">{t('graph.fixed')}</option>
-            </select>
-          </label>
-          <label>
-            {t('graph.seed')}{' '}
-            <input
-              type="number"
-              min="0"
-              max="4294967295"
-              value={view.seed}
-              onChange={(e) => {
-                const value = e.currentTarget.valueAsNumber;
-                if (Number.isInteger(value) && value >= 0 && value <= 0xffffffff) {
-                  patch({ seed: value, positions: view.positions.filter((p) => p.fixed) });
-                  setIteration((v) => v + 1);
-                }
-              }}
-            />
-          </label>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              setIteration((v) => v + 1);
-            }}
-          >
-            {t('graph.relayout')}
-          </button>
-          <label>
-            {t('graph.labels')}{' '}
-            <select
-              aria-label={t('graph.labels')}
-              value={view.labels}
-              onChange={(e) => {
-                const value = e.currentTarget.value;
-                if (value === 'all' || value === 'selected' || value === 'large')
-                  patch({ labels: value });
-              }}
-            >
-              <option value="all">{t('graph.all')}</option>
-              <option value="selected">{t('graph.selected')}</option>
-              <option value="large">{t('graph.large')}</option>
-            </select>
-          </label>
-          <label>
-            {t('graph.direction')}{' '}
-            <select
-              aria-label={t('graph.direction')}
-              value={view.direction}
-              onChange={(e) => {
-                const value = e.currentTarget.value;
-                if (value === 'arrow' || value === 'taper' || value === 'gradient')
-                  patch({ direction: value });
-              }}
-            >
-              <option value="arrow">{t('graph.arrow')}</option>
-              <option value="taper">{t('graph.taper')}</option>
-              <option value="gradient">{t('graph.gradient')}</option>
-            </select>
-          </label>
-          <label>
-            {t('graph.weight')}{' '}
-            <select
-              value={
-                typeof view.graphOptions.weight === 'string'
-                  ? view.graphOptions.weight
-                  : 'attr:' + view.graphOptions.weight.attr
-              }
-              onChange={(e) => {
-                const value = e.currentTarget.value;
-                patch({
-                  graphOptions: {
-                    ...view.graphOptions,
-                    weight:
-                      value === 'count' || value === 'weight' ? value : { attr: value.slice(5) },
-                  },
-                });
-              }}
-            >
-              <option value="weight">{t('graph.weightValue')}</option>
-              <option value="count">{t('graph.count')}</option>
-              {dataset.schema
-                .filter((a) => a.appliesTo === 'edge' && a.valueType === 'number')
-                .map((a) => (
-                  <option key={a.key} value={'attr:' + a.key}>
-                    {a.label}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={view.graphOptions.selfLoops}
-              onChange={(e) => {
-                patch({
-                  graphOptions: { ...view.graphOptions, selfLoops: e.currentTarget.checked },
-                });
-              }}
-            />
-            {t('graph.selfLoops')}
-          </label>
-        </div>
-        <EncodingControls
-          dataset={dataset}
-          settings={view.encoding}
-          onChange={(value) => {
-            patch({ encoding: value });
+      <Toolbar label={t('graph.toolbar')}>
+        <GraphSearch
+          query={query}
+          onQuery={setQuery}
+          hits={matches.map((id) => ({ id, label: graph.getNodeAttribute(id, 'label') }))}
+          formatCount={(count) => t('graph.search.count', { count: nf.format(count) })}
+          onPick={(id) => {
+            choose(id);
+            const p = positions.get(toNodeId(id));
+            if (p !== undefined)
+              patch({
+                viewport: {
+                  ...view.viewport,
+                  x: canvas.width / 2 - p.x * view.viewport.zoom,
+                  y: canvas.height / 2 - p.y * view.viewport.zoom,
+                },
+              });
+            // 【なぜ】選んだら一覧を閉じ、図を隠さない（探索中の少ない手順）。
+            setQuery('');
+            // 【なぜ】選んだ後にフォーカスが body へ落ちないよう、カードの見出しへ移す。
+            // そこから Tab で、畳むボタン、固定ボタンへ進める。
+            setCardOpen(true);
+            requestAnimationFrame(() => {
+              cardTitle.current?.focus();
+            });
           }}
         />
-        <div className="graph-controls">
+        {hasSelection && (
+          <Chip
+            title={
+              selected.size === 1 && selectedFirst !== undefined
+                ? nodeLabel(selectedFirst)
+                : undefined
+            }
+            onRemove={{
+              label: t('graph.selection.clear'),
+              run: () => {
+                selectionStore.getState().clear();
+              },
+            }}
+          >
+            {selectionText}
+          </Chip>
+        )}
+        <ToolbarGroup>
+          <Field label={t('graph.highlight')}>
+            <select
+              aria-label={t('graph.highlight')}
+              value={highlight}
+              onChange={(e) => {
+                const v = e.currentTarget.value;
+                if (v === 'both' || v === 'in' || v === 'out') setHighlight(v);
+              }}
+            >
+              <option value="both">{t('graph.both')}</option>
+              <option value="in">{t('graph.in')}</option>
+              <option value="out">{t('graph.out')}</option>
+            </select>
+          </Field>
+          <InfoTip topic={t('graph.highlight')}>
+            <p>{t('graph.highlightLegend')}</p>
+          </InfoTip>
+        </ToolbarGroup>
+        <ToolbarGroup>
           <IconButton
             icon="zoomIn"
             label={t('graph.zoomIn')}
@@ -538,227 +525,385 @@ export function GraphView() {
             }}
           />
           <IconButton icon="fit" label={t('graph.fit')} onClick={fit} />
+        </ToolbarGroup>
+        <span className="rl-toolbar-spacer" />
+        <button
+          type="button"
+          ref={drawerToggle}
+          className="graph-settings-toggle"
+          aria-expanded={drawerOpen}
+          aria-controls="graph-settings-drawer"
+          onClick={openDrawer}
+        >
+          <Icon name="settings" /> {t('graph.settings')}
+        </button>
+      </Toolbar>
+      {graph.order === 0 && (
+        <StatusMessage
+          state={
+            dataset.nodes.length === 0
+              ? { kind: 'empty', message: t('graph.empty') }
+              : {
+                  kind: 'no-results',
+                  message: t('graph.noNodes'),
+                  hint: t('graph.noNodesHint'),
+                }
+          }
+        />
+      )}
+      <div className="graph-body" data-drawer={drawerOpen ? 'open' : 'closed'}>
+        <div className="graph-main">
+          <div className="graph-stage">
+            <div className="graph-canvas" ref={frame}>
+              <svg
+                ref={svg}
+                viewBox={`0 0 ${String(canvas.width)} ${String(canvas.height)}`}
+                role="img"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  const offsets: Record<string, [number, number]> = {
+                    ArrowLeft: [-20, 0],
+                    ArrowRight: [20, 0],
+                    ArrowUp: [0, -20],
+                    ArrowDown: [0, 20],
+                  };
+                  const delta = offsets[e.key];
+                  if (delta !== undefined) {
+                    e.preventDefault();
+                    patch({
+                      viewport: {
+                        ...view.viewport,
+                        x: view.viewport.x + delta[0],
+                        y: view.viewport.y + delta[1],
+                      },
+                    });
+                  }
+                }}
+                aria-label={t('graph.figure')}
+                data-zoom={view.viewport.zoom}
+                onPointerDown={(e) => {
+                  if (e.button !== 0) return;
+                  const p = point(e.clientX, e.clientY);
+                  const element =
+                    e.target instanceof Element ? e.target.closest('[data-id]') : null;
+                  const id =
+                    element?.closest('#graph-view-nodes') === null
+                      ? undefined
+                      : (element?.getAttribute('data-id') ?? undefined);
+                  const position = id === undefined ? undefined : positions.get(toNodeId(id));
+                  drag.current = {
+                    ...(id === undefined ? {} : { id: toNodeId(id) }),
+                    x: p.x,
+                    y: p.y,
+                    px: position?.x ?? view.viewport.x,
+                    py: position?.y ?? view.viewport.y,
+                    moved: false,
+                  };
+                  svg.current?.setPointerCapture(e.pointerId);
+                  if (id !== undefined) interruptLayout();
+                }}
+                onPointerMove={(e) => {
+                  const start = drag.current;
+                  if (start === null) return;
+                  const p = point(e.clientX, e.clientY);
+                  const dx = p.x - start.x;
+                  const dy = p.y - start.y;
+                  start.moved ||= Math.abs(dx) + Math.abs(dy) > 2;
+                  if (!start.moved) return;
+                  if (start.id === undefined)
+                    patch({
+                      viewport: {
+                        ...(graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW).viewport,
+                        x: start.px + dx,
+                        y: start.py + dy,
+                      },
+                    });
+                  else
+                    patch({
+                      positions: (
+                        graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW
+                      ).positions.map((position) =>
+                        position.id === start.id
+                          ? {
+                              ...position,
+                              x:
+                                start.px +
+                                dx /
+                                  (graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW).viewport
+                                    .zoom,
+                              y:
+                                start.py +
+                                dy /
+                                  (graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW).viewport
+                                    .zoom,
+                              fixed: true,
+                            }
+                          : position,
+                      ),
+                    });
+                }}
+                onPointerUp={(e) => {
+                  const start = drag.current;
+                  drag.current = null;
+                  if (start !== null && !start.moved) choose(start.id ?? '');
+                  if (svg.current?.hasPointerCapture(e.pointerId))
+                    svg.current.releasePointerCapture(e.pointerId);
+                  resumeLayout();
+                }}
+                onPointerCancel={() => {
+                  drag.current = null;
+                  resumeLayout();
+                }}
+              >
+                <g
+                  transform={`translate(${String(view.viewport.x - offset.x * view.viewport.zoom)} ${String(view.viewport.y - offset.y * view.viewport.zoom)}) scale(${String(view.viewport.zoom)})`}
+                  dangerouslySetInnerHTML={{ __html: inner }}
+                />
+              </svg>
+            </div>
+            {selectedId !== undefined && (
+              <section className="graph-card" aria-label={t('graph.details')}>
+                <div className="graph-card-head">
+                  <h3 ref={cardTitle} tabIndex={-1} title={nodeLabel(selectedId)}>
+                    <bdi>{nodeLabel(selectedId)}</bdi>
+                    {selected.size > 1 && (
+                      <span className="graph-card-more">
+                        {' '}
+                        {t('graph.selection.more', { count: nf.format(selected.size - 1) })}
+                      </span>
+                    )}
+                  </h3>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-expanded={cardOpen}
+                    aria-controls="graph-card-body"
+                    aria-label={t(cardOpen ? 'graph.selection.collapse' : 'graph.selection.expand')}
+                    title={t(cardOpen ? 'graph.selection.collapse' : 'graph.selection.expand')}
+                    onClick={() => {
+                      setCardOpen((v) => !v);
+                    }}
+                  >
+                    <Icon name={cardOpen ? 'chevronUp' : 'chevronDown'} />
+                  </button>
+                </div>
+                <div id="graph-card-body" className="graph-card-body" hidden={!cardOpen}>
+                  <p>
+                    <bdi>{selectedId}</bdi>
+                  </p>
+                  {selectedVisible ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // 【なぜ】計算開始時の固定状態を持つWorker結果で、直後の固定操作を上書きしない。
+                          // ドラッグと同じく世代を進め、待機中の結果も失敗も無効にする。
+                          interruptLayout();
+                          patch({
+                            positions: (
+                              graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW
+                            ).positions.map((p) =>
+                              p.id === selectedId ? { ...p, fixed: !p.fixed } : p,
+                            ),
+                          });
+                          resumeLayout();
+                        }}
+                      >
+                        {positions.get(selectedId)?.fixed ? t('graph.unpin') : t('graph.pin')}
+                      </button>
+                      <h4>{t('graph.in')}</h4>
+                      <ul>
+                        {graph.inNeighbors(selectedId).map((id) => (
+                          <li key={id}>
+                            <bdi>{graph.getNodeAttribute(id, 'label')}</bdi>
+                          </li>
+                        ))}
+                      </ul>
+                      <h4>{t('graph.out')}</h4>
+                      <ul>
+                        {graph.outNeighbors(selectedId).map((id) => (
+                          <li key={id}>
+                            <bdi>{graph.getNodeAttribute(id, 'label')}</bdi>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : (
+                    // 【なぜ】フィルタで見えなくなっても選択は消さない（R-19）。理由を文で示し、色だけに頼らない。
+                    <p className="graph-card-hidden">{t('graph.selection.hidden')}</p>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+          <div role="status">
+            {busy ? (
+              <StatusMessage
+                announce={false}
+                state={{ kind: 'loading', message: t('graph.computing') }}
+              />
+            ) : (
+              t('graph.ready', { count: String(scene.nodes.length) })
+            )}
+          </div>
+          <div role="alert">
+            {error && (
+              <StatusMessage
+                announce={false}
+                state={{ kind: 'error', message: t('graph.failed') }}
+              />
+            )}
+          </div>
         </div>
-        <label>
-          {t('graph.search')}{' '}
-          <input
-            type="search"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value);
-            }}
-          />
-        </label>
-        {query !== '' && (
-          <ul className="graph-search-results">
-            {matches.map((id) => (
-              <li key={id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    choose(id);
-                    const p = positions.get(toNodeId(id));
-                    if (p !== undefined)
-                      patch({
-                        viewport: {
-                          ...view.viewport,
-                          x: canvas.width / 2 - p.x * view.viewport.zoom,
-                          y: canvas.height / 2 - p.y * view.viewport.zoom,
-                        },
-                      });
-                  }}
-                >
-                  <bdi>{graph.getNodeAttribute(id, 'label')}</bdi> <bdi>{id}</bdi>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <label>
-          {t('graph.selectNode')}{' '}
-          <select
-            aria-label={t('graph.selectNode')}
-            value={selectedId ?? ''}
-            onChange={(e) => {
-              choose(e.currentTarget.value);
-            }}
-          >
-            <option value="">{t('graph.none')}</option>
-            {graph.nodes().map((id) => (
-              <option key={id} value={id} dir="auto">
-                {graph.getNodeAttribute(id, 'label')} ({id})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          {t('graph.highlight')}{' '}
-          <select
-            aria-label={t('graph.highlight')}
-            value={highlight}
-            onChange={(e) => {
-              const v = e.currentTarget.value;
-              if (v === 'both' || v === 'in' || v === 'out') setHighlight(v);
-            }}
-          >
-            <option value="both">{t('graph.both')}</option>
-            <option value="in">{t('graph.in')}</option>
-            <option value="out">{t('graph.out')}</option>
-          </select>
-        </label>{' '}
-        <InfoTip topic={t('graph.highlight')}>
-          <p>{t('graph.highlightLegend')}</p>
-        </InfoTip>
-      </details>
-      <div className="graph-canvas" ref={frame}>
-        <svg
-          ref={svg}
-          viewBox={`0 0 ${String(canvas.width)} ${String(canvas.height)}`}
-          role="img"
-          tabIndex={0}
+        <aside
+          id="graph-settings-drawer"
+          className="graph-drawer"
+          ref={drawer}
+          tabIndex={-1}
+          hidden={!drawerOpen}
+          aria-label={t('graph.drawer')}
           onKeyDown={(e) => {
-            const offsets: Record<string, [number, number]> = {
-              ArrowLeft: [-20, 0],
-              ArrowRight: [20, 0],
-              ArrowUp: [0, -20],
-              ArrowDown: [0, 20],
-            };
-            const delta = offsets[e.key];
-            if (delta !== undefined) {
-              e.preventDefault();
-              patch({
-                viewport: {
-                  ...view.viewport,
-                  x: view.viewport.x + delta[0],
-                  y: view.viewport.y + delta[1],
-                },
-              });
+            // 【なぜ】Esc で閉じ、開閉ボタンへフォーカスを戻す。
+            if (e.key === 'Escape' && drawerOpen) {
+              e.stopPropagation();
+              setDrawerOpen(false);
+              drawerToggle.current?.focus();
             }
           }}
-          aria-label={t('graph.figure')}
-          data-zoom={view.viewport.zoom}
-          onPointerDown={(e) => {
-            if (e.button !== 0) return;
-            const p = point(e.clientX, e.clientY);
-            const element = e.target instanceof Element ? e.target.closest('[data-id]') : null;
-            const id =
-              element?.closest('#graph-view-nodes') === null
-                ? undefined
-                : (element?.getAttribute('data-id') ?? undefined);
-            const position = id === undefined ? undefined : positions.get(toNodeId(id));
-            drag.current = {
-              ...(id === undefined ? {} : { id: toNodeId(id) }),
-              x: p.x,
-              y: p.y,
-              px: position?.x ?? view.viewport.x,
-              py: position?.y ?? view.viewport.y,
-              moved: false,
-            };
-            svg.current?.setPointerCapture(e.pointerId);
-            if (id !== undefined) interruptLayout();
-          }}
-          onPointerMove={(e) => {
-            const start = drag.current;
-            if (start === null) return;
-            const p = point(e.clientX, e.clientY);
-            const dx = p.x - start.x;
-            const dy = p.y - start.y;
-            start.moved ||= Math.abs(dx) + Math.abs(dy) > 2;
-            if (!start.moved) return;
-            if (start.id === undefined)
-              patch({
-                viewport: {
-                  ...(graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW).viewport,
-                  x: start.px + dx,
-                  y: start.py + dy,
-                },
-              });
-            else
-              patch({
-                positions: (graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW).positions.map(
-                  (position) =>
-                    position.id === start.id
-                      ? {
-                          ...position,
-                          x:
-                            start.px +
-                            dx /
-                              (graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW).viewport.zoom,
-                          y:
-                            start.py +
-                            dy /
-                              (graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW).viewport.zoom,
-                          fixed: true,
-                        }
-                      : position,
-                ),
-              });
-          }}
-          onPointerUp={(e) => {
-            const start = drag.current;
-            drag.current = null;
-            if (start !== null && !start.moved) choose(start.id ?? '');
-            if (svg.current?.hasPointerCapture(e.pointerId))
-              svg.current.releasePointerCapture(e.pointerId);
-            resumeLayout();
-          }}
-          onPointerCancel={() => {
-            drag.current = null;
-            resumeLayout();
-          }}
         >
-          <g
-            transform={`translate(${String(view.viewport.x - offset.x * view.viewport.zoom)} ${String(view.viewport.y - offset.y * view.viewport.zoom)}) scale(${String(view.viewport.zoom)})`}
-            dangerouslySetInnerHTML={{ __html: inner }}
-          />
-        </svg>
+          <h3 className="graph-drawer-title">{t('graph.drawer')}</h3>
+          <p className="rl-section-note graph-drawer-note">{t('graph.settingsScope')}</p>
+          <CollapsibleSection title={t('graph.section.layout')} defaultOpen>
+            <Field label={t('graph.layout')}>
+              <select
+                aria-label={t('graph.layout')}
+                value={view.layout}
+                onChange={(e) => {
+                  const value = e.currentTarget.value;
+                  if (value === 'forceatlas2' || value === 'circular' || value === 'fixed') {
+                    patch({ layout: value });
+                    setIteration((v) => v + 1);
+                  }
+                }}
+              >
+                <option value="forceatlas2">ForceAtlas2</option>
+                <option value="circular">{t('graph.circular')}</option>
+                <option value="fixed">{t('graph.fixed')}</option>
+              </select>
+            </Field>
+            <Field label={t('graph.seed')}>
+              <input
+                type="number"
+                min="0"
+                max="4294967295"
+                value={view.seed}
+                onChange={(e) => {
+                  const value = e.currentTarget.valueAsNumber;
+                  if (Number.isInteger(value) && value >= 0 && value <= 0xffffffff) {
+                    patch({ seed: value, positions: view.positions.filter((p) => p.fixed) });
+                    setIteration((v) => v + 1);
+                  }
+                }}
+              />
+            </Field>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setIteration((v) => v + 1);
+              }}
+            >
+              {t('graph.relayout')}
+            </button>
+          </CollapsibleSection>
+          <CollapsibleSection title={t('graph.section.appearance')}>
+            <EncodingControls
+              dataset={dataset}
+              settings={view.encoding}
+              onChange={(value) => {
+                patch({ encoding: value });
+              }}
+            />
+          </CollapsibleSection>
+          <CollapsibleSection title={t('graph.section.labels')} defaultOpen>
+            <Field label={t('graph.labels')}>
+              <select
+                aria-label={t('graph.labels')}
+                value={view.labels}
+                onChange={(e) => {
+                  const value = e.currentTarget.value;
+                  if (value === 'all' || value === 'selected' || value === 'large')
+                    patch({ labels: value });
+                }}
+              >
+                <option value="all">{t('graph.all')}</option>
+                <option value="selected">{t('graph.selected')}</option>
+                <option value="large">{t('graph.large')}</option>
+              </select>
+            </Field>
+            <Field label={t('graph.direction')}>
+              <select
+                aria-label={t('graph.direction')}
+                value={view.direction}
+                onChange={(e) => {
+                  const value = e.currentTarget.value;
+                  if (value === 'arrow' || value === 'taper' || value === 'gradient')
+                    patch({ direction: value });
+                }}
+              >
+                <option value="arrow">{t('graph.arrow')}</option>
+                <option value="taper">{t('graph.taper')}</option>
+                <option value="gradient">{t('graph.gradient')}</option>
+              </select>
+            </Field>
+          </CollapsibleSection>
+          {/* 【なぜ】重みと自己ループは、グラフと指標に共通の設定（selectGraphOptions）。T2-02 で
+              「ネットワークの構築」のパネルへ移すまでの仮置きなので、共通だと明記する。 */}
+          <CollapsibleSection title={t('graph.section.build')} note={t('graph.section.buildNote')}>
+            <Field label={t('graph.weight')}>
+              <select
+                aria-label={t('graph.weight')}
+                value={
+                  typeof view.graphOptions.weight === 'string'
+                    ? view.graphOptions.weight
+                    : 'attr:' + view.graphOptions.weight.attr
+                }
+                onChange={(e) => {
+                  const value = e.currentTarget.value;
+                  patch({
+                    graphOptions: {
+                      ...view.graphOptions,
+                      weight:
+                        value === 'count' || value === 'weight' ? value : { attr: value.slice(5) },
+                    },
+                  });
+                }}
+              >
+                <option value="weight">{t('graph.weightValue')}</option>
+                <option value="count">{t('graph.count')}</option>
+                {dataset.schema
+                  .filter((a) => a.appliesTo === 'edge' && a.valueType === 'number')
+                  .map((a) => (
+                    <option key={a.key} value={'attr:' + a.key} dir="auto">
+                      {a.label}
+                    </option>
+                  ))}
+              </select>
+            </Field>
+            <Field label={t('graph.selfLoops')} inline>
+              <input
+                type="checkbox"
+                checked={view.graphOptions.selfLoops}
+                onChange={(e) => {
+                  patch({
+                    graphOptions: { ...view.graphOptions, selfLoops: e.currentTarget.checked },
+                  });
+                }}
+              />
+            </Field>
+          </CollapsibleSection>
+        </aside>
       </div>
-      <div role="status">
-        {busy ? t('graph.computing') : t('graph.ready', { count: String(scene.nodes.length) })}
-      </div>
-      <div role="alert">{error ? t('graph.failed') : ''}</div>
-      {selectedId !== undefined && graph.hasNode(selectedId) && (
-        <section aria-label={t('graph.details')}>
-          <h3>
-            <bdi>{graph.getNodeAttribute(selectedId, 'label')}</bdi>
-          </h3>
-          <p>
-            <bdi>{selectedId}</bdi>
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              // 【なぜ】計算開始時の固定状態を持つWorker結果で、直後の固定操作を上書きしない。
-              // ドラッグと同じく世代を進め、待機中の結果も失敗も無効にする。
-              interruptLayout();
-              patch({
-                positions: (graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW).positions.map(
-                  (p) => (p.id === selectedId ? { ...p, fixed: !p.fixed } : p),
-                ),
-              });
-              resumeLayout();
-            }}
-          >
-            {positions.get(selectedId)?.fixed ? t('graph.unpin') : t('graph.pin')}
-          </button>
-          <h4>{t('graph.in')}</h4>
-          <ul>
-            {graph.inNeighbors(selectedId).map((id) => (
-              <li key={id}>
-                <bdi>{graph.getNodeAttribute(id, 'label')}</bdi>
-              </li>
-            ))}
-          </ul>
-          <h4>{t('graph.out')}</h4>
-          <ul>
-            {graph.outNeighbors(selectedId).map((id) => (
-              <li key={id}>
-                <bdi>{graph.getNodeAttribute(id, 'label')}</bdi>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </section>
   );
 }

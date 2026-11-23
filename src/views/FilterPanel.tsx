@@ -10,7 +10,7 @@ import {
   selectFilterState,
 } from '../state';
 import { findFilters } from './filter/activeFilters';
-import { AppliedList } from './filter/AppliedList';
+import { AppliedList, FILTER_RULES_ID } from './filter/AppliedList';
 import { FacetControl } from './filter/FacetControl';
 import { NodeTypeControl } from './filter/NodeTypeControl';
 import { RangeControl } from './filter/RangeControl';
@@ -177,7 +177,7 @@ function PanelBody({ dataset }: PanelBodyProps) {
         );
       })}
 
-      <fieldset className="filter-rules">
+      <fieldset className="filter-rules" id={FILTER_RULES_ID} tabIndex={-1}>
         <legend>{t('filter.rules')}</legend>
         <fieldset>
           <legend>{t('filter.edgeRule')}</legend>

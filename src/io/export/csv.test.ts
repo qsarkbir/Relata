@@ -5,6 +5,7 @@ import { makeAttrs, toNodeId } from '../../core/model';
 import { computeMetrics } from '../../core/metrics';
 import { buildGraph, toSnapshot } from '../../core/graph';
 import { parseTextTable } from '../table/text';
+import { importTables } from '../table/dataset';
 import { encodeCsv, exportDatasetCsv, exportMetricsCsv } from './csv';
 
 describe('FR-OUT-02 / R-12: CSV', () => {
@@ -166,6 +167,45 @@ describe('FR-OUT-02 / FR-MT-04: 現在の全対象', () => {
       kind: 'span',
       start: { calendar: 'gregorian' },
     });
+  });
+  it('FR-DM-06: ノードとエッジの certainty を予約列で出し、読み込み直すと戻る', () => {
+    const original = filterDataset();
+    const dataset = {
+      ...original,
+      nodes: original.nodes.map((n, i) => (i === 0 ? { ...n, certainty: 'probable' as const } : n)),
+      edges: original.edges.map((e, i) => (i === 0 ? { ...e, certainty: 'possible' as const } : e)),
+    };
+    const filtered = applyFilters(dataset, { ...DEFAULT_FILTER_STATE, showIsolated: true });
+    const files = exportDatasetCsv(dataset, filtered);
+    const nodes = parseTextTable(files.nodes.text);
+    const edges = parseTextTable(files.edges.text);
+    for (const t of [nodes, edges]) {
+      expect(new Set(t.headers).size).toBe(t.headers.length);
+      expect(t.headers).toContain('certainty');
+    }
+    const ci = nodes.headers.indexOf('certainty');
+    expect(nodes.rows.map((r) => r[ci])).toEqual(dataset.nodes.map((n) => n.certainty ?? ''));
+    const ei = edges.headers.indexOf('certainty');
+    expect(edges.rows.map((r) => r[ei])).toEqual(dataset.edges.map((e) => e.certainty ?? ''));
+    // 書き出した表を、確からしさの列を対応づけて読み込むと、同じ値に戻る。
+    const back = importTables(
+      nodes,
+      edges,
+      { fields: { id: 0, label: 2, type: 1, certainty: ci }, attributes: [] },
+      {
+        fields: { id: 0, source: 1, target: 2, certainty: ei },
+        attributes: [],
+      },
+      dataset.graphMode,
+    );
+    expect(back.warnings.filter((w) => w.code === 'invalid-certainty')).toEqual([]);
+    for (const w of back.warnings) expect(w.severity).toBe('warning');
+    expect(back.dataset?.nodes.map((n) => n.certainty)).toEqual(
+      dataset.nodes.map((n) => n.certainty),
+    );
+    expect(back.dataset?.edges.map((e) => e.certainty)).toEqual(
+      dataset.edges.map((e) => e.certainty),
+    );
   });
   it('指標は全nodeIdsと一致し、向き・HITS別列・失敗statusを0と区別する', () => {
     const dataset = filterDataset();

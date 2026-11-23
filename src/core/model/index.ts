@@ -68,3 +68,6 @@ export {
 
 export type { IssueOwner, DatasetIssue } from './check';
 export { checkDataset } from './check';
+
+export type { CertaintyParse } from './certainty';
+export { parseCertainty } from './certainty';

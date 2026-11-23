@@ -4,7 +4,7 @@
  * フィルタは関数ではなく「データ」として持つ。そのため、保存（FR-PJ-01）、
  * 元に戻す（FR-FL-10）、一覧表示（FR-FL-08）が、値の複製と比較だけで済む。
  */
-import type { DayNumber, MissingReason, NodeTypeId } from '../model';
+import type { Certainty, DayNumber, MissingReason, NodeId, NodeTypeId } from '../model';
 
 // 【TS】「ブランド型」。ふつうの文字列を FilterId として渡す取り違えを、コンパイル時に防ぐ
 //       （仕組みは model/ids.ts の NodeId と同じ。実行時にはただの文字列）。
@@ -46,18 +46,47 @@ export type TextMatching = 'loose' | 'strict';
 /** 時間フィルタの判定。'overlaps' は範囲と重なる（既定）、'within' は範囲に収まる（FR-FL-03）。 */
 export type TimeMatch = 'overlaps' | 'within';
 
+/**
+ * 時間フィルタが見る日付の出どころ（D-35）。
+ *
+ * - `span`: 要素の `time`（期間）。従来の意味。
+ * - `attr`: 日付の属性（`valueType: 'date'`）。Palladio 式の 1 表の読み込みでは日付が
+ *   属性になり、`time` だけでは時間で絞り込めないため。複数値の日付はどれか 1 つが条件に合えば通す。
+ */
+// 【TS】判別共用体。`kind` が 'attr' のときだけ `attr`（属性のキー）を持つ。
+export type TimeSource =
+  { readonly kind: 'span' } | { readonly kind: 'attr'; readonly attr: string };
+
+/**
+ * 確からしさのフィルタの項目。`certainty` を持たない要素は 'unspecified'（D-37）。
+ *
+ * 【なぜ】「指定なし」を Certainty の値にせず、フィルタの項目としてだけ持つ。
+ * データ側は欠損の `undefined` のままにして、書き出しを増やさないため。
+ */
+export type CertaintyKey = Certainty | 'unspecified';
+
+/** 確からしさのフィルタの項目の一覧（画面の並びの基準にもなる）。 */
+export const CERTAINTY_KEYS = [
+  'certain',
+  'probable',
+  'possible',
+  'unspecified',
+] as const satisfies readonly CertaintyKey[];
+
 // 【TS】`readonly` は書き換え不可の印で、`readonly T[]` は要素の追加や代入ができない配列の型。
 //       FilterState を不変の値として扱う約束（§6.3）を、型で守らせる。
-// 【TS】`kind` で種類を見分ける「判別共用体」。`switch (def.kind)` の各 case の中では、
+// 【TS】`switch (def.kind)` の各 case の中では、
 //       TypeScript がその種類の項目（`include` や `min` など）を使えるようにしてくれる。
 /**
  * フィルタ 1 つの定義。
  *
  * - `category`: 属性の値（複数値ならどれか 1 つ）が `include` のどれかに当たれば通す。
  * - `range`: 数値の範囲（両端を含む）。`min`/`max` の片方だけでもよい。
- * - `time`: 期間が [from, to] と重なる、または収まる。
+ * - `time`: 日付（`source` が `span` なら期間、`attr` なら日付の属性）が [from, to] と重なる、または収まる。
  * - `text`: ラベル（エッジなら relation）と文字列の属性値への部分一致。
  * - `nodeType`: ノード型で絞る（ノード専用なので `target` を持たない）。
+ * - `nodeSet`: ID が `include` に含まれるノードだけ通す（ノード専用。範囲選択から作る。D-41）。
+ * - `certainty`: 確からしさが `include` のどれかに当たれば通す（D-37）。
  */
 export type FilterDef =
   | {
@@ -80,6 +109,7 @@ export type FilterDef =
       readonly id: FilterId;
       readonly kind: 'time';
       readonly target: Target;
+      readonly source: TimeSource;
       readonly from: DayNumber;
       readonly to: DayNumber;
       readonly match: TimeMatch;
@@ -96,6 +126,17 @@ export type FilterDef =
       readonly id: FilterId;
       readonly kind: 'nodeType';
       readonly include: readonly NodeTypeId[];
+    }
+  | {
+      readonly id: FilterId;
+      readonly kind: 'nodeSet';
+      readonly include: readonly NodeId[];
+    }
+  | {
+      readonly id: FilterId;
+      readonly kind: 'certainty';
+      readonly target: Target;
+      readonly include: readonly CertaintyKey[];
     };
 
 /** フィルタの種類の一覧。外から来た値の検査に使う。 */
@@ -109,6 +150,8 @@ export const FILTER_KINDS = [
   'time',
   'text',
   'nodeType',
+  'nodeSet',
+  'certainty',
 ] as const satisfies readonly FilterDef['kind'][];
 
 /** エッジの表示の規則。'both-ends' は両端が通過（既定）、'either-end' は片端でも通過（FR-FL-04）。 */

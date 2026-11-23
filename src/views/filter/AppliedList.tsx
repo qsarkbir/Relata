@@ -8,6 +8,12 @@ import { categoryKeyText } from './labels';
 import { timeText } from './timeText';
 import type { Translate } from './labels';
 
+/** 適用中のフィルタの一覧の要素の ID。「適用中の条件」の行から、ここへフォーカスを移す。 */
+export const APPLIED_LIST_ID = 'applied-filters';
+
+/** 表示の規則（エッジの条件、孤立ノード）の要素の ID。「適用中の条件」の行から移る。 */
+export const FILTER_RULES_ID = 'filter-rules';
+
 /** 適用中のフィルタの一覧の入力。 */
 interface AppliedListProps {
   readonly dataset: Dataset;
@@ -36,7 +42,13 @@ export function AppliedList({ dataset, filters, issues, missingExcluded }: Appli
   const nf = getNumberFormat(locale);
 
   return (
-    <section className="applied" aria-labelledby="applied-title">
+    <section
+      className="applied"
+      id={APPLIED_LIST_ID}
+      // 【なぜ】tabIndex={-1} は、Tab の順には入れず、プログラムからフォーカスだけ移せる指定。
+      tabIndex={-1}
+      aria-labelledby="applied-title"
+    >
       <div className="applied-head">
         <h3 id="applied-title">{t('filter.applied')}</h3>
         <button type="button" disabled={filters.length === 0} onClick={clearAll}>
@@ -98,7 +110,9 @@ type NumberFormatter = Pick<Intl.NumberFormat, 'format'>;
 // 対象の語（ノード／エッジ）。ノード型のフィルタはノード専用。
 function targetText(t: Translate, f: FilterDef): string {
   return t(
-    f.kind === 'nodeType' || f.target === 'node' ? 'filter.target.node' : 'filter.target.edge',
+    f.kind === 'nodeType' || f.kind === 'nodeSet' || f.target === 'node'
+      ? 'filter.target.node'
+      : 'filter.target.edge',
   );
 }
 
@@ -161,6 +175,14 @@ function summary(t: Translate, nf: NumberFormatter, dataset: Dataset, f: FilterD
           ))}
         </>
       );
+    case 'nodeSet':
+      return t('filter.summary.nodeSet', { count: f.include.length });
+    case 'certainty':
+      return (
+        <>
+          {t('filter.certainty')}: {f.include.map((k) => t(`filter.certainty.${k}`)).join(', ')}
+        </>
+      );
     default:
       return assertNever(f, 'FilterDef');
   }
@@ -188,6 +210,12 @@ function plainSummary(t: Translate, nf: NumberFormatter, dataset: Dataset, f: Fi
         .join(', ');
       return `${targetText(t, f)} ${t('filter.nodeTypes')}: ${names}`;
     }
+    case 'nodeSet':
+      return `${targetText(t, f)} ${t('filter.summary.nodeSet', { count: f.include.length })}`;
+    case 'certainty':
+      return `${targetText(t, f)} ${t('filter.certainty')}: ${f.include
+        .map((k) => t(`filter.certainty.${k}`))
+        .join(', ')}`;
     default:
       return assertNever(f, 'FilterDef');
   }
@@ -212,6 +240,10 @@ function issueText(t: Translate, i: FilterIssue): ReactNode {
       );
     case 'reversed-range':
       return t('filter.issue.reversed-range');
+    case 'attr-not-date':
+      return t('filter.issue.attr-not-date');
+    case 'unknown-node-id':
+      return t('filter.issue.unknown-node-id');
     default:
       return assertNever(i, 'FilterIssue');
   }

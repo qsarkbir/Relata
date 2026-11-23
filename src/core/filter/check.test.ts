@@ -92,6 +92,7 @@ describe('checkFilterState（D-21 (6)）', () => {
           id: fid('t'),
           kind: 'time',
           target: 'node',
+          source: { kind: 'span' },
           from: 9,
           to: 1,
           match: 'within',

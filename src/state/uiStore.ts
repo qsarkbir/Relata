@@ -59,6 +59,15 @@ export interface UiState {
    * @param panel - 切り替えるパネル
    */
   readonly togglePanel: (panel: SidePanelId) => void;
+  /**
+   * 横のパネルを開く、または畳む（切り替えではなく、状態を指定する）。
+   *
+   * 【なぜ】「適用中の条件」の行から左のパネルを開くときは、すでに開いていても閉じてはいけない。
+   *
+   * @param panel - 対象のパネル
+   * @param collapsed - 畳むなら true
+   */
+  readonly setPanelCollapsed: (panel: SidePanelId, collapsed: boolean) => void;
   /** 言語を変える。`localStorage` への保存と `<html lang>` の更新は app 側が `subscribe` で行う。 */
   readonly setLocale: (locale: Locale) => void;
   /**
@@ -117,6 +126,10 @@ export function createUiStore(initialLocale: Locale = DEFAULT_LOCALE) {
       set((s) => ({
         collapsedPanels: { ...s.collapsedPanels, [panel]: !s.collapsedPanels[panel] },
       }));
+    },
+    setPanelCollapsed: (panel, collapsed) => {
+      if (get().collapsedPanels[panel] === collapsed) return;
+      set((s) => ({ collapsedPanels: { ...s.collapsedPanels, [panel]: collapsed } }));
     },
     setLocale: (locale) => {
       set({ locale });

@@ -1,4 +1,5 @@
 import { GraphView } from '../views/GraphView';
+import { ConditionsBar } from '../views/ConditionsBar';
 import { AboutDialog } from '../views/AboutDialog';
 import { CsvExportMenu } from '../views/metrics/CsvExportMenu';
 import { SidePanel } from '../views/ui/SidePanel';
@@ -12,6 +13,7 @@ import { MetricsPanel } from '../views/MetricsPanel';
 import { useData, useT, useUi } from '../views/hooks';
 import { LOCALES, LOCALE_NAMES } from '../i18n';
 import { clearAutosave } from './autosaveService';
+import './tokens.css';
 import './app.css';
 
 /**
@@ -85,6 +87,7 @@ export function App() {
           <FilterPanel />
         </SidePanel>
         <main className="region-main" aria-label={t('app.region.main')}>
+          <ConditionsBar />
           <GraphView />
           {dataset === null ? (
             <div className="empty">

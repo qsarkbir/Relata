@@ -2,9 +2,15 @@
  * ファセットの件数（FR-FL-06、FR-FL-07、D-21 (6)）。
  */
 import { getAttr, MISSING_REASONS, type Attrs, type Dataset } from '../model';
-import { passingFlags } from './apply';
+import { certaintyKeyOf, passingFlags } from './apply';
 import { categoryKeyId, categoryKeysOf } from './keys';
-import type { CategoryKey, FilterState, Target } from './types';
+import {
+  CERTAINTY_KEYS,
+  type CategoryKey,
+  type CertaintyKey,
+  type FilterState,
+  type Target,
+} from './types';
 
 /** ファセットの 1 項目と、その件数。 */
 export interface FacetCount {
@@ -77,4 +83,51 @@ export function facetCounts(
     all.filter((i) => i.key.kind === 'missing' && i.key.reason === reason),
   );
   return [...values, ...missings];
+}
+
+/** 確からしさのファセットの 1 項目と、その件数。 */
+export interface CertaintyFacetCount {
+  readonly key: CertaintyKey;
+  /** 他のフィルタ（同じ対象の確からしさのフィルタを除く）の条件に合う件数。 */
+  readonly filtered: number;
+  /** 全体の件数。 */
+  readonly total: number;
+}
+
+/**
+ * 確からしさのファセットの件数を数える（D-37、FR-DM-06）。
+ *
+ * 数え方は `facetCounts` と同じ。同じ対象の `certainty` フィルタを除いた他のフィルタを通った
+ * 要素を `filtered`、全要素を `total` とする。`certainty` を持たない要素は 'unspecified' に数える。
+ * 項目は常に `CERTAINTY_KEYS` の 4 つ（件数 0 も含む）。この順序なので、画面は並べ替えなしで使える。
+ *
+ * 計算量: O(F·N)。
+ *
+ * @param dataset - データセット
+ * @param state - フィルタの状態
+ * @param target - 数える対象（ノードかエッジ）
+ * @returns 4 項目の件数
+ */
+export function certaintyFacetCounts(
+  dataset: Dataset,
+  state: FilterState,
+  target: Target,
+): CertaintyFacetCount[] {
+  const others = state.filters.filter((f) => !(f.kind === 'certainty' && f.target === target));
+  const flags = passingFlags(dataset, others, target);
+  const counts = new Map<CertaintyKey, { filtered: number; total: number }>(
+    CERTAINTY_KEYS.map((k) => [k, { filtered: 0, total: 0 }]),
+  );
+  const owners = target === 'node' ? dataset.nodes : dataset.edges;
+  owners.forEach((o, i) => {
+    const c = counts.get(certaintyKeyOf(o.certainty));
+    if (c === undefined) return;
+    c.total += 1;
+    if (flags[i] === true) c.filtered += 1;
+  });
+  return CERTAINTY_KEYS.map((key) => ({
+    key,
+    filtered: counts.get(key)?.filtered ?? 0,
+    total: counts.get(key)?.total ?? 0,
+  }));
 }

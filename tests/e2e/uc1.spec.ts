@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import {
   counts,
   openCsvDialog,
+  openGraphSection,
   openProject,
   saveProjectFile,
   saveSvgFile,
@@ -48,8 +49,9 @@ test('UC-1 / FR-IN-04 / FR-VG-03 / FR-MT-04 / FR-OUT-01/02 / FR-PJ-01: 書簡を
   await dialog.getByRole('button', { name: 'このデータを読み込む', exact: true }).click();
   const nodes = page.locator('.graph-canvas #graph-view-nodes > [data-id]');
   await expect(nodes).toHaveCount(3);
-  await page.getByText('見た目の設定', { exact: true }).click();
+  await openGraphSection(page, '見た目');
   await page.getByLabel('ノードサイズの元', { exact: true }).selectOption('metric:degree');
+  await openGraphSection(page, '構築');
   await page.getByLabel('自己ループを含む', { exact: true }).uncheck();
   // 【なぜ】図の自己ループ設定を指標・CSVも使うことを確認する（元表には4件ある）。
   expect(await csvText(page, '全体指標CSV')).toContain('edgeCount,3,ok,directed');
