@@ -243,3 +243,32 @@
 .graph-card-head h3:focus-visible {
   outline: var(--rl-focus-ring);
 }
+
+/* ---- 射影の根拠の一覧（T2-02）。選択中のカードの中 ---- */
+.evidence h4 {
+  margin-block: var(--rl-space-2) var(--rl-space-1);
+}
+.evidence ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.evidence .evidence-via ul {
+  padding-inline-start: 1rem;
+  list-style: disc;
+}
+.evidence li {
+  margin-block-end: var(--rl-space-1);
+  overflow-wrap: anywhere;
+}
+.evidence button {
+  min-block-size: var(--rl-control-size);
+}
+.evidence-edge-title {
+  margin: 0;
+  color: var(--rl-text);
+  font-weight: 600;
+}
+.evidence-count {
+  color: var(--rl-text-muted);
+}

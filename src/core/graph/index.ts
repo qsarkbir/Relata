@@ -1,6 +1,8 @@
 // graph の入口。グラフの構築、選択肢、Worker に渡すスナップショットを export する。
-export type { WeightSource, GraphOptions } from './options';
-export { DEFAULT_GRAPH_OPTIONS, parseGraphOptions } from './options';
+export type { WeightSource, GraphOptions, ProjectionMethod, ProjectionOptions } from './options';
+export { DEFAULT_GRAPH_OPTIONS, PROJECTION_METHODS, parseGraphOptions } from './options';
+export type { ProjectionIssue, ProjectionResult, ProjectionWarning } from './projection';
+export { projectGraph, validateProjection } from './projection';
 export type { RelataNodeAttributes, RelataEdgeAttributes, RelataGraph } from './build';
 export { buildGraph } from './build';
 export type { GraphSnapshot } from './snapshot';

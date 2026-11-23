@@ -513,11 +513,66 @@ export const ja = {
   'metrics.noteDetail.directedAsUndirected':
     'これらの指標は、向きのあるグラフでも向きを無視して計算しました。k-core とクラスタ係数は、向きを考えない定義を使います。連結成分数は「弱連結成分」（向きを無視したときにつながっている部分）の数です。推移性は、向きを無視した三角形の割合です。たとえば書簡のネットワークでは、A が B に送り B が A に送っていなくても、A と B はつながっているとみなします。一方向の関係と双方向の関係を区別したい場合は、相互性（双方向のエッジの割合）や入次数・出次数を合わせて見てください。',
   'metrics.noteDetail.multipleNodeTypes':
-    'ここで示した指標は、すべてのノードが同じ種類（たとえば人物どうし）であることを前提に作られています。人物と書物、人物と地名のように種類の違うノードが混ざったグラフでは、値の意味が変わります。たとえば人物と地名を結ぶグラフで媒介中心性が高い地名は、「多くの人物が共通して訪れた場所」であることを示すにすぎず、人物どうしのネットワークでの仲介役とは意味が違います。密度も、同じ種類どうしは結ばれない構造のため、低く出ます。1 種類のノードについて調べたいときは、左の「ノード型」で型を絞り込んでから指標を見てください（ほかの型を経由する関係は数えられなくなります）。2 種類のノードから 1 種類どうしのネットワークを作る「射影」は、後の版で対応する予定です。',
+    'ここで示した指標は、すべてのノードが同じ種類（たとえば人物どうし）であることを前提に作られています。人物と書物、人物と地名のように種類の違うノードが混ざったグラフでは、値の意味が変わります。たとえば人物と地名を結ぶグラフで媒介中心性が高い地名は、「多くの人物が共通して訪れた場所」であることを示すにすぎず、人物どうしのネットワークでの仲介役とは意味が違います。密度も、同じ種類どうしは結ばれない構造のため、低く出ます。1 種類のノードについて調べたいときは、左の「ノード型」で型を絞り込んでから指標を見てください（ほかの型を経由する関係は数えられなくなります）。2 種類のノードから 1 種類どうしのネットワークを作る「射影」は、適用中の条件の行の「ネットワークの構築」から使えます（射影すると、この注意は出なくなります）。',
   'metrics.note.mixedAsBidirectional': '混在グラフの無向エッジは両向きの線として計算しました。',
   'metrics.note.directedAsUndirected': '次の指標は向きを無視して計算しました。',
   'metrics.note.multipleNodeTypes':
     'ノード型が複数あります。次の指標は1種類のノードを前提とするため、解釈に注意してください。',
+  // ---- T2-02: ネットワークの構築（射影）と根拠 ----
+  'build.open': 'ネットワークの構築',
+  'build.openDescription': 'グラフと指標に共通の構築の設定（重み、自己ループ、射影）を開きます',
+  'build.summaryPrefix': '構築:',
+  'build.summary.projection': '射影',
+  'build.summary.projectionInvalid': '射影（適用できません）',
+  'build.summary.weight': '重み: {value}',
+  'build.summary.noLoops': '自己ループなし',
+  'build.afterProjection': '射影後: ノード {nodes} · エッジ {edges}',
+  'build.title': 'ネットワークの構築',
+  'build.scope':
+    'グラフと指標に共通の設定です。変えると指標と配置を計算し直します。フィルタは射影の前の元のデータにかかります。',
+  'build.close': '構築の設定を閉じる',
+  'build.undo': '構築の設定を元に戻す',
+  'build.redo': '構築の設定をやり直す',
+  'build.section.aggregate': 'エッジの集約',
+  'build.aggregateIgnored':
+    '射影しているときは、元のエッジの重みと自己ループは使いません。重みは射影の方式で決まります。',
+  'build.section.projection': '射影',
+  'build.projection.enable': '射影する',
+  'build.projection.hint':
+    'たとえば「人物 ← 組織」なら、同じ組織に属した人物どうしを線で結びます。射影先でも仲介でもない型のノードは、図から除かれます。',
+  'build.projection.unavailable':
+    '射影は、ノードの型が 2 つ以上あるデータで使えます。このデータの型は {count} つです。',
+  'build.projection.target': '射影先の型（残すノード）',
+  'build.projection.via': '仲介する型（根拠になるノード）',
+  'build.projection.method': '重み付けの方式',
+  'build.projection.method.shared': '共通の相手の数',
+  'build.projection.method.newman': 'Newman 方式',
+  'build.projection.method.jaccard': 'Jaccard 係数',
+  'build.projection.help.shared': '2 つのノードに共通する仲介ノードの数を重みにします。',
+  'build.projection.help.newman':
+    '共通の仲介ノードごとに 1/(その仲介ノードにつながる射影先の数 − 1) を足します。多数が集まる場に居合わせた意味を薄めます（Newman 2001）。',
+  'build.projection.help.jaccard':
+    '共通の仲介ノードの数を、2 つのどちらかがつながる仲介ノードの数で割ります（0 から 1）。',
+  'build.projection.unknownType': '（データに無い型: {id}）',
+  'build.issue.unknownTarget':
+    '射影先の型「{type}」がこのデータにありません。射影は適用していません。',
+  'build.issue.unknownVia':
+    '仲介する型「{type}」がこのデータにありません。射影は適用していません。',
+  'build.issue.sameType': '射影先と仲介が同じ型「{type}」です。射影は適用していません。',
+  'build.warning.directedAsUndirected': '有向のエッジは、向きを無視して射影しました。',
+  'build.progress.running': '指標と配置を計算し直しています…',
+  'evidence.selectedEdges': '選択中のエッジ',
+  'evidence.edgeCount': '{count} 本のエッジを選択中',
+  'evidence.via': '根拠の仲介ノード {count} 件',
+  'evidence.viaMore': 'ほか {count} 件を表示',
+  'evidence.originalEdges': '元のエッジ {count} 本',
+  'evidence.aggregated': '集約したエッジ',
+  'evidence.neighbors': '隣接ノードと根拠の件数',
+  'evidence.neighborCount': '根拠 {count} 件',
+  'evidence.selectEdge': 'このエッジを選ぶ',
+  'evidence.edgeHidden': '選んだエッジは、今のグラフに表示されていません。',
+  'metrics.projected': '射影後のグラフで計算',
+  'metrics.projectedDetail': '構築の設定で射影しているため、指標は射影後のグラフで計算しています。',
 } as const;
 
 /**

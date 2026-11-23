@@ -4,8 +4,7 @@ import { createGraphMeasure } from './graphMeasure';
 /** グラフ表示と操作。元データとフィルタは既存ストアを参照する（T1-19）。 */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
-import { applyFilters } from '../core/filter';
-import { buildGraph, toSnapshot } from '../core/graph';
+import { toSnapshot } from '../core/graph';
 import { DEFAULT_GRAPH_VIEW } from '../core/project';
 import type { GraphViewSettings } from '../core/project';
 import type { NodeId } from '../core/model';
@@ -23,8 +22,17 @@ import { getNumberFormat } from './intl';
 import { StatusMessage } from './ui/StatusMessage';
 import { Toolbar, ToolbarGroup } from './ui/Toolbar';
 import { Chip } from './ui/Chip';
-import { graphViewStore, layoutController, selectionStore, uiStore } from '../state';
-import { useData, useFilter, useSelection, useT, useUi } from './hooks';
+import {
+  graphViewStore,
+  layoutController,
+  selectedGraphEdges,
+  selectionStore,
+  uiStore,
+} from '../state';
+import { useData, useSelection, useT, useUi } from './hooks';
+import { useNetwork } from './useNetwork';
+import { ProjectionIssues } from './ProjectionNotice';
+import { NeighborEvidence, SelectedEdges } from './ProjectionEvidence';
 import './graph.css';
 
 /** 図の枠の既定の大きさ（CSS ピクセル）。枠の大きさを測るまでと、測れない環境で使う。 */
@@ -77,7 +85,6 @@ function fitZoom(
  */
 export function GraphView() {
   const dataset = useData((s) => s.dataset);
-  const filters = useFilter((s) => s.history.present);
   const stored = useStore(graphViewStore, (s) => s.view);
   const view = stored ?? DEFAULT_GRAPH_VIEW;
   const t = useT();
@@ -86,6 +93,7 @@ export function GraphView() {
   // 【なぜ】選択は state の selectionStore に置く（D-40）。表ビューなど他のビューと共有し、
   // 設定の引き出しやカードの開閉では変わらない。データを置き換えると、ストア側が空にする。
   const selected = useSelection((s) => s.nodes);
+  const selectedEdges = useSelection((s) => s.edges);
   const [query, setQuery] = useState('');
   // 【なぜ】引き出しとカードの開閉は、この部品の一時的な状態。開閉しても、viewport・選択・配置・フィルタは
   // 別の場所（ストア）にあるので変わらない。閉じても中身は描いたまま隠す（hidden）。
@@ -111,19 +119,22 @@ export function GraphView() {
   const canvasRef = useRef<{ width: number; height: number }>(DEFAULT_CANVAS);
   const drag = useRef<{
     id?: NodeId;
+    /** 押した場所のエッジのキー（ノードでなければ）。離したときに、動いていなければ選ぶ。 */
+    edgeKey?: string;
     x: number;
     y: number;
     px: number;
     py: number;
     moved: boolean;
   } | null>(null);
-  const graph = useMemo(
-    () =>
-      dataset === null
-        ? null
-        : buildGraph(dataset, applyFilters(dataset, filters), view.graphOptions),
-    [dataset, filters, view.graphOptions],
+  // 【なぜ】描画・配置・指標が、同じ射影後のグラフを使う。計算は state の getNetwork が 1 か所で行う（D-39）。
+  const network = useNetwork();
+  const graph = network?.graph ?? null;
+  const selectedEdgeKeys = useMemo(
+    () => (graph === null ? [] : selectedGraphEdges(graph, selectedEdges)),
+    [graph, selectedEdges],
   );
+  const selectedEdgeSet = useMemo(() => new Set(selectedEdgeKeys), [selectedEdgeKeys]);
   const patch = (change: Partial<GraphViewSettings>) => {
     graphViewStore
       .getState()
@@ -374,8 +385,11 @@ export function GraphView() {
     nodes: scene.nodes.map((node) => (matchSet.has(node.id) ? { ...node, fill: '#ffcc00' } : node)),
     edges: scene.edges.map((edge) => ({
       ...edge,
-      color:
-        visibleSelected.has(edge.source) && visibleSelected.has(edge.target)
+      // 選んだエッジは、色に加えて太さでも示す（色だけで伝えない）。
+      ...(selectedEdgeSet.has(edge.id) ? { width: Math.max(edge.width * 2, 3) } : {}),
+      color: selectedEdgeSet.has(edge.id)
+        ? '#7b3294'
+        : visibleSelected.has(edge.source) && visibleSelected.has(edge.target)
           ? '#7b3294'
           : !edge.directed && (visibleSelected.has(edge.source) || visibleSelected.has(edge.target))
             ? '#7b3294'
@@ -385,7 +399,8 @@ export function GraphView() {
                 ? '#0072b2'
                 : edge.color,
       opacity:
-        visibleSelected.size === 0 ||
+        selectedEdgeSet.has(edge.id) ||
+        (visibleSelected.size === 0 && selectedEdgeSet.size === 0) ||
         (highlight !== 'in' && visibleSelected.has(edge.source)) ||
         (highlight !== 'out' && visibleSelected.has(edge.target))
           ? edge.opacity
@@ -431,7 +446,7 @@ export function GraphView() {
     }
   };
 
-  const hasSelection = selected.size > 0;
+  const hasSelection = selected.size > 0 || selectedEdgeKeys.length > 0;
   const selectedFirst = [...selected][0];
   const selectionText =
     selected.size === 1 && selectedFirst !== undefined ? (
@@ -439,9 +454,16 @@ export function GraphView() {
         <bdi>{nodeLabel(selectedFirst)}</bdi>
         {!visibleSelected.has(selectedFirst) && <> ({t('graph.selection.hiddenShort')})</>}
       </>
+    ) : selected.size === 0 ? (
+      t('evidence.edgeCount', { count: nf.format(selectedEdgeKeys.length) })
     ) : (
       t('graph.selection.count', { count: nf.format(selected.size) })
     );
+  // カードの見出し。ノードを選んでいればその名前、エッジだけなら選んだ本数。
+  const cardHeading =
+    selectedId !== undefined
+      ? nodeLabel(selectedId)
+      : t('evidence.edgeCount', { count: nf.format(selectedEdgeKeys.length) });
   const selectedVisible = selectedId !== undefined && graph.hasNode(selectedId);
   return (
     <section className="graph-view" aria-labelledby="graph-title">
@@ -538,6 +560,7 @@ export function GraphView() {
           <Icon name="settings" /> {t('graph.settings')}
         </button>
       </Toolbar>
+      {network !== null && <ProjectionIssues status={network.projection} />}
       {graph.order === 0 && (
         <StatusMessage
           state={
@@ -591,8 +614,14 @@ export function GraphView() {
                       ? undefined
                       : (element?.getAttribute('data-id') ?? undefined);
                   const position = id === undefined ? undefined : positions.get(toNodeId(id));
+                  // 【なぜ】エッジも押して選べる。射影したエッジの根拠を見るため（FR-GR-04）。
+                  const edgeKey =
+                    id === undefined && element?.closest('#graph-view-edges') != null
+                      ? (element.getAttribute('data-id') ?? undefined)
+                      : undefined;
                   drag.current = {
                     ...(id === undefined ? {} : { id: toNodeId(id) }),
+                    ...(edgeKey === undefined ? {} : { edgeKey }),
                     x: p.x,
                     y: p.y,
                     px: position?.x ?? view.viewport.x,
@@ -645,7 +674,15 @@ export function GraphView() {
                 onPointerUp={(e) => {
                   const start = drag.current;
                   drag.current = null;
-                  if (start !== null && !start.moved) choose(start.id ?? '');
+                  if (start !== null && !start.moved) {
+                    if (start.edgeKey !== undefined && graph.hasEdge(start.edgeKey)) {
+                      // 選ぶのは元のエッジ ID。表の選択と同じ ID で持つ（D-40）。
+                      selectionStore
+                        .getState()
+                        .select({ edges: graph.getEdgeAttribute(start.edgeKey, 'edgeIds') });
+                      setCardOpen(true);
+                    } else choose(start.id ?? '');
+                  }
                   if (svg.current?.hasPointerCapture(e.pointerId))
                     svg.current.releasePointerCapture(e.pointerId);
                   resumeLayout();
@@ -661,11 +698,11 @@ export function GraphView() {
                 />
               </svg>
             </div>
-            {selectedId !== undefined && (
+            {(selectedId !== undefined || selectedEdgeKeys.length > 0) && (
               <section className="graph-card" aria-label={t('graph.details')}>
                 <div className="graph-card-head">
-                  <h3 ref={cardTitle} tabIndex={-1} title={nodeLabel(selectedId)}>
-                    <bdi>{nodeLabel(selectedId)}</bdi>
+                  <h3 ref={cardTitle} tabIndex={-1} title={cardHeading}>
+                    <bdi>{cardHeading}</bdi>
                     {selected.size > 1 && (
                       <span className="graph-card-more">
                         {' '}
@@ -688,10 +725,15 @@ export function GraphView() {
                   </button>
                 </div>
                 <div id="graph-card-body" className="graph-card-body" hidden={!cardOpen}>
-                  <p>
-                    <bdi>{selectedId}</bdi>
-                  </p>
-                  {selectedVisible ? (
+                  {selectedId !== undefined && (
+                    <p>
+                      <bdi>{selectedId}</bdi>
+                    </p>
+                  )}
+                  {selectedEdgeKeys.length > 0 && (
+                    <SelectedEdges graph={graph} edgeKeys={selectedEdgeKeys} />
+                  )}
+                  {selectedId === undefined ? null : selectedVisible ? (
                     <>
                       <button
                         type="button"
@@ -711,6 +753,9 @@ export function GraphView() {
                       >
                         {positions.get(selectedId)?.fixed ? t('graph.unpin') : t('graph.pin')}
                       </button>
+                      {network?.projection.kind === 'applied' && (
+                        <NeighborEvidence graph={graph} nodeId={selectedId} />
+                      )}
                       <h4>{t('graph.in')}</h4>
                       <ul>
                         {graph.inNeighbors(selectedId).map((id) => (
@@ -855,51 +900,6 @@ export function GraphView() {
                 <option value="taper">{t('graph.taper')}</option>
                 <option value="gradient">{t('graph.gradient')}</option>
               </select>
-            </Field>
-          </CollapsibleSection>
-          {/* 【なぜ】重みと自己ループは、グラフと指標に共通の設定（selectGraphOptions）。T2-02 で
-              「ネットワークの構築」のパネルへ移すまでの仮置きなので、共通だと明記する。 */}
-          <CollapsibleSection title={t('graph.section.build')} note={t('graph.section.buildNote')}>
-            <Field label={t('graph.weight')}>
-              <select
-                aria-label={t('graph.weight')}
-                value={
-                  typeof view.graphOptions.weight === 'string'
-                    ? view.graphOptions.weight
-                    : 'attr:' + view.graphOptions.weight.attr
-                }
-                onChange={(e) => {
-                  const value = e.currentTarget.value;
-                  patch({
-                    graphOptions: {
-                      ...view.graphOptions,
-                      weight:
-                        value === 'count' || value === 'weight' ? value : { attr: value.slice(5) },
-                    },
-                  });
-                }}
-              >
-                <option value="weight">{t('graph.weightValue')}</option>
-                <option value="count">{t('graph.count')}</option>
-                {dataset.schema
-                  .filter((a) => a.appliesTo === 'edge' && a.valueType === 'number')
-                  .map((a) => (
-                    <option key={a.key} value={'attr:' + a.key} dir="auto">
-                      {a.label}
-                    </option>
-                  ))}
-              </select>
-            </Field>
-            <Field label={t('graph.selfLoops')} inline>
-              <input
-                type="checkbox"
-                checked={view.graphOptions.selfLoops}
-                onChange={(e) => {
-                  patch({
-                    graphOptions: { ...view.graphOptions, selfLoops: e.currentTarget.checked },
-                  });
-                }}
-              />
             </Field>
           </CollapsibleSection>
         </aside>

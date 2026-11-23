@@ -531,10 +531,67 @@ export const en = {
   'metrics.noteDetail.directedAsUndirected':
     'These metrics were calculated ignoring edge direction, even though the graph is directed. k-core and the clustering coefficient use their undirected definitions. Components counts weakly connected components (parts that are connected when direction is ignored). Transitivity is the share of closed triangles with direction ignored. In a correspondence network, for example, A and B count as connected when A wrote to B even if B never wrote back. To tell one-way from two-way relations, look at reciprocity (the share of edges that go both ways) and at in-degree and out-degree as well.',
   'metrics.noteDetail.multipleNodeTypes':
-    'These metrics assume that all nodes are of the same kind (for example, all people). When the graph mixes kinds, such as people and books or people and places, the values mean something different. In a graph linking people to places, for example, a place with high betweenness is simply a place that many people visited; it is not a broker in a network of people. Density is also low because nodes of the same kind are never linked directly. To study one kind of node, narrow the node types in the filter panel before reading the metrics (relations that pass through other types will no longer be counted). Projection, which builds a one-kind network from a two-kind network, is planned for a later version.',
+    'These metrics assume that all nodes are of the same kind (for example, all people). When the graph mixes kinds, such as people and books or people and places, the values mean something different. In a graph linking people to places, for example, a place with high betweenness is simply a place that many people visited; it is not a broker in a network of people. Density is also low because nodes of the same kind are never linked directly. To study one kind of node, narrow the node types in the filter panel before reading the metrics (relations that pass through other types will no longer be counted). Projection, which builds a one-kind network from a two-kind network, is available from "Network construction" in the conditions row (after projecting, this note no longer appears).',
   'metrics.note.mixedAsBidirectional':
     'Undirected edges in the mixed graph were treated as links in both directions.',
   'metrics.note.directedAsUndirected': 'These metrics were calculated ignoring direction.',
   'metrics.note.multipleNodeTypes':
     'Multiple node types are present. Interpret these metrics carefully because they assume a single node type.',
+  // ---- T2-02: ネットワークの構築（射影）と根拠 ----
+  'build.open': 'Network construction',
+  'build.openDescription':
+    'Open the construction settings shared by the graph and metrics (weight, self-loops, projection)',
+  'build.summaryPrefix': 'Construction:',
+  'build.summary.projection': 'Projection',
+  'build.summary.projectionInvalid': 'Projection (not applicable)',
+  'build.summary.weight': 'Weight: {value}',
+  'build.summary.noLoops': 'No self-loops',
+  'build.afterProjection': 'After projection: {nodes} nodes · {edges} edges',
+  'build.title': 'Network construction',
+  'build.scope':
+    'These settings are shared by the graph and the metrics. Changing them recomputes the metrics and the layout. Filters apply to the original data, before projection.',
+  'build.close': 'Close construction settings',
+  'build.undo': 'Undo construction change',
+  'build.redo': 'Redo construction change',
+  'build.section.aggregate': 'Edge aggregation',
+  'build.aggregateIgnored':
+    'While projecting, original edge weights and self-loops are not used. The projection method decides the weight.',
+  'build.section.projection': 'Projection',
+  'build.projection.enable': 'Project',
+  'build.projection.hint':
+    'For example, "person ← organization" links people who belonged to the same organization. Nodes of any other type are left out of the figure.',
+  'build.projection.unavailable':
+    'Projection needs data with two or more node types. This data has {count}.',
+  'build.projection.target': 'Target type (nodes to keep)',
+  'build.projection.via': 'Via type (nodes that give the evidence)',
+  'build.projection.method': 'Weighting method',
+  'build.projection.method.shared': 'Shared neighbors',
+  'build.projection.method.newman': 'Newman',
+  'build.projection.method.jaccard': 'Jaccard index',
+  'build.projection.help.shared': 'The weight is the number of via nodes the two nodes share.',
+  'build.projection.help.newman':
+    'Each shared via node adds 1/(number of target nodes linked to it − 1), which discounts crowded gatherings (Newman 2001).',
+  'build.projection.help.jaccard':
+    'The number of shared via nodes divided by the number of via nodes linked to either node (0 to 1).',
+  'build.projection.unknownType': '(type not in the data: {id})',
+  'build.issue.unknownTarget':
+    'The target type "{type}" is not in this data. Projection is not applied.',
+  'build.issue.unknownVia': 'The via type "{type}" is not in this data. Projection is not applied.',
+  'build.issue.sameType':
+    'The target and via types are the same ("{type}"). Projection is not applied.',
+  'build.warning.directedAsUndirected': 'Directed edges were projected ignoring their direction.',
+  'build.progress.running': 'Recomputing metrics and layout…',
+  'evidence.selectedEdges': 'Selected edges',
+  'evidence.edgeCount': '{count} edges selected',
+  'evidence.via': 'Via nodes (evidence): {count}',
+  'evidence.viaMore': 'Show {count} more',
+  'evidence.originalEdges': '{count} original edges',
+  'evidence.aggregated': 'Aggregated edge',
+  'evidence.neighbors': 'Neighbors and evidence counts',
+  'evidence.neighborCount': '{count} via',
+  'evidence.selectEdge': 'Select this edge',
+  'evidence.edgeHidden': 'The selected edge is not shown in the current graph.',
+  'metrics.projected': 'Computed on the projected graph',
+  'metrics.projectedDetail':
+    'Projection is on in the construction settings, so the metrics are computed on the projected graph.',
 } satisfies Record<MessageKey, string>;

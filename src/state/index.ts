@@ -32,3 +32,7 @@ export { createLayoutController, layoutController } from './layoutController';
 export type { LayoutController, LayoutOutcome, LayoutRequest } from './layoutController';
 export { bindSelectionToData, createSelectionStore, selectionStore } from './selectionStore';
 export type { SelectionSets, SelectionState } from './selectionStore';
+export { createBuildOptions, buildOptions } from './buildOptions';
+export type { BuildHistoryState, BuildOptionsController } from './buildOptions';
+export { getNetwork, selectedGraphEdges } from './networkView';
+export type { Network, ProjectionStatus } from './networkView';

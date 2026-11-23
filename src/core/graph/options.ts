@@ -1,7 +1,7 @@
 /**
  * グラフの構築の選択肢（FR-GR-01、FR-GR-02、D-22）と、外から読む `parseGraphOptions`。
  */
-import { isPlainObject, type ParseResult } from '../model';
+import { isPlainObject, toNodeTypeId, type NodeTypeId, type ParseResult } from '../model';
 
 /**
  * 重みの選び方。
@@ -13,11 +13,36 @@ import { isPlainObject, type ParseResult } from '../model';
 // 【TS】文字列リテラルとオブジェクトの共用体。`typeof w === 'string'` で絞り込める。
 export type WeightSource = 'count' | 'weight' | { readonly attr: string };
 
+/** 射影の重み付けの方式（FR-GR-03、D-39）。定義は `projection.ts` を参照。 */
+export const PROJECTION_METHODS = ['shared', 'newman', 'jaccard'] as const;
+
+/** 射影の重み付けの方式。`shared`＝共通の仲介ノードの数、`newman`＝Newman の重み、`jaccard`＝Jaccard 係数。 */
+export type ProjectionMethod = (typeof PROJECTION_METHODS)[number];
+
+/**
+ * 射影の設定（FR-GR-03〜05、D-39）。
+ *
+ * 二部グラフなら、型が 2 種類のうち 1 つを `target`、もう 1 つを `via` に指定する。
+ * 3 部以上（k-partite）でも「どの型を、どの型を介して」を同じ形で指定する（FR-GR-05）。
+ */
+export interface ProjectionOptions {
+  /** 射影の結果に残すノードの型（例: 人物）。 */
+  readonly target: NodeTypeId;
+  /** 仲介するノードの型（例: 組織）。結果のグラフには残らない。 */
+  readonly via: NodeTypeId;
+  readonly method: ProjectionMethod;
+}
+
 /** グラフの構築の選択肢。 */
 export interface GraphOptions {
   readonly weight: WeightSource;
   /** 自己ループ（始点と終点が同じエッジ）を含めるか（FR-GR-02）。 */
   readonly selfLoops: boolean;
+  /**
+   * 射影の設定（任意）。無ければ射影しない（既存の挙動）。
+   * 【なぜ】`buildGraph` はこの項目を見ない。射影は `buildGraph` の後の別の段階（D-39）。
+   */
+  readonly projection?: ProjectionOptions;
 }
 
 /** 既定の選択肢。重みは `GraphEdge.weight` の合計、自己ループは含める。 */
@@ -64,5 +89,36 @@ export function parseGraphOptions(x: unknown): ParseResult<GraphOptions> {
   if (s !== undefined && typeof s !== 'boolean') {
     return { ok: false, path: 'selfLoops', reason: '真偽値が必要です' };
   }
-  return { ok: true, value: { weight, selfLoops: s ?? DEFAULT_GRAPH_OPTIONS.selfLoops } };
+  const base: GraphOptions = { weight, selfLoops: s ?? DEFAULT_GRAPH_OPTIONS.selfLoops };
+
+  // 【なぜ】projection は任意。無ければ項目ごと作らない（既定値と toEqual で比べられるように）。
+  const pj = get(x, 'projection');
+  if (pj === undefined) return { ok: true, value: base };
+  if (!isPlainObject(pj)) {
+    return { ok: false, path: 'projection', reason: 'オブジェクトが必要です' };
+  }
+  const target = get(pj, 'target');
+  if (typeof target !== 'string' || target.length === 0) {
+    return { ok: false, path: 'projection.target', reason: '空でない文字列が必要です' };
+  }
+  const via = get(pj, 'via');
+  if (typeof via !== 'string' || via.length === 0) {
+    return { ok: false, path: 'projection.via', reason: '空でない文字列が必要です' };
+  }
+  const m = get(pj, 'method');
+  const method = PROJECTION_METHODS.find((k) => k === m);
+  if (method === undefined) {
+    return {
+      ok: false,
+      path: 'projection.method',
+      reason: "'shared'、'newman'、'jaccard' のどれかが必要です",
+    };
+  }
+  return {
+    ok: true,
+    value: {
+      ...base,
+      projection: { target: toNodeTypeId(target), via: toNodeTypeId(via), method },
+    },
+  };
 }

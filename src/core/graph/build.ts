@@ -49,6 +49,11 @@ export interface RelataEdgeAttributes {
    * 【なぜ】0 として足すと合計がゆがむので、足さずに件数を示す（D-22）。他の重みでは 0。
    */
   readonly missingWeightCount: number;
+  /**
+   * 射影したエッジだけが持つ、根拠の仲介ノードの ID（ID の昇順。FR-GR-04）。
+   * 【なぜ】任意項目にして、`buildGraph` の結果の形は変えない。
+   */
+  readonly via?: readonly NodeId[];
 }
 
 // 【TS】`Graph<N, E, G>` はジェネリクスで、ノード・エッジ・グラフ全体の属性の型を渡す。
