@@ -172,11 +172,6 @@
   white-space: nowrap;
   font-size: var(--rl-font-md);
 }
-.graph-card-more {
-  color: var(--rl-text-muted);
-  font-weight: normal;
-  font-size: var(--rl-font-sm);
-}
 .graph-card-body[hidden] {
   display: none;
 }

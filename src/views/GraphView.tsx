@@ -31,7 +31,7 @@ import {
 } from '../state';
 import { useData, useSelection, useT, useUi } from './hooks';
 import { useNetwork } from './useNetwork';
-import { useRangeSelect } from './useRangeSelect';
+import { clientToSvg, useRangeSelect } from './useRangeSelect';
 import { RangeSelectSummary } from './RangeSelectSummary';
 import { buildPanelStore } from './buildPanelStore';
 import { ProjectionIssues } from './ProjectionNotice';
@@ -116,8 +116,8 @@ export function GraphView() {
   const handledIteration = useRef(0);
   const svg = useRef<SVGSVGElement>(null);
   const frame = useRef<HTMLDivElement>(null);
+  const rangeRect = useRef<SVGRectElement>(null);
   // 【なぜ】フックは早期 return より前で呼ぶ（呼ぶ順序を変えない）。
-  const range = useRangeSelect(svg);
   // 【なぜ】枠の大きさは利用者がつまみで変えられる。SVG の座標を CSS ピクセルと 1 対 1 にするため、
   // 測った大きさを viewBox に使う。レイアウトの効果は大きさの変化で動かしたくないので、ref にも写す。
   const [canvas, setCanvas] = useState<{ width: number; height: number }>(DEFAULT_CANVAS);
@@ -134,6 +134,11 @@ export function GraphView() {
   } | null>(null);
   // 【なぜ】描画・配置・指標が、同じ射影後のグラフを使う。計算は state の getNetwork が 1 か所で行う（D-39）。
   const network = useNetwork();
+  const range = useRangeSelect(svg, rangeRect, (key) => {
+    const g = network?.graph;
+    if (g?.hasEdge(key) !== true) return [];
+    return g.getEdgeAttribute(key, 'edgeIds');
+  });
   // 【なぜ】構築のパネルが開いている間は、同じ理由をパネルの中だけに出す（支援技術の二重の読み上げを防ぐ）。
   const buildPanelOpen = useStore(buildPanelStore, (b) => b.open);
   const graph = network?.graph ?? null;
@@ -375,6 +380,53 @@ export function GraphView() {
       observer.disconnect();
     };
   }, [hasFigure]);
+  // 【なぜ】SVG の文字列は、図の内容（シーン・選択・検索・強調）が変わったときだけ作り直す。
+  // パンやズーム、矩形選択のたびに全体を組み直さない（描画の負荷を避ける）。
+  const inner = useMemo(() => {
+    if (scene === null) return '';
+    const matchSet = new Set(
+      query === ''
+        ? []
+        : (graph?.nodes() ?? []).filter(
+            (id) =>
+              matchIncludes(graph?.getNodeAttribute(id, 'label') ?? '', query, LOOSE_MATCH) ||
+              matchIncludes(id, query, LOOSE_MATCH),
+          ),
+    );
+    const display = {
+      ...scene,
+      nodes: scene.nodes.map((node) =>
+        matchSet.has(node.id) ? { ...node, fill: '#ffcc00' } : node,
+      ),
+      edges: scene.edges.map((edge) => ({
+        ...edge,
+        // 選んだエッジは、色に加えて太さでも示す（色だけで伝えない）。
+        ...(selectedEdgeSet.has(edge.id) ? { width: Math.max(edge.width * 2, 3) } : {}),
+        color: selectedEdgeSet.has(edge.id)
+          ? '#7b3294'
+          : visibleSelected.has(edge.source) && visibleSelected.has(edge.target)
+            ? '#7b3294'
+            : !edge.directed &&
+                (visibleSelected.has(edge.source) || visibleSelected.has(edge.target))
+              ? '#7b3294'
+              : visibleSelected.has(edge.target)
+                ? '#d55e00'
+                : visibleSelected.has(edge.source)
+                  ? '#0072b2'
+                  : edge.color,
+        opacity:
+          selectedEdgeSet.has(edge.id) ||
+          (visibleSelected.size === 0 && selectedEdgeSet.size === 0) ||
+          (highlight !== 'in' && visibleSelected.has(edge.source)) ||
+          (highlight !== 'out' && visibleSelected.has(edge.target))
+            ? edge.opacity
+            : 0.12,
+      })),
+    };
+    const markup = renderSvg(display, { idPrefix: 'graph-view-' });
+    // 生成器が検証・エスケープしたSVGの中身だけを使う。任意の利用者HTMLは挿入しない。
+    return markup.slice(markup.indexOf('>') + 1, markup.lastIndexOf('</svg>'));
+  }, [scene, graph, query, visibleSelected, selectedEdgeSet, highlight]);
   if (dataset === null || graph === null || scene === null) return null;
   const matches = graph
     .nodes()
@@ -384,45 +436,9 @@ export function GraphView() {
         (matchIncludes(graph.getNodeAttribute(id, 'label'), query, LOOSE_MATCH) ||
           matchIncludes(id, query, LOOSE_MATCH)),
     );
-  const matchSet = new Set(matches);
   // 表示中の選択を優先し、無ければ（絞り込みで見えなくなった）選択の先頭をカードに出す。
   const selectedId = [...visibleSelected][0] ?? [...selected][0];
-  const display = {
-    ...scene,
-    nodes: scene.nodes.map((node) => (matchSet.has(node.id) ? { ...node, fill: '#ffcc00' } : node)),
-    edges: scene.edges.map((edge) => ({
-      ...edge,
-      // 選んだエッジは、色に加えて太さでも示す（色だけで伝えない）。
-      ...(selectedEdgeSet.has(edge.id) ? { width: Math.max(edge.width * 2, 3) } : {}),
-      color: selectedEdgeSet.has(edge.id)
-        ? '#7b3294'
-        : visibleSelected.has(edge.source) && visibleSelected.has(edge.target)
-          ? '#7b3294'
-          : !edge.directed && (visibleSelected.has(edge.source) || visibleSelected.has(edge.target))
-            ? '#7b3294'
-            : visibleSelected.has(edge.target)
-              ? '#d55e00'
-              : visibleSelected.has(edge.source)
-                ? '#0072b2'
-                : edge.color,
-      opacity:
-        selectedEdgeSet.has(edge.id) ||
-        (visibleSelected.size === 0 && selectedEdgeSet.size === 0) ||
-        (highlight !== 'in' && visibleSelected.has(edge.source)) ||
-        (highlight !== 'out' && visibleSelected.has(edge.target))
-          ? edge.opacity
-          : 0.12,
-    })),
-  };
-  const markup = renderSvg(display, { idPrefix: 'graph-view-' });
-  // 生成器が検証・エスケープしたSVGの中身だけを使う。任意の利用者HTMLは挿入しない。
-  const inner = markup.slice(markup.indexOf('>') + 1, markup.lastIndexOf('</svg>'));
-  const point = (clientX: number, clientY: number) => {
-    const matrix = svg.current?.getScreenCTM();
-    return matrix === null || matrix === undefined
-      ? { x: clientX, y: clientY }
-      : new DOMPoint(clientX, clientY).matrixTransform(matrix.inverse());
-  };
+  const point = (clientX: number, clientY: number) => clientToSvg(svg.current, clientX, clientY);
   const zoomBy = (factor: number) => {
     zoomAround(factor, canvas.width / 2, canvas.height / 2);
   };
@@ -474,12 +490,15 @@ export function GraphView() {
       t('graph.selection.count', { count: nf.format(selected.size) })
     );
   // カードの見出し。ノードを選んでいればその名前、エッジだけなら選んだ本数。
+  // 複数選択のときは件数にする（先頭のノード名にすると、本文の一覧と重なる）。
   const cardHeading =
-    selectedId !== undefined
-      ? nodeLabel(selectedId)
-      : hiddenEdges
-        ? t('evidence.selectedEdges')
-        : t('evidence.edgeCount', { count: nf.format(selectedEdgeKeys.length) });
+    selected.size > 1
+      ? t('graph.selection.count', { count: nf.format(selected.size) })
+      : selectedId !== undefined
+        ? nodeLabel(selectedId)
+        : hiddenEdges
+          ? t('evidence.selectedEdges')
+          : t('evidence.edgeCount', { count: nf.format(selectedEdgeKeys.length) });
   const selectedVisible = selectedId !== undefined && graph.hasNode(selectedId);
   return (
     <section className="graph-view" aria-labelledby="graph-title">
@@ -607,7 +626,9 @@ export function GraphView() {
                     ArrowDown: [0, 20],
                   };
                   if (e.key === 'Escape') {
-                    selectionStore.getState().clear();
+                    // ドラッグ中は矩形の取り消しだけ。そうでなければ選択を解除する。
+                    if (range.active()) range.cancel();
+                    else selectionStore.getState().clear();
                     return;
                   }
                   const delta = offsets[e.key];
@@ -717,6 +738,9 @@ export function GraphView() {
                     svg.current.releasePointerCapture(e.pointerId);
                   resumeLayout();
                 }}
+                onLostPointerCapture={() => {
+                  range.cancel();
+                }}
                 onPointerCancel={() => {
                   range.cancel();
                   drag.current = null;
@@ -727,17 +751,14 @@ export function GraphView() {
                   transform={`translate(${String(view.viewport.x - offset.x * view.viewport.zoom)} ${String(view.viewport.y - offset.y * view.viewport.zoom)}) scale(${String(view.viewport.zoom)})`}
                   dangerouslySetInnerHTML={{ __html: inner }}
                 />
-                {range.rect !== null && (
-                  // 【なぜ】色だけに頼らず、破線の枠で範囲を示す。操作の対象ではないので pointer-events は切る。
-                  <rect
-                    className="graph-range"
-                    x={range.rect.x}
-                    y={range.rect.y}
-                    width={range.rect.width}
-                    height={range.rect.height}
-                    data-testid="range-rect"
-                  />
-                )}
+                {/* 【なぜ】矩形は常に置き、フックが属性を直接書き換える（ドラッグ中に再描画しない）。
+                    色だけに頼らず破線で示し、操作の対象にはしない。 */}
+                <rect
+                  ref={rangeRect}
+                  className="graph-range"
+                  visibility="hidden"
+                  data-testid="range-rect"
+                />
               </svg>
             </div>
             {(selectedId !== undefined || selectedEdges.size > 0) && (
@@ -746,18 +767,16 @@ export function GraphView() {
                 aria-label={t('graph.details')}
                 onKeyDown={(e) => {
                   // 【なぜ】キーボードだけでも選択を解除できるよう、カードの中でも Esc で解除する。
-                  if (e.key === 'Escape') selectionStore.getState().clear();
+                  if (e.key === 'Escape') {
+                    selectionStore.getState().clear();
+                    // 【なぜ】カードが消えるとフォーカスが失われる。キーボードの利用者が続けて操作できるよう図へ戻す。
+                    svg.current?.focus();
+                  }
                 }}
               >
                 <div className="graph-card-head">
                   <h3 ref={cardTitle} tabIndex={-1} title={cardHeading}>
                     <bdi>{cardHeading}</bdi>
-                    {selected.size > 1 && (
-                      <span className="graph-card-more">
-                        {' '}
-                        {t('graph.selection.more', { count: nf.format(selected.size - 1) })}
-                      </span>
-                    )}
                   </h3>
                   <button
                     type="button"
@@ -779,10 +798,16 @@ export function GraphView() {
                       <bdi>{selectedId}</bdi>
                     </p>
                   )}
-                  {selected.size > 1 && (
+                  {selected.size >= 1 && (
                     <RangeSelectSummary
                       ids={selected}
                       nodeLabel={nodeLabel}
+                      passTypes={
+                        network?.projection.kind === 'applied'
+                          ? [network.projection.options.via]
+                          : []
+                      }
+                      typeLabel={(id) => dataset.nodeTypes.find((nt) => nt.id === id)?.label ?? id}
                       isVisible={(id) => graph.hasNode(id)}
                     />
                   )}

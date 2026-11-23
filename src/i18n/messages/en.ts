@@ -83,6 +83,11 @@ export const en = {
   'graph.section.appearance': 'Appearance',
   'graph.section.labels': 'Labels and direction',
   'graph.selection.clear': 'Clear selection',
+  'graph.selection.filterApplied': 'Already applied as a filter',
+  'graph.selection.filterNote':
+    'Selected nodes that are not shown in the figure are also included.',
+  'graph.selection.passNote': 'A projection is applied, so all {types} nodes pass.',
+  'filter.summary.nodeSetPass': 'Selected nodes ({count}; all {types} pass)',
   'graph.selection.filter': 'Filter to the selected nodes',
   'graph.selection.listMore': '{count} more',
   'graph.selection.count': '{count} selected',
