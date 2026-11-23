@@ -8,6 +8,8 @@ import type { ProjectView, ProjectParts } from '../core/project';
 import type { GraphViewState } from './graphViewStore';
 import type { WorkspaceViewState } from './workspaceStore';
 import { DEFAULT_TABLE_VIEW, DEFAULT_WORKSPACE } from '../core/project';
+import type { DisplayState } from './displayStore';
+import { DEFAULT_CALENDAR_DISPLAY } from '../core/time';
 /** 保存用表示状態の共通型。 */
 export type ProjectSnapshotView = ProjectView;
 /** 保存する中身の共通型。 */
@@ -31,6 +33,8 @@ const VIEW_PROJECTORS: {
 export interface ViewTargets {
   readonly graph?: StoreApi<GraphViewState>;
   readonly workspace?: StoreApi<WorkspaceViewState>;
+  /** 表示する暦（R-24）。渡したときだけ保存・復元の対象にする。 */
+  readonly display?: StoreApi<DisplayState>;
 }
 
 /**
@@ -38,7 +42,7 @@ export interface ViewTargets {
  *
  * @param data - dataStore
  * @param filter - filterStore
- * @param targets - 任意の表示設定のストア（`graph`: グラフ表示、`workspace`: 下の段と表）
+ * @param targets - 任意の表示設定のストア（`graph`: グラフ表示、`workspace`: 下の段と表、`display`: 表示する暦）
  * @returns 保存する中身。データが無ければ null（保存するものが無い）
  */
 export function takeSnapshot(
@@ -62,6 +66,9 @@ export function takeSnapshot(
       ...(ws === undefined || ws.workspace === DEFAULT_WORKSPACE
         ? {}
         : { workspace: ws.workspace }),
+      ...(targets.display === undefined
+        ? {}
+        : { display: { calendar: targets.display.getState().calendar } }),
     },
   };
 }
@@ -75,7 +82,7 @@ export function takeSnapshot(
  * @param snapshot - 読み込んだ中身
  * @param data - dataStore
  * @param filter - filterStore
- * @param targets - 任意の表示設定のストア（`graph`: グラフ表示、`workspace`: 下の段と表）
+ * @param targets - 任意の表示設定のストア（`graph`: グラフ表示、`workspace`: 下の段と表、`display`: 表示する暦）
  */
 export function applySnapshot(
   snapshot: ProjectSnapshot,
@@ -92,4 +99,7 @@ export function applySnapshot(
     ...(snapshot.view.table === undefined ? {} : { table: snapshot.view.table }),
     ...(snapshot.view.workspace === undefined ? {} : { workspace: snapshot.view.workspace }),
   });
+  targets.display
+    ?.getState()
+    .setCalendar(snapshot.view.display?.calendar ?? DEFAULT_CALENDAR_DISPLAY);
 }

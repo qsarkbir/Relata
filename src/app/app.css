@@ -411,3 +411,21 @@ fieldset {
   align-items: center;
   gap: 0.25rem;
 }
+
+/* 時間の節（左のパネル）。狭い幅でも欄がはみ出さないよう、縦に並べて幅を詰める。 */
+.time-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.time-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.5rem;
+}
+.time-control select,
+.time-control input[type='text'] {
+  inline-size: 100%;
+  box-sizing: border-box;
+  min-inline-size: 0;
+}

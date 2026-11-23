@@ -7,6 +7,7 @@ import {
   uiStore,
   graphViewStore,
   workspaceStore,
+  displayStore,
 } from '../state';
 import { useData, useT, useUi } from './hooks';
 import { ModalDialog } from './ModalDialog';
@@ -45,6 +46,7 @@ export function ProjectMenu({ onClearAutosave }: ProjectMenuProps) {
     const snapshot = takeSnapshot(dataStore, filterStore, {
       graph: graphViewStore,
       workspace: workspaceStore,
+      display: displayStore,
     });
     if (snapshot === null) return;
     // 【なぜ】日時は呼ぶ側（ここ）で作って渡す。io は Date を使わない（CLAUDE.md）。

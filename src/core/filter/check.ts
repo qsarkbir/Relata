@@ -27,6 +27,8 @@ export type FilterIssue =
   | { readonly kind: 'unknown-category'; readonly filterId: FilterId; readonly key: CategoryKey }
   /** 範囲が逆転している（min > max、または from > to）。何も通らない。 */
   | { readonly kind: 'reversed-range'; readonly filterId: FilterId }
+  /** 時間フィルタの `from` と `to` の両方が無い（範囲が決まっていない。何も絞らない）。 */
+  | { readonly kind: 'time-unbounded'; readonly filterId: FilterId }
   /** 時間フィルタが指す属性が日付型（`valueType: 'date'`）でない（D-35）。 */
   | { readonly kind: 'attr-not-date'; readonly filterId: FilterId; readonly attr: string }
   /** `nodeSet` のフィルタが、データセットに無いノード ID を含んでいる（D-41）。 */
@@ -71,7 +73,11 @@ export function checkFilterState(dataset: Dataset, state: FilterState): FilterIs
         }
         break;
       case 'time':
-        if (f.from > f.to) issues.push({ kind: 'reversed-range', filterId: f.id });
+        if (f.from === undefined && f.to === undefined) {
+          issues.push({ kind: 'time-unbounded', filterId: f.id });
+        } else if (f.from !== undefined && f.to !== undefined && f.from > f.to) {
+          issues.push({ kind: 'reversed-range', filterId: f.id });
+        }
         if (f.source.kind === 'attr') {
           const def = findAttr(dataset, f.target, f.source.attr);
           // 【なぜ】属性が無い／対象（node・edge）が合わないときは unknown-attr、

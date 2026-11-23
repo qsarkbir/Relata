@@ -4,6 +4,7 @@ import { sampleDataset } from '../core/model/fixtures/sampleDataset';
 import {
   bindFilterToData,
   createDataStore,
+  createDisplayStore,
   createFilterStore,
   createUiStore,
   selectFilterState,
@@ -20,14 +21,15 @@ function setup(storage: AutosaveStorage) {
   const notice = createProjectNoticeStore();
   const ui = createUiStore();
   const onProblem = vi.fn();
+  const display = createDisplayStore();
   const auto = createAutosave({
-    targets: { data, filter, notice },
+    targets: { data, filter, notice, display },
     storage,
     now: () => '2026-11-19T00:00:00.000Z',
     onProblem,
     ui,
   });
-  return { data, filter, notice, onProblem, ui, auto };
+  return { data, filter, notice, onProblem, ui, auto, display };
 }
 
 function memory(): AutosaveStorage & { value: string | null; saves: number } {
@@ -68,6 +70,21 @@ describe('autosave', () => {
     expect(mem.saves).toBe(0);
     await vi.advanceTimersByTimeAsync(1);
     expect(mem.saves).toBe(1);
+  });
+
+  it('FR-TM-09 / FR-PJ-02: 暦を替えると保存が予約され、復元で暦が戻る', async () => {
+    const mem = memory();
+    const a = setup(mem);
+    a.auto.start();
+    a.data.getState().setDataset(sampleDataset());
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+    const before = mem.saves;
+    a.display.getState().setCalendar('hijri');
+    await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+    expect(mem.saves).toBe(before + 1);
+    const b = setup(mem);
+    await b.auto.restore();
+    expect(b.display.getState().calendar).toBe('hijri');
   });
 
   it('FR-PJ-02: データが無いうちは何も保存しない（前回の保存を空で上書きしない）', async () => {

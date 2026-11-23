@@ -1,4 +1,11 @@
-import { dataStore, filterStore, uiStore, graphViewStore, workspaceStore } from '../state';
+import {
+  dataStore,
+  displayStore,
+  filterStore,
+  uiStore,
+  graphViewStore,
+  workspaceStore,
+} from '../state';
 import { projectNoticeStore } from '../views/projectNotice';
 import type { ProjectNotice } from '../views/projectNotice';
 import { createAutosave } from './autosave';
@@ -22,6 +29,7 @@ export const autosave = createAutosave({
   targets: {
     graph: graphViewStore,
     workspace: workspaceStore,
+    display: displayStore,
     data: dataStore,
     filter: filterStore,
     notice: projectNoticeStore,

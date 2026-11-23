@@ -191,7 +191,7 @@ function compile(def: FilterDef): Compiled {
               if (isMissing(a)) return missingVerdict(def.missing);
               // 日付でない値（文字列、数値など）は条件に合わない（range が日付を通さないのと対称）。
               if (a.kind !== 'date') return 'fail';
-              if (def.from > def.to) return 'fail';
+              if (isReversedTime(def)) return 'fail';
               // 【なぜ】複数値の日付は、どれか 1 つが条件に合えば通す（カテゴリの複数値と同じ。D-35）。
               return verdict(dateValues(a).some((d) => spanMatches(def, d.earliest, d.latest)));
             }
@@ -264,6 +264,12 @@ export function certaintyKeyOf(c: Certainty | undefined): CertaintyKey {
   return c ?? 'unspecified';
 }
 
+// 範囲が逆転しているか。片側でも開いていれば逆転しない。
+//
+function isReversedTime(def: TimeDef): boolean {
+  return def.from !== undefined && def.to !== undefined && def.from > def.to;
+}
+
 // 時間フィルタの `span` の出どころ（要素の time）の判定。
 //
 function testSpan(def: TimeDef, time: TimeValue | undefined): Verdict {
@@ -271,7 +277,7 @@ function testSpan(def: TimeDef, time: TimeValue | undefined): Verdict {
   if (time === undefined) return 'pass';
   if (time.kind === 'missing') return missingVerdict(def.missing);
   // 逆転した範囲（from > to）は何も通さない（範囲フィルタと同じ。D-21 (6)）。
-  if (def.from > def.to) return 'fail';
+  if (isReversedTime(def)) return 'fail';
   // 期間は [始点の earliest, 終点の latest]。終点が無ければ 1 点の日付なので始点の latest。
   // 終わりが分からない（Missing）なら終わりを無限とみなす。
   const end =
@@ -287,11 +293,15 @@ function testSpan(def: TimeDef, time: TimeValue | undefined): Verdict {
 //   「重なる」は幅のどこかが範囲に入ればよく、「収まる」は幅が全部入る必要がある。
 //
 function spanMatches(def: TimeDef, start: number, end: number): boolean {
+  // 【なぜ】開いた端は ∓∞ として比べる。「収まる」でも、終わりが分からない期間（end = +∞）は
+  //   終わりが開いたフィルタ（hi = +∞）には収まる（Infinity <= Infinity は true）。
+  const lo = def.from ?? Number.NEGATIVE_INFINITY;
+  const hi = def.to ?? Number.POSITIVE_INFINITY;
   switch (def.match) {
     case 'overlaps':
-      return start <= def.to && end >= def.from;
+      return start <= hi && end >= lo;
     case 'within':
-      return start >= def.from && end <= def.to;
+      return start >= lo && end <= hi;
     default:
       return assertNever(def.match, 'TimeMatch');
   }

@@ -49,3 +49,16 @@ export const NODE_TYPE_FILTER_ID: FilterId = toFilterId(JSON.stringify(['nodeTyp
 export function certaintyFilterId(target: Target): FilterId {
   return toFilterId(JSON.stringify(['certainty', target]));
 }
+
+/**
+ * 時間フィルタの ID（対象ごとに 1 つ）。
+ *
+ * 【なぜ】日付の出どころ（期間・属性）が変わっても同じ ID にする。対象ごとの時間の条件は 1 つで、
+ * 出どころを替えると置き換わる（一覧に似た条件が並ばない）。
+ *
+ * @param target - 対象
+ * @returns FilterId
+ */
+export function timeFilterId(target: Target): FilterId {
+  return toFilterId(JSON.stringify(['time', target]));
+}

@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react';
 import { assertNever } from '../../core/util/assertNever';
+import { describeTimeFilter } from '../../core/filter';
 import type { FilterDef, FilterId, FilterIssue } from '../../core/filter';
+import type { CalendarDisplay } from '../../core/time';
 import type { Dataset } from '../../core/model';
-import { useFilter, useT, useUi } from '../hooks';
+import { useDisplay, useFilter, useT, useUi } from '../hooks';
 import { getNumberFormat } from '../intl';
 import { categoryKeyText } from './labels';
-import { timeText } from './timeText';
+import { timeBoundText } from './timeText';
 import type { Translate } from './labels';
 
 /** 適用中のフィルタの一覧の要素の ID。「適用中の条件」の行から、ここへフォーカスを移す。 */
@@ -40,6 +42,8 @@ export function AppliedList({ dataset, filters, issues, missingExcluded }: Appli
   const remove = useFilter((s) => s.remove);
   const clearAll = useFilter((s) => s.clearAll);
   const nf = getNumberFormat(locale);
+  // 【なぜ】暦は表示の設定。説明の文字だけが変わり、フィルタの値（JDN）は変わらない（D-45）。
+  const calendar = useDisplay((s) => s.calendar);
 
   return (
     <section
@@ -61,12 +65,12 @@ export function AppliedList({ dataset, filters, issues, missingExcluded }: Appli
         <ul className="applied-list">
           {filters.map((f) => {
             const mine = issues.filter((i) => i.filterId === f.id);
-            const label = plainSummary(t, nf, dataset, f);
+            const label = plainSummary(t, nf, dataset, f, calendar);
             return (
               <li key={f.id}>
                 <span className="applied-summary">
                   <span className="applied-target">{targetText(t, f)} </span>
-                  {summary(t, nf, dataset, f)}
+                  {summary(t, nf, dataset, f, calendar)}
                   {(f.kind === 'range' || f.kind === 'time') && (
                     <span className="applied-missing">
                       {' '}
@@ -133,7 +137,13 @@ function rangeText(t: Translate, nf: NumberFormatter, min?: number, max?: number
 // 一覧の 1 行の説明（人名などは <bdi> で隔離した要素）。
 // 【TS】`switch (f.kind)` の各 case の中では、TypeScript が f をその種類に絞り込む（判別共用体）。
 //       `default` の `assertNever` は、種類を足して case を書き忘れたときに型エラーにする。
-function summary(t: Translate, nf: NumberFormatter, dataset: Dataset, f: FilterDef): ReactNode {
+function summary(
+  t: Translate,
+  nf: NumberFormatter,
+  dataset: Dataset,
+  f: FilterDef,
+  calendar: CalendarDisplay,
+): ReactNode {
   switch (f.kind) {
     case 'category': {
       const def = dataset.schema.find((d) => d.key === f.attr && d.appliesTo === f.target);
@@ -155,8 +165,22 @@ function summary(t: Translate, nf: NumberFormatter, dataset: Dataset, f: FilterD
           <bdi>{attrLabel(dataset, f.target, f.attr)}</bdi>: {rangeText(t, nf, f.min, f.max)}
         </>
       );
-    case 'time':
-      return timeText(t, f.from, f.to);
+    case 'time': {
+      // R6: 日付の出どころ（属性名は <bdi> で隔離）、期間（表示の暦で）、重なる／収まるを出す。
+      const d = describeTimeFilter(f, dataset, calendar);
+      return (
+        <>
+          {d.source.kind === 'span' ? (
+            t('filter.time.source.span')
+          ) : (
+            <bdi>{d.source.label ?? d.source.attr}</bdi>
+          )}
+          : {timeBoundText(t, d)}
+          {t('filter.time.matchWrap', { match: t(`filter.time.match.${d.match}`) })}
+          {d.reversed && <> {t('filter.time.reversed')}</>}
+        </>
+      );
+    }
     case 'text':
       return (
         <>
@@ -189,7 +213,13 @@ function summary(t: Translate, nf: NumberFormatter, dataset: Dataset, f: FilterD
 }
 
 // ボタンの aria-label 用の、文字だけの説明。
-function plainSummary(t: Translate, nf: NumberFormatter, dataset: Dataset, f: FilterDef): string {
+function plainSummary(
+  t: Translate,
+  nf: NumberFormatter,
+  dataset: Dataset,
+  f: FilterDef,
+  calendar: CalendarDisplay,
+): string {
   switch (f.kind) {
     case 'category': {
       const def = dataset.schema.find((d) => d.key === f.attr && d.appliesTo === f.target);
@@ -199,8 +229,14 @@ function plainSummary(t: Translate, nf: NumberFormatter, dataset: Dataset, f: Fi
     }
     case 'range':
       return `${targetText(t, f)} ${attrLabel(dataset, f.target, f.attr)}: ${rangeText(t, nf, f.min, f.max)}`;
-    case 'time':
-      return `${targetText(t, f)} ${timeText(t, f.from, f.to)}`;
+    case 'time': {
+      const d = describeTimeFilter(f, dataset, calendar);
+      const source =
+        d.source.kind === 'span' ? t('filter.time.source.span') : (d.source.label ?? d.source.attr);
+      return `${targetText(t, f)} ${source}: ${timeBoundText(t, d)}${t('filter.time.matchWrap', {
+        match: t(`filter.time.match.${d.match}`),
+      })}${d.reversed ? ` ${t('filter.time.reversed')}` : ''}`;
+    }
     case 'text':
       return `${targetText(t, f)} ${t('filter.summary.text', { query: f.query })}`;
     case 'nodeType': {
@@ -244,6 +280,8 @@ function issueText(t: Translate, i: FilterIssue): ReactNode {
       return t('filter.issue.attr-not-date');
     case 'unknown-node-id':
       return t('filter.issue.unknown-node-id');
+    case 'time-unbounded':
+      return t('filter.issue.time-unbounded');
     default:
       return assertNever(i, 'FilterIssue');
   }

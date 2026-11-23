@@ -9,6 +9,8 @@ interface CollapsibleSectionProps {
   readonly defaultOpen?: boolean;
   /** 見出しの下に添える一言（例: 「グラフと指標に共通」）。 */
   readonly note?: string;
+  /** 要素の ID。「適用中の条件」の行など、外から開いてフォーカスを移すときに使う。 */
+  readonly id?: string;
   readonly children: ReactNode;
 }
 
@@ -18,17 +20,18 @@ interface CollapsibleSectionProps {
  * 【なぜ】標準の `<details>` を使う。Enter と Space で開閉でき、読み上げにも対応する（NFR-07）。
  * 閉じても中身は DOM に残る（描いたまま隠す）ので、入力の途中の値や下書きは失われない。
  * 開閉の状態は DOM が持つため、親が再描画されても勝手に変わらない。
- * @param props - 見出し、既定の開閉、注記、中身
+ * @param props - 見出し、既定の開閉、注記、ID、中身
  * @returns details 要素
  */
 export function CollapsibleSection({
   title,
   defaultOpen,
   note,
+  id,
   children,
 }: CollapsibleSectionProps) {
   return (
-    <details className="rl-section" open={defaultOpen}>
+    <details className="rl-section" id={id} open={defaultOpen}>
       <summary>{title}</summary>
       <div className="rl-section-body">
         {note !== undefined && <p className="rl-section-note">{note}</p>}

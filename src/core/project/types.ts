@@ -9,6 +9,7 @@ import type { TableViewSettings, WorkspaceSettings } from './tableView';
 //       （verbatimModuleSyntax のため、型だけの import はこう書く）。
 import type { CalendarId, Dataset, MissingReason } from '../model';
 import type { FilterState } from '../filter';
+import type { CalendarDisplay } from '../time';
 
 /**
  * 今のプロジェクトファイルの版。互換性のない変更（列挙の要素の追加を含む）のときだけ上げる（D-24）。
@@ -80,6 +81,14 @@ export interface ProjectView {
   readonly table?: TableViewSettings;
   /** 下の段の設定（D-44）。無ければ既定。 */
   readonly workspace?: WorkspaceSettings;
+  /** 全ビュー共通の表示設定（R-24）。無ければ既定（西暦）。 */
+  readonly display?: DisplaySettings;
+}
+
+/** 全ビューに共通の表示設定（R-24、D-45）。内部の日付（JDN）は変えず、表示だけを変える。 */
+export interface DisplaySettings {
+  /** 表示する暦。 */
+  readonly calendar: CalendarDisplay;
 }
 
 // 【TS】`Record<keyof ProjectView, true>` は「ProjectView のキーを全部そろえた表」を強制する。
@@ -90,6 +99,7 @@ const PROJECT_VIEW_KEY_TABLE: Record<keyof ProjectView, true> = {
   graph: true,
   table: true,
   workspace: true,
+  display: true,
 };
 /** `ProjectView` のすべてのキー。 */
 export const PROJECT_VIEW_KEYS: readonly string[] = Object.keys(PROJECT_VIEW_KEY_TABLE);

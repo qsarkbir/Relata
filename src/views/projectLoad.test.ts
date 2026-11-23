@@ -6,6 +6,7 @@ import { DEFAULT_IMPORT_SETTINGS, serializeProject } from '../io/project';
 import type { ImportSettings } from '../io/project';
 import { EMPTY_IMPORT_SETTINGS, createUiStore } from '../state';
 import type { StoredImportSettings } from '../state';
+import { createDisplayStore } from '../state';
 import { bindFilterToData, createDataStore, createFilterStore, selectFilterState } from '../state';
 import { takeSnapshot } from '../state';
 import type { ProjectSnapshotView } from '../state';
@@ -112,7 +113,9 @@ describe('loadProjectText', () => {
     loadProjectText(validText(), 'file', t);
     const snap = takeSnapshot(t.data, t.filter);
     expect(Object.keys(snap?.view ?? {}).sort()).toEqual(
-      PROJECT_VIEW_KEYS.filter((key) => !['graph', 'table', 'workspace'].includes(key)).sort(),
+      PROJECT_VIEW_KEYS.filter(
+        (key) => !['graph', 'table', 'workspace', 'display'].includes(key),
+      ).sort(),
     );
     // 既定のままの任意の項目は書かない（読み込みで既定が補われる）。
     expect(snap?.view.graph).toBeUndefined();
@@ -145,6 +148,22 @@ describe('loadProjectText', () => {
     );
     // 【なぜ】項目の並び順は問わず、中身が同じことを見る。
     expect(JSON.parse(text2)).toEqual(JSON.parse(validText()));
+  });
+});
+
+describe('暦の保存と復元', () => {
+  it('FR-TM-09: 保存した暦を、読み込みで表示設定に戻す（保存→開き直し）', () => {
+    const t = { ...targets(), display: createDisplayStore('hijri') };
+    loadProjectText(validText(), 'file', t); // display の無いファイルは既定の西暦に戻す
+    expect(t.display.getState().calendar).toBe('gregorian');
+    t.display.getState().setCalendar('both');
+    const snap = takeSnapshot(t.data, t.filter, { display: t.display });
+    expect(snap).not.toBeNull();
+    if (snap === null) return;
+    const text = serializeProject(snap, '2026-11-19T00:00:00.000Z');
+    const u = { ...targets(), display: createDisplayStore('hijri') };
+    loadProjectText(text, 'file', u);
+    expect(u.display.getState().calendar).toBe('both');
   });
 });
 

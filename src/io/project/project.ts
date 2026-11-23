@@ -2,8 +2,10 @@ import {
   parseGraphView,
   parseTableView,
   parseWorkspace,
+  type DisplaySettings,
   type ProjectWarning,
 } from '../../core/project';
+import { DEFAULT_CALENDAR_DISPLAY, isCalendarDisplay } from '../../core/time';
 /**
  * プロジェクトファイルの保存と読み込み（FR-PJ-01、FR-IN-08、D-24、設計書 §11.3）。
  *
@@ -125,6 +127,7 @@ export function serializeProject(parts: ProjectParts, savedAt: string): string {
       ...(parts.view.graph === undefined ? {} : { graph: parts.view.graph }),
       ...(parts.view.table === undefined ? {} : { table: parts.view.table }),
       ...(parts.view.workspace === undefined ? {} : { workspace: parts.view.workspace }),
+      ...(parts.view.display === undefined ? {} : { display: parts.view.display }),
     },
   };
   return JSON.stringify(file);
@@ -404,6 +407,21 @@ export function parseProject(
   };
   const table = optionalView('table', parseTableView);
   const workspace = optionalView('workspace', parseWorkspace);
+  // 表示設定（R-24）。無ければ持たない（読む側が既定の西暦にする）。
+  const displayRaw = viewRaw === undefined ? undefined : get(viewRaw, 'display');
+  let display: DisplaySettings | undefined;
+  if (displayRaw !== undefined) {
+    if (!isPlainObject(displayRaw))
+      return failure('broken', 'view.display', 'オブジェクトが必要です');
+    const calendar = get(displayRaw, 'calendar');
+    if (calendar !== undefined && !isCalendarDisplay(calendar))
+      return failure(
+        'broken',
+        'view.display.calendar',
+        'gregorian、hijri、both のいずれかが必要です',
+      );
+    display = { calendar: calendar ?? DEFAULT_CALENDAR_DISPLAY };
+  }
   const savedAt = get(data, 'savedAt');
   if (savedAt !== undefined && typeof savedAt !== 'string')
     return failure('broken', 'savedAt', '文字列が必要です');
@@ -430,6 +448,7 @@ export function parseProject(
           'view.graph.',
         )
       : []),
+    ...(isPlainObject(displayRaw) ? unknownFields(displayRaw, ['calendar'], 'view.display.') : []),
     ...positionWarnings,
     ...viewWarnings,
     ...checkDataset(dataset.value).map((issue): ProjectWarning => ({ source: 'dataset', issue })),
@@ -452,6 +471,7 @@ export function parseProject(
         ...(graph === undefined ? {} : { graph }),
         ...(table === undefined ? {} : { table }),
         ...(workspace === undefined ? {} : { workspace }),
+        ...(display === undefined ? {} : { display }),
       },
     },
     warnings,

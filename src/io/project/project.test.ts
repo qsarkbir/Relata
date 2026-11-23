@@ -88,6 +88,7 @@ describe('プロジェクトの往復', () => {
         graph: DEFAULT_GRAPH_VIEW,
         table: DEFAULT_TABLE_VIEW,
         workspace: DEFAULT_WORKSPACE,
+        display: { calendar: 'hijri' as const },
       },
     };
     const saved = sub(obj(serializeProject(full, AT)), 'view');
@@ -479,5 +480,50 @@ describe('値の末尾の ? を可能性ありと読む列の設定（D-37）', 
       const r = parseImportSettings({ possibleSuffixColumns: bad });
       expect(!r.ok && r.path).toBe(path);
     }
+  });
+});
+
+describe('FR-TM-09: 表示する暦（view.display.calendar、R-24、D-45）', () => {
+  const withDisplay = (calendar: unknown): string =>
+    mutated((o) => {
+      sub(o, 'view').display = { calendar };
+    });
+  it('FR-TM-09: 保存して読み直すと暦が戻る（版は 2 のまま）', () => {
+    for (const calendar of ['gregorian', 'hijri', 'both'] as const) {
+      const text = serializeProject(
+        { ...parts, view: { ...parts.view, display: { calendar } } },
+        AT,
+      );
+      expect(obj(text).formatVersion).toBe(CURRENT_FORMAT_VERSION);
+      const r = parseProject(text);
+      expect(r.ok && r.value.view.display).toEqual({ calendar });
+    }
+  });
+  it('FR-TM-09: display が無ければ持たない（読む側が既定の西暦にする）', () => {
+    const r = parseProject(serializeProject(parts, AT));
+    expect(r.ok && r.value.view.display).toBeUndefined();
+  });
+  it('FR-TM-09: 暦の値が不正なら、view.display.calendar の壊れとして拒む', () => {
+    const r = parseProject(withDisplay('julian'));
+    expect(r).toMatchObject({ ok: false, kind: 'broken', path: 'view.display.calendar' });
+  });
+  it('FR-TM-09: display が空のオブジェクトなら既定の西暦で補う', () => {
+    const r = parseProject(
+      mutated((o) => {
+        sub(o, 'view').display = {};
+      }),
+    );
+    expect(r.ok && r.value.view.display).toEqual({ calendar: 'gregorian' });
+  });
+  it('FR-TM-09: display の未知の項目は警告にして落とす', () => {
+    const r = parseProject(
+      mutated((o) => {
+        sub(o, 'view').display = { calendar: 'hijri', zoom: 1 };
+      }),
+    );
+    expect(r.ok && r.warnings).toContainEqual({
+      source: 'project',
+      issue: { kind: 'unknown-field', path: 'view.display.zoom' },
+    });
   });
 });

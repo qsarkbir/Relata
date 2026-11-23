@@ -18,6 +18,7 @@ import { FacetControl } from './filter/FacetControl';
 import { NodeTypeControl } from './filter/NodeTypeControl';
 import { RangeControl } from './filter/RangeControl';
 import { TextSearch } from './filter/TextSearch';
+import { TimeControl } from './filter/TimeControl';
 import { useFilterShortcuts } from './filter/useFilterShortcuts';
 import { useData, useFilter, useT, useUi } from './hooks';
 import { getNumberFormat } from './intl';
@@ -189,6 +190,9 @@ function PanelBody({ dataset }: PanelBodyProps) {
           </section>
         );
       })}
+
+      {/* FR-FL-03: 時間の節。対象ごとの時間の条件を、日付の出どころを選んで設定する。 */}
+      <TimeControl dataset={dataset} filters={state.filters} />
 
       <fieldset className="filter-rules" id={FILTER_RULES_ID} tabIndex={-1}>
         <legend>{t('filter.rules')}</legend>

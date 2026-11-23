@@ -120,7 +120,8 @@ interface Scan {
   readonly possible: boolean;
   /** 印（AH、CE、BC など）または月名が示す暦。無ければ undefined。 */
   readonly calendarMark: CalendarId | undefined;
-  readonly era: 'bc' | 'ce' | undefined;
+  /** 'bh' は「ヒジュラ以前」（Before Hijra）。ヒジュラ暦の 0 年以前（先発ヒジュラ暦）。 */
+  readonly era: 'bc' | 'ce' | 'bh' | undefined;
 }
 
 type ScanResult = { readonly ok: true; readonly scan: Scan } | DateParseFailure;
@@ -220,6 +221,20 @@ function normalizeInput(label: string): string {
 type SplitResult = { readonly ok: true; readonly parts: readonly string[] } | DateParseFailure;
 
 /**
+ * 文字列に、紀元前（BC）かヒジュラ以前（BH）の印があるか。
+ *
+ * @param s - 正規化済みの文字列
+ * @returns あれば true
+ */
+function hasBeforeMark(s: string): boolean {
+  const t = s.trim();
+  return (
+    /^(?:紀元前|前|bce|bc|b\.c\.|bh|b\.h\.)/u.test(t) ||
+    /\d\s*(?:bce|bc|b\.c\.e|b\.c|bh|b\.h)\.?$/u.test(t)
+  );
+}
+
+/**
  * 範囲の記号（`-`、`–`、`—`）で分ける。分けないときは 1 要素の配列。
  *
  * 区切りの規則（D-29）:
@@ -253,7 +268,18 @@ function splitDash(s: string): SplitResult {
           '年-月-日 の後に、さらに「-」と数字が続いています（範囲は「—」か「–」で区切ってください）',
         );
       }
-      if (!(leftIsYear && rightIsPart)) cuts.push({ index: i, char: ch });
+      // 【なぜ】紀元前（BC）やヒジュラ以前（BH）の印がある側では、年が 1〜2 桁でも `44-03-15 BC` を
+      //   年月日に読む（3 つの数字は範囲にならない）。`44-03 BC` は、右が 0 付きの 2 桁（`03`）のときだけ
+      //   年月にする。`10-5 BC`、`5-10 BC` は従来どおり範囲（右が 0 無しの数字は範囲と見分けがつかない）。
+      const rest = s.slice(i + 1);
+      const shortBcDate =
+        hasBeforeMark(s) &&
+        rightIsPart &&
+        /\d+(?:-\d{1,2})?$/u.test(s.slice(0, i)) &&
+        (/^0\d(?!\d)/u.test(rest) ||
+          /-\d{1,2}$/u.test(s.slice(0, i)) ||
+          /^\d{1,2}-\d{1,2}(?!\d)/u.test(rest));
+      if (!((leftIsYear && rightIsPart) || shortBcDate)) cuts.push({ index: i, char: ch });
     }
   }
   const cut = cuts[0];
@@ -292,7 +318,7 @@ function scanSingle(part: string): ScanResult {
   }
   let circa = false;
   let possible = false;
-  let era: 'bc' | 'ce' | undefined;
+  let era: 'bc' | 'ce' | 'bh' | undefined;
   let hijriMark = false;
 
   // 末尾の「頃」と「?」（「1050 AH 頃」「1650?」）
@@ -312,13 +338,16 @@ function scanSingle(part: string): ScanResult {
 
   // 先頭の紀元前・紀元後・ヒジュラ暦の印
   const lead =
-    /^(?:(紀元前|前|bce|bc|b\.c\.)|(紀元後|西暦|ce|ad|a\.d\.|c\.e\.)|(ah|a\.h\.|h|ه)(?=\s*\d))\s*/u.exec(
+    /^(?:(紀元前|前|bce|bc|b\.c\.)|(紀元後|西暦|ce|ad|a\.d\.|c\.e\.)|(ah|a\.h\.|h|ه)(?=\s*\d)|(bh|b\.h\.)(?=\s*\d))\s*/u.exec(
       s,
     );
   if (lead) {
     if (lead[1] !== undefined) era = 'bc';
     else if (lead[2] !== undefined) era = 'ce';
-    else hijriMark = true;
+    else if (lead[4] !== undefined) {
+      era = 'bh';
+      hijriMark = true;
+    } else hijriMark = true;
     s = s.slice(lead[0].length).trim();
   }
 
@@ -328,14 +357,19 @@ function scanSingle(part: string): ScanResult {
   //       印ごとに終止符の扱いが違うと、`A.H.` は読めて `CE.` は読めない、のような食い違いが出るため。
   //       2 個以上（`H..`）は書き間違いとして失敗。印の前の数字（`(\d)`）は残すので、年の桁は欠けない。
   const tail =
-    /(\d)\s*(?:(bce|bc|b\.c\.e|b\.c)|(ce|ad|a\.d|c\.e)|(ah|a\.h|h|ه(?:\.?ق)?))\.?$/u.exec(s);
+    /(\d)\s*(?:(bce|bc|b\.c\.e|b\.c)|(ce|ad|a\.d|c\.e)|(bh|b\.h)|(ah|a\.h|h|ه(?:\.?ق)?))\.?$/u.exec(
+      s,
+    );
   if (tail) {
     if (era !== undefined || hijriMark) {
       return fail('unrecognized', '紀元や暦の印が重なっています');
     }
     if (tail[2] !== undefined) era = 'bc';
     else if (tail[3] !== undefined) era = 'ce';
-    else hijriMark = true;
+    else if (tail[4] !== undefined) {
+      era = 'bh';
+      hijriMark = true;
+    } else hijriMark = true;
     s = s.slice(0, s.length - tail[0].length + 1).trim();
   }
 
@@ -389,7 +423,7 @@ function scanSingle(part: string): ScanResult {
   // 暦の印の食い違い
   let calendarMark: CalendarId | undefined;
   if (hijriMark || monthName) calendarMark = 'hijri';
-  if (era !== undefined) {
+  if (era === 'bc' || era === 'ce') {
     if (calendarMark === 'hijri') {
       return era === 'bc'
         ? fail('bc-with-hijri', 'ヒジュラ暦に紀元前の印は付けられません')
@@ -428,6 +462,7 @@ function scanSingle(part: string): ScanResult {
  * @param scan - 読み
  * @param calendarId - 使う暦
  * @param bc - 紀元前か
+ * @param bh - ヒジュラ以前（BH）か。
  * @param circaYears - 「頃」の幅（年）
  * @param hijriDayMargin - ヒジュラ暦の日の幅（日）
  * @returns JDN の幅、または失敗
@@ -436,6 +471,7 @@ function resolveSingle(
   scan: Scan,
   calendarId: CalendarId,
   bc: boolean,
+  bh: boolean,
   circaYears: number,
   hijriDayMargin: number,
 ): ResolveResult {
@@ -452,7 +488,9 @@ function resolveSingle(
     );
   }
   // 【歴史の事情】内部では天文学的な年（紀元前 1 年 ＝ 0 年）。紀元前 n 年 ＝ 1 - n 年。
-  const year = bc ? 1 - scan.year : scan.year;
+  //   ヒジュラ以前（BH）も同じ式で、ヒジュラ暦の 0 年以前（先発ヒジュラ暦。暦が定められた 17 年（638 年）
+  //   より前を、規則を過去へ延ばして数える外挿）を表す。史料の日付ではなく、表示の往復（`23 BH`）のため。
+  const year = bc || bh ? 1 - scan.year : scan.year;
   if (scan.precision !== 'year' && (scan.month < 1 || scan.month > cal.monthsPerYear)) {
     return fail(
       'invalid-month',
@@ -555,11 +593,13 @@ function resolveSide(
   margin: number,
 ): ResolveResult {
   const anyBc = scans.some((s) => s.era === 'bc');
+  const anyBh = scans.some((s) => s.era === 'bh');
   const list: Resolved[] = [];
   for (const s of scans) {
     // 範囲の片方にだけ「BC」があれば、もう片方も紀元前（`44/40 BC`）。
     const bc = s.era === 'bc' || (s.era === undefined && anyBc && calendarId === 'gregorian');
-    const r = resolveSingle(s, calendarId, bc, circaYears, margin);
+    const bh = s.era === 'bh' || (s.era === undefined && anyBh && calendarId === 'hijri');
+    const r = resolveSingle(s, calendarId, bc, bh, circaYears, margin);
     if (!r.ok) return r;
     list.push(r.resolved);
   }

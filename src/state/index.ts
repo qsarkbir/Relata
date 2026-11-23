@@ -55,3 +55,5 @@ export {
 } from './tableModel';
 export type { CellItem, ColumnHeader, TableCell, TableColumn, TableItem } from './tableModel';
 export { isEdgeItem, isRowSelected, selectRow } from './tableSelection';
+export { createDisplayStore, displayStore } from './displayStore';
+export type { DisplayState } from './displayStore';

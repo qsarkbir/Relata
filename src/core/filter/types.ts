@@ -110,8 +110,10 @@ export type FilterDef =
       readonly kind: 'time';
       readonly target: Target;
       readonly source: TimeSource;
-      readonly from: DayNumber;
-      readonly to: DayNumber;
+      /** 範囲の始まり（JDN）。無ければ開いた端（−∞）。`from` と `to` の両方が無いのは不正（check が報告）。 */
+      readonly from?: DayNumber;
+      /** 範囲の終わり（JDN）。無ければ開いた端（+∞）。 */
+      readonly to?: DayNumber;
       readonly match: TimeMatch;
       readonly missing: MissingPolicy;
     }
