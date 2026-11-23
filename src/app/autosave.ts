@@ -113,6 +113,7 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
       ...(deps.targets.graph === undefined ? {} : { graph: deps.targets.graph }),
       ...(deps.targets.workspace === undefined ? {} : { workspace: deps.targets.workspace }),
       ...(deps.targets.display === undefined ? {} : { display: deps.targets.display }),
+      ...(deps.targets.timeline === undefined ? {} : { timeline: deps.targets.timeline }),
     });
     if (snapshot === null) return;
     let text: string;
@@ -193,12 +194,16 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
       const unsubWorkspace = deps.targets.workspace?.subscribe((s, prev) => {
         if (s.table !== prev.table || s.workspace !== prev.workspace) schedule();
       });
+      const unsubTimeline = deps.targets.timeline?.subscribe((s, prev) => {
+        if (s.timeline !== prev.timeline) schedule();
+      });
       const unsubDisplay = deps.targets.display?.subscribe((s, prev) => {
         if (s.calendar !== prev.calendar) schedule();
       });
       return () => {
         unsubWorkspace?.();
         unsubDisplay?.();
+        unsubTimeline?.();
         unsubGraph?.();
         unsubData();
         unsubFilter();

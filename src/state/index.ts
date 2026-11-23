@@ -55,6 +55,13 @@ export {
 } from './tableModel';
 export type { CellItem, ColumnHeader, TableCell, TableColumn, TableItem } from './tableModel';
 export { isEdgeItem, isRowSelected, selectRow } from './tableSelection';
+export {
+  bindTimelineToData,
+  createTimelineStore,
+  isDefaultTimeline,
+  timelineStore,
+} from './timelineStore';
+export type { TimelineViewState } from './timelineStore';
 export { createDisplayStore, displayStore } from './displayStore';
 export type { DisplayState } from './displayStore';
 export { getMissingRows } from './missingView';

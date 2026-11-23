@@ -6,6 +6,7 @@ import { workspaceStore } from '../state';
 import { useT, useWorkspaceView } from './hooks';
 import { MissingView } from './MissingView';
 import { TableView } from './TableView';
+import { TimelineView } from './timeline/TimelineView';
 import { Icon } from './ui/icons';
 import { Tabs } from './ui/Tabs';
 import { tabElementId, tabPanelElementId } from './ui/tabIds';
@@ -20,7 +21,7 @@ const BIG_STEP = 96;
 /**
  * 下の段（フェーズ 2 の方針 §3.1）。図の下に置く、開閉と高さの変更ができるタブの領域。
  *
- * 今あるタブは「表」と「欠損」。年表は、そのタスクでタブを足す（空のタブを置かない）。
+ * タブは「年表」「表」「欠損」（空のタブを置かない）。
  * 開閉、開いているタブ、高さは workspaceStore に持ち、プロジェクトに保存する（D-44）。
  *
  * 【なぜ】閉じても中身は描いたまま隠す（`hidden`）。外すと、表の並べ替えやページを失うため
@@ -36,6 +37,7 @@ export function BottomPanel() {
   };
   // 【TS】`as const` で ID を `string` ではなく文字列リテラル型 `'table'` に保つ（`Tabs` の型引数 Id になる）。
   const tabs = [
+    { id: 'timeline' as const, label: t('workspace.tab.timeline') },
     { id: 'table' as const, label: t('workspace.tab.table') },
     { id: 'missing' as const, label: t('workspace.tab.missing') },
   ];
@@ -124,7 +126,17 @@ export function BottomPanel() {
           <Icon name={open ? 'chevronDown' : 'chevronUp'} />
         </button>
       </div>
-      {/* 閉じても描いたまま隠す。タブごとにパネルを並べ、選んでいないものを隠す。 */}
+      {/* 閉じても描いたまま隠す。タブごとにパネルを並べ、選んでいないものを隠す（中身を作り直さない）。 */}
+      <div
+        id={tabPanelElementId(PREFIX, 'timeline')}
+        role="tabpanel"
+        aria-labelledby={tabElementId(PREFIX, 'timeline')}
+        className="bottom-body"
+        style={{ height }}
+        hidden={!open || tab !== 'timeline'}
+      >
+        <TimelineView />
+      </div>
       <div
         id={tabPanelElementId(PREFIX, 'table')}
         role="tabpanel"

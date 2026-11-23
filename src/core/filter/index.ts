@@ -56,3 +56,15 @@ export type {
   DayExtent,
 } from './timeSource';
 export { dateAttributes, describeTimeFilter, timeDataExtent } from './timeSource';
+
+export type { TimelineBin, TimelineResult } from './timeline';
+export {
+  MAX_TIMELINE_BINS,
+  aggregateTimeline,
+  itemDayRanges,
+  binStartYearsOf,
+  isInconsistentSpan,
+  resolveTimelineSource,
+  sameTimeSource,
+  timelineSourceOptions,
+} from './timeline';

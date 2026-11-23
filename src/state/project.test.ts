@@ -5,6 +5,7 @@ import { sampleDataset } from '../core/model/fixtures/sampleDataset';
 import { createDataStore, EMPTY_IMPORT_SETTINGS } from './dataStore';
 import { bindFilterToData, createFilterStore, selectFilterState } from './filterStore';
 import { createDisplayStore } from './displayStore';
+import { bindTimelineToData, createTimelineStore } from './timelineStore';
 import { applySnapshot, takeSnapshot } from './project';
 
 const f: FilterDef = {
@@ -72,5 +73,37 @@ describe('state/project', () => {
     const old = takeSnapshot(data, filter);
     if (old !== null) applySnapshot(old, data, filter, { display: other });
     expect(other.getState().calendar).toBe('gregorian');
+  });
+
+  it('FR-TM-01: 年表の設定をスナップショットに入れ、読み込みで戻す。既定なら書かない、無ければ既定', () => {
+    const { data, filter } = stores();
+    const timeline = createTimelineStore();
+    bindTimelineToData(timeline, data);
+    data.getState().setDataset(sampleDataset());
+    expect(takeSnapshot(data, filter, { timeline })?.view.timeline).toBeUndefined();
+    timeline.getState().patchTimeline({ width: 100, node: { kind: 'attr', attr: 'born' } });
+    const snap = takeSnapshot(data, filter, { timeline });
+    expect(snap?.view.timeline).toEqual({
+      target: 'node',
+      width: 100,
+      node: { kind: 'attr', attr: 'born' },
+      edge: null,
+    });
+    const other = createTimelineStore();
+    if (snap !== null) applySnapshot(snap, data, filter, { timeline: other });
+    expect(other.getState().timeline).toEqual(snap?.view.timeline);
+    // timeline の無いプロジェクト（古いファイル）は既定に戻す。
+    const old = takeSnapshot(data, filter);
+    if (old !== null) applySnapshot(old, data, filter, { timeline: other });
+    expect(other.getState().timeline.width).toBe(10);
+  });
+
+  it('FR-TM-01: データを置き換えると、年表の出どころは選び直しに戻り、幅は保つ', () => {
+    const { data } = stores();
+    const timeline = createTimelineStore();
+    bindTimelineToData(timeline, data);
+    timeline.getState().patchTimeline({ width: 25, node: { kind: 'attr', attr: 'born' } });
+    data.getState().setDataset(sampleDataset());
+    expect(timeline.getState().timeline).toMatchObject({ width: 25, node: null, edge: null });
   });
 });

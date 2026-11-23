@@ -642,6 +642,48 @@ export const ja = {
   'missing.display.none': '選べる属性がありません。',
   'workspace.resize': '下の段の高さ',
   'workspace.resize.hint': '上下の矢印キーで高さを変えます（Home で最小、End で最大）',
+  'workspace.tab.timeline': '年表',
+  'timeline.target': '対象',
+  'timeline.source': '日付の出どころ',
+  'timeline.width': '区切り',
+  'timeline.width.option': '{n}年',
+  'timeline.calendarNote.gregorian': '区切りは西暦の年の境界で数えます。',
+  'timeline.calendarNote.hijri': '区切りはヒジュラ暦の年の境界で数えます。',
+  'timeline.chartHintShort': 'ドラッグまたは矢印キーで期間を選びます。',
+  'timeline.info.topic': '年表の見方と操作',
+  'timeline.noData': 'データがありません。データやプロジェクトを読み込むと、ここに年表が出ます。',
+  'timeline.tooManyWide':
+    '日付が {from} から {to} まで離れていて、100 年区切りでも区切りが多くなりすぎます。離れた日付（入力の誤りなど）がないか確かめてください。',
+  'timeline.inconsistent': '日付が不整合 {n} 件',
+  'timeline.inconsistent.hint':
+    '終了が開始より前の期間です。時間フィルタと同じく、どの範囲にも重ならないものとして区切りに数えず、年代なしとも別に示します。',
+  'timeline.chart.role': '年表の範囲選択',
+  'timeline.countNote':
+    '幅のある年代は、重なる区切りのすべてに 1 回ずつ数えます。棒の高さの合計は要素数と一致しません。終わりが分からない期間は開始の区切りだけに数えますが、時間フィルタは終わりを開いたもの（以後すべて）として扱うので、開始より後の範囲で絞り込んでも残ります。年表で選んだ区切りに数えた要素が残るのは、時間フィルタが「重なる」のときだけです（「収まる」では幅がはみ出す要素が除かれます）。',
+  'timeline.info.binCalendar':
+    '区切りは選んだ暦の年の境界に合わせます。たとえばヒジュラ暦で 1 年区切りにすると、西暦の年だけが分かる日付（1500 年など）は 2 つのヒジュラ暦の年にまたがるので、2 つの区切りに数えます。',
+  'timeline.chart': '年表の棒グラフ',
+  'timeline.chartHint':
+    'ドラッグで期間を選ぶと、離したときに時間フィルタを置き換えます（元に戻せます）。キーボードでは左右の矢印キーで区切りを移り、Shift を押しながら動かすと範囲を広げ、Enter で絞り込み、Escape で選びなおします。',
+  'timeline.noSource': '日付を持つ要素も日付の属性もないため、年表を描けません。',
+  'timeline.noBins': 'この出どころには、日付のある要素がありません。',
+  'timeline.tooMany':
+    '日付の範囲が広すぎて、区切りが多くなりすぎます。区切りの幅を大きくしてください。',
+  'timeline.noDate': '年代なし {n} 件',
+  'timeline.noDate.hint':
+    '絞り込み後の要素のうち、この出どころに日付がないものの数です。絞り込みで除いた件数とは別の数で、上の軸には含みません。',
+  'timeline.noDate.total': '（絞り込む前は {n} 件）',
+  'timeline.legend.contained': '日付が区切りに収まる',
+  'timeline.legend.spanning': '幅のある年代（区切りをまたぐ）',
+  'timeline.legend.excluded': '絞り込みで除いた分',
+  'timeline.bin':
+    '{range}: {count} 件（うち幅のある年代 {spanning} 件、絞り込みで除いた {excluded} 件）',
+  'timeline.cursor': '区切り {range}',
+  'timeline.selection': '選択中: {range}（Enter で絞り込む）',
+  'timeline.applied': '適用中の範囲: {range}',
+  'timeline.appliedOther':
+    '適用中の時間フィルタは別の日付の出どころです。範囲を選ぶと、この出どころで置き換えます。',
+  'timeline.clearRange': '範囲を解除',
   'table.target': '表の種類',
   'table.target.node': 'ノード表',
   'table.target.edge': 'エッジ表',

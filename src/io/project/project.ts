@@ -1,6 +1,7 @@
 import {
   parseGraphView,
   parseTableView,
+  parseTimeline,
   parseWorkspace,
   type DisplaySettings,
   type ProjectWarning,
@@ -128,6 +129,7 @@ export function serializeProject(parts: ProjectParts, savedAt: string): string {
       ...(parts.view.table === undefined ? {} : { table: parts.view.table }),
       ...(parts.view.workspace === undefined ? {} : { workspace: parts.view.workspace }),
       ...(parts.view.display === undefined ? {} : { display: parts.view.display }),
+      ...(parts.view.timeline === undefined ? {} : { timeline: parts.view.timeline }),
     },
   };
   return JSON.stringify(file);
@@ -424,7 +426,10 @@ export function parseProject(
   // 【なぜ】graph と違い、オブジェクトでない値（`null` など）も失敗にしない。表示の好みの 1 つのために、
   //   データを含むファイル全体を開けなくしない。落としたことは警告で返す。
   const viewWarnings: ProjectWarning[] = [];
-  const optionalView = <T>(key: 'table' | 'workspace', parse: (x: unknown) => ParseResult<T>) => {
+  const optionalView = <T>(
+    key: 'table' | 'workspace' | 'timeline',
+    parse: (x: unknown) => ParseResult<T>,
+  ) => {
     const raw = viewRaw === undefined ? undefined : get(viewRaw, key);
     if (raw === undefined) return undefined;
     const parsed = parse(raw);
@@ -437,6 +442,7 @@ export function parseProject(
   };
   const table = optionalView('table', parseTableView);
   const workspace = optionalView('workspace', parseWorkspace);
+  const timeline = optionalView('timeline', parseTimeline);
   // 表示設定（R-24）。無ければ持たない（読む側が既定の西暦にする）。
   const displayRaw = viewRaw === undefined ? undefined : get(viewRaw, 'display');
   let display: DisplaySettings | undefined;
@@ -505,6 +511,7 @@ export function parseProject(
         ...(table === undefined ? {} : { table }),
         ...(workspace === undefined ? {} : { workspace }),
         ...(display === undefined ? {} : { display }),
+        ...(timeline === undefined ? {} : { timeline }),
       },
     },
     warnings,

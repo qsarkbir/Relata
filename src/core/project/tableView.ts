@@ -41,9 +41,9 @@ export interface TableViewSettings {
 }
 
 // 【TS】`as const` は配列を読み取り専用の「リテラルの組」にする。`(typeof X)[number]` はその要素の型
-//       （ここでは `'table'`）。タブを足すと、型も自動で広がる。
-/** 開けるタブの一覧。年表は、そのタスクで足す（空のタブを置かない）。 */
-export const WORKSPACE_TABS = ['table', 'missing'] as const;
+//       （ここでは `'timeline' | 'table' | 'missing'`）。タブを足すと、型も自動で広がる。
+/** 開けるタブの一覧（年表、表、欠損）。タブは機能ができた順に足す（空のタブを置かない）。 */
+export const WORKSPACE_TABS = ['timeline', 'table', 'missing'] as const;
 
 /** 下の段のタブの ID。 */
 export type WorkspaceTab = (typeof WORKSPACE_TABS)[number];
