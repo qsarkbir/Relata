@@ -48,6 +48,21 @@ export const en = {
   'graph.circular': 'Circular',
   'graph.fixed': 'Fixed',
   'graph.seed': 'Random seed',
+  'graph.layered': 'Layered (column per type)',
+  'graph.geo': 'Geographic',
+  'graph.noCoordinates':
+    '{count} without coordinates (placed in the "no coordinates" column at the right edge)',
+  'graph.layered.note':
+    'Nodes are split into one column per type and ordered within each column to reduce edge crossings. Changing the column order recomputes the layout.',
+  'graph.layered.single': 'With one type or fewer, there is a single column.',
+  'graph.layered.order': 'Column order (left to right)',
+  'graph.layered.up': 'Move the {name} column left',
+  'graph.layered.down': 'Move the {name} column right',
+  'graph.geo.note':
+    'Latitude and longitude attributes are projected with the Mercator projection. Non-numeric or out-of-range values (latitude beyond ±85.05, longitude beyond ±180) have no coordinates.',
+  'graph.geo.lat': 'Latitude attribute',
+  'graph.geo.lon': 'Longitude attribute',
+  'graph.geo.none': '(none)',
   'graph.relayout': 'Recompute layout',
   'graph.layoutTask': 'Computing graph layout',
   'graph.labels': 'Labels',

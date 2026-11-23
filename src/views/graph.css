@@ -272,3 +272,22 @@
 .evidence-count {
   color: var(--rl-text-muted);
 }
+.graph-no-coordinates {
+  margin: 0;
+  padding: var(--rl-space-1) var(--rl-space-2);
+  color: var(--rl-text-muted);
+  font-size: var(--rl-font-sm);
+}
+.graph-column-order {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.graph-column-order li {
+  display: flex;
+  gap: var(--rl-space-1);
+  align-items: center;
+}
+.graph-column-name {
+  flex: 1;
+}

@@ -17,6 +17,8 @@ import { Icon, IconButton } from './ui/icons';
 import { InfoTip } from './ui/InfoTip';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Field } from './ui/Field';
+import { LayoutMethodControls, NoCoordinatesNote } from './LayoutMethodControls';
+import { geoInputsFor } from './geoInputs';
 import { GraphSearch } from './GraphSearch';
 import { getNumberFormat } from './intl';
 import { StatusMessage } from './ui/StatusMessage';
@@ -246,10 +248,17 @@ export function GraphView() {
       setBusy(true);
       setError(false);
       const kind = current.layout === 'fixed' && !allSaved ? 'circular' : current.layout;
+      // 層状・地理座標の入力。属性の値の検査（座標なし）はここ（メインスレッド）で済ませ、Worker へは数だけ渡す。
+      const methodOptions =
+        kind === 'layered'
+          ? { columnOrder: current.columnOrder ?? [] }
+          : kind === 'geo' && dataset !== null
+            ? { geo: geoInputsFor(dataset, graph, current.geoAttrs) }
+            : {};
       const outcome = await layoutController.run({
         job: {
           snapshot: toSnapshot(graph),
-          options: { kind, seed: current.seed, positions: current.positions },
+          options: { kind, seed: current.seed, positions: current.positions, ...methodOptions },
         },
         rounds: kind === 'forceatlas2' ? 10 : 0,
         onProgress: (fraction) => {
@@ -297,7 +306,7 @@ export function GraphView() {
       uiStore.getState().endTask(task);
     };
     // 位置・viewportの保存更新では反復を再開しない。入力グラフと方式/seed、明示再計算だけを監視する。
-  }, [graph, view.layout, view.seed, iteration, measureText, encoding]);
+  }, [graph, dataset, view.layout, view.seed, iteration, measureText, encoding]);
   const hasFigure = dataset !== null && graph !== null && scene !== null;
   // 【なぜ】「保存」のダイアログから図を保存できるよう、今の図を保存する関数を登録する（svgExport.ts）。
   const canExport = hasFigure && scene.nodes.length > 0;
@@ -573,6 +582,7 @@ export function GraphView() {
         </button>
       </Toolbar>
       {network !== null && !buildPanelOpen && <ProjectionIssues status={network.projection} />}
+      <NoCoordinatesNote dataset={dataset} graph={graph} view={view} />
       {graph.order === 0 && (
         <StatusMessage
           state={
@@ -851,7 +861,13 @@ export function GraphView() {
                 value={view.layout}
                 onChange={(e) => {
                   const value = e.currentTarget.value;
-                  if (value === 'forceatlas2' || value === 'circular' || value === 'fixed') {
+                  if (
+                    value === 'forceatlas2' ||
+                    value === 'circular' ||
+                    value === 'fixed' ||
+                    value === 'layered' ||
+                    value === 'geo'
+                  ) {
                     patch({ layout: value });
                     setIteration((v) => v + 1);
                   }
@@ -860,8 +876,22 @@ export function GraphView() {
                 <option value="forceatlas2">ForceAtlas2</option>
                 <option value="circular">{t('graph.circular')}</option>
                 <option value="fixed">{t('graph.fixed')}</option>
+                <option value="layered">{t('graph.layered')}</option>
+                <option value="geo">{t('graph.geo')}</option>
               </select>
             </Field>
+            {
+              <LayoutMethodControls
+                dataset={dataset}
+                graph={graph}
+                view={view}
+                onChange={(change) => {
+                  // 【なぜ】列の順・属性の変更は配置の明示的な操作なので、ここで計算を始める。
+                  patch(change);
+                  setIteration((v) => v + 1);
+                }}
+              />
+            }
             <Field label={t('graph.seed')}>
               <input
                 type="number"
