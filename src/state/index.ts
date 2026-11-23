@@ -57,3 +57,4 @@ export type { CellItem, ColumnHeader, TableCell, TableColumn, TableItem } from '
 export { isEdgeItem, isRowSelected, selectRow } from './tableSelection';
 export { createDisplayStore, displayStore } from './displayStore';
 export type { DisplayState } from './displayStore';
+export { getMissingRows } from './missingView';

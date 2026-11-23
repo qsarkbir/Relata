@@ -39,7 +39,9 @@ export function describeWarning(w: ProjectWarning, t: T): ReactNode {
         t,
         w.issue.kind === 'unknown-field'
           ? 'project.warning.unknownField'
-          : 'project.warning.unknownNodePosition',
+          : w.issue.kind === 'unknown-attribute'
+            ? 'project.warning.unknownAttribute'
+            : 'project.warning.unknownNodePosition',
         {},
         { path: w.issue.path },
       );

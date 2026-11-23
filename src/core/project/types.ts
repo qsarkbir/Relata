@@ -139,4 +139,13 @@ export type ProjectWarning =
   | {
       readonly source: 'project';
       readonly issue: { readonly kind: 'unknown-node-position'; readonly path: string };
+    }
+  /**
+   * 読み込みで落とした、`schema` に無い属性の「欠損の表示」の指定（FR-VG-12）。
+   *
+   * 【なぜ】見た目の設定 1 件のために、ファイル全体を開けなくしないため（D-24）。
+   */
+  | {
+      readonly source: 'project';
+      readonly issue: { readonly kind: 'unknown-attribute'; readonly path: string };
     };

@@ -402,6 +402,8 @@ export const en = {
   'project.warning.filter': 'Filter problem ({kind}, filter {id})',
   'project.warning.unknownField':
     'Skipped an unknown field ({path}). The file may have been saved by a newer version of the app.',
+  'project.warning.unknownAttribute':
+    'Skipped a missing-value display setting for an attribute that is not in the data ({path}).',
   'project.warning.unknownNodePosition':
     'Skipped the position of a node that is not in the data ({path}).',
   'project.failed.file': 'Could not open the project. Your current work is unchanged.',
@@ -611,6 +613,36 @@ export const en = {
   'workspace.close': 'Close the bottom panel',
   'workspace.tabs': 'Bottom panel tabs',
   'workspace.tab.table': 'Table',
+  'workspace.tab.missing': 'Missing',
+  'missing.view': 'Missing values by attribute',
+  'missing.note':
+    'Counted again on the filtered set and shown next to the whole data. A rate is out of the items the attribute applies to. Items without the key are not counted as missing.',
+  'missing.noData': 'Load data to see missing values by attribute.',
+  'missing.noAttrs': 'This data has no attributes.',
+  'missing.col.attr': 'Attribute',
+  'missing.col.scope': 'Scope',
+  'missing.col.total': 'Applicable',
+  'missing.col.missing': 'Missing',
+  'missing.col.absent': 'No key',
+  'missing.scope.filtered': 'Filtered',
+  'missing.scope.whole': 'Whole',
+  'missing.target.node': 'Node',
+  'missing.target.edge': 'Edge',
+  'missing.reason.unrecorded': 'Unrecorded',
+  'missing.reason.lost': 'Lost',
+  'missing.reason.illegible': 'Illegible',
+  'missing.reason.not-applicable': 'Not applicable',
+  'missing.cell': '{count} ({rate})',
+  'missing.noRate': 'no rate',
+  'graph.section.missing': 'Missing values',
+  'missing.display.note':
+    'Nodes missing a chosen attribute get a dashed outline; edges get a dashed line.',
+  'missing.display.legend':
+    'Dash styles: long dashes mean the chosen attribute is missing. Short dashes mean a value used for size, color, or width is missing.',
+  'missing.filteredOut': 'The filters leave 0 items. The Filtered rows show no rates.',
+  'missing.display.nodes': 'Node attributes',
+  'missing.display.edges': 'Edge attributes',
+  'missing.display.none': 'No attributes to choose from.',
   'workspace.resize': 'Bottom panel height',
   'workspace.resize.hint':
     'Use the up and down arrow keys to change the height (Home for minimum, End for maximum)',

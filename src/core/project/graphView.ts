@@ -1,6 +1,7 @@
 import { DEFAULT_ENCODING, parseEncodingSettings, type EncodingSettings } from '../encode';
 import { DEFAULT_GRAPH_OPTIONS, parseGraphOptions, type GraphOptions } from '../graph';
 /** グラフ画面の保存可能な設定（FR-PJ-01、FR-VG-09/11、NFR-08）。 */
+import { DEFAULT_MISSING_DISPLAY, parseMissingDisplay, type MissingDisplay } from '../missing';
 import type { LayoutKind, LayoutPosition } from '../layout';
 import type { ParseResult } from '../model';
 import { isPlainObject, toNodeId } from '../model';
@@ -16,6 +17,8 @@ export interface GraphViewSettings {
   readonly largeLabelCount: number;
   readonly direction: 'arrow' | 'taper' | 'gradient';
   readonly viewport: { readonly x: number; readonly y: number; readonly zoom: number };
+  /** 欠損を破線で示す属性（FR-VG-12）。無いファイルでは既定（どれも破線にしない）。 */
+  readonly missingDisplay: MissingDisplay;
 }
 /** 未設定時のグラフ表示。位置はWorkerが計算する。 */
 export const DEFAULT_GRAPH_VIEW: GraphViewSettings = {
@@ -28,6 +31,7 @@ export const DEFAULT_GRAPH_VIEW: GraphViewSettings = {
   largeLabelCount: 20,
   direction: 'arrow',
   viewport: { x: 0, y: 0, zoom: 1 },
+  missingDisplay: DEFAULT_MISSING_DISPLAY,
 };
 /**
  * JSONから表示設定を検証して組み立て直す。
@@ -50,6 +54,9 @@ export function parseGraphView(x: unknown): ParseResult<GraphViewSettings> {
     get('graphOptions') === undefined ? DEFAULT_GRAPH_OPTIONS : get('graphOptions'),
   );
   if (!graphOptions.ok) return fail('graphOptions.' + graphOptions.path);
+  const missingDisplay = parseMissingDisplay(get('missingDisplay'));
+  if (!missingDisplay.ok)
+    return fail('missingDisplay' + (missingDisplay.path === '' ? '' : '.' + missingDisplay.path));
   const value = (key: string, fallback: unknown): unknown =>
     get(key) === undefined ? fallback : get(key);
   const layout = value('layout', DEFAULT_GRAPH_VIEW.layout);
@@ -119,6 +126,7 @@ export function parseGraphView(x: unknown): ParseResult<GraphViewSettings> {
       largeLabelCount,
       positions,
       viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
+      missingDisplay: missingDisplay.value,
     },
   };
 }
