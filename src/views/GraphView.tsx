@@ -405,8 +405,14 @@ export function GraphView() {
     zoomAround(factor, canvas.width / 2, canvas.height / 2);
   };
   const choose = (id: string) => {
-    if (id === '') selectionStore.getState().clear();
-    else selectionStore.getState().select({ nodes: [toNodeId(id)] });
+    if (id === '') {
+      selectionStore.getState().clear();
+      return;
+    }
+    selectionStore.getState().select({ nodes: [toNodeId(id)] });
+    // 【なぜ】カードを畳んだ後に別のノードを選んでも閉じたままだと、選んでも反応が無いように見える。
+    //   選び直したら開く（畳むのは「今の選択の詳細を隠す」操作で、以後ずっと隠す設定ではない）。
+    setCardOpen(true);
   };
   // 選択中のノードの名前。表示されていなければ元のデータから引く（選択は消さない）。
   const nodeLabel = (id: NodeId): string =>

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { Icon } from './icons';
 import './ui.css';
 
@@ -8,8 +8,13 @@ interface ChipProps {
   readonly onClick?: () => void;
   /** 項目の中身。利用者の値は `<bdi>` で包んで渡す。 */
   readonly children: ReactNode;
-  /** ボタンの名前を、見える文字と別にするとき。 */
-  readonly label?: string;
+  /**
+   * 押したときに何が起きるかの説明（例: 「左のパネルの一覧を開く」）。`aria-describedby` で読み上げる。
+   *
+   * 【なぜ】ボタンの名前（`aria-label`）にはしない。名前は見える文字と一致させ、音声入力で
+   * 見えている文字を言えば押せるようにするため（WCAG 2.5.3 Label in Name）。
+   */
+  readonly description?: string;
   /** 省略記号で切れたときに全体を出す説明（`title`）。 */
   readonly title?: string;
   /** 項目の ID（フォーカスを移すときなどに使う）。 */
@@ -26,7 +31,8 @@ interface ChipProps {
  * @param props - 中身、押したときの処理、解除の処理
  * @returns チップの要素
  */
-export function Chip({ onClick, children, label, title, id, onRemove }: ChipProps) {
+export function Chip({ onClick, children, description, title, id, onRemove }: ChipProps) {
+  const descriptionId = useId();
   const body = (
     <span className="rl-chip-text" title={title}>
       {children}
@@ -49,10 +55,24 @@ export function Chip({ onClick, children, label, title, id, onRemove }: ChipProp
     );
   }
   if (onClick !== undefined) {
+    // 【なぜ】説明の文はボタンの外に置く。中に置くと、見えない文までボタンの名前に入ってしまう。
     return (
-      <button type="button" className="rl-chip" id={id} aria-label={label} onClick={onClick}>
-        {body}
-      </button>
+      <>
+        <button
+          type="button"
+          className="rl-chip"
+          id={id}
+          aria-describedby={description === undefined ? undefined : descriptionId}
+          onClick={onClick}
+        >
+          {body}
+        </button>
+        {description !== undefined && (
+          <span id={descriptionId} className="visually-hidden">
+            {description}
+          </span>
+        )}
+      </>
     );
   }
   return (

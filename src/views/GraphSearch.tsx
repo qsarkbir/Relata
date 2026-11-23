@@ -72,7 +72,8 @@ export function GraphSearch({ query, onQuery, hits, onPick, formatCount }: Graph
           dir="auto"
           role="combobox"
           aria-expanded={expanded && shown.length > 0}
-          aria-controls={listId}
+          // 【なぜ】一覧を描いていないとき（0 件、閉じている）は、存在しない ID を指さない。
+          aria-controls={expanded && shown.length > 0 ? listId : undefined}
           aria-autocomplete="list"
           aria-activedescendant={expanded && shown.length > 0 ? optionId(activeIndex) : undefined}
           value={query}

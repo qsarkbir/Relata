@@ -100,14 +100,12 @@ export const en = {
   'graph.noNodesHint': 'Check "Applied filters" and "Display rules" in the left panel.',
   'conditions.region': 'Applied conditions (all views)',
   'conditions.filters': 'Filters {count}',
-  'conditions.filtersOpen': 'Filters {count} applied. Open the list in the left panel',
+  'conditions.filtersOpen': 'Opens the list of active filters in the left panel',
   'graph.search.count': '{count} found',
   'graph.search.more': '{count} more. Narrow the search.',
   'conditions.edgeRule': 'Edge rule: {value}',
-  'conditions.edgeRuleOpen':
-    'The edge display rule differs from the default. Open it in the left panel',
-  'conditions.isolatedOpen':
-    'The isolated-node setting differs from the default. Open it in the left panel',
+  'conditions.edgeRuleOpen': 'Differs from the default. Opens the setting in the left panel',
+  'conditions.isolatedOpen': 'Differs from the default. Opens the setting in the left panel',
   'graph.unpin': 'Unpin position',
   'app.documentTitle': 'Relata',
   'app.tagline': 'A network visualization tool for historical research',

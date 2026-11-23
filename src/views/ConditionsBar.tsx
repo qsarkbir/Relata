@@ -62,7 +62,7 @@ export function ConditionsBar() {
           onClick={() => {
             openFilters(APPLIED_LIST_ID);
           }}
-          label={t('conditions.filtersOpen', { count: nf.format(filterCount) })}
+          description={t('conditions.filtersOpen')}
         >
           {filtersText}
         </Chip>
@@ -75,7 +75,7 @@ export function ConditionsBar() {
           onClick={() => {
             openFilters(FILTER_RULES_ID);
           }}
-          label={t('conditions.edgeRuleOpen')}
+          description={t('conditions.edgeRuleOpen')}
           title={edgeRuleText}
         >
           {edgeRuleText}
@@ -86,7 +86,7 @@ export function ConditionsBar() {
           onClick={() => {
             openFilters(FILTER_RULES_ID);
           }}
-          label={t('conditions.isolatedOpen')}
+          description={t('conditions.isolatedOpen')}
           title={isolatedText}
         >
           {isolatedText}

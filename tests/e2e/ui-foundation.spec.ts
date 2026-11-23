@@ -39,9 +39,9 @@ test.describe('日本語の画面', () => {
     // 左のパネルを畳んでも、行から開いて一覧へフォーカスが移る。
     await page.getByRole('button', { name: '絞り込みを畳む' }).click();
     await expect(appliedRegion(page)).toBeHidden();
-    await conditions(page)
-      .getByRole('button', { name: /フィルタ 1/ })
-      .click();
+    const chip = conditions(page).getByRole('button', { name: 'フィルタ 1', exact: true });
+    await expect(chip).toHaveAccessibleDescription('左のパネルの適用中のフィルタの一覧を開きます');
+    await chip.click();
     await expect(appliedRegion(page)).toBeVisible();
     await expect(appliedRegion(page)).toBeFocused();
   });
@@ -83,6 +83,12 @@ test.describe('日本語の画面', () => {
     await page.getByRole('button', { name: '選択中のカードを畳む' }).click();
     await expect(page.getByRole('button', { name: '位置を固定', exact: true })).toBeHidden();
     await expect(figure).toHaveAttribute('data-zoom', zoom ?? '');
+    // 畳んだ後に図の上で別のノードを選ぶと、カードは開き直る（選んでも反応が無いように見せない）。
+    const other = page
+      .locator('.graph-canvas #graph-view-nodes > [data-id]:not([data-id="p6"])')
+      .first();
+    await other.click();
+    await expect(page.getByRole('button', { name: '位置を固定', exact: true })).toBeVisible();
     await page.getByRole('button', { name: '選択を解除' }).click();
     await expect(page.getByRole('region', { name: '選択したノードの詳細' })).toBeHidden();
   });
@@ -107,6 +113,8 @@ test.describe('日本語の画面', () => {
     const input = page.getByLabel('ノードを検索', { exact: true });
     await input.fill('zzzz-none');
     await expect(popup).toContainText('該当するノードがありません');
+    // 一覧を描いていない 0 件のときは、存在しない一覧の ID を指さない。
+    await expect(input).not.toHaveAttribute('aria-controls', /.+/);
     await page.keyboard.press('Escape');
     await expect(popup).toBeHidden();
     await input.fill('');
@@ -139,9 +147,10 @@ test.describe('日本語の画面', () => {
     await expect(conditions(page)).not.toContainText('エッジを表示する条件');
     await page.getByRole('radio', { name: 'どちらかの端が通過したとき' }).check();
     await expect(conditions(page)).toContainText('エッジを表示する条件');
-    await conditions(page)
-      .getByRole('button', { name: /エッジの表示の条件/ })
-      .click();
+    // WCAG 2.5.3: ボタンの名前は見えている文字そのもの。押すと何が起きるかは説明として読む。
+    const chip = conditions(page).getByRole('button', { name: /^エッジを表示する条件/ });
+    await expect(chip).toHaveAccessibleDescription(/左のパネルの該当箇所を開きます/);
+    await chip.click();
     await expect(page.locator('#filter-rules')).toBeFocused();
   });
 });
