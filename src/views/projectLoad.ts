@@ -1,8 +1,8 @@
-import type { GraphViewState } from '../state';
+import type { DisplayState, GraphViewState } from '../state';
 import type { StoreApi } from 'zustand/vanilla';
 import { parseProject } from '../io/project';
 import type { ParseProjectResult } from '../io/project';
-import { applySnapshot, dataStore, filterStore, graphViewStore } from '../state';
+import { applySnapshot, dataStore, displayStore, filterStore, graphViewStore } from '../state';
 import type { DataState, FilterStoreState, UiState } from '../state';
 import { projectNoticeStore } from './projectNotice';
 import type { ProjectNoticeState, ProjectSource } from './projectNotice';
@@ -10,6 +10,7 @@ import type { ProjectNoticeState, ProjectSource } from './projectNotice';
 /** 読み込みの出力先。テストで差し替えられる。 */
 export interface ProjectLoadTargets {
   readonly graph?: StoreApi<GraphViewState>;
+  readonly display?: StoreApi<DisplayState>;
   readonly data: StoreApi<DataState>;
   readonly filter: StoreApi<FilterStoreState>;
   readonly notice: StoreApi<ProjectNoticeState>;
@@ -18,6 +19,7 @@ export interface ProjectLoadTargets {
 const DEFAULT_TARGETS: ProjectLoadTargets = {
   data: dataStore,
   graph: graphViewStore,
+  display: displayStore,
   filter: filterStore,
   notice: projectNoticeStore,
 };
@@ -53,7 +55,7 @@ export function loadProjectText(
     });
     return result;
   }
-  applySnapshot(result.value, targets.data, targets.filter, targets.graph);
+  applySnapshot(result.value, targets.data, targets.filter, targets.graph, targets.display);
   targets.notice.getState().setReport({
     source,
     title: result.value.dataset.meta.title,

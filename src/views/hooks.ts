@@ -2,8 +2,8 @@ import { useCallback } from 'react';
 import { useStore } from 'zustand';
 import { translate } from '../i18n';
 import type { MessageKey, MessageParams } from '../i18n';
-import { dataStore, filterStore, selectionStore, uiStore } from '../state';
-import type { DataState, FilterStoreState, SelectionState, UiState } from '../state';
+import { dataStore, displayStore, filterStore, selectionStore, uiStore } from '../state';
+import type { DataState, DisplayState, FilterStoreState, SelectionState, UiState } from '../state';
 import { projectNoticeStore } from './projectNotice';
 import type { ProjectNoticeState } from './projectNotice';
 
@@ -68,4 +68,14 @@ export function useT(): (key: MessageKey, params?: MessageParams) => string {
  */
 export function useProjectNotice<T>(selector: (s: ProjectNoticeState) => T): T {
   return useStore(projectNoticeStore, selector);
+}
+
+/**
+ * displayStore（表示する暦など、全ビュー共通の表示設定）の一部を購読する。
+ *
+ * @param selector - 取り出す値を選ぶ関数
+ * @returns 選んだ値
+ */
+export function useDisplay<T>(selector: (s: DisplayState) => T): T {
+  return useStore(displayStore, selector);
 }

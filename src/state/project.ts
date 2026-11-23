@@ -6,6 +6,8 @@ import { selectFilterState } from './filterStore';
 
 import type { ProjectView, ProjectParts } from '../core/project';
 import type { GraphViewState } from './graphViewStore';
+import type { DisplayState } from './displayStore';
+import { DEFAULT_CALENDAR_DISPLAY } from '../core/time';
 /** 保存用表示状態の共通型。 */
 export type ProjectSnapshotView = ProjectView;
 /** 保存する中身の共通型。 */
@@ -27,12 +29,14 @@ const VIEW_PROJECTORS: {
  * @param data - dataStore
  * @param filter - filterStore
  * @param graph - 任意のグラフ表示ストア
+ * @param display - 任意の表示設定ストア（暦）
  * @returns 保存する中身。データが無ければ null（保存するものが無い）
  */
 export function takeSnapshot(
   data: StoreApi<DataState>,
   filter: StoreApi<FilterStoreState>,
   graph?: StoreApi<GraphViewState>,
+  display?: StoreApi<DisplayState>,
 ): ProjectSnapshot | null {
   const { dataset, importSettings } = data.getState();
   if (dataset === null) return null;
@@ -44,6 +48,7 @@ export function takeSnapshot(
     view: {
       filter: VIEW_PROJECTORS.filter(f),
       ...(graphView == null ? {} : { graph: graphView }),
+      ...(display === undefined ? {} : { display: { calendar: display.getState().calendar } }),
     },
   };
 }
@@ -58,14 +63,17 @@ export function takeSnapshot(
  * @param data - dataStore
  * @param filter - filterStore
  * @param graph - 任意のグラフ表示ストア
+ * @param display - 任意の表示設定ストア。渡したときだけ暦を入れる（無ければ既定の西暦）
  */
 export function applySnapshot(
   snapshot: ProjectSnapshot,
   data: StoreApi<DataState>,
   filter: StoreApi<FilterStoreState>,
   graph?: StoreApi<GraphViewState>,
+  display?: StoreApi<DisplayState>,
 ): void {
   data.getState().loadDataset(snapshot.dataset, snapshot.importSettings);
   filter.getState().reset(snapshot.view.filter);
   graph?.getState().setView(snapshot.view.graph ?? null);
+  display?.getState().setCalendar(snapshot.view.display?.calendar ?? DEFAULT_CALENDAR_DISPLAY);
 }

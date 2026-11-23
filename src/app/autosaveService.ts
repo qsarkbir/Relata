@@ -1,4 +1,4 @@
-import { dataStore, filterStore, uiStore, graphViewStore } from '../state';
+import { dataStore, displayStore, filterStore, uiStore, graphViewStore } from '../state';
 import { projectNoticeStore } from '../views/projectNotice';
 import type { ProjectNotice } from '../views/projectNotice';
 import { createAutosave } from './autosave';
@@ -21,6 +21,7 @@ const PROBLEM_NOTICE: Readonly<Record<AutosaveProblem, ProjectNotice>> = {
 export const autosave = createAutosave({
   targets: {
     graph: graphViewStore,
+    display: displayStore,
     data: dataStore,
     filter: filterStore,
     notice: projectNoticeStore,

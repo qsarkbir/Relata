@@ -14,3 +14,21 @@ export type {
   TimeSpanParseSuccess,
   TimeSpanParseResult,
 } from './parse';
+export type { CalendarDisplay, DatePrecision, DateParts, CalendarRendering } from './display';
+export {
+  CALENDAR_DISPLAYS,
+  DEFAULT_CALENDAR_DISPLAY,
+  isCalendarDisplay,
+  calendarsOf,
+  inputCalendarOf,
+  jdnToParts,
+  inferPrecision,
+  describeDayRange,
+  describeDay,
+} from './display';
+export type {
+  TimeFilterInputFailureCode,
+  TimeFilterInputFailure,
+  TimeFilterInputResult,
+} from './filterInput';
+export { parseTimeFilterInput } from './filterInput';

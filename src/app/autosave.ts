@@ -109,7 +109,7 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
   const write = async (): Promise<void> => {
     timer = undefined;
     if (stopped) return;
-    const snapshot = takeSnapshot(data, filter, deps.targets.graph);
+    const snapshot = takeSnapshot(data, filter, deps.targets.graph, deps.targets.display);
     if (snapshot === null) return;
     let text: string;
     try {
@@ -186,7 +186,11 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
       const unsubGraph = deps.targets.graph?.subscribe((s, prev) => {
         if (s.view !== prev.view) schedule();
       });
+      const unsubDisplay = deps.targets.display?.subscribe((s, prev) => {
+        if (s.calendar !== prev.calendar) schedule();
+      });
       return () => {
+        unsubDisplay?.();
         unsubGraph?.();
         unsubData();
         unsubFilter();

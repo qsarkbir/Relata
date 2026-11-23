@@ -48,3 +48,6 @@ export {
 } from './history';
 
 export { parseFilterState } from './parse';
+
+export type { TimeSourceDescription, TimeFilterDescription, DayExtent } from './timeSource';
+export { dateAttributes, describeTimeFilter, timeDataExtent } from './timeSource';

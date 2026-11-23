@@ -4,6 +4,7 @@ import type { FilterDef } from '../core/filter';
 import { sampleDataset } from '../core/model/fixtures/sampleDataset';
 import { createDataStore, EMPTY_IMPORT_SETTINGS } from './dataStore';
 import { bindFilterToData, createFilterStore, selectFilterState } from './filterStore';
+import { createDisplayStore } from './displayStore';
 import { applySnapshot, takeSnapshot } from './project';
 
 const f: FilterDef = {
@@ -56,5 +57,20 @@ describe('state/project', () => {
     const snap = takeSnapshot(data, filter);
     expect(snap?.view.filter.filters).toHaveLength(1);
     expect(snap?.importSettings).toBe(EMPTY_IMPORT_SETTINGS);
+  });
+
+  it('FR-TM-09: 表示の暦をスナップショットに入れ、読み込みで戻す。無ければ既定の西暦', () => {
+    const { data, filter } = stores();
+    const display = createDisplayStore('both');
+    data.getState().setDataset(sampleDataset());
+    const snap = takeSnapshot(data, filter, undefined, display);
+    expect(snap?.view.display).toEqual({ calendar: 'both' });
+    const other = createDisplayStore('gregorian');
+    if (snap !== null) applySnapshot(snap, data, filter, undefined, other);
+    expect(other.getState().calendar).toBe('both');
+    // display の無いプロジェクト（古いファイル）は既定の西暦に戻す。
+    const old = takeSnapshot(data, filter);
+    if (old !== null) applySnapshot(old, data, filter, undefined, other);
+    expect(other.getState().calendar).toBe('gregorian');
   });
 });

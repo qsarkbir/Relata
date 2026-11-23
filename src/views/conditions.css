@@ -13,3 +13,15 @@
   font-size: var(--rl-font-sm);
   font-weight: 600;
 }
+
+/* 暦の切り替え。チップと同じ枠の中に、名前と選択欄を並べる。 */
+.conditions-calendar {
+  gap: var(--rl-space-2);
+}
+.conditions-calendar select {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}

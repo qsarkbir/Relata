@@ -32,3 +32,5 @@ export { createLayoutController, layoutController } from './layoutController';
 export type { LayoutController, LayoutOutcome, LayoutRequest } from './layoutController';
 export { bindSelectionToData, createSelectionStore, selectionStore } from './selectionStore';
 export type { SelectionSets, SelectionState } from './selectionStore';
+export { createDisplayStore, displayStore } from './displayStore';
+export type { DisplayState } from './displayStore';
