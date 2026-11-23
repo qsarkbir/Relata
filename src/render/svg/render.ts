@@ -178,7 +178,7 @@ function edgeSvg(e: SceneEdge, index: number, prefix: string): string {
 //
 // 【なぜ】線の見本の破線の間隔と矢じりの大きさは、図のエッジと同じ式（破線は 4 3 と 9 4、矢じりは
 // 長さ max(6, 3w)、半幅 max(3, 1.5w)）にする。凡例と図が食い違うと、読み手が取り違える。
-function legendSwatchSvg(s: SceneLegendItem['swatch']): string[] {
+function legendSwatchSvg(s: SceneLegendItem['swatch'], gradientId: string): string[] {
   switch (s.mark) {
     case 'none':
       return [];
@@ -194,21 +194,44 @@ function legendSwatchSvg(s: SceneLegendItem['swatch']): string[] {
         ),
       ];
     case 'line':
-    case 'arrow': {
+    case 'arrow':
+    case 'taper':
+    case 'gradient': {
       const w = s.lineWidth ?? 1.5;
       const color = safeColor(s.fill, '#999999');
+      const opacity = num(Math.min(1, Math.max(0, s.opacity ?? 1)));
       const left = s.x - s.r;
       const right = s.x + s.r;
+      const y = s.y;
+      if (s.mark === 'taper') {
+        // 先細りの帯: 始点が太く、終点が尖る（図の `ribbon` と同じ形）。
+        const h = w / 2;
+        return [
+          `<polygon points="${num(left)},${num(y - h)} ${num(right)},${num(y)} ${num(left)},${num(y + h)}" fill="${color}" fill-opacity="${opacity}"/>`,
+        ];
+      }
+      // 矢じりの大きさは図のエッジと同じ式: 長さ min(max(6, 3w), 線の長さの半分)、半幅 min(max(3, 1.5w), 長さ × 0.7)。
       const headLen = Math.min(Math.max(6, w * 3), s.r);
-      const headHalf = Math.max(3, w * 1.5);
+      const headHalf = Math.min(Math.max(3, w * 1.5), headLen * 0.7);
       const end = s.mark === 'arrow' ? right - headLen : right;
+      // 矢じりが縮むときの幹の太さも、図と同じ（矢じりの底辺を超えない）。
+      const shaft = s.mark === 'arrow' ? Math.min(w, headHalf * 2) : w;
       const dash = s.dashed ? ` stroke-dasharray="${s.attrMissing === true ? '9 4' : '4 3'}"` : '';
-      const out = [
-        `<path d="M${num(left)} ${num(s.y)} L${num(end)} ${num(s.y)}" fill="none" stroke="${color}" stroke-width="${num(w)}"${dash}/>`,
-      ];
+      const out: string[] = [];
+      let stroke = color;
+      if (s.mark === 'gradient') {
+        // 濃淡の線: 始点が薄く（0.15）、終点が濃い（1）。図の `linearGradient` と同じ。
+        out.push(
+          `<defs><linearGradient id="${gradientId}" gradientUnits="userSpaceOnUse" x1="${num(left)}" y1="${num(y)}" x2="${num(right)}" y2="${num(y)}"><stop offset="0" stop-color="${color}" stop-opacity="0.15"/><stop offset="1" stop-color="${color}" stop-opacity="1"/></linearGradient></defs>`,
+        );
+        stroke = `url(#${gradientId})`;
+      }
+      out.push(
+        `<path d="M${num(left)} ${num(y)} L${num(end)} ${num(y)}" fill="none" stroke="${stroke}" stroke-width="${num(shaft)}" stroke-opacity="${opacity}"${dash}/>`,
+      );
       if (s.mark === 'arrow')
         out.push(
-          `<polygon points="${num(right)},${num(s.y)} ${num(end)},${num(s.y + headHalf)} ${num(end)},${num(s.y - headHalf)}" fill="${color}"/>`,
+          `<polygon points="${num(right)},${num(y)} ${num(end)},${num(y + headHalf)} ${num(end)},${num(y - headHalf)}" fill="${color}" fill-opacity="${opacity}"/>`,
         );
       return out;
     }
@@ -266,9 +289,9 @@ export function renderSvg(scene: Scene, options: RenderSvgOptions = {}): string 
       `<rect x="${num(lg.x)}" y="${num(lg.y)}" width="${num(lg.width)}" height="${num(lg.height)}" fill="#ffffff" stroke="#cccccc"/>`,
     );
     if (lg.title !== undefined) out.push(textSvg(lg.title, ' font-weight="bold"'));
-    for (const it of lg.items) {
+    for (const [index, it] of lg.items.entries()) {
       out.push(
-        ...legendSwatchSvg(it.swatch),
+        ...legendSwatchSvg(it.swatch, `${p}legend-gradient-${String(index)}`),
         textSvg(it.label, it.bold === true ? ' font-weight="bold"' : ''),
       );
     }

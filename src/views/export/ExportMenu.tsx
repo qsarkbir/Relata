@@ -47,6 +47,8 @@ export function ExportMenu() {
   );
 }
 
+// 【TS】判別共用体: `kind` の値で、持つ項目（percent があるか）が決まる。`phase.kind === 'loadingFonts'` と
+//       確かめた分岐では、TypeScript が `phase.percent` を使えると分かる。
 /** 書き出しの実行中の状態。 */
 type Phase =
   | { readonly kind: 'idle' }
@@ -69,10 +71,12 @@ function ExportBody() {
   const [credit, setCredit] = useState(true);
   const [pngScale, setPngScale] = useState<number>(2);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+  // 実行中の書き出し（押したボタンの種類）。押したボタンだけを aria-disabled にして、フォーカスを保つ。
+  const [active, setActive] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   if (dataset === null) return null;
-  const busy = phase.kind !== 'idle';
+  const busy = active !== null;
 
   const choices = (): FigureChoices => ({
     legend,
@@ -81,13 +85,26 @@ function ExportBody() {
     // 【なぜ】フォントはこのサイトのものを読む（外部の CDN には通信しない。NFR-02、D-43）。
     fontBaseUrl: `${import.meta.env.BASE_URL}fonts/`,
     onFontProgress: (fraction) => {
-      setPhase({ kind: 'loadingFonts', percent: Math.round(fraction * 100) });
+      // 【なぜ】進みの読み上げ（role=status）が細かく続くと、読み上げが追いつかず邪魔になる。10% 刻みに間引く。
+      const percent = Math.min(100, Math.floor(fraction * 10) * 10);
+      setPhase((prev) =>
+        prev.kind === 'loadingFonts' && prev.percent === percent
+          ? prev
+          : { kind: 'loadingFonts', percent },
+      );
     },
     onMaking: () => {
       setPhase({ kind: 'making' });
     },
   });
-  const run = async (action: () => FigureOutcome | Promise<FigureOutcome>): Promise<void> => {
+  const run = async (
+    kind: string,
+    action: () => FigureOutcome | Promise<FigureOutcome>,
+  ): Promise<void> => {
+    // 【なぜ】実行中の押下は無視する。ボタンを disabled にすると、押した瞬間にフォーカスが失われるため、
+    // aria-disabled で知らせ、ここで弾く。
+    if (busy) return;
+    setActive(kind);
     setFailed(false);
     setNote(null);
     try {
@@ -103,13 +120,14 @@ function ExportBody() {
       setFailed(true);
     } finally {
       setPhase({ kind: 'idle' });
+      setActive(null);
     }
   };
   const date = localDateString();
   const pdfSize = `${nf.format(Math.round(PDF_FONT_BYTES_ESTIMATE / 1_000_000))} MB`;
   return (
-    <>
-      <fieldset className="export-section" disabled={busy}>
+    <div aria-busy={busy}>
+      <fieldset className="export-section">
         <legend>{t('export.figure')}</legend>
         <p className="hint">{t('export.figure.hint')}</p>
         <label>
@@ -159,10 +177,11 @@ function ExportBody() {
               key={kind}
               type="button"
               disabled={source === null}
+              aria-disabled={active === kind}
               onClick={() => {
                 if (source === null) return;
                 const c = choices();
-                void run(() =>
+                void run(kind, () =>
                   kind === 'svg'
                     ? exportSvgFigure(source, c, date)
                     : kind === 'png'
@@ -185,7 +204,7 @@ function ExportBody() {
               : (note ?? '')}
         </div>
       </fieldset>
-      <fieldset className="export-section" disabled={busy}>
+      <fieldset className="export-section">
         <legend>{t('export.network')}</legend>
         <p className="hint">{t('export.network.hint')}</p>
         <div className="metrics-actions">
@@ -199,9 +218,10 @@ function ExportBody() {
               key={kind}
               type="button"
               disabled={network === null || network.graph.order === 0}
+              aria-disabled={active === kind}
               onClick={() => {
                 if (network === null) return;
-                void run(() => {
+                void run(kind, () => {
                   exportNetworkFile(kind, dataset, network.graph, date);
                   return {};
                 });
@@ -221,6 +241,6 @@ function ExportBody() {
       />
       {result === null && <p className="hint">{t('csv.metricsPending')}</p>}
       <div role="alert">{failed ? t('export.failed') : ''}</div>
-    </>
+    </div>
   );
 }

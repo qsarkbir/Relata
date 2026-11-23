@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyFilters, DEFAULT_FILTER_STATE } from '../../core/filter';
-import { buildGraph } from '../../core/graph';
+import { buildGraph, projectGraph } from '../../core/graph';
 import type { Dataset } from '../../core/model';
 import { gregorianToJdn } from '../../core/time';
 import {
@@ -198,7 +198,8 @@ describe('FR-OUT-05: GEXF', () => {
     expect(root.attrs.version).toBe('1.3');
     expect(graph.attrs.mode).toBe('dynamic');
     expect(graph.attrs.timeformat).toBe('date');
-    expect(graph.attrs.defaultedgetype).toBe('mixed');
+    // GEXF 1.3 には mixed が無いので、混在のときは undirected にして、各エッジの type で向きを書く
+    expect(graph.attrs.defaultedgetype).toBe('undirected');
     expect(find(req(find(root, 'meta')[0]), 'creator')[0]?.text).toBe('Relata');
   });
   it('往復: ノードのラベル・期間、エッジの向き・重み・関係名が戻る', () => {
@@ -230,5 +231,79 @@ describe('FR-OUT-05: GEXF', () => {
     };
     const text = exportGexf(plain, graphOf(plain));
     expect(parseXml(text).children.find((c) => c.name === 'graph')?.attrs.mode).toBe('static');
+  });
+});
+
+describe('FR-OUT-05: 射影したグラフの書き出し', () => {
+  const person = toNodeTypeId('person');
+  const org = toNodeTypeId('org');
+  const d: Dataset = {
+    graphMode: 'undirected',
+    nodeTypes: [
+      { id: person, label: '人物' },
+      { id: org, label: '組織' },
+    ],
+    nodes: [
+      mkNode('p1', 'P1'),
+      mkNode('p2', 'P2'),
+      { ...mkNode('o1', 'O1'), type: org },
+      { ...mkNode('o2', 'O2'), type: org },
+    ],
+    edges: [
+      mkEdge('m1', 'p1', 'o1', {
+        directed: false,
+        relation: 'member',
+        attrs: makeAttrs([['role', { kind: 'value', value: 'x' }]]),
+      }),
+      mkEdge('m2', 'p2', 'o1', { directed: false, relation: 'member' }),
+      mkEdge('m3', 'p1', 'o2', { directed: false }),
+      mkEdge('m4', 'p2', 'o2', { directed: false }),
+    ],
+    schema: [{ key: 'role', label: '役割', appliesTo: 'edge', valueType: 'string' }],
+    meta: { title: '射影' },
+  };
+  const filtered = applyFilters(d, DEFAULT_FILTER_STATE);
+  const base = buildGraph(d, filtered);
+  const graph = projectGraph(base, { target: person, via: org, method: 'shared' }).graph;
+  it('連番の ID を振り、元のエッジの関係名・属性を引き継がず、根拠の仲介ノードを残す', () => {
+    const root = parseXml(exportGraphml(d, graph));
+    const g = req(find(root, 'graph')[0]);
+    const keys = new Map(find(root, 'key').map((k) => [req(k.attrs.id), k.attrs]));
+    const edges = find(g, 'edge');
+    expect(edges).toHaveLength(1);
+    const edge = req(edges[0]);
+    expect(edge.attrs.id).toMatch(/^m\d+$/);
+    const data = Object.fromEntries(
+      find(edge, 'data').map((x) => [req(keys.get(req(x.attrs.key))?.['attr.name']), x.text]),
+    );
+    expect(data.via).toBe('o1;o2');
+    expect(data.relation).toBeUndefined();
+    expect(data.role).toBeUndefined();
+  });
+  it('GEXF でも、射影したエッジに元の関係名（label）を付けない', () => {
+    const root = parseXml(exportGexf(d, graph));
+    const edge = req(find(req(find(req(find(root, 'graph')[0]), 'edges')[0]), 'edge')[0]);
+    expect(edge.attrs.label).toBeUndefined();
+    expect(edge.attrs.id).toMatch(/^m\d+$/);
+  });
+  it('利用者の属性が label、start、end のとき、書き出しの項目と名前が重ならない', () => {
+    const clash: Dataset = {
+      ...dataset(),
+      nodes: dataset().nodes.map((n) => ({
+        ...n,
+        attrs: makeAttrs([
+          ['label', { kind: 'value', value: 'L' }],
+          ['start', { kind: 'value', value: 'S' }],
+        ]),
+      })),
+    };
+    const root = parseXml(exportGraphml(clash, graphOf(clash)));
+    const names = find(root, 'key')
+      .filter((k) => k.attrs.for === 'node')
+      .map((k) => k.attrs['attr.name']);
+    expect(names.filter((n) => n === 'label')).toHaveLength(1);
+    expect(names.filter((n) => n === 'start')).toHaveLength(1);
+    expect(names).toContain('label_attr');
+    expect(names).toContain('start_attr');
   });
 });

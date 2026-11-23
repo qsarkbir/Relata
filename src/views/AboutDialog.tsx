@@ -85,6 +85,7 @@ export function AboutDialog() {
       </table>
       <h3>{t('about.fonts')}</h3>
       <p>{t('about.fonts.note')}</p>
+      <p>{t('about.harfbuzz')}</p>
       <table>
         <thead>
           <tr>

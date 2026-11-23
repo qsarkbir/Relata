@@ -9,7 +9,9 @@
 import type { Dataset } from '../core/model';
 import type { RelataGraph } from '../core/graph';
 import { viridisColor } from '../core/encode';
+import { assertNever } from '../core/util/assertNever';
 import type { EncodingSettings, ScaleLegend } from '../core/encode';
+import { DEFAULT_EDGE_COLOR, DEFAULT_EDGE_OPACITY } from '../render';
 import type {
   DirectedEdgeStyle,
   LegendItemSpec,
@@ -20,6 +22,7 @@ import type {
 import type { MessageKey, MessageParams } from '../i18n';
 import type { EncodingLegends } from './graphEncoding';
 
+// 【TS】`MessageKey` は辞書のキーの文字列リテラルの共用体。存在しないキーを渡すと型エラーになる。
 /** 翻訳関数。 */
 export type Translate = (key: MessageKey, params?: MessageParams) => string;
 
@@ -58,20 +61,41 @@ export const CREDIT_MAX_CHARS = 48;
 /**
  * 長い文字列を、上限の文字数で切って `…` を付ける。
  *
- * 【なぜ】UTF-16 の単位ではなく、コードポイントで数える。サロゲートペアの文字（一部の歴史文字、絵文字）を
- * 途中で切ると、壊れた文字が書き出しに残るため。
+ * 【なぜ】UTF-16 の単位ではなく、書記素で数える（サロゲートペアや結合記号の途中で切ると、壊れた文字が残る）。
  *
  * @param text - 文字列
  * @param max - 上限の文字数
  * @returns 切った文字列。上限以内ならそのまま
  */
 export function clipText(text: string, max: number): string {
-  const chars = Array.from(text);
-  return chars.length <= max ? text : chars.slice(0, max - 1).join('') + '…';
+  // 【なぜ】書記素（利用者が 1 文字と見るまとまり）で数える。コードポイントで切ると、結合記号つきの字
+  // （ḥ = h + U+0323、絵文字の連結など）が土台と離れて、壊れた表記になる。
+  const parts = graphemes(text);
+  return parts.length <= max ? text : parts.slice(0, max - 1).join('') + '…';
+}
+
+// 文字列を書記素に分ける（Intl.Segmenter。言語に依らず UAX #29 の規則）。
+function graphemes(text: string): string[] {
+  return Array.from(
+    new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(text),
+    (x) => x.segment,
+  );
+}
+
+/**
+ * 書記素の数を数える。
+ *
+ * @param text - 文字列
+ * @returns 書記素の数
+ */
+export function graphemeCount(text: string): number {
+  return graphemes(text).length;
 }
 
 const NEUTRAL = '#999999';
-const EDGE_COLOR = '#666666';
+// 【なぜ】線の見本は、図のエッジと同じ色・不透明度にする（凡例と図の見え方を一致させる）。
+const EDGE_COLOR = DEFAULT_EDGE_COLOR;
+const EDGE_OPACITY = DEFAULT_EDGE_OPACITY;
 
 // 大きさ・太さの代表値の項目を作る（値は有効数字 3 桁まで）。
 function tickLabel(value: number, formatNumber: (n: number) => string): string {
@@ -113,41 +137,53 @@ export function buildFigureLegend(input: FigureLegendInput): LegendSpec | undefi
     const typesInGraph = new Set(graph.mapNodes((_, a) => a.type));
     const usedTypes = dataset.nodeTypes.filter((ty) => typesInGraph.has(ty.id));
     const color = legends.color;
-    if (color.kind === 'nodeType') {
-      heading(t('legend.nodeType'));
-      for (const ty of usedTypes)
-        items.push({
-          label: ty.label,
-          fill: encoding.typeColors?.get(ty.id) ?? NEUTRAL,
-          shape: encoding.shapes?.get(ty.id) ?? 'circle',
-        });
-    } else if (color.kind === 'category') {
-      heading(t('legend.nodeColor', { name: attrName(color.attr) }));
-      for (const e of color.legend.entries) items.push({ label: e.key, fill: e.color });
-      if (color.legend.otherCount > 0)
-        items.push({
-          label: t('legend.other', { n: color.legend.otherCount }),
-          fill: color.legend.otherColor,
-        });
-      if (color.legend.missingCount > 0)
-        items.push({ label: t('legend.missingValue'), fill: color.legend.missingColor });
-    } else {
-      heading(t('legend.nodeColor', { name: metricName(color.metric) }));
-      const g = color.legend;
-      if (g.state === 'range') {
-        items.push({
-          label: t('legend.max', { value: tickLabel(g.max, f) }),
-          fill: viridisColor(1),
-        });
-        items.push({ label: tickLabel((g.min + g.max) / 2, f), fill: viridisColor(0.5) });
-        items.push({
-          label: t('legend.min', { value: tickLabel(g.min, f) }),
-          fill: viridisColor(0),
-        });
-      } else if (g.state === 'single') {
-        items.push({ label: tickLabel(g.min, f), fill: viridisColor(0.5) });
+    // 【TS】判別共用体の分岐は switch にし、default で `assertNever` を呼ぶ。色の種類を足したとき、
+    //       ここを直し忘れると型エラーになる（網羅性の検査）。
+    switch (color.kind) {
+      case 'nodeType': {
+        heading(t('legend.nodeType'));
+        for (const ty of usedTypes)
+          items.push({
+            label: ty.label,
+            fill: encoding.typeColors?.get(ty.id) ?? NEUTRAL,
+            shape: encoding.shapes?.get(ty.id) ?? 'circle',
+          });
+        break;
       }
-      if (g.missingCount > 0) items.push({ label: t('legend.missingValue'), fill: g.missingColor });
+      case 'category': {
+        heading(t('legend.nodeColor', { name: attrName(color.attr) }));
+        for (const e of color.legend.entries) items.push({ label: e.key, fill: e.color });
+        if (color.legend.otherCount > 0)
+          items.push({
+            label: t('legend.other', { n: color.legend.otherCount }),
+            fill: color.legend.otherColor,
+          });
+        if (color.legend.missingCount > 0)
+          items.push({ label: t('legend.missingValue'), fill: color.legend.missingColor });
+        break;
+      }
+      case 'gradient': {
+        heading(t('legend.nodeColor', { name: metricName(color.metric) }));
+        const g = color.legend;
+        if (g.state === 'range') {
+          items.push({
+            label: t('legend.max', { value: tickLabel(g.max, f) }),
+            fill: viridisColor(1),
+          });
+          items.push({ label: tickLabel((g.min + g.max) / 2, f), fill: viridisColor(0.5) });
+          items.push({
+            label: t('legend.min', { value: tickLabel(g.min, f) }),
+            fill: viridisColor(0),
+          });
+        } else if (g.state === 'single') {
+          items.push({ label: tickLabel(g.min, f), fill: viridisColor(0.5) });
+        }
+        if (g.missingCount > 0)
+          items.push({ label: t('legend.missingValue'), fill: g.missingColor });
+        break;
+      }
+      default:
+        assertNever(color, 'EncodingLegends.color');
     }
     // 色を型以外にしたとき、形は型を表す。形で型を見分けられるよう、型の一覧を別に出す。
     if (
@@ -179,6 +215,7 @@ export function buildFigureLegend(input: FigureLegendInput): LegendSpec | undefi
         items.push({
           label: tickLabel(tick.value, f),
           fill: EDGE_COLOR,
+          opacity: EDGE_OPACITY,
           mark: 'line',
           lineWidth: tick.size,
         });
@@ -193,25 +230,21 @@ export function buildFigureLegend(input: FigureLegendInput): LegendSpec | undefi
         items.push({
           label: t('legend.undirected'),
           fill: EDGE_COLOR,
+          opacity: EDGE_OPACITY,
           mark: 'line',
           lineWidth: 1.5,
         });
       if (hasDirected) {
-        if (input.directedStyle === 'arrow')
-          items.push({
-            label: t('legend.directed.arrow'),
-            fill: EDGE_COLOR,
-            mark: 'arrow',
-            lineWidth: 1.5,
-          });
-        else
-          text(
-            t(
-              input.directedStyle === 'taper'
-                ? 'legend.directed.taper'
-                : 'legend.directed.gradient',
-            ),
-          );
+        // 向きの表し方（arrow、taper、gradient）ごとに、図と同じ形の見本を出す。
+        const style = input.directedStyle;
+        items.push({
+          label: t(`legend.directed.${style}`),
+          fill: EDGE_COLOR,
+          opacity: EDGE_OPACITY,
+          mark: style,
+          // 先細りは太さが見えるよう、やや太い見本にする。
+          lineWidth: style === 'taper' ? 5 : 1.5,
+        });
       }
     }
 
@@ -235,6 +268,7 @@ export function buildFigureLegend(input: FigureLegendInput): LegendSpec | undefi
         items.push({
           label: t('legend.missing.edgeValue'),
           fill: EDGE_COLOR,
+          opacity: EDGE_OPACITY,
           mark: 'line',
           lineWidth: 1.5,
           dashed: true,
@@ -243,6 +277,7 @@ export function buildFigureLegend(input: FigureLegendInput): LegendSpec | undefi
         items.push({
           label: t('legend.missing.edgeAttr'),
           fill: EDGE_COLOR,
+          opacity: EDGE_OPACITY,
           mark: 'line',
           lineWidth: 1.5,
           dashed: true,
@@ -256,8 +291,14 @@ export function buildFigureLegend(input: FigureLegendInput): LegendSpec | undefi
   if (credit !== undefined) {
     if (items.length > 0) heading(t('legend.credit'));
     text(t('legend.credit.data', { title: clipText(credit.title, CREDIT_MAX_CHARS) }));
-    if (credit.source !== undefined && credit.source !== '')
-      text(t('legend.credit.source', { source: clipText(credit.source, CREDIT_MAX_CHARS) }));
+    // 【なぜ】出典の欄は短い引用だけを載せる。`meta.source` には長い説明文（取得元の経緯など）が入ることがあり、
+    // 48 字で切ると意味が途切れるため、長いときは省く（データ名と作成日は必ず載せる）。
+    if (
+      credit.source !== undefined &&
+      credit.source !== '' &&
+      graphemeCount(credit.source) <= CREDIT_MAX_CHARS
+    )
+      text(t('legend.credit.source', { source: credit.source }));
     text(t('legend.credit.date', { date: credit.date }));
     text(t('legend.credit.tool'));
   }

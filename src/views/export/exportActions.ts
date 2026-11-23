@@ -52,6 +52,8 @@ export function exportBaseName(title: string, date: string): string {
 }
 
 /** 図の書き出しの選択。 */
+// 【TS】`foo?: T` は省略できる項目。`exactOptionalPropertyTypes` が有効なので、「無い」ことと
+//       「undefined を入れる」ことは区別される（呼ぶ側は項目そのものを省く）。
 export interface FigureChoices {
   readonly legend: boolean;
   readonly credit: boolean;

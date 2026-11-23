@@ -20,7 +20,7 @@ function pngSize(bytes: Buffer): { width: number; height: number } {
 }
 
 test.describe('T2-08: 書き出し', () => {
-  test('保存のダイアログはプロジェクトだけ。図の書き出しは「書き出し」にある（R-22）', async ({
+  test('FR-OUT-01 / FR-PJ-01: 保存のダイアログはプロジェクトだけ。図・グラフ・CSV の書き出しは「書き出し」にある', async ({
     page,
   }) => {
     await startApp(page);
@@ -120,11 +120,12 @@ test.describe('T2-08: 書き出し', () => {
     expect(first.name).toMatch(/\.pdf$/);
     expect(first.bytes.subarray(0, 5).toString('latin1')).toBe('%PDF-');
     expect(first.bytes.subarray(-6).toString('latin1')).toContain('%%EOF');
+    expect(fonts.filter((f) => f.endsWith('NotoSans-Regular.ttf'))).toHaveLength(1);
     expect(fonts.filter((f) => f.endsWith('NotoSansJP-Regular.ttf'))).toHaveLength(1);
     expect(fonts.filter((f) => f.endsWith('NotoNaskhArabic-Regular.ttf'))).toHaveLength(1);
     // 2 回目は読み込み直さない。
     await download(page, 'PDF');
-    expect(fonts).toHaveLength(2);
+    expect(fonts).toHaveLength(3);
     expect([...hosts]).toEqual(['localhost:' + (process.env.RELATA_E2E_PORT ?? '4173')]);
   });
 

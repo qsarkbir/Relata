@@ -18,6 +18,6 @@ export type {
   LabelMode,
   BuildSceneOptions,
 } from './build';
-export { buildScene, shapeExtent } from './build';
+export { buildScene, shapeExtent, DEFAULT_EDGE_COLOR, DEFAULT_EDGE_OPACITY } from './build';
 
 export type { DirectedEdgeStyle, EdgePoint } from '../edges/geometry';

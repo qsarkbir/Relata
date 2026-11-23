@@ -5,6 +5,7 @@ import { buildNetworkTable } from './network';
 import type { NetworkColumn, NetworkTable, NetworkValue } from './network';
 import { xmlAttr } from './xml';
 
+// 【TS】`as const satisfies Record<K, string>`（graphml.ts と同じ）: 列の型ごとの GEXF の型名。
 const GEXF_TYPE = {
   string: 'string',
   double: 'double',
@@ -50,7 +51,10 @@ export function gexfFromTable(table: NetworkTable, options: GexfOptions = {}): s
   );
   const mode = table.hasTime ? 'dynamic' : 'static';
   const extra = table.hasTime ? ' timeformat="date"' : '';
-  out.push(`  <graph defaultedgetype="${table.edgeDefault}" mode="${mode}"${extra}>`);
+  // 【なぜ】GEXF 1.3 の `defaultedgetype` は directed、undirected、mutual の 3 つで、`mixed` は無い。
+  // 有向と無向が混在するときは undirected とし、各エッジの `type` で向きを書く。
+  const defaultEdgeType = table.edgeDefault === 'directed' ? 'directed' : 'undirected';
+  out.push(`  <graph defaultedgetype="${defaultEdgeType}" mode="${mode}"${extra}>`);
   // エッジの weight と label は GEXF の標準の項目なので、属性の列からは除く。
   const edgeColumns = table.edgeColumns.filter((c) => c.name !== 'weight' && c.name !== 'relation');
   const declare = (cls: 'node' | 'edge', cols: readonly NetworkColumn[]): void => {

@@ -36,6 +36,16 @@ export interface PdfSceneOptions {
   readonly outline: TextOutliner;
 }
 
+/** 字形 1 つの図形（Form XObject）。ページから `/名前 Do` で置く。 */
+export interface PdfForm {
+  /** リソース名（`F0`、`F1`…）。 */
+  readonly name: string;
+  /** 範囲 `[x0 y0 x1 y1]`（字形の座標）。 */
+  readonly bbox: readonly [number, number, number, number];
+  /** 図形の内容（パスと塗りの命令。ASCII だけ）。 */
+  readonly stream: string;
+}
+
 /** ページの内容と、描画の状態の一覧。 */
 export interface PdfContent {
   /** ページの幅と高さ（pt）。 */
@@ -49,6 +59,8 @@ export interface PdfContent {
     readonly stroke: number;
     readonly fill: number;
   }[];
+  /** 字形の図形。同じ字形（フォントと字形番号、太字かどうか）は 1 つだけ作る。 */
+  readonly forms: readonly PdfForm[];
 }
 
 const fmt = (v: number): string => {
@@ -57,26 +69,78 @@ const fmt = (v: number): string => {
   return s === '-0' ? '0' : s;
 };
 
+// 倍率（フォントの座標 → px。0.01 前後）は、3 桁に丸めると精度が足りない。有効数字 6 桁を残す。
+const fmtScale = (v: number): string => v.toFixed(7).replace(/0+$/, '').replace(/\.$/, '');
+
 function rgb(color: string, fallback: string): string {
   const hex = safeColor(color, fallback);
   const n = (i: number): string => fmt(parseInt(hex.slice(1 + i * 2, 3 + i * 2), 16) / 255);
   return `${n(0)} ${n(1)} ${n(2)}`;
 }
 
+// パスの命令を、PDF のパス描画の行にする。
+function pathLines(commands: readonly (PathCommand | OutlineCommand)[]): string[] {
+  const out: string[] = [];
+  let cx = 0;
+  let cy = 0;
+  for (const c of commands) {
+    switch (c.type) {
+      case 'M':
+        out.push(`${fmt(c.x)} ${fmt(c.y)} m`);
+        cx = c.x;
+        cy = c.y;
+        break;
+      case 'L':
+        out.push(`${fmt(c.x)} ${fmt(c.y)} l`);
+        cx = c.x;
+        cy = c.y;
+        break;
+      case 'Q':
+        // 【なぜ】PDF のパスには 2 次ベジェが無い。3 次に厳密に変換する（制御点を 2/3 だけ寄せる）。
+        out.push(
+          `${fmt(cx + ((c.cx - cx) * 2) / 3)} ${fmt(cy + ((c.cy - cy) * 2) / 3)} ` +
+            `${fmt(c.x + ((c.cx - c.x) * 2) / 3)} ${fmt(c.y + ((c.cy - c.y) * 2) / 3)} ` +
+            `${fmt(c.x)} ${fmt(c.y)} c`,
+        );
+        cx = c.x;
+        cy = c.y;
+        break;
+      case 'C':
+        out.push(
+          `${fmt(c.c1x)} ${fmt(c.c1y)} ${fmt(c.c2x)} ${fmt(c.c2y)} ${fmt(c.x)} ${fmt(c.y)} c`,
+        );
+        cx = c.x;
+        cy = c.y;
+        break;
+      case 'Z':
+        out.push('h');
+        break;
+      default:
+        assertNever(c, 'PathCommand | OutlineCommand');
+    }
+  }
+  return out;
+}
+
 /** コンテンツストリームを組み立てる小さな書き手。 */
+// 【TS】`class` は、状態（行の一覧）と操作をまとめる。`private readonly` の項目は、クラスの外から見えず、
+//       代入もできない（内部の辞書を外から壊されないため）。
 class Writer {
   readonly lines: string[] = [];
   private readonly states = new Map<string, number>();
   readonly list: { name: string; stroke: number; fill: number }[] = [];
+  private readonly formNames = new Map<string, string>();
+  readonly formList: PdfForm[] = [];
 
   op(s: string): void {
     this.lines.push(s);
   }
 
   /**
-   * 透明度の状態を選ぶ。1 と 1 のときは何もしない（既定）。
-   * @param stroke
-   * @param fill
+   * 透明度の状態を選ぶ。
+   *
+   * @param stroke - 線の不透明度（0 から 1。範囲外は丸める）
+   * @param fill - 塗りの不透明度（0 から 1。範囲外は丸める）
    */
   alpha(stroke: number, fill: number): void {
     const s = Math.min(1, Math.max(0, stroke));
@@ -92,44 +156,49 @@ class Writer {
   }
 
   path(commands: readonly (PathCommand | OutlineCommand)[]): void {
-    let cx = 0;
-    let cy = 0;
-    for (const c of commands) {
-      switch (c.type) {
-        case 'M':
-          this.op(`${fmt(c.x)} ${fmt(c.y)} m`);
-          cx = c.x;
-          cy = c.y;
-          break;
-        case 'L':
-          this.op(`${fmt(c.x)} ${fmt(c.y)} l`);
-          cx = c.x;
-          cy = c.y;
-          break;
-        case 'Q':
-          // 【なぜ】PDF のパスには 2 次ベジェが無い。3 次に厳密に変換する（制御点を 2/3 だけ寄せる）。
-          this.op(
-            `${fmt(cx + ((c.cx - cx) * 2) / 3)} ${fmt(cy + ((c.cy - cy) * 2) / 3)} ` +
-              `${fmt(c.x + ((c.cx - c.x) * 2) / 3)} ${fmt(c.y + ((c.cy - c.y) * 2) / 3)} ` +
-              `${fmt(c.x)} ${fmt(c.y)} c`,
-          );
-          cx = c.x;
-          cy = c.y;
-          break;
-        case 'C':
-          this.op(
-            `${fmt(c.c1x)} ${fmt(c.c1y)} ${fmt(c.c2x)} ${fmt(c.c2y)} ${fmt(c.x)} ${fmt(c.y)} c`,
-          );
-          cx = c.x;
-          cy = c.y;
-          break;
-        case 'Z':
-          this.op('h');
-          break;
-        default:
-          assertNever(c, 'PathCommand | OutlineCommand');
+    this.lines.push(...pathLines(commands));
+  }
+
+  /**
+   * 字形の図形を使う（初めてなら定義する）。
+   *
+   * @param id - 字形の識別子（フォントと字形番号）
+   * @param commands - 輪郭（フォントの座標）
+   * @param bold - 太字（塗りに加えて輪郭線も引く）か
+   * @returns リソース名
+   */
+  form(id: string, commands: readonly OutlineCommand[], bold: boolean): string {
+    const key = `${id}${bold ? ':b' : ''}`;
+    let name = this.formNames.get(key);
+    if (name === undefined) {
+      name = `F${String(this.formList.length)}`;
+      this.formNames.set(key, name);
+      let x0 = Infinity;
+      let y0 = Infinity;
+      let x1 = -Infinity;
+      let y1 = -Infinity;
+      for (const c of commands) {
+        if (c.type === 'Z') continue;
+        const xs = c.type === 'Q' ? [c.cx, c.x] : c.type === 'C' ? [c.c1x, c.c2x, c.x] : [c.x];
+        const ys = c.type === 'Q' ? [c.cy, c.y] : c.type === 'C' ? [c.c1y, c.c2y, c.y] : [c.y];
+        for (const v of xs) {
+          x0 = Math.min(x0, v);
+          x1 = Math.max(x1, v);
+        }
+        for (const v of ys) {
+          y0 = Math.min(y0, v);
+          y1 = Math.max(y1, v);
+        }
       }
+      // 太字の輪郭線の幅の分だけ、範囲を広げる。
+      const pad = bold ? 60 : 1;
+      this.formList.push({
+        name,
+        bbox: [x0 - pad, y0 - pad, x1 + pad, y1 + pad],
+        stream: [...pathLines(commands), bold ? 'B' : 'f'].join('\n') + '\n',
+      });
     }
+    return name;
   }
 
   polygon(points: readonly { readonly x: number; readonly y: number }[]): void {
@@ -263,6 +332,8 @@ function drawEdge(w: Writer, e: SceneEdge): void {
     const ax = g.end.x - g.start.x;
     const ay = g.end.y - g.start.y;
     const len2 = ax * ax + ay * ay || 1;
+    // 【なぜ】区間の継ぎ目に隙間ができないよう、線端を丸く（`1 J`）する。
+    w.op('1 J');
     const pts = flatten(e.path, 12);
     for (let i = 1; i < pts.length; i++) {
       const a = pts[i - 1];
@@ -296,33 +367,17 @@ function drawText(w: Writer, label: SceneLabel, outline: TextOutliner, bold: boo
   const run = outline(label.text, label.fontSize, label.direction);
   // 【なぜ】anchor は x が文字列のどちらの端か（物理的な向き）。右端なら、幅の分だけ左へずらす。
   const left = label.anchor === 'left' ? label.x : label.x - run.width;
-  const moved = run.commands.map((c): OutlineCommand => {
-    switch (c.type) {
-      case 'M':
-      case 'L':
-        return { ...c, x: c.x + left, y: c.y + label.y };
-      case 'Q':
-        return { ...c, cx: c.cx + left, cy: c.cy + label.y, x: c.x + left, y: c.y + label.y };
-      case 'C':
-        return {
-          ...c,
-          c1x: c.c1x + left,
-          c1y: c.c1y + label.y,
-          c2x: c.c2x + left,
-          c2y: c.c2y + label.y,
-          x: c.x + left,
-          y: c.y + label.y,
-        };
-      case 'Z':
-        return c;
-      default:
-        return assertNever(c, 'OutlineCommand');
-    }
-  });
-  if (moved.length === 0) return;
-  w.path(moved);
-  // 【なぜ】太字は、同じ色で細く輪郭を描き足して作る（太字のフォントを別に読み込まない）。
-  w.op(bold ? 'B' : 'f');
+  for (const g of run.glyphs) {
+    const name = w.form(g.id, g.commands, bold);
+    const x = left + g.x;
+    const y = label.y + g.y;
+    // 【なぜ】太字は、同じ色で細く輪郭を描き足して作る（太字のフォントを別に読み込まない）。
+    // 線幅は、行列で倍率が掛かった後の値になるので、字形の座標での幅（文字の大きさの 3.5%）に直して指定する。
+    const strokeWidth = bold ? ` ${fmt((label.fontSize * 0.035) / g.scale)} w` : '';
+    w.op(
+      `q ${fmtScale(g.scale)} 0 0 ${fmtScale(g.scale)} ${fmt(x)} ${fmt(y)} cm${strokeWidth} /${name} Do Q`,
+    );
+  }
 }
 
 function drawLegendSwatch(w: Writer, s: SceneLegendItem['swatch']): void {
@@ -339,20 +394,51 @@ function drawLegendSwatch(w: Writer, s: SceneLegendItem['swatch']): void {
       w.op('Q');
       return;
     case 'line':
-    case 'arrow': {
+    case 'arrow':
+    case 'taper':
+    case 'gradient': {
       const lw = s.lineWidth ?? 1.5;
+      const opacity = Math.min(1, Math.max(0, s.opacity ?? 1));
       const left = s.x - s.r;
       const right = s.x + s.r;
+      if (s.mark === 'taper') {
+        w.op('q');
+        w.alpha(1, opacity);
+        w.op(`${color} rg`);
+        w.polygon([
+          { x: left, y: s.y - lw / 2 },
+          { x: right, y: s.y },
+          { x: left, y: s.y + lw / 2 },
+        ]);
+        w.op('f');
+        w.op('Q');
+        return;
+      }
+      // 矢じりの大きさと、矢じりに合わせた幹の太さは、図のエッジと同じ式（svg/render.ts の `legendSwatchSvg` と同じ）。
       const headLen = Math.min(Math.max(6, lw * 3), s.r);
-      const headHalf = Math.max(3, lw * 1.5);
+      const headHalf = Math.min(Math.max(3, lw * 1.5), headLen * 0.7);
       const end = s.mark === 'arrow' ? right - headLen : right;
+      const shaft = s.mark === 'arrow' ? Math.min(lw, headHalf * 2) : lw;
       w.op('q');
-      w.op(`${color} RG ${fmt(lw)} w`);
+      w.op(`${color} RG ${fmt(shaft)} w`);
       if (s.dashed) setDash(w, true, s.attrMissing === true ? '9 4' : '4 3');
-      w.op(`${fmt(left)} ${fmt(s.y)} m ${fmt(end)} ${fmt(s.y)} l S`);
+      if (s.mark === 'gradient') {
+        // 濃淡の線: 区間ごとに透明度を 0.15 から 1 へ変える（エッジの濃淡と同じ方法）。
+        const n = 12;
+        for (let i = 0; i < n; i++) {
+          const a = left + ((end - left) * i) / n;
+          const b = left + ((end - left) * (i + 1)) / n;
+          w.alpha(Math.round((0.15 + (0.85 * (i + 0.5)) / n) * opacity * 16) / 16, 1);
+          w.op(`${fmt(a)} ${fmt(s.y)} m ${fmt(b)} ${fmt(s.y)} l S`);
+        }
+      } else {
+        w.alpha(opacity, 1);
+        w.op(`${fmt(left)} ${fmt(s.y)} m ${fmt(end)} ${fmt(s.y)} l S`);
+      }
       w.op('Q');
       if (s.mark === 'arrow') {
         w.op('q');
+        w.alpha(1, opacity);
         w.op(`${color} rg`);
         w.polygon([
           { x: right, y: s.y },
@@ -411,12 +497,10 @@ export function renderPdfContent(scene: Scene, options: PdfSceneOptions): PdfCon
     heightPt,
     stream: w.lines.join('\n') + '\n',
     graphicsStates: w.list,
+    forms: w.formList,
   };
 }
 
 function boldText(w: Writer, label: SceneLabel, outline: TextOutliner): void {
-  w.op('q');
-  w.op(`${fmt(label.fontSize * 0.035)} w`);
   drawText(w, label, outline, true);
-  w.op('Q');
 }

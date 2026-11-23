@@ -28,7 +28,7 @@ export interface FontInfo {
   readonly name: string;
   readonly license: string;
   /** 用途。 */
-  readonly script: 'japanese' | 'arabic';
+  readonly script: 'latin' | 'japanese' | 'arabic';
   /** 配布している場所（`public/fonts/` 以下のファイル名）。 */
   readonly file: string;
   /** ライセンス全文のファイル名（`public/fonts/` 以下）。 */
@@ -44,6 +44,15 @@ export interface FontInfo {
  * `libraries.test.ts` が、ファイルの存在と、ライセンス全文の中の著作権表示との一致を確かめる。
  */
 export const FONTS: readonly FontInfo[] = [
+  {
+    name: 'Noto Sans',
+    license: 'OFL-1.1',
+    script: 'latin',
+    file: 'NotoSans-Regular.ttf',
+    licenseFile: 'OFL-NotoSans.txt',
+    copyright:
+      'Copyright 2022 The Noto Project Authors (https://github.com/notofonts/latin-greek-cyrillic)',
+  },
   {
     name: 'Noto Sans JP',
     license: 'OFL-1.1',

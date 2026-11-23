@@ -10,14 +10,21 @@ import type { TextOutliner } from './outline';
 import { PX_TO_PT, renderPdfContent } from './scenePdf';
 
 // 【なぜ】フォントを使わない代役。1 文字 = 幅 fontSize の四角形を返す（整形の中身は io のテストで確かめる）。
+const square = [
+  { type: 'M' as const, x: 0, y: 0 },
+  { type: 'L' as const, x: 1, y: 0 },
+  { type: 'L' as const, x: 1, y: -1 },
+  { type: 'Z' as const },
+];
 const boxes: TextOutliner = (text, size) => ({
   width: Array.from(text).length * size,
-  commands: Array.from(text).flatMap((_, i) => [
-    { type: 'M' as const, x: i * size, y: 0 },
-    { type: 'L' as const, x: i * size + size, y: 0 },
-    { type: 'L' as const, x: i * size + size, y: -size },
-    { type: 'Z' as const },
-  ]),
+  glyphs: Array.from(text).map((_, i) => ({
+    id: 'box',
+    commands: square,
+    x: i * size,
+    y: 0,
+    scale: size,
+  })),
 });
 
 const type = toNodeTypeId('t');
@@ -103,9 +110,11 @@ describe('FR-OUT-04: PDF の部品', () => {
     const c = renderPdfContent(scene, { outline: boxes });
     const width = Array.from(label.text).length * label.fontSize;
     const left = label.x - width;
-    // 輪郭の最初の点（M）が、左端の x とベースラインの y にある
+    // 最初の字形の置き場所（倍率 = 文字の大きさ）が、左端の x とベースラインの y にある
+    const x = String(Math.round(left * 1000) / 1000);
+    const y = String(Math.round(label.y * 1000) / 1000);
     expect(c.stream).toContain(
-      `${String(Math.round(left * 1000) / 1000)} ${String(Math.round(label.y * 1000) / 1000)} m`,
+      `q ${String(label.fontSize)} 0 0 ${String(label.fontSize)} ${x} ${y} cm /F0 Do Q`,
     );
   });
   it('凡例の見本: 矢印は線と塗りの多角形、線の破線は 4 3 と 9 4。SVG も同じ', () => {
@@ -135,7 +144,7 @@ describe('FR-OUT-04: PDF の部品', () => {
     const legend = scene.legend;
     const arrow = legend?.items[0]?.swatch;
     expect(arrow).toMatchObject({ mark: 'arrow', lineWidth: 2 });
-    expect(svg).toMatch(/<polygon points="[^"]+" fill="#666666"\/>/);
+    expect(svg).toMatch(/<polygon points="[^"]+" fill="#666666" fill-opacity="1"\/>/);
   });
   it('PDF のファイル: xref の位置が正しく、圧縮の関数を渡すと FlateDecode になる', async () => {
     const scene = buildScene(graph(), positions, {}, {});
@@ -150,5 +159,76 @@ describe('FR-OUT-04: PDF の部品', () => {
     expect(Array.from(packed, (b) => String.fromCharCode(b)).join('')).toContain(
       '/Filter /FlateDecode',
     );
+  });
+  it('字形の図形（Form XObject）は、同じ字形を 1 つだけ定義して何度も置く', async () => {
+    const scene = buildScene(graph(), positions, {}, {});
+    const content = renderPdfContent(scene, { outline: boxes });
+    expect(content.forms).toHaveLength(1);
+    expect(content.forms[0]?.stream).toBe('0 0 m\n1 0 l\n1 -1 l\nh\nf\n');
+    const placed = content.stream.match(/\/F0 Do/g)?.length ?? 0;
+    expect(placed).toBe(scene.labels.reduce((n, l) => n + Array.from(l.text).length, 0));
+    const bytes = await buildPdf(content);
+    const text = Array.from(bytes, (b) => String.fromCharCode(b)).join('');
+    expect(text).toContain('/XObject << /F0 6 0 R >>');
+    expect(text).toContain('/Subtype /Form');
+    // xref の位置が、追加したオブジェクトにも合う
+    const xref = Number(/startxref\n(\d+)/.exec(text)?.[1]);
+    const entries = [...text.slice(xref).matchAll(/(\d{10}) 00000 n /g)].map((m) => Number(m[1]));
+    expect(entries).toHaveLength(6);
+    expect(text.slice(entries[5], (entries[5] ?? 0) + 8)).toBe('6 0 obj\n');
+  });
+  it('太字の字形は別の図形（塗りと輪郭）で、線幅は字形の座標に直して指定する', () => {
+    const scene = buildScene(
+      graph(),
+      positions,
+      {},
+      {
+        legend: { title: 'T', items: [{ label: 'x', fill: '#000000' }] },
+      },
+    );
+    const content = renderPdfContent(scene, { outline: boxes });
+    expect(content.forms.some((f) => f.stream.endsWith('B\n'))).toBe(true);
+    expect(content.stream).toMatch(/cm [0-9.]+ w \/F1 Do Q/);
+  });
+  it('凡例の先細り（帯）と濃淡の見本は、SVG と PDF の両方に出る。濃淡は 0.15 から 1', () => {
+    const scene = buildScene(
+      graph(),
+      positions,
+      {},
+      {
+        legend: {
+          items: [
+            { label: '先細り', fill: '#999999', mark: 'taper', lineWidth: 5, opacity: 0.6 },
+            { label: '濃淡', fill: '#999999', mark: 'gradient', opacity: 0.6 },
+          ],
+        },
+      },
+    );
+    const svg = renderSvg(scene);
+    expect(svg).toContain('fill-opacity="0.6"');
+    expect(svg).toContain('id="legend-gradient-1"');
+    expect(svg).toContain('stop-opacity="0.15"');
+    expect(svg).toContain('stroke="url(#legend-gradient-1)"');
+    const c = renderPdfContent(scene, { outline: boxes });
+    expect(c.stream).not.toMatch(/NaN|Infinity/);
+    // 濃淡の見本は 12 区間の線、先細りは塗りの三角形
+    expect(c.graphicsStates.length).toBeGreaterThan(5);
+  });
+  it('凡例の矢じりの半幅は、図のエッジと同じく、長さの 0.7 倍を超えない', () => {
+    const scene = buildScene(
+      graph(),
+      positions,
+      {},
+      {
+        legend: { items: [{ label: '太い矢印', fill: '#999999', mark: 'arrow', lineWidth: 8 }] },
+      },
+    );
+    // 線の長さの半分 14 より、長さ min(max(6, 24), 14) = 14、半幅 min(max(3, 12), 9.8) = 9.8
+    const svg = renderSvg(scene);
+    expect(svg).toMatch(/,[0-9.]+ [0-9.]+,([0-9.]+) [0-9.]+,/);
+    const swatch = scene.legend?.items[0]?.swatch;
+    const half = Math.min(Math.max(3, 8 * 1.5), Math.min(Math.max(6, 24), swatch?.r ?? 0) * 0.7);
+    expect(half).toBeCloseTo(9.8, 9);
+    expect(svg).toContain(`${String(Math.round(((swatch?.y ?? 0) + half) * 1000) / 1000)} `);
   });
 });

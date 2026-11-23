@@ -33,6 +33,7 @@ export interface FigureSource {
   readonly build: (request: FigureRequest) => SvgExport;
 }
 
+// 【TS】`Set<() => void>` は、引数も戻り値も無い関数の集合。変化を知らせる購読者を持つ。
 let current: FigureSource | null = null;
 const listeners = new Set<() => void>();
 

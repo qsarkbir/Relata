@@ -63,8 +63,10 @@ export interface LegendItemSpec {
   readonly attrMissing?: boolean;
   /** 見本の種類。省略は `node`。`line`、`arrow` は線、`none` は文字だけの行。 */
   readonly mark?: LegendMark;
-  /** `line`、`arrow` の線の太さ（px）。省略は既定のエッジの太さ。 */
+  /** 線の見本（`line`、`arrow`、`taper`、`gradient`）の太さ（px）。省略は既定のエッジの太さ。 */
   readonly lineWidth?: number;
+  /** 線の見本の不透明度（0 から 1）。省略は 1。 */
+  readonly opacity?: number;
   /** 見出し（太字）にするか。 */
   readonly bold?: boolean;
 }
@@ -120,7 +122,10 @@ export interface BuildSceneOptions {
 
 const DEFAULT_RADIUS = 6;
 const DEFAULT_EDGE_WIDTH = 1.5;
-const DEFAULT_EDGE_COLOR = '#999999';
+/** エッジの既定の色。凡例の線の見本も、これを使って図と一致させる。 */
+export const DEFAULT_EDGE_COLOR = '#999999';
+/** エッジの既定の不透明度。 */
+export const DEFAULT_EDGE_OPACITY = 0.6;
 const NODE_STROKE = '#333333';
 const SELECTED_STROKE = '#000000';
 const LABEL_GAP = 4;
@@ -322,7 +327,7 @@ export function buildScene(
       ...geometry,
       width: geometry.shaftWidth ?? width,
       color: DEFAULT_EDGE_COLOR,
-      opacity: 0.6,
+      opacity: DEFAULT_EDGE_OPACITY,
       directed: attrs.directed,
       dashed: w?.missing === true || options.missingEdges?.has(key) === true,
       ...(options.missingEdges?.has(key) === true ? { attrMissing: true } : {}),
@@ -540,9 +545,10 @@ function layoutLegend(
         dashed: it.dashed === true,
         mark: markOf(it),
         ...(it.attrMissing === true ? { attrMissing: true } : {}),
-        ...(markOf(it) === 'line' || markOf(it) === 'arrow'
+        ...(markOf(it) !== 'node' && markOf(it) !== 'none'
           ? { lineWidth: nonNeg(it.lineWidth, DEFAULT_EDGE_WIDTH) }
           : {}),
+        ...(it.opacity !== undefined ? { opacity: it.opacity } : {}),
       },
       label: labelAt(it.label, cy),
       ...(it.bold === true ? { bold: true } : {}),

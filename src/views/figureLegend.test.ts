@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { RelataGraph } from '../core/graph';
 import { DEFAULT_ENCODING } from '../core/encode';
 import { toNodeId, toNodeTypeId, type Dataset } from '../core/model';
-import { buildScene } from '../render';
+import { DEFAULT_EDGE_COLOR, DEFAULT_EDGE_OPACITY, buildScene } from '../render';
 import type { Scene } from '../render';
 import { buildFigureLegend, clipText, CREDIT_MAX_CHARS } from './figureLegend';
 import type { FigureLegendInput } from './figureLegend';
@@ -84,8 +84,15 @@ describe('FR-OUT-07: 書き出しの凡例の組み立て', () => {
     expect(labels(buildFigureLegend(input()))).not.toContain('legend.undirected');
     const taper = buildFigureLegend(input({ directedStyle: 'taper' }));
     expect(taper?.items.find((i) => i.label === 'legend.directed.taper')).toMatchObject({
-      mark: 'none',
+      mark: 'taper',
     });
+    const gradient = buildFigureLegend(input({ directedStyle: 'gradient' }));
+    expect(gradient?.items.find((i) => i.label === 'legend.directed.gradient')).toMatchObject({
+      mark: 'gradient',
+    });
+    // 線の見本は、図のエッジと同じ色と不透明度（凡例と図の見え方を一致させる）。
+    const arrow = spec?.items.find((i) => i.label === 'legend.directed.arrow');
+    expect(arrow).toMatchObject({ fill: DEFAULT_EDGE_COLOR, opacity: DEFAULT_EDGE_OPACITY });
   });
   it('D-42: 欠損の破線は、図に現れた種類だけを、粗さを変えて出す', () => {
     const none = buildFigureLegend(input());
@@ -147,23 +154,39 @@ describe('FR-OUT-07: 書き出しの凡例の組み立て', () => {
       lineWidth: 3,
     });
   });
-  it('出典表記: データ名・出典・作成日・「Relata で作成」。長い出典は切る', () => {
-    const long = 'あ'.repeat(200);
+  it('出典表記: データ名・出典・作成日・「Relata で作成」。データ名は長ければ切る', () => {
     const spec = buildFigureLegend(
-      input({ legend: false, credit: { title: 'データ名', source: long, date: '2026-11-23' } }),
+      input({
+        legend: false,
+        credit: { title: 'あ'.repeat(100), source: '短い出典', date: '2026-11-23' },
+      }),
     );
     expect(spec?.title).toBeUndefined();
-    const lines = labels(spec) ?? [];
-    expect(lines).toEqual([
-      'legend.credit.data{"title":"データ名"}',
-      `legend.credit.source{"source":"${'あ'.repeat(CREDIT_MAX_CHARS - 1)}…"}`,
+    expect(labels(spec)).toEqual([
+      `legend.credit.data{"title":"${'あ'.repeat(CREDIT_MAX_CHARS - 1)}…"}`,
+      'legend.credit.source{"source":"短い出典"}',
       'legend.credit.date{"date":"2026-11-23"}',
       'legend.credit.tool',
     ]);
     expect(spec?.items.every((i) => i.mark === 'none')).toBe(true);
   });
+  it('出典の欄は短い引用だけ: 長い説明文は省き、データ名と作成日は残す', () => {
+    const spec = buildFigureLegend(
+      input({
+        legend: false,
+        credit: { title: 'データ名', source: 'あ'.repeat(200), date: '2026-11-23' },
+      }),
+    );
+    expect(labels(spec)).toEqual([
+      'legend.credit.data{"title":"データ名"}',
+      'legend.credit.date{"date":"2026-11-23"}',
+      'legend.credit.tool',
+    ]);
+  });
   it('clipText は、サロゲートペアの文字を途中で切らない', () => {
     expect(clipText('𓂀𓂀𓂀', 2)).toBe('𓂀…');
     expect(clipText('abc', 3)).toBe('abc');
+    // 結合記号（h + U+0323 = ḥ）を、土台と離して切らない。
+    expect(clipText('t\u0323ab', 2)).toBe('t\u0323…');
   });
 });

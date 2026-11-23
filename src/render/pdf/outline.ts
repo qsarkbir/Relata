@@ -28,15 +28,35 @@ export type OutlineCommand =
     }
   | { readonly type: 'Z' };
 
+/**
+ * 整形したラベルの中の、字形 1 つの置き場所。
+ *
+ * 輪郭の命令は、フォントの座標（単位数 upem のまま、y は SVG と同じ下向き）で持ち、同じ字形で共有する。
+ * 【なぜ】同じ字形（フォントと字形番号）は、PDF では 1 回だけ図形（Form XObject）として定義し、
+ * 置き場所の行列（`s 0 0 s x y cm`）で何度も置く。字形ごとに輪郭を書き並べると、ラベルが多い図で
+ * ファイルが巨大になり、作成も遅くなる。
+ */
+export interface PlacedGlyph {
+  /** 字形の識別子（フォントと字形番号で一意）。同じなら同じ輪郭。 */
+  readonly id: string;
+  /** 輪郭（フォントの座標。呼ぶ側は書き換えない）。 */
+  readonly commands: readonly OutlineCommand[];
+  /** 文字列の見た目の左端のベースラインを原点とした、字形の原点の位置（px、y は下向き）。 */
+  readonly x: number;
+  readonly y: number;
+  /** フォントの座標から px への倍率（文字の大きさ ÷ upem）。 */
+  readonly scale: number;
+}
+
 /** 整形した 1 つのラベルの輪郭。 */
 export interface TextOutline {
   /** 見た目の幅（px）。 */
   readonly width: number;
   /**
-   * 輪郭。座標は px で、原点は文字列の見た目の左端のベースライン、y は下向きが正（SVG と同じ）。
-   * 字形は左から右へ並べ済み（右から左の文字列でも、見た目の並びになっている）。
+   * 字形の置き場所。左から右へ並べ済み（右から左の文字列でも、見た目の並びになっている）。
+   * 空白など、輪郭の無い字形は含めない。
    */
-  readonly commands: readonly OutlineCommand[];
+  readonly glyphs: readonly PlacedGlyph[];
 }
 
 /**

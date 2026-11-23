@@ -10,6 +10,8 @@ function valueText(v: NetworkValue): string {
   return typeof v === 'string' ? xmlText(v) : String(v);
 }
 
+// 【TS】`as const satisfies Record<K, string>`: `as const` で値を文字列リテラルの型に固定し、
+//       `satisfies` で「列の型（K）のすべてに値がある」ことだけを検査する（足し忘れは型エラー）。
 /** GraphML の `attr.type`。整数は `int`、実数は `double`。 */
 const GRAPHML_TYPE = {
   string: 'string',

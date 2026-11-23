@@ -1,20 +1,23 @@
 /** PNG の書き出し（FR-OUT-03）。SVG を canvas に描いて PNG にする。 */
 
 /** 選べる倍率。 */
+// 【TS】`as const` は配列を読み取り専用にし、要素を数値リテラルの型にする。
 export const PNG_SCALES = [1, 2, 4] as const;
+// 【TS】`(typeof PNG_SCALES)[number]` は、配列の要素の型（1 | 2 | 4）を取り出す。値の一覧と型を 1 か所で持つ。
 /** 倍率の型。 */
 export type PngScale = (typeof PNG_SCALES)[number];
 
 /**
  * canvas の大きさの上限。
  *
- * 【なぜ】ブラウザの canvas には上限がある（Chrome は 1 辺 32767 px・面積 約 2.7 億 px、Safari は面積 約 1670 万 px
- * に及ばない場合がある）。上限を超えると、描けずに空の画像が出る。どの主要ブラウザでも動く、
- * 1 辺 16384 px、面積 約 6700 万 px（8192 × 8192）を上限にし、超えるときは倍率を下げる。
+ * 【なぜ】ブラウザの canvas には上限がある。Chrome は 1 辺 32767 px・面積 約 2.7 億 px だが、Safari
+ * （iOS を含む）は面積が 16,777,216 px（4096 × 4096）までで、超えると描けずに空の画像が出る。
+ * どの主要ブラウザでも動くよう、1 辺 16384 px、面積 16,777,216 px を上限にし、超えるときは倍率を下げる。
+ * それでも `toBlob` が失敗する環境（メモリ不足など）では、倍率を半分にして `renderPng` がやり直す。
  */
 export const MAX_CANVAS_SIDE = 16384;
 /** canvas の面積（px²）の上限。 */
-export const MAX_CANVAS_AREA = 8192 * 8192;
+export const MAX_CANVAS_AREA = 16_777_216;
 
 /** PNG の大きさの計算結果。 */
 export interface PngSize {
@@ -79,26 +82,36 @@ export async function renderPng(
   height: number,
   scale: number,
 ): Promise<PngResult> {
-  const size = pngSize(width, height, scale);
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
   try {
     const image = new Image();
     image.src = url;
     await image.decode();
-    const canvas = document.createElement('canvas');
-    canvas.width = size.width;
-    canvas.height = size.height;
-    const context = canvas.getContext('2d');
-    if (context === null) throw new Error('canvas 2d is not available');
-    context.drawImage(image, 0, 0, size.width, size.height);
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((b) => {
-        if (b === null) reject(new Error('toBlob failed'));
-        else resolve(b);
-      }, 'image/png');
-    });
-    return { blob, size };
+    // 【なぜ】上限の内側でも、環境によっては canvas を PNG にできない（`toBlob` が null）。その場合は、
+    // 倍率を半分にして最大 3 回やり直す。それでも作れなければ、最後のエラーを投げる。
+    let requested = scale;
+    for (let attempt = 0; ; attempt++) {
+      const size = pngSize(width, height, requested);
+      const clamped = size.clamped || requested < scale;
+      const blob = await canvasToPng(image, size);
+      if (blob !== null) return { blob, size: { ...size, clamped } };
+      if (attempt >= 2) throw new Error('toBlob failed');
+      requested = size.scale / 2;
+    }
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+// 画像を canvas に描いて PNG の Blob にする。作れなければ null。
+async function canvasToPng(image: HTMLImageElement, size: PngSize): Promise<Blob | null> {
+  const canvas = document.createElement('canvas');
+  canvas.width = size.width;
+  canvas.height = size.height;
+  const context = canvas.getContext('2d');
+  if (context === null) return null;
+  context.drawImage(image, 0, 0, size.width, size.height);
+  return new Promise<Blob | null>((resolve) => {
+    canvas.toBlob(resolve, 'image/png');
+  });
 }

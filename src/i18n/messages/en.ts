@@ -452,6 +452,8 @@ export const en = {
   'legend.credit.date': 'Created: {date}',
   'legend.credit.tool': 'Made with Relata',
   'about.fonts': 'Fonts',
+  'about.harfbuzz':
+    'PDF text is shaped with HarfBuzz (Old MIT license), used through the npm package harfbuzzjs (MIT).',
   'about.fonts.note':
     'Loaded from this site only when you export a PDF (no external server is contacted).',
   'about.palladioLink': 'Palladio repository (GitHub)',

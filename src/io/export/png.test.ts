@@ -21,6 +21,12 @@ describe('FR-OUT-03: PNG の大きさ', () => {
     expect(wide.width).toBeLessThanOrEqual(MAX_CANVAS_SIDE);
     expect(wide.clamped).toBe(true);
   });
+  it('面積の上限は Safari に合わせた 16,777,216 px（4096 × 4096）', () => {
+    expect(MAX_CANVAS_AREA).toBe(4096 * 4096);
+    const big = pngSize(3000, 2000, 4);
+    expect(big.width * big.height).toBeLessThanOrEqual(MAX_CANVAS_AREA);
+    expect(big.clamped).toBe(true);
+  });
   it('大きさが 0 や負でも、1 画素以上にする', () => {
     expect(pngSize(0, -5, 2)).toMatchObject({ width: 2, height: 2 });
   });

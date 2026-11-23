@@ -5,8 +5,10 @@ import type { Deflate } from '../../render';
 import type { PdfFontBytes, TextShaper } from './pdfText';
 
 /** フォントのファイル名（`public/fonts/`）。大きさの目安は UI に出す（D-43）。 */
+// 【TS】`as const` は、オブジェクトを読み取り専用にし、値を文字列リテラルの型にする（`string` に広げない）。
 export const PDF_FONT_FILES = {
-  sans: 'NotoSansJP-Regular.ttf',
+  latin: 'NotoSans-Regular.ttf',
+  japanese: 'NotoSansJP-Regular.ttf',
   arabic: 'NotoNaskhArabic-Regular.ttf',
 } as const;
 
@@ -14,7 +16,7 @@ export const PDF_FONT_FILES = {
  * 初回の読み込みの大きさの目安（バイト）。画面に「数 MB を読み込む」と示すために使う。
  * 実際のファイルの大きさとずれたら、`pdf.test.ts` が知らせる。
  */
-export const PDF_FONT_BYTES_ESTIMATE = 5_931_000;
+export const PDF_FONT_BYTES_ESTIMATE = 6_560_000;
 
 /** PDF の書き出しの選択肢。 */
 export interface PdfExportOptions {
@@ -26,7 +28,11 @@ export interface PdfExportOptions {
 
 // 【なぜ】フォントは読み込みごとに取りに行かない。ブラウザの HTTP キャッシュに加え、同じ画面の中では
 // 1 回だけ読み込んで使い回す（書き出しを続けて行っても、待たない）。失敗したら次回やり直す。
+// 【TS】`Promise<X> | null` は「読み込み中または完了の Promise か、まだ無い」。使う前に null を確かめる。
 let fontCache: Promise<PdfFontBytes> | null = null;
+// 整形の道具（フォントから作った harfbuzz の書体）も、1 回だけ作る。書き出しのたびに wasm の書体を
+// 作り直さない。キーはフォントのフォルダの URL。
+const shaperCache = new Map<string, Promise<TextShaper>>();
 
 async function fetchBytes(url: string, onBytes: (n: number) => void): Promise<ArrayBuffer> {
   const response = await fetch(url);
@@ -70,9 +76,10 @@ export function loadPdfFonts(
     onProgress?.(Math.min(1, received / PDF_FONT_BYTES_ESTIMATE));
   };
   const promise = Promise.all([
-    fetchBytes(baseUrl + PDF_FONT_FILES.sans, bump),
+    fetchBytes(baseUrl + PDF_FONT_FILES.latin, bump),
+    fetchBytes(baseUrl + PDF_FONT_FILES.japanese, bump),
     fetchBytes(baseUrl + PDF_FONT_FILES.arabic, bump),
-  ]).then(([sans, arabic]) => ({ sans, arabic }));
+  ]).then(([latin, japanese, arabic]) => ({ latin, japanese, arabic }));
   fontCache = promise;
   promise.catch(() => {
     if (fontCache === promise) fontCache = null;
@@ -80,7 +87,15 @@ export function loadPdfFonts(
   return promise;
 }
 
-// ブラウザ標準の圧縮（zlib 形式）。`CompressionStream` が無い環境では圧縮しない。
+/**
+ * ブラウザ標準の圧縮（zlib 形式。PDF の FlateDecode）。`CompressionStream` が無い環境では undefined
+ * （圧縮しないで書く）。
+ *
+ * 【TS】`Deflate | undefined` は、関数の型または未定義。呼ぶ側は `buildPdf` の第 3 引数にそのまま渡せる。
+ *
+ * @param data - 圧縮するバイト列（関数の引数）
+ * @returns 圧縮したバイト列（関数の戻り値）
+ */
 export const browserDeflate: Deflate | undefined =
   typeof CompressionStream === 'undefined'
     ? undefined
@@ -98,18 +113,28 @@ export const browserDeflate: Deflate | undefined =
  * @param onProgress - フォントの読み込みの進み（0 から 1）
  * @returns 整形の道具
  */
-export async function loadPdfShaper(
+export function loadPdfShaper(
   fontBaseUrl: string,
   onProgress?: (fraction: number) => void,
 ): Promise<TextShaper> {
-  const [hb, text, fonts] = await Promise.all([
-    // 【なぜ】harfbuzzjs（wasm を含む）と、双方向の処理（bidi-js）を含む整形のコードは、PDF の書き出しの
-    // ときだけ読み込む。最初の読み込みに入れない（フォントと同じ方針。D-43）。
-    import('harfbuzzjs'),
-    import('./pdfText'),
-    loadPdfFonts(fontBaseUrl, onProgress),
-  ]);
-  return text.createTextShaper(hb, fonts);
+  const cached = shaperCache.get(fontBaseUrl);
+  if (cached !== undefined) return cached;
+  const promise = (async (): Promise<TextShaper> => {
+    const [hb, text, fonts] = await Promise.all([
+      // 【なぜ】harfbuzzjs（wasm を含む）と、双方向の処理（bidi-js）を含む整形のコードは、PDF の書き出しの
+      // ときだけ読み込む。最初の読み込みに入れない（フォントと同じ方針。D-43）。
+      import('harfbuzzjs'),
+      import('./pdfText'),
+      loadPdfFonts(fontBaseUrl, onProgress),
+    ]);
+    return text.createTextShaper(hb, fonts);
+  })();
+  shaperCache.set(fontBaseUrl, promise);
+  // 失敗したら、次の書き出しでやり直せるよう、キャッシュから外す。
+  promise.catch(() => {
+    if (shaperCache.get(fontBaseUrl) === promise) shaperCache.delete(fontBaseUrl);
+  });
+  return promise;
 }
 
 /**

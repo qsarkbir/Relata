@@ -18,6 +18,10 @@
  *   失われる。元の表記は `time_label` 列に残す。ヒジュラ暦の日付も、グレゴリオ暦に換算した日になる。
  * - 同じ 2 点間にまとめたエッジ（`count` > 1）は、重みと件数、関係名（異なるものは `;` で連結）、
  *   期間（最も広い範囲）だけを持つ。個別の属性は、元のエッジが 1 本のときだけ書く。
+ * - 終わりが欠損した期間（「1650 年から」のように終わりが不明）は、終了を始点の最も遅い日に縮める。
+ *   「終わりが不明」という情報は失われ、書き出した先では始点の付近で終わる期間に見える。
+ * - 射影したエッジ（`via` を持つ）は、元のエッジの関係名・期間・属性を引き継がず、連番の ID にする。
+ *   根拠の仲介ノードは `via` の列に残る。
  */
 import type { RelataGraph } from '../../core/graph';
 import type {
@@ -31,6 +35,8 @@ import type {
 import { getAttr } from '../../core/model';
 import { jdnToGregorian } from '../../core/time';
 
+// 【TS】`readonly` の項目は、作ったあとで代入できない。書き出し用の表は作ったら変えない約束を型で示す。
+// 【TS】文字列リテラルの共用体（'a' | 'b'）は、取りうる値を型で限る。
 /** 列の型。GraphML の `attr.type` と GEXF の `type` の、共通の部分集合。 */
 export type NetworkColumnType = 'string' | 'double' | 'integer' | 'boolean';
 /** 属性の値。 */
@@ -108,6 +114,7 @@ interface Span {
 }
 
 // 期間の列から、最も広い範囲と元の表記を求める。期間が 1 つも無ければ undefined。
+// 【TS】`(t): t is X` の形の関数は「型ガード」。`filter` に渡すと、結果の配列の型が X[] に狭まる（下の `e is GraphEdge`）。
 function unionSpan(times: readonly (TimeValue | undefined)[]): Span | undefined {
   let start = Infinity;
   let end = -Infinity;
@@ -173,6 +180,7 @@ const newRow = (): Row => ({ values: new Map() });
  * @param fixed - 予約の列（名前、型、行ごとの値）
  * @param records - 属性を持つ元のレコードと、書き出す行
  * @param schemaKeys - データセットの属性定義の順に並べたキー
+ * @param reserved - 予約の名前（書き出し側が別に書く項目）
  * @returns 列の一覧
  */
 function buildColumns(
@@ -185,9 +193,12 @@ function buildColumns(
   }[],
   records: readonly { readonly attrs: GraphNode['attrs']; readonly row: Row }[],
   schemaKeys: readonly string[],
+  reserved: readonly string[],
 ): NetworkColumn[] {
   const columns: NetworkColumn[] = [];
-  const used = new Set<string>();
+  // 【なぜ】書き出し側が別に書く項目（label、start、end）も、予約の名前として先に入れる。
+  // 利用者の属性が同じ名前でも、GraphML の `attr.name` や GEXF の `title` が重ならない。
+  const used = new Set<string>(reserved);
   const rows = records.map((r) => r.row);
   fixed.forEach((f) => {
     const name = freeName(f.name, used);
@@ -251,6 +262,7 @@ export function buildNetworkTable(dataset: Dataset, graph: RelataGraph): Network
     ],
     nodeRecords.map((r) => ({ attrs: r.node?.attrs ?? {}, row: r.row })),
     dataset.schema.filter((a) => a.appliesTo === 'node').map((a) => a.key),
+    ['label', 'start', 'end'],
   );
   const nodes: NetworkNode[] = nodeRecords.map((r, i) => {
     const span = nodeSpans[i];
@@ -267,12 +279,16 @@ export function buildNetworkTable(dataset: Dataset, graph: RelataGraph): Network
   const usedIds = new Set<string>();
   const edgeRecords = edgeKeys.map((key, index) => {
     const a = graph.getEdgeAttributes(key);
-    const originals = a.edgeIds
-      .map((id) => edgeById.get(id))
-      .filter((e): e is GraphEdge => e !== undefined);
-    const only = a.count === 1 ? originals[0] : undefined;
+    // 【なぜ】射影したエッジ（`via` を持つ）は、元のエッジそのものではない。仲介ノードを介した新しいエッジなので、
+    // 元のエッジの関係名・期間・属性を引き継がない（`originals` を空にし、連番の ID を振る）。根拠は `via` の列に残る。
+    const projected = a.via !== undefined;
+    const originals = projected
+      ? []
+      : a.edgeIds.map((id) => edgeById.get(id)).filter((e): e is GraphEdge => e !== undefined);
+    const only = !projected && a.edgeIds.length === 1 ? originals[0] : undefined;
     // 【なぜ】元のエッジが 1 本なら元の ID を使う（元のデータに戻れる）。まとめたものは連番。重なったら末尾を足す。
-    let id = a.count === 1 && a.edgeIds[0] !== undefined ? a.edgeIds[0] : `m${String(index)}`;
+    const singleId = !projected && a.edgeIds.length === 1 ? a.edgeIds[0] : undefined;
+    let id = singleId ?? `m${String(index)}`;
     while (usedIds.has(id)) id += '_';
     usedIds.add(id);
     const relations = [
@@ -305,6 +321,7 @@ export function buildNetworkTable(dataset: Dataset, graph: RelataGraph): Network
     ],
     edgeRecords.map((r) => ({ attrs: r.only?.attrs ?? {}, row: r.row })),
     dataset.schema.filter((a) => a.appliesTo === 'edge').map((a) => a.key),
+    ['start', 'end'],
   );
   const edges: NetworkEdge[] = edgeRecords.map((r) => ({
     id: r.id,

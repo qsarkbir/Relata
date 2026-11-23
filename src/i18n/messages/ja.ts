@@ -441,6 +441,8 @@ export const ja = {
   'legend.credit.date': '作成日: {date}',
   'legend.credit.tool': 'Relata で作成',
   'about.fonts': '使用フォント',
+  'about.harfbuzz':
+    'PDF の文字の整形には、HarfBuzz（Old MIT ライセンス）を、npm パッケージ harfbuzzjs（MIT）を通して使っています。',
   'about.fonts.note':
     'PDF の書き出しのときだけ、このサイトから読み込みます（外部のサーバーには接続しません）。',
   'about.palladioLink': 'Palladio のリポジトリ（GitHub）',

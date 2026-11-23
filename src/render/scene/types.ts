@@ -87,9 +87,10 @@ export interface SceneLabel {
 
 /**
  * 凡例の見本の種類。`node` はノードの図形、`line` は線、`arrow` は矢じり付きの線、
+ * `taper` は先細りの帯（始点が太く終点が細い）、`gradient` は濃淡の線（終点が濃い）、
  * `none` は見本なしの文字だけの行（見出し、出典表記）。
  */
-export type LegendMark = 'node' | 'line' | 'arrow' | 'none';
+export type LegendMark = 'node' | 'line' | 'arrow' | 'taper' | 'gradient' | 'none';
 
 /** 凡例の 1 項目。見本の図形と文字。 */
 export interface SceneLegendItem {
@@ -105,8 +106,10 @@ export interface SceneLegendItem {
     readonly mark: LegendMark;
     /** 指定した属性の欠損の破線か（間隔を変える。`dashed` が true のときだけ意味を持つ）。 */
     readonly attrMissing?: boolean;
-    /** `line`、`arrow` の線の太さ（px）。矢じりの大きさは、エッジと同じ式でこの太さから決める。 */
+    /** 線の見本（`line`、`arrow`、`taper`、`gradient`）の太さ（px）。矢じりの大きさは、エッジと同じ式でこの太さから決める。 */
     readonly lineWidth?: number;
+    /** 線の見本の不透明度（0 から 1）。省略は 1。図のエッジと同じ見え方にするために使う。 */
+    readonly opacity?: number;
   };
   readonly label: SceneLabel;
   /** 見出しとして太字にするか。 */

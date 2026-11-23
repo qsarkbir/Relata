@@ -8,6 +8,7 @@
 import type { PdfContent } from './scenePdf';
 
 /** バイト列を zlib 形式（Flate）に圧縮する関数。 */
+// 【TS】関数の型にも名前を付けられる。`(引数) => 戻り値` の形で、ブラウザ用とテスト用の圧縮を同じ型で渡せる。
 export type Deflate = (data: Uint8Array) => Promise<Uint8Array>;
 
 /** PDF の情報辞書。 */
@@ -54,18 +55,35 @@ export async function buildPdf(
   const raw = latin1(content.stream);
   const body = deflate === undefined ? raw : await deflate(raw);
   const gs = content.graphicsStates
-    .map((g) => `/${g.name} << /Type /ExtGState /CA ${String(g.stroke)} /ca ${String(g.fill)} >>`)
+    .map(
+      (g) =>
+        `/${g.name} << /Type /ExtGState /CA ${fmtNumber(g.stroke)} /ca ${fmtNumber(g.fill)} >>`,
+    )
     .join(' ');
   const mediaBox = `[0 0 ${String(round(content.widthPt))} ${String(round(content.heightPt))}]`;
   const infoEntries = [
     info.title === undefined ? '' : `/Title ${pdfString(info.title)}`,
     `/Producer ${pdfString(info.producer ?? 'Relata')}`,
   ].join(' ');
+  // 字形の図形（Form XObject）。オブジェクト番号は 6 から。
+  const formObjects = await Promise.all(
+    content.forms.map(async (f): Promise<(string | Uint8Array)[]> => {
+      const raw = latin1(f.stream);
+      const data = deflate === undefined ? raw : await deflate(raw);
+      const box = f.bbox.map((v) => fmtNumber(v)).join(' ');
+      return [
+        `<< /Type /XObject /Subtype /Form /BBox [${box}] /Length ${String(data.length)}${deflate === undefined ? '' : ' /Filter /FlateDecode'} >>\nstream\n`,
+        data,
+        '\nendstream',
+      ];
+    }),
+  );
+  const xobjects = content.forms.map((f, i) => `/${f.name} ${String(6 + i)} 0 R`).join(' ');
   const objects: (string | Uint8Array)[][] = [
     ['<< /Type /Catalog /Pages 2 0 R >>'],
     ['<< /Type /Pages /Kids [3 0 R] /Count 1 >>'],
     [
-      `<< /Type /Page /Parent 2 0 R /MediaBox ${mediaBox} /Contents 4 0 R /Resources << /ExtGState << ${gs} >> >> >>`,
+      `<< /Type /Page /Parent 2 0 R /MediaBox ${mediaBox} /Contents 4 0 R /Resources << /ExtGState << ${gs} >> /XObject << ${xobjects} >> >> >>`,
     ],
     [
       `<< /Length ${String(body.length)}${deflate === undefined ? '' : ' /Filter /FlateDecode'} >>\nstream\n`,
@@ -73,6 +91,7 @@ export async function buildPdf(
       '\nendstream',
     ],
     [`<< ${infoEntries} >>`],
+    ...formObjects,
   ];
   const chunks: Uint8Array[] = [];
   let offset = 0;
@@ -106,3 +125,7 @@ export async function buildPdf(
 }
 
 const round = (v: number): number => Math.round(v * 100) / 100;
+
+// 数値を PDF の書き方（指数表記なし、小数 4 桁まで）にする。JavaScript の既定の文字列は 1e-7 のような指数表記になりうる。
+const fmtNumber = (v: number): string =>
+  (Math.round(v * 10000) / 10000).toFixed(4).replace(/\.?0+$/, '') || '0';
