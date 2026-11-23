@@ -1,10 +1,10 @@
 /** 指標の版番号・200 ms の待ち・古い結果の破棄（FR-MT-03、D-17、D-30）。 */
-import { buildGraph, toSnapshot, DEFAULT_GRAPH_OPTIONS, type GraphOptions } from '../core/graph';
+import { toSnapshot, DEFAULT_GRAPH_OPTIONS, type GraphOptions } from '../core/graph';
 import type { Dataset } from '../core/model';
 import type { FilterState } from '../core/filter';
 import type { MetricsResult } from '../core/metrics';
 import { metricsClient, type MetricsClient } from '../workers/metrics.client';
-import { getFilterResult } from './filterView';
+import { getNetwork } from './networkView';
 
 /** 計算の入力。参照が替わった時点で古い結果を表示しないため、結果と組にする。 */
 export interface MetricsInput {
@@ -78,7 +78,8 @@ export function createMetricsController(
       publish({ phase: 'running', input, result: null, error: null });
       void (async () => {
         try {
-          const graph = buildGraph(dataset, getFilterResult(dataset, filter), graphOptions);
+          // 【なぜ】描画・配置と同じ射影後のグラフを使う（getNetwork が 1 か所で計算し共有する）。
+          const graph = getNetwork(dataset, filter, graphOptions).graph;
           const result = await client.run({ snapshot: toSnapshot(graph), request: {} });
           if (version === revision) publish({ phase: 'ready', input, result, error: null });
         } catch (error) {

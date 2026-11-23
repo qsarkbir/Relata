@@ -80,3 +80,14 @@
   margin-inline-start: 0;
   margin-block-start: 0.2rem;
 }
+
+/* 射影後のグラフで計算していることを示す印（文字で示す。色だけに頼らない） */
+.metrics-projected {
+  display: inline-block;
+  padding-inline: 0.5em;
+  border: 1px solid currentColor;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: normal;
+  vertical-align: middle;
+}

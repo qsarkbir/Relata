@@ -4,6 +4,7 @@ import { APPLIED_LIST_ID, FILTER_RULES_ID } from './filter/AppliedList';
 import { useData, useFilter, useT, useUi } from './hooks';
 import { getNumberFormat } from './intl';
 import { Chip } from './ui/Chip';
+import { BuildControl } from './BuildControl';
 import './conditions.css';
 
 /**
@@ -92,6 +93,8 @@ export function ConditionsBar() {
           {isolatedText}
         </Chip>
       )}
+      {/* 構築（重み・自己ループ・射影）。実際に適用されている値だけを出し、押すと小さなパネルが開く。 */}
+      <BuildControl />
     </section>
   );
 }

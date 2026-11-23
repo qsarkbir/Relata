@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import {
   counts,
   openCsvDialog,
+  openBuildPanel,
   openGraphSection,
   openProject,
   saveProjectFile,
@@ -51,8 +52,11 @@ test('UC-1 / FR-IN-04 / FR-VG-03 / FR-MT-04 / FR-OUT-01/02 / FR-PJ-01: 書簡を
   await expect(nodes).toHaveCount(3);
   await openGraphSection(page, '見た目');
   await page.getByLabel('ノードサイズの元', { exact: true }).selectOption('metric:degree');
-  await openGraphSection(page, '構築');
-  await page.getByLabel('自己ループを含む', { exact: true }).uncheck();
+  // 【なぜ】重みと自己ループは「ネットワークの構築」のパネルへ移した（T2-02）。開いて変え、Esc で閉じる。
+  const build = await openBuildPanel(page);
+  await build.getByLabel('自己ループを含む', { exact: true }).uncheck();
+  await page.keyboard.press('Escape');
+  await expect(build).toBeHidden();
   // 【なぜ】図の自己ループ設定を指標・CSVも使うことを確認する（元表には4件ある）。
   expect(await csvText(page, '全体指標CSV')).toContain('edgeCount,3,ok,directed');
   const search = page.getByRole('search', { name: 'ノードのテキスト検索' });
@@ -86,7 +90,9 @@ test('UC-1 / FR-IN-04 / FR-VG-03 / FR-MT-04 / FR-OUT-01/02 / FR-PJ-01: 書簡を
   await expect(page.locator('.task-panel')).toBeHidden();
   await expect(nodes).toHaveCount(2);
   await expect(page.getByLabel('ノードサイズの元', { exact: true })).toHaveValue('metric:degree');
-  await expect(page.getByLabel('自己ループを含む', { exact: true })).not.toBeChecked();
+  await expect(
+    (await openBuildPanel(page)).getByLabel('自己ループを含む', { exact: true }),
+  ).not.toBeChecked();
   await expect(page.locator('.graph-canvas svg > g')).toHaveAttribute('transform', transform ?? '');
   expect(await csvText(page, '全体指標CSV')).toContain('edgeCount,2,ok,directed');
 });
