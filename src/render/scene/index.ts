@@ -20,3 +20,4 @@ export type {
 export { buildScene, shapeExtent } from './build';
 
 export type { DirectedEdgeStyle, EdgePoint } from '../edges/geometry';
+export { FADED_OPACITY, markOutOfTime } from './timeFade';

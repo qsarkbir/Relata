@@ -14,6 +14,7 @@ import { MetricsPanel } from '../views/MetricsPanel';
 import { useData, useT, useUi, useWorkspaceView } from '../views/hooks';
 import { LOCALES, LOCALE_NAMES } from '../i18n';
 import { clearAutosave } from './autosaveService';
+import { usePlaybackClock } from './playbackClock';
 import './tokens.css';
 import './app.css';
 
@@ -28,6 +29,7 @@ import './app.css';
 // 【TS】`.tsx` は JSX（HTML に似た記法）を書ける TypeScript のファイル。
 //       戻り値の型は、TypeScript が JSX の中身から推論するので書かなくてよい。
 export function App() {
+  usePlaybackClock();
   const t = useT();
   const locale = useUi((s) => s.locale);
   const setLocale = useUi((s) => s.setLocale);

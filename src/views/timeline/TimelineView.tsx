@@ -14,9 +14,10 @@ import {
   binsDayRange,
   describeDayRange,
   jdnToParts,
+  timeWindowOf,
 } from '../../core/time';
 import { getFilterResult, selectFilterState, timelineStore } from '../../state';
-import { useData, useDisplay, useFilter, useT, useTimelineView } from '../hooks';
+import { useData, useDisplay, useFilter, useT, useTime, useTimelineView } from '../hooks';
 import type { MessageKey } from '../../i18n';
 import { findFilters } from '../filter/activeFilters';
 import { timeFilterId } from '../filter/filterIds';
@@ -24,7 +25,8 @@ import { datePartsText, renderingsText, timeBoundText } from '../filter/timeText
 import { sourceToValue, valueToSource } from '../filter/timeInput';
 import { Field } from '../ui/Field';
 import { InfoTip } from '../ui/InfoTip';
-import { bandIndexes, binIndexAt, tickIndexes } from './timelineLayout';
+import { bandIndexes, binIndexAt, dayBoundary, tickIndexes } from './timelineLayout';
+import { TimeControls } from './TimeControls';
 import './timeline.css';
 
 /** 描画の領域の余白（CSS ピクセル）。左は件数の目盛り、下は年の目盛りの分。 */
@@ -217,6 +219,10 @@ export function TimelineView() {
     [dataset, source, shownIds, target, calendar, width],
   );
   const bins = result?.bins;
+  // 再生のカーソルと移動窓（FR-TM-02、FR-TM-03）。時刻は timeStore の値をそのまま読む（年表は時計も写しも持たない）。
+  const timeAt = useTime((s) => s.at);
+  const timeMode = useTime((s) => s.mode);
+  const timeWindowYears = useTime((s) => s.windowYears);
 
   const { ref: chartRef, size } = useElementSize<HTMLDivElement>();
   const [sel, setSel] = useState<Selection | null>(null);
@@ -263,6 +269,17 @@ export function TimelineView() {
   };
 
   const n = bins?.length ?? 0;
+  // 【なぜ】カーソルは「その日の終わり」の位置、窓の帯は「窓の最初の日の始まり」から「その日の終わり」まで。
+  //   位置は区切りの割合で求め、区切りの日数の違い（閏年、ヒジュラ暦の年の長さ）をピクセルに持ち込まない。
+  const timeWin =
+    bins === undefined || n === 0
+      ? null
+      : timeWindowOf({ at: timeAt, mode: timeMode, windowYears: timeWindowYears }, calendar);
+  const cursorBin = timeWin === null || bins === undefined ? 0 : dayBoundary(bins, timeWin.to + 1);
+  const windowBin =
+    timeWin === null || bins === undefined || timeMode !== 'window'
+      ? null
+      : dayBoundary(bins, timeWin.from);
   const plotW = Math.max(0, size.width - MARGIN.left - MARGIN.right);
   const plotH = Math.max(0, size.height - MARGIN.top - MARGIN.bottom);
   const barW = n > 0 ? plotW / n : 0;
@@ -525,6 +542,7 @@ export function TimelineView() {
           </button>
         )}
       </div>
+      <TimeControls />
       {message !== null && <p className="hint">{message}</p>}
       <div className="timeline-main">
         {/* 【なぜ】`role="application"`: 矢印キーなどをスクリーンリーダーの閲覧モードに奪われず、この部品に届ける。 */}
@@ -581,6 +599,30 @@ export function TimelineView() {
                     y={0}
                     height={plotH}
                   />
+                )}
+                {timeWin !== null && (
+                  <g data-testid="time-cursor" pointerEvents="none">
+                    {windowBin !== null && (
+                      <rect
+                        className="tl-time-window"
+                        x={windowBin * barW}
+                        width={Math.max(0, (cursorBin - windowBin) * barW)}
+                        y={0}
+                        height={plotH}
+                      />
+                    )}
+                    <line
+                      className="tl-time-cursor"
+                      x1={cursorBin * barW}
+                      x2={cursorBin * barW}
+                      y1={0}
+                      y2={plotH}
+                    />
+                    <path
+                      className="tl-time-head"
+                      d={`M${String(cursorBin * barW - 5)} 0 L${String(cursorBin * barW + 5)} 0 L${String(cursorBin * barW)} 8 Z`}
+                    />
+                  </g>
                 )}
                 {/* 描画の領域全体でポインタを受ける（棒のない場所でもドラッグを始められる）。 */}
                 <rect

@@ -4,6 +4,8 @@ import { DEFAULT_FILTER_STATE, toFilterId, type FilterState } from '../../core/f
 import { cleanDataset, cleanFilter, sampleSettings } from './fixtures/projectFixture';
 import { applyFilters } from '../../core/filter';
 import { CURRENT_FORMAT_VERSION } from '../../core/project';
+import { DEFAULT_TIME_SETTINGS } from '../../core/time';
+import type { TimeSettings } from '../../core/time';
 import sampleV1 from '../../../tests/fixtures/io/project/v1/maghrib-v0.1.relata.json?raw';
 import {
   MIGRATIONS,
@@ -92,6 +94,7 @@ describe('プロジェクトの往復', () => {
         workspace: DEFAULT_WORKSPACE,
         display: { calendar: 'hijri' as const },
         timeline: DEFAULT_TIMELINE,
+        time: DEFAULT_TIME_SETTINGS,
       },
     };
     const saved = sub(obj(serializeProject(full, AT)), 'view');
@@ -140,6 +143,26 @@ describe('プロジェクトの往復', () => {
     expect(nul.value.view.timeline).toBeUndefined();
     expect(nul.warnings).toEqual([
       { source: 'project', issue: { kind: 'unknown-field', path: 'view.timeline' } },
+    ]);
+  });
+  it('FR-TM-02: 時間の設定（時刻、方式、窓の幅、速度）が往復し、再生中かどうかは保存しない（D-44）', () => {
+    const time: TimeSettings = { at: 2_200_000, mode: 'window', windowYears: 50, speed: 25 };
+    const r = ok(serializeProject({ ...parts, view: { ...parts.view, time } }, AT));
+    expect(r.value.view.time).toEqual(time);
+    expect(r.warnings).toEqual([]);
+    expect(ok(serializeProject(parts, AT)).value.view.time).toBeUndefined();
+    const file = obj(serializeProject(parts, AT));
+    const broken = ok(
+      JSON.stringify({
+        ...file,
+        view: { ...sub(file, 'view'), time: { at: 1.5, mode: 'x', speed: 3, playing: true } },
+      }),
+    );
+    expect(broken.value.view.time).toEqual(DEFAULT_TIME_SETTINGS);
+    const nul = ok(JSON.stringify({ ...file, view: { ...sub(file, 'view'), time: null } }));
+    expect(nul.value.view.time).toBeUndefined();
+    expect(nul.warnings).toEqual([
+      { source: 'project', issue: { kind: 'unknown-field', path: 'view.time' } },
     ]);
   });
   it('FR-UI-02: 下の段の設定の壊れた項目は既定で補い、範囲外の高さは収める', () => {

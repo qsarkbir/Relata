@@ -1,10 +1,12 @@
 import { DEFAULT_FILTER_STATE, describeTimeFilter } from '../core/filter';
 import { CALENDAR_DISPLAYS, isCalendarDisplay } from '../core/time';
-import { selectFilterState, getFilterResult, displayStore } from '../state';
+import { selectFilterState, getFilterResult, displayStore, getTimeAxis, timeStore } from '../state';
 import { APPLIED_LIST_ID, FILTER_RULES_ID } from './filter/AppliedList';
 import { TIME_SECTION_ID } from './filter/TimeControl';
 import { timeBoundText } from './filter/timeText';
-import { useData, useDisplay, useFilter, useT, useUi } from './hooks';
+import { useData, useDisplay, useFilter, useT, useTime, useUi } from './hooks';
+import { useTimelineView } from './hooks';
+import { useTimeStateText } from './timeFade';
 import { getNumberFormat } from './intl';
 import { Chip } from './ui/Chip';
 import { BuildControl } from './BuildControl';
@@ -26,7 +28,12 @@ export function ConditionsBar() {
   const state = useFilter(selectFilterState);
   const setPanelCollapsed = useUi((s) => s.setPanelCollapsed);
   const calendar = useDisplay((s) => s.calendar);
+  const timeline = useTimelineView((s) => s.timeline);
+  const playing = useTime((s) => s.playing);
+  const timeText = useTimeStateText();
   if (dataset === null) return null;
+  // 再生できるのは、年表の軸（日付）があるときだけ。軸は年表と同じものを使う（再生のたびには計算し直さない）。
+  const canPlay = getTimeAxis(dataset, timeline, calendar) !== null;
   const { counts } = getFilterResult(dataset, state);
   const nf = getNumberFormat(locale);
   const filterCount = state.filters.length;
@@ -127,6 +134,27 @@ export function ConditionsBar() {
           </Chip>
         );
       })}
+      {/* 再生中の時刻（FR-TM-02）。再生は表示だけを変える（R-17）ので、件数やフィルタの数は変わらない。
+          小さな再生・一時停止の操作を置く。時刻は文字で出す（色だけに頼らない）。 */}
+      {timeText !== '' && (
+        <Chip
+          title={t('time.conditions.hint')}
+          onRemove={{ label: t('time.clear'), run: timeStore.getState().clear }}
+        >
+          {t('time.conditions', { time: timeText })}
+        </Chip>
+      )}
+      {canPlay && (
+        <button
+          type="button"
+          className="rl-chip conditions-play"
+          aria-pressed={playing}
+          onClick={timeStore.getState().toggle}
+        >
+          <span aria-hidden="true">{playing ? '⏸ ' : '▶ '}</span>
+          <span className="rl-chip-text">{playing ? t('time.pause') : t('time.play')}</span>
+        </button>
+      )}
       {/* 構築（重み・自己ループ・射影）。実際に適用されている値だけを出し、押すと小さなパネルが開く。 */}
       <BuildControl />
       {/* 表示する暦（R-24）。軽い表示の変更なので、選んだらすぐ反映する。 */}

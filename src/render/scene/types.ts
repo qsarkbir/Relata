@@ -45,6 +45,11 @@ export interface SceneNode {
   readonly attrMissing?: boolean;
   /** 選択の強調を書き出しに含める指定のとき、選択中のノードだけ true。 */
   readonly selected: boolean;
+  /**
+   * 再生の時刻の外（D-38）。true なら薄く描く（消さない）。`markOutOfTime` が付ける。
+   * 【なぜ】座標やラベルの配置を変えずに、描くときの不透明度だけを変えるため。
+   */
+  readonly faded?: boolean;
 }
 
 /**
@@ -65,6 +70,8 @@ export interface SceneEdge extends EdgeGeometry {
   readonly dashed: boolean;
   /** 指定した属性の欠損による破線か（ノードの `attrMissing` と同じ。間隔を変えて描く）。 */
   readonly attrMissing?: boolean;
+  /** 再生の時刻の外（D-38）。true なら薄く描く。 */
+  readonly faded?: boolean;
 }
 
 /** ラベル 1 つ。座標は文字の基準点で、`anchor` が基準点と文字の位置関係を決める。 */
@@ -83,6 +90,8 @@ export interface SceneLabel {
    * `renderSvg` が変換する。
    */
   readonly anchor: 'left' | 'right';
+  /** 再生の時刻の外のノードのラベル（D-38）。true なら薄く描く。 */
+  readonly faded?: boolean;
 }
 
 /** 凡例の 1 項目。見本の図形と文字。 */

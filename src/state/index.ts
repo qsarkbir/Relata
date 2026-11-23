@@ -65,3 +65,6 @@ export type { TimelineViewState } from './timelineStore';
 export { createDisplayStore, displayStore } from './displayStore';
 export type { DisplayState } from './displayStore';
 export { getMissingRows } from './missingView';
+export { getTimeAxis, resolveSource as resolveTimeSource } from './timeAxis';
+export { bindTimeToData, createTimeStore, selectTimeSettings, timeStore } from './timeStore';
+export type { TimeStoreState } from './timeStore';

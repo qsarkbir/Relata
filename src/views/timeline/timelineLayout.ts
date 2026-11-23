@@ -68,3 +68,32 @@ export function bandIndexes(
   }
   return last < firstFound ? null : { first: firstFound, last };
 }
+
+/**
+ * ある日の始まりの位置を、区切りの単位（整数部が区切りの番号、小数部が区切りの中の割合）で返す。
+ *
+ * 再生のカーソルや移動窓の帯を、年表の横軸の上に置くために使う。区切りは切れ目なく並ぶので、
+ * 日数の割合で位置を内挿する。区切りの外は両端に寄せる。区切りの日数は暦の年の長さで少し違うため、
+ * ピクセルではなく区切りの割合で扱う。
+ *
+ * @param bins - 区切り（古い順、切れ目なし）。空なら 0
+ * @param day - 日（JDN）。その日の始まりの位置を返す
+ * @returns 0 以上 区切りの数 以下の値
+ */
+export function dayBoundary(
+  bins: readonly { readonly earliest: number; readonly latest: number }[],
+  day: number,
+): number {
+  const first = bins[0];
+  const last = bins[bins.length - 1];
+  if (first === undefined || last === undefined) return 0;
+  if (day <= first.earliest) return 0;
+  if (day > last.latest) return bins.length;
+  let index = 0;
+  bins.forEach((b, i) => {
+    if (b.earliest <= day) index = i;
+  });
+  const b = bins[index];
+  if (b === undefined) return 0;
+  return index + (day - b.earliest) / (b.latest - b.earliest + 1);
+}

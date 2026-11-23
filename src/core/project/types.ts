@@ -3,6 +3,7 @@ import type { FilterIssue } from '../filter';
 import type { GraphViewSettings } from './graphView';
 import type { TableViewSettings, WorkspaceSettings } from './tableView';
 import type { TimelineSettings } from './timelineView';
+import type { TimeSettings } from '../time';
 /**
  * プロジェクトファイルの型と定数（D-24、設計書 §11.3）。
  */
@@ -86,6 +87,8 @@ export interface ProjectView {
   readonly display?: DisplaySettings;
   /** 年表の設定（R-23。日付の出どころと区切りの幅）。無ければ既定。 */
   readonly timeline?: TimelineSettings;
+  /** 時間の再生の設定（FR-TM-02、D-44。時刻、方式、窓の幅、速度。再生中かどうかは保存しない）。無ければ既定。 */
+  readonly time?: TimeSettings;
 }
 
 /** 全ビューに共通の表示設定（R-24、D-45）。内部の日付（JDN）は変えず、表示だけを変える。 */
@@ -104,6 +107,7 @@ const PROJECT_VIEW_KEY_TABLE: Record<keyof ProjectView, true> = {
   workspace: true,
   display: true,
   timeline: true,
+  time: true,
 };
 /** `ProjectView` のすべてのキー。 */
 export const PROJECT_VIEW_KEYS: readonly string[] = Object.keys(PROJECT_VIEW_KEY_TABLE);
