@@ -39,3 +39,13 @@ export function textFilterId(target: Target): FilterId {
 
 /** ノード型のフィルタの ID（1 つだけ）。 */
 export const NODE_TYPE_FILTER_ID: FilterId = toFilterId(JSON.stringify(['nodeType']));
+
+/**
+ * 確からしさのフィルタの ID（対象ごとに 1 つ）。
+ *
+ * @param target - 対象
+ * @returns FilterId
+ */
+export function certaintyFilterId(target: Target): FilterId {
+  return toFilterId(JSON.stringify(['certainty', target]));
+}

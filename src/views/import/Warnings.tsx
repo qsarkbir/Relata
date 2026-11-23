@@ -31,7 +31,7 @@ export function Warnings({ warnings }: { readonly warnings: readonly WizardWarni
               </>
             )}
             : {t(WARNING_NAMES[warning.code] ?? 'import.warning.unknown')}
-            <details>
+            <details open={warning.code === 'invalid-certainty'}>
               <summary>{t('import.details')}</summary>
               <bdi>{warning.message}</bdi>
             </details>

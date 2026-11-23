@@ -13,7 +13,7 @@ export {
   selectFilterState,
 } from './filterStore';
 export type { FilterStoreState } from './filterStore';
-export { getFacetCounts, getFilterIssues, getFilterResult } from './filterView';
+export { getCertaintyCounts, getFacetCounts, getFilterIssues, getFilterResult } from './filterView';
 export {
   createGraphViewStore,
   graphViewStore,

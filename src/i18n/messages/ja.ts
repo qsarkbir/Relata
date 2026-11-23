@@ -312,6 +312,16 @@ export const ja = {
   'filter.certainty.probable': 'おそらく',
   'filter.certainty.possible': '可能性あり',
   'filter.certainty.unspecified': '指定なし',
+  // T2-01b: 確からしさ（D-37、FR-DM-06）
+  'import.role.certainty': '確からしさ（確実／おそらく／可能性あり、?）',
+  'import.possibleSuffix': '末尾の ? を可能性ありと読む',
+  'import.possibleSuffix.hint':
+    '属性の値の末尾に ? （？、؟ も同じ）がある行を「可能性あり」として読み、? を取り除いて値を保存します。例: 「Basra?」は値「Basra」（可能性あり）になります。原文の文字列が変わるので、列ごとに選びます。初期設定は無効です。日付の列には出しません（日付の解析が ? を自分で扱うため）。',
+  'import.warning.invalid-certainty':
+    '確からしさを読めない値です。確実／おそらく／可能性あり、certain／probable／possible、? のどれかにしてください。この値は持ちません。下の「元の解析メッセージ」に、読めなかった値があります。',
+  'filter.certainty.topic': '確からしさによる絞り込み',
+  'filter.certainty.hint':
+    'チェックした確からしさのものだけを表示します。件数は「他の条件に合う件数 / 全体」です。「指定なし」は確からしさを持たないものです。',
   'filter.issue.attr-not-date': 'この属性は日付ではありません。',
   'filter.issue.unknown-node-id': 'データにないノードが選択に含まれています。',
   'filter.issue.reversed-range': '範囲が逆になっています。何も表示されません。',

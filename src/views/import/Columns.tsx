@@ -39,23 +39,35 @@ export function Columns({ draft, target, label, onChange }: ColumnsProps) {
         <table>
           <thead>
             <tr>
-              {['column', 'use', 'key', 'label', 'type', 'calendar', 'separator'].map((key) => (
-                <th key={key} scope="col">
-                  {key === 'column'
-                    ? t('import.column')
-                    : key === 'use'
-                      ? t('import.use')
-                      : key === 'key'
-                        ? t('import.key')
-                        : key === 'label'
-                          ? t('import.label')
-                          : key === 'type'
-                            ? t('import.type')
-                            : key === 'calendar'
-                              ? t('import.calendar')
-                              : t('import.separator')}
-                </th>
-              ))}
+              {['column', 'use', 'key', 'label', 'type', 'calendar', 'separator', 'suffix'].map(
+                (key) => (
+                  <th key={key} scope="col">
+                    {key === 'column'
+                      ? t('import.column')
+                      : key === 'use'
+                        ? t('import.use')
+                        : key === 'key'
+                          ? t('import.key')
+                          : key === 'label'
+                            ? t('import.label')
+                            : key === 'type'
+                              ? t('import.type')
+                              : key === 'calendar'
+                                ? t('import.calendar')
+                                : key === 'separator'
+                                  ? t('import.separator')
+                                  : t('import.possibleSuffix')}
+                    {key === 'suffix' && (
+                      <>
+                        {' '}
+                        <InfoTip topic={t('import.possibleSuffix')}>
+                          <p>{t('import.possibleSuffix.hint')}</p>
+                        </InfoTip>
+                      </>
+                    )}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody>
@@ -164,6 +176,19 @@ export function Columns({ draft, target, label, onChange }: ColumnsProps) {
                         change(index, { separator: event.currentTarget.value });
                       }}
                     />
+                  </td>
+                  <td>
+                    {/* 【なぜ】日付の列と属性以外の列には出さない（日付の解析が ? を自分で扱う。D-37）。 */}
+                    {attribute && column.type !== 'date' && (
+                      <input
+                        type="checkbox"
+                        aria-label={prefix + ' ' + t('import.possibleSuffix')}
+                        checked={column.possibleSuffix}
+                        onChange={(event) => {
+                          change(index, { possibleSuffix: event.currentTarget.checked });
+                        }}
+                      />
+                    )}
                   </td>
                 </tr>
               );

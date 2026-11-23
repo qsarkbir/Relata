@@ -2,7 +2,7 @@ import type { AttrValue, CalendarId, FuzzyDate, Scalar, ValueType } from '../../
 import { parseDate } from '../../core/time';
 import { compileMissingTokens, EDGE_JUNK, matchMissingToken } from '../project/missing';
 import type { CompiledMissingTokens } from '../project/missing';
-import type { MissingToken } from '../project/types';
+import type { ColumnRef, MissingToken } from '../project/types';
 
 const TRAILING_JUNK_RE = new RegExp(`[${EDGE_JUNK}]+$`, 'u');
 const TRAILING_MARKS_RE = /[?\uFF1F\u061F]+$/u;
@@ -170,4 +170,25 @@ export function inferColumnType(
     if (values.every((c) => convertWithTokens(c, { type }, tokens).ok)) return type;
   }
   return 'string';
+}
+
+/**
+ * 保存した読み込みの設定（`possibleSuffixColumns`）から、ある列で「末尾の `?` を可能性ありと読む」が
+ * 有効かを調べる（D-37、FR-DM-06）。
+ *
+ * 【なぜ】保存する形（列名の一覧）と、変換に渡す形（`ColumnOptions.possibleSuffix`）の対応をここ 1 か所に置く。
+ * 画面の選択を保存するときも、プロジェクトを開き直して読み込みの設定を再現するときも、この関数を通す。
+ * 列名は `ColumnCalendar.column` と同じ規則（列の key）。1 表のときは `table` を渡さない。
+ *
+ * @param refs - `ImportSettings.possibleSuffixColumns`（無ければ undefined。既定は無効）
+ * @param column - 列名（列の key）
+ * @param table - 2 表のときの、どちらの表の列か
+ * @returns 有効なら true
+ */
+export function isPossibleSuffixColumn(
+  refs: readonly ColumnRef[] | undefined,
+  column: string,
+  table?: 'node' | 'edge',
+): boolean {
+  return (refs ?? []).some((ref) => ref.column === column && ref.table === table);
 }

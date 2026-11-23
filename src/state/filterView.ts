@@ -5,8 +5,15 @@
  * `Dataset` と `FilterState` から計算し、同じ入力（同じ参照）なら前の結果をそのまま返す。
  * 計算そのものは `core/filter` の関数で、ここでは呼んで覚えるだけ。
  */
-import { applyFilters, checkFilterState, facetCounts } from '../core/filter';
-import type { FacetCount, FilterIssue, FilterResult, FilterState, Target } from '../core/filter';
+import { applyFilters, certaintyFacetCounts, checkFilterState, facetCounts } from '../core/filter';
+import type {
+  CertaintyFacetCount,
+  FacetCount,
+  FilterIssue,
+  FilterResult,
+  FilterState,
+  Target,
+} from '../core/filter';
 import type { Dataset } from '../core/model';
 
 // 【なぜ】キャッシュを 2 段に分ける。ファセットの件数と問題は `state.filters`（配列の参照）だけで決まり、
@@ -21,6 +28,7 @@ type Filters = FilterState['filters'];
 interface FiltersEntry {
   issues?: FilterIssue[];
   readonly facets: Map<string, FacetCount[]>;
+  readonly certainty: Map<Target, CertaintyFacetCount[]>;
 }
 
 const resultCache = new WeakMap<Dataset, WeakMap<FilterState, FilterResult>>();
@@ -44,7 +52,7 @@ function filtersEntry(dataset: Dataset, filters: Filters): FiltersEntry {
   const m = inner(filtersCache, dataset);
   let entry = m.get(filters);
   if (entry === undefined) {
-    entry = { facets: new Map() };
+    entry = { facets: new Map(), certainty: new Map() };
     m.set(filters, entry);
   }
   return entry;
@@ -107,4 +115,27 @@ export function getFilterIssues(dataset: Dataset, state: FilterState): readonly 
   const entry = filtersEntry(dataset, state.filters);
   entry.issues ??= checkFilterState(dataset, state);
   return entry.issues;
+}
+
+/**
+ * 確からしさのファセットの件数を返す（D-37、FR-DM-06）。`getFacetCounts` と同じく、
+ * `state.filters` の参照ごとに覚える（edgeRule と showIsolated の変更では計算し直さない）。
+ *
+ * @param dataset - データセット
+ * @param state - フィルタの状態
+ * @param target - 対象（ノードかエッジ）
+ * @returns 4 項目（確実、おそらく、可能性あり、指定なし）の件数
+ */
+export function getCertaintyCounts(
+  dataset: Dataset,
+  state: FilterState,
+  target: Target,
+): readonly CertaintyFacetCount[] {
+  const entry = filtersEntry(dataset, state.filters);
+  let counts = entry.certainty.get(target);
+  if (counts === undefined) {
+    counts = certaintyFacetCounts(dataset, state, target);
+    entry.certainty.set(target, counts);
+  }
+  return counts;
 }

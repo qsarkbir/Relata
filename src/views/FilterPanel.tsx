@@ -2,6 +2,7 @@ import type { FilterId, FilterState, Target } from '../core/filter';
 import { assertNever } from '../core/util/assertNever';
 import type { AttributeDef, Dataset } from '../core/model';
 import {
+  getCertaintyCounts,
   getFacetCounts,
   getFilterIssues,
   getFilterResult,
@@ -11,6 +12,7 @@ import {
 } from '../state';
 import { findFilters } from './filter/activeFilters';
 import { AppliedList, FILTER_RULES_ID } from './filter/AppliedList';
+import { CertaintyControl } from './filter/CertaintyControl';
 import { FacetControl } from './filter/FacetControl';
 import { NodeTypeControl } from './filter/NodeTypeControl';
 import { RangeControl } from './filter/RangeControl';
@@ -134,6 +136,7 @@ function PanelBody({ dataset }: PanelBodyProps) {
         //       （プロジェクトファイルなど）でも、部品の状態が実際の絞り込みと一致する。
         const texts = findFilters(state.filters, 'text', (f) => f.target === target);
         const types = findFilters(state.filters, 'nodeType');
+        const certainties = findFilters(state.filters, 'certainty', (f) => f.target === target);
         const defs = dataset.schema.filter((d) => d.appliesTo === target);
         const heading = target === 'node' ? 'filter.target.node' : 'filter.target.edge';
         return (
@@ -151,6 +154,18 @@ function PanelBody({ dataset }: PanelBodyProps) {
               />
             )}
             <TextSearch target={target} active={texts[0]} duplicates={texts.length - 1} />
+            {/* 確からしさ（D-37）。データに 1 つも無く、適用中のフィルタも無いときは、動かない UI を置かない。 */}
+            {certainties.length > 0 ||
+            getCertaintyCounts(dataset, state, target).some(
+              (c) => c.key !== 'unspecified' && c.total > 0,
+            ) ? (
+              <CertaintyControl
+                target={target}
+                getCounts={() => getCertaintyCounts(dataset, state, target)}
+                active={certainties[0]}
+                duplicates={certainties.length - 1}
+              />
+            ) : null}
             <h4>
               {t('filter.attrs')}
               {defs.some((d) => d.valueType === 'date') && (
