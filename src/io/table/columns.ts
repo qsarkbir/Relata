@@ -173,12 +173,26 @@ export function inferColumnType(
 }
 
 /**
- * 保存した読み込みの設定（`possibleSuffixColumns`）から、ある列で「末尾の `?` を可能性ありと読む」が
- * 有効かを調べる（D-37、FR-DM-06）。
+ * 「末尾の `?` を可能性ありと読む」列の、保存用の指定（`ColumnRef`）を作る（D-37、FR-DM-06）。
  *
- * 【なぜ】保存する形（列名の一覧）と、変換に渡す形（`ColumnOptions.possibleSuffix`）の対応をここ 1 か所に置く。
- * 画面の選択を保存するときも、プロジェクトを開き直して読み込みの設定を再現するときも、この関数を通す。
- * 列名は `ColumnCalendar.column` と同じ規則（列の key）。1 表のときは `table` を渡さない。
+ * 【なぜ】保存する形（`ImportSettings.possibleSuffixColumns`）の作り方を、読み戻す `isPossibleSuffixColumn` と
+ * 同じこのファイルに置く。両方向が同じ規則（列の key、2 表のときだけ `table`）を使うので、食い違わない。
+ * 【注意】列は key（`columnCalendars` と同じ規則）で指す。利用者が key を書き換えた列と、
+ * 列名が変わったファイルは、再現の対象外（key が合わなければ無効として読む）。
+ *
+ * @param column - 列名（列の key）
+ * @param table - 2 表のときの、どちらの表の列か。1 表なら省略
+ * @returns 保存用の指定
+ */
+export function toColumnRef(column: string, table?: 'node' | 'edge'): ColumnRef {
+  return { column, ...(table !== undefined && { table }) };
+}
+
+/**
+ * 保存した読み込みの設定（`possibleSuffixColumns`）から、ある列で「末尾の `?` を可能性ありと読む」が
+ * 有効かを調べる（D-37、FR-DM-06）。`toColumnRef` で作った指定の逆引き。
+ *
+ * 列は key で照合する。key を書き換えた列と、列名が変わったファイルは再現の対象外（無効になる）。
  *
  * @param refs - `ImportSettings.possibleSuffixColumns`（無ければ undefined。既定は無効）
  * @param column - 列名（列の key）
@@ -190,5 +204,6 @@ export function isPossibleSuffixColumn(
   column: string,
   table?: 'node' | 'edge',
 ): boolean {
-  return (refs ?? []).some((ref) => ref.column === column && ref.table === table);
+  const wanted = toColumnRef(column, table);
+  return (refs ?? []).some((ref) => ref.column === wanted.column && ref.table === wanted.table);
 }

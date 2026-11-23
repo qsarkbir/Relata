@@ -25,7 +25,7 @@ const filter: FilterDef = {
   include: ['possible'],
 };
 
-describe('確からしさのフィルタの状態', () => {
+describe('FR-DM-06: 確からしさのフィルタの状態', () => {
   it('FR-DM-06: 件数は絞り込み後の集合から数え直し、Undo で戻る', () => {
     const s = createFilterStore();
     const total = dataset.edges.length;

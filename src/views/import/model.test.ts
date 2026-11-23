@@ -250,3 +250,14 @@ it('FR-DM-06: 読めない確からしさは警告（行・列つき）で、値
   );
   expect(result.dataset?.edges[0]?.certainty).toBeUndefined();
 });
+it('FR-DM-06: key を書き換えた列は、保存した設定から再現されない（再現の対象外）', () => {
+  const run = (draft: ImportDraft) =>
+    previewImport('single', draft, null, 'person', 'person', 'directed', [], 'T');
+  const original = run(certaintyDraft(true));
+  expect(original.settings.possibleSuffixColumns).toEqual([{ column: 'place' }]);
+  // 利用者が属性キーを place から location に書き換えた表。
+  const renamed = change(certaintyDraft(false), 'place', { key: 'location' });
+  const restored = restorePossibleSuffix(renamed, original.settings.possibleSuffixColumns);
+  expect(restored.columns.every((c) => !c.possibleSuffix)).toBe(true);
+  expect(run(restored).settings.possibleSuffixColumns).toBeUndefined();
+});

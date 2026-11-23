@@ -132,6 +132,7 @@ test.describe('FR-DM-06: 確からしさ（日本語）', () => {
     await saveProjectFile(page);
     const download = await downloading;
     const path = await download.path();
+    // 理由: アプリが書き出した JSON を、E2E 用の保存型 SavedProject（テストが読む項目だけ）で調べる。
     const saved = JSON.parse(readFileSync(path, 'utf8')) as SavedProject;
     expect(saved.importSettings).toMatchObject({ possibleSuffixColumns: [{ column: 'place' }] });
     expect(saved.view.filter.filters.map((f) => f.kind)).toEqual(['certainty']);

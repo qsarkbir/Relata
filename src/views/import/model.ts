@@ -5,6 +5,7 @@ import {
   importSingleTable,
   importTables,
   isPossibleSuffixColumn,
+  toColumnRef,
 } from '../../io/table';
 import type { AttributeColumn, TableMapping, TableWarning, TextTable } from '../../io/table';
 import type { ColumnCalendar, ColumnRef, ImportSettings, MissingToken } from '../../io/project';
@@ -195,19 +196,30 @@ export function draftTable(
 
 const ATTRIBUTE_ROLES: readonly ColumnRole[] = ['attr', 'sourceAttr', 'targetAttr', 'edgeAttr'];
 /**
- * 「末尾の ? を可能性ありと読む」が実際に効く列か。属性の列で、型が日付でないものだけ。
+ * 「末尾の ? を可能性ありと読む」を選べる列か。役割が属性で、型が日付でないものだけ（選択の有無は見ない）。
  *
- * 【なぜ】変換（`ColumnOptions.possibleSuffix`）と保存（`possibleSuffixColumns`）が、必ずこの 1 つの判定を通る。
- * 日付の列は、日付の解析が `?` を自分で扱うので対象にしない（io の仕様）。
+ * 【なぜ】画面（選択欄を出すか）と変換・保存が同じ判定を通る。日付の列は、日付の解析が `?` を
+ * 自分で扱うので対象にしない（io の仕様）。
+ * @param column - 編集中の列
+ * @returns 選べるなら true
+ */
+export function canUsePossibleSuffix(column: ColumnDraft): boolean {
+  return ATTRIBUTE_ROLES.includes(column.role) && column.type !== 'date';
+}
+/**
+ * 「末尾の ? を可能性ありと読む」が実際に効く列か（選べて、選んでいる）。
  * @param column - 編集中の列
  * @returns 効くなら true
  */
 export function isSuffixActive(column: ColumnDraft): boolean {
-  return column.possibleSuffix && ATTRIBUTE_ROLES.includes(column.role) && column.type !== 'date';
+  return column.possibleSuffix && canUsePossibleSuffix(column);
 }
 /**
  * 保存した読み込みの設定から、列の「末尾の ? を可能性ありと読む」の選択を再現する。
- * プロジェクトを開き直して設定を再現するときの入口（同じ設定なら同じ変換になる）。
+ *
+ * 保存した設定からウィザードを再現する画面ができるまでは、保存と変換の往復をテストで確かめるための入口。
+ * 列は key で照合する。利用者が key を書き換えた列と、列名が変わったファイルは再現の対象外
+ * （その列は無効になる）。
  * @param draft - 編集中の表
  * @param refs - `ImportSettings.possibleSuffixColumns`
  * @param table - 2 表のときの表の区別。1 表なら省略
@@ -323,10 +335,10 @@ export function previewImport(
     draft.columns.flatMap((column): ColumnRef[] =>
       isSuffixActive(column)
         ? [
-            {
-              column: column.key,
-              ...(mode === 'pair' && { table: tableIndex === 0 ? 'node' : 'edge' }),
-            },
+            toColumnRef(
+              column.key,
+              mode === 'pair' ? (tableIndex === 0 ? 'node' : 'edge') : undefined,
+            ),
           ]
         : [],
     ),

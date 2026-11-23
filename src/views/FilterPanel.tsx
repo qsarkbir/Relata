@@ -6,6 +6,7 @@ import {
   getFacetCounts,
   getFilterIssues,
   getFilterResult,
+  hasCertainty,
   selectCanRedo,
   selectCanUndo,
   selectFilterState,
@@ -155,10 +156,7 @@ function PanelBody({ dataset }: PanelBodyProps) {
             )}
             <TextSearch target={target} active={texts[0]} duplicates={texts.length - 1} />
             {/* 確からしさ（D-37）。データに 1 つも無く、適用中のフィルタも無いときは、動かない UI を置かない。 */}
-            {certainties.length > 0 ||
-            getCertaintyCounts(dataset, state, target).some(
-              (c) => c.key !== 'unspecified' && c.total > 0,
-            ) ? (
+            {certainties.length > 0 || hasCertainty(dataset, target) ? (
               <CertaintyControl
                 target={target}
                 getCounts={() => getCertaintyCounts(dataset, state, target)}

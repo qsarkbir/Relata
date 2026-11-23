@@ -139,3 +139,27 @@ export function getCertaintyCounts(
   }
   return counts;
 }
+
+const certaintyPresence = new WeakMap<Dataset, { node: boolean; edge: boolean }>();
+
+/**
+ * データに確からしさを持つ要素が 1 つでもあるかを返す（左のパネルの節を出すかの判定）。
+ *
+ * 件数（`getCertaintyCounts`）はフィルタごとに変わるが、有無はデータだけで決まる。
+ * そのためデータごとに 1 回だけ調べて覚え、フィルタを操作するたびに走査しない。
+ *
+ * @param dataset - データセット
+ * @param target - 対象（ノードかエッジ）
+ * @returns 1 つでもあれば true
+ */
+export function hasCertainty(dataset: Dataset, target: Target): boolean {
+  let found = certaintyPresence.get(dataset);
+  if (found === undefined) {
+    found = {
+      node: dataset.nodes.some((n) => n.certainty !== undefined),
+      edge: dataset.edges.some((e) => e.certainty !== undefined),
+    };
+    certaintyPresence.set(dataset, found);
+  }
+  return found[target];
+}

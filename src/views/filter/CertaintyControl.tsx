@@ -16,6 +16,8 @@ interface CertaintyControlProps {
    */
   readonly getCounts: () => readonly CertaintyFacetCount[];
   /** いま適用中の、この対象の最初の確からしさのフィルタ（無ければ undefined）。 */
+  // 【TS】`FilterOfKind<'certainty'>` は、FilterDef のうち kind が 'certainty' のものだけを取り出した型。
+  //       これで `active.include` を、確からしさの項目の配列として安全に読める。
   readonly active: FilterOfKind<'certainty'> | undefined;
   /** 同じ条件の、2 つ目以降のフィルタの数。 */
   readonly duplicates: number;
@@ -74,6 +76,8 @@ export function CertaintyControl({ target, getCounts, active, duplicates }: Cert
                       toggle(c.key, e.currentTarget.checked);
                     }}
                   />
+                  {/* 【TS】テンプレートリテラル型: `filter.certainty.${c.key}` は、c.key が 4 つの項目の
+                      どれかなので、辞書にある 4 つのキーのどれかとして型検査される（書き間違いは型エラー）。 */}
                   <span className="facet-value">{t(`filter.certainty.${c.key}`)}</span>
                   <span className="facet-count" aria-hidden="true">
                     {t('filter.facet.count', { filtered, total })}
