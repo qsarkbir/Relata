@@ -247,6 +247,7 @@ export function buildScene(
       (color?.missing === true ? MISSING_COLOR : OTHER_COLOR);
     const isSel = showSel && selected.has(id);
     const flagged = options.missingNodes?.has(id) === true;
+    const valueMissing = size?.missing === true || color?.missing === true;
     rawNodes.push({
       id,
       x: pos.x,
@@ -255,9 +256,10 @@ export function buildScene(
       shape: encoding.shapes?.get(attrs.type) ?? 'circle',
       fill,
       stroke: isSel ? SELECTED_STROKE : NODE_STROKE,
-      // 【なぜ】細い破線は見分けにくいので、欠損の印を付けたノードは枠線を少し太くする（色だけに頼らない）。
-      strokeWidth: isSel ? 3 : flagged ? 1.5 : 1,
-      dashed: size?.missing === true || color?.missing === true || flagged,
+      // 【なぜ】細い破線は見分けにくいので、破線のノード（どちらの意味でも）は枠線を 1.5 にそろえる。
+      strokeWidth: isSel ? 3 : valueMissing || flagged ? 1.5 : 1,
+      dashed: valueMissing || flagged,
+      ...(flagged ? { attrMissing: true } : {}),
       selected: isSel,
     });
   });
@@ -314,6 +316,7 @@ export function buildScene(
       opacity: 0.6,
       directed: attrs.directed,
       dashed: w?.missing === true || options.missingEdges?.has(key) === true,
+      ...(options.missingEdges?.has(key) === true ? { attrMissing: true } : {}),
     });
   });
 

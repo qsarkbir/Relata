@@ -182,6 +182,8 @@ export function GraphView() {
             includeSelection: true,
             directedStyle: view.direction,
             measureText,
+            // 【TS】条件付きスプレッド: `...(条件 ? {} : { 項目 })` は、値がある時だけ項目を足す。
+            //   値が無いとき、項目そのものを作らず、既定の扱いを buildScene 側に任せるため。
             ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
             ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
           }),

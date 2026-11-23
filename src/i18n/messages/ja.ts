@@ -393,6 +393,8 @@ export const ja = {
   'project.warning.filter': 'フィルタの問題（{kind}、フィルタ {id}）',
   'project.warning.unknownField':
     '知らない項目を読み飛ばしました（{path}）。新しい版のアプリで保存されたファイルかもしれません。',
+  'project.warning.unknownAttribute':
+    'データに無い属性の「欠損の表示」の指定を読み飛ばしました（{path}）。',
   'project.warning.unknownNodePosition': 'データに無いノードの位置を読み飛ばしました（{path}）。',
   'project.failed.file': 'プロジェクトを開けませんでした。今の作業はそのままです。',
   'project.failed.autosave': '前回の自動保存を復元できませんでした。新しく始めます。',
@@ -615,6 +617,9 @@ export const ja = {
   'missing.noRate': '割合なし',
   'graph.section.missing': '欠損の表示',
   'missing.display.note': '選んだ属性が欠損しているノードは枠線を、エッジは線を、破線で示します。',
+  'missing.display.legend':
+    '破線の見分け方: 長い破線は、選んだ属性が欠損している要素です。短い破線は、大きさ・色・太さに使う値が欠損している要素です。',
+  'missing.filteredOut': '絞り込みで 0 件です。「絞り込み後」の行には割合が出ません。',
   'missing.display.nodes': 'ノードの属性',
   'missing.display.edges': 'エッジの属性',
   'missing.display.none': '選べる属性がありません。',

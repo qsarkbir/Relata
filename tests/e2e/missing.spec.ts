@@ -91,3 +91,20 @@ test('FR-VG-12: キーボードだけで、タブの切り替えと欠損の表�
   await page.keyboard.press('Space');
   await expect(page.getByRole('checkbox', { name: '年' })).toBeChecked();
 });
+
+test('FR-VG-12: 絞り込みで 0 件のとき、データなしと区別して「0 件」を示す', async ({ page }) => {
+  await page.getByRole('tab', { name: '欠損' }).click();
+  await expect(page.getByText('絞り込みで 0 件です')).toBeHidden();
+  // ノードのテキスト検索で、合うものが無い条件にする（表の E2E と同じ手順）。
+  const search = page.getByRole('search', { name: 'ノードのテキスト検索' });
+  await search.getByRole('searchbox').fill('zzzz-none');
+  await search.getByRole('button', { name: '検索', exact: true }).click();
+  await expect(page.getByText('絞り込みで 0 件です')).toBeVisible();
+  await expect(workspace(page)).not.toContainText('データを読み込むと');
+  // 表は出したまま、絞り込み後の行は割合なし。全体の行は変わらない。
+  await expect(
+    missingTable(page)
+      .locator('tr[data-attr="地名"][data-scope="filtered"]')
+      .getByTestId('missing-total'),
+  ).toHaveText('0（割合なし）');
+});

@@ -52,6 +52,8 @@ export function MissingDisplayControls({ dataset, settings, onChange }: Props) {
     <div className="missing-display">
       {group('node')}
       {group('edge')}
+      {/* 破線の意味を 1 行で示す（図の凡例ではなく、設定の説明。書き出しの凡例は T2-08）。 */}
+      <p className="rl-section-note">{t('missing.display.legend')}</p>
     </div>
   );
 }

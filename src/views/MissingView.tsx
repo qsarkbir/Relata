@@ -2,14 +2,16 @@ import type { ReactNode } from 'react';
 import { MISSING_REASONS } from '../core/model';
 import type { MissingReason } from '../core/model';
 import type { MessageKey } from '../i18n';
-import { missingRate } from '../core/missing';
 import type { AttrMissingRow, MissingCounts } from '../core/missing';
-import { getMissingRows, selectFilterState } from '../state';
+import { getFilterResult, getMissingRows, selectFilterState } from '../state';
+import { getNumberFormat } from './intl';
 import { useData, useFilter, useT, useUi } from './hooks';
 import { StatusMessage } from './ui/StatusMessage';
 import './workspace.css';
 
 /** 欠損の理由の見出しの辞書のキー。理由を足して書き忘れると、型エラーになる。 */
+// 【TS】`as const` は値を文字列リテラルのまま保つ（`string` に広げない）。`satisfies Record<MissingReason, MessageKey>` は
+//       「理由の 4 種すべてがキーにあり、値が辞書のキーとして正しいか」だけを検査し、型そのものは狭いまま残す。
 const REASON_KEYS = {
   unrecorded: 'missing.reason.unrecorded',
   lost: 'missing.reason.lost',
@@ -53,10 +55,12 @@ export function MissingView() {
         <StatusMessage state={{ kind: 'empty', message: t('missing.noAttrs') }} />
       </div>
     );
+  const nf = getNumberFormat(locale);
+  // 欠損の件数と割合を 1 つのセルの文字にする。分母が 0 なら割合は出さない（0% と偽らない）。
   const cell = (counts: MissingCounts, n: number): ReactNode => {
     const rate = counts.total === 0 ? null : n / counts.total;
     return t('missing.cell', {
-      count: n,
+      count: nf.format(n),
       rate: rate === null ? t('missing.noRate') : percent(locale, rate),
     });
   };
@@ -64,38 +68,53 @@ export function MissingView() {
     const scopes = [
       { id: 'filtered', counts: row.filtered, label: t('missing.scope.filtered') },
       { id: 'whole', counts: row.whole, label: t('missing.scope.whole') },
-    ] as const;
-    return scopes.map((s, i) => {
-      const total = missingRate(s.counts);
-      return (
-        <tr key={`${row.target}:${row.key}:${s.id}`} data-attr={row.key} data-scope={s.id}>
-          {i === 0 && (
-            <th scope="rowgroup" rowSpan={2}>
-              {/* 属性名は利用者の値（アラビア文字などもありうる）なので、`<bdi>` で隔離する。 */}
-              <bdi>{row.label}</bdi>
-              <span className="missing-target">
-                {' '}
-                ({t(row.target === 'node' ? 'missing.target.node' : 'missing.target.edge')})
-              </span>
-            </th>
-          )}
-          <th scope="row">{s.label}</th>
-          <td data-numeric="true">{s.counts.total}</td>
-          <td data-numeric="true" data-testid="missing-total">
-            {total === null ? t('missing.noRate') : cell(s.counts, s.counts.missing)}
-          </td>
-          {MISSING_REASONS.map((r) => (
-            <td key={r} data-numeric="true">
-              {cell(s.counts, s.counts.byReason[r])}
+    ] as const; // 【TS】`as const` で `id` を 'filtered' | 'whole' のリテラル型に保つ（`data-scope` と key に使う）。
+    // 【なぜ】属性ごとに <tbody> を分ける。`scope="rowgroup"` の見出しは、行のグループ（<tbody>）に対して
+    //   意味を持つので、支援技術が「この 2 行は 1 つの属性」と読める。
+    return (
+      <tbody key={`${row.target}:${row.key}`}>
+        {scopes.map((s, i) => (
+          <tr key={s.id} data-attr={row.key} data-scope={s.id}>
+            {i === 0 && (
+              <th scope="rowgroup" rowSpan={2}>
+                {/* 属性名は利用者の値（アラビア文字などもありうる）なので、`<bdi>` で隔離する。 */}
+                <bdi>{row.label}</bdi>
+                <span className="missing-target">
+                  {' '}
+                  ({t(row.target === 'node' ? 'missing.target.node' : 'missing.target.edge')})
+                </span>
+              </th>
+            )}
+            <th scope="row">{s.label}</th>
+            <td data-numeric="true">{nf.format(s.counts.total)}</td>
+            <td data-numeric="true" data-testid="missing-total">
+              {cell(s.counts, s.counts.missing)}
             </td>
-          ))}
-          <td data-numeric="true">{s.counts.absent}</td>
-        </tr>
-      );
-    });
+            {MISSING_REASONS.map((r) => (
+              <td key={r} data-numeric="true">
+                {cell(s.counts, s.counts.byReason[r])}
+              </td>
+            ))}
+            <td data-numeric="true">{nf.format(s.counts.absent)}</td>
+          </tr>
+        ))}
+      </tbody>
+    );
   };
+  const result = getFilterResult(dataset, filters);
+  const filteredOut = result.nodeIds.size === 0 && result.edgeIds.size === 0;
   return (
     <div className="missing-view">
+      {filteredOut && (
+        // 【なぜ】データなし（上の分岐）と、絞り込みで 0 件は別の事情。表は出したまま、旨を示す。
+        <StatusMessage
+          state={{
+            kind: 'no-results',
+            message: t('missing.filteredOut'),
+            hint: t('table.noResults.hint'),
+          }}
+        />
+      )}
       <p className="table-count">{t('missing.note')}</p>
       <div
         className="table-scroll"
@@ -125,7 +144,7 @@ export function MissingView() {
               </th>
             </tr>
           </thead>
-          <tbody>{rows.map(body)}</tbody>
+          {rows.map(body)}
         </table>
       </div>
     </div>

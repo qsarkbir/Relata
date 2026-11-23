@@ -41,4 +41,37 @@ describe('FR-VG-12: 欠損の破線', () => {
     expect(sc.nodes.every((n) => !n.dashed)).toBe(true);
     expect(sc.edges[0]?.dashed).toBe(false);
   });
+  it('FR-VG-12: 値の欠損と属性の欠損は、破線の間隔が違う', () => {
+    const sc = buildScene(
+      makeGraph(),
+      pos,
+      { colors: new Map([[toNodeId('b'), { color: '#dddddd', missing: true }]]) },
+      { missingNodes: new Set([toNodeId('a')]) },
+    );
+    const svg = renderSvg(sc, {});
+    expect(svg).toContain('stroke-dasharray="6 3"');
+    expect(svg).toContain('stroke-dasharray="3 2"');
+    expect(sc.nodes.map((n) => n.strokeWidth)).toEqual([1.5, 1.5]);
+  });
+  it.each(['taper', 'gradient'] as const)(
+    'FR-VG-12: 有向エッジ（%s）でも、欠損のエッジは破線になる',
+    (style) => {
+      const g = makeGraph();
+      g.clearEdges();
+      g.addDirectedEdgeWithKey('d1', 'a', 'b', {
+        weight: 1,
+        count: 1,
+        edgeIds: [],
+        directed: true,
+        missingWeightCount: 0,
+      });
+      const plain = renderSvg(buildScene(g, pos, {}, { directedStyle: style }), {});
+      expect(plain).not.toContain('stroke-dasharray');
+      const marked = renderSvg(
+        buildScene(g, pos, {}, { directedStyle: style, missingEdges: new Set(['d1']) }),
+        {},
+      );
+      expect(marked).toContain('stroke-dasharray="9 4"');
+    },
+  );
 });

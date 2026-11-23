@@ -36,8 +36,13 @@ export interface SceneNode {
   readonly fill: string;
   readonly stroke: string;
   readonly strokeWidth: number;
-  /** 欠損の印（FR-VG-12）。 */
+  /** 欠損の印（FR-VG-12）。大きさ・色の値の欠損、または指定した属性の欠損のとき true。 */
   readonly dashed: boolean;
+  /**
+   * 「欠損の表示」で指定した属性の欠損による破線か。true なら、値の欠損による破線と間隔を変えて描く。
+   * 【なぜ】2 つの意味の破線を、図の上で見分けられるようにするため（FR-VG-12）。
+   */
+  readonly attrMissing?: boolean;
   /** 選択の強調を書き出しに含める指定のとき、選択中のノードだけ true。 */
   readonly selected: boolean;
 }
@@ -56,8 +61,10 @@ export interface SceneEdge extends EdgeGeometry {
   readonly color: string;
   readonly opacity: number;
   readonly directed: boolean;
-  /** 重みが欠損のエッジ。 */
+  /** 重みが欠損のエッジ、または指定した属性が欠損しているエッジ。 */
   readonly dashed: boolean;
+  /** 指定した属性の欠損による破線か（ノードの `attrMissing` と同じ。間隔を変えて描く）。 */
+  readonly attrMissing?: boolean;
 }
 
 /** ラベル 1 つ。座標は文字の基準点で、`anchor` が基準点と文字の位置関係を決める。 */

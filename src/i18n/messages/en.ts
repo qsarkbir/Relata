@@ -402,6 +402,8 @@ export const en = {
   'project.warning.filter': 'Filter problem ({kind}, filter {id})',
   'project.warning.unknownField':
     'Skipped an unknown field ({path}). The file may have been saved by a newer version of the app.',
+  'project.warning.unknownAttribute':
+    'Skipped a missing-value display setting for an attribute that is not in the data ({path}).',
   'project.warning.unknownNodePosition':
     'Skipped the position of a node that is not in the data ({path}).',
   'project.failed.file': 'Could not open the project. Your current work is unchanged.',
@@ -635,6 +637,9 @@ export const en = {
   'graph.section.missing': 'Missing values',
   'missing.display.note':
     'Nodes missing a chosen attribute get a dashed outline; edges get a dashed line.',
+  'missing.display.legend':
+    'Dash styles: long dashes mean the chosen attribute is missing. Short dashes mean a value used for size, color, or width is missing.',
+  'missing.filteredOut': 'The filters leave 0 items. The Filtered rows show no rates.',
   'missing.display.nodes': 'Node attributes',
   'missing.display.edges': 'Edge attributes',
   'missing.display.none': 'No attributes to choose from.',

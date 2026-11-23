@@ -85,10 +85,26 @@ describe('FR-VG-12: 「欠損の表示」の保存', () => {
     const r = parseGraphView({});
     expect(r.ok && r.value.missingDisplay).toEqual(DEFAULT_GRAPH_VIEW.missingDisplay);
   });
-  it('FR-VG-12: 往復し、壊れた要素は捨てる', () => {
-    const r = parseGraphView({
-      missingDisplay: { nodeAttrs: ['生年', 3, '生年'], edgeAttrs: 'x' },
-    });
-    expect(r.ok && r.value.missingDisplay).toEqual({ nodeAttrs: ['生年'], edgeAttrs: [] });
+  it('FR-VG-12: 往復する', () => {
+    const r = parseGraphView({ missingDisplay: { nodeAttrs: ['生年'], edgeAttrs: ['出典'] } });
+    expect(r.ok && r.value.missingDisplay).toEqual({ nodeAttrs: ['生年'], edgeAttrs: ['出典'] });
+  });
+  it.each([
+    ['null', null, 'missingDisplay'],
+    ['文字列', 'x', 'missingDisplay'],
+    ['配列でない一覧', { nodeAttrs: 'x' }, 'missingDisplay.nodeAttrs'],
+    ['文字列でない要素', { edgeAttrs: ['a', 3] }, 'missingDisplay.edgeAttrs[1]'],
+    ['空文字', { nodeAttrs: [''] }, 'missingDisplay.nodeAttrs[0]'],
+    ['重複', { nodeAttrs: ['a', 'a'] }, 'missingDisplay.nodeAttrs[1]'],
+    ['長すぎるキー', { nodeAttrs: ['a'.repeat(1001)] }, 'missingDisplay.nodeAttrs[0]'],
+    [
+      '上限超えの件数',
+      { nodeAttrs: Array.from({ length: 10001 }, String) },
+      'missingDisplay.nodeAttrs',
+    ],
+  ])('FR-VG-12: 不正な値は拒否する（%s）', (_name, input, path) => {
+    const r = parseGraphView({ missingDisplay: input });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.path).toBe(path);
   });
 });

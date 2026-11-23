@@ -384,10 +384,40 @@ export function parseProject(
           issue: { kind: 'unknown-node-position', path: `view.graph.positions[${String(i)}].id` },
         });
     });
+    // 【なぜ】schema に無い属性の指定も同じく、落として警告にする（ノードとエッジは別に見る）。
+    const keysOf = (target: 'node' | 'edge') =>
+      new Set(dataset.value.schema.filter((d) => d.appliesTo === target).map((d) => d.key));
+    const nodeKeys = keysOf('node');
+    const edgeKeys = keysOf('edge');
+    const md = parsedGraph.missingDisplay;
+    md.nodeAttrs.forEach((k, i) => {
+      if (!nodeKeys.has(k))
+        positionWarnings.push({
+          source: 'project',
+          issue: {
+            kind: 'unknown-attribute',
+            path: `view.graph.missingDisplay.nodeAttrs[${String(i)}]`,
+          },
+        });
+    });
+    md.edgeAttrs.forEach((k, i) => {
+      if (!edgeKeys.has(k))
+        positionWarnings.push({
+          source: 'project',
+          issue: {
+            kind: 'unknown-attribute',
+            path: `view.graph.missingDisplay.edgeAttrs[${String(i)}]`,
+          },
+        });
+    });
     if (positionWarnings.length > 0)
       graph = {
         ...parsedGraph,
         positions: parsedGraph.positions.filter((p) => nodeIds.has(p.id)),
+        missingDisplay: {
+          nodeAttrs: md.nodeAttrs.filter((k) => nodeKeys.has(k)),
+          edgeAttrs: md.edgeAttrs.filter((k) => edgeKeys.has(k)),
+        },
       };
   }
   // 表ビューと下の段（D-44）。任意の項目で、読めない中身は既定で補う（parseTableView、parseWorkspace）。

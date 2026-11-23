@@ -54,6 +54,9 @@ export function parseGraphView(x: unknown): ParseResult<GraphViewSettings> {
     get('graphOptions') === undefined ? DEFAULT_GRAPH_OPTIONS : get('graphOptions'),
   );
   if (!graphOptions.ok) return fail('graphOptions.' + graphOptions.path);
+  const missingDisplay = parseMissingDisplay(get('missingDisplay'));
+  if (!missingDisplay.ok)
+    return fail('missingDisplay' + (missingDisplay.path === '' ? '' : '.' + missingDisplay.path));
   const value = (key: string, fallback: unknown): unknown =>
     get(key) === undefined ? fallback : get(key);
   const layout = value('layout', DEFAULT_GRAPH_VIEW.layout);
@@ -123,7 +126,7 @@ export function parseGraphView(x: unknown): ParseResult<GraphViewSettings> {
       largeLabelCount,
       positions,
       viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
-      missingDisplay: parseMissingDisplay(get('missingDisplay')),
+      missingDisplay: missingDisplay.value,
     },
   };
 }

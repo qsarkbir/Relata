@@ -7,6 +7,7 @@
  */
 import type { AttributeDef, Attrs, Dataset, EdgeId, MissingReason, NodeId } from '../model';
 import { MISSING_REASONS, getAttr } from '../model';
+import { assertNever } from '../util/assertNever';
 
 /** 数える対象の集合。`null` の項目は「全体」。絞り込み後は `FilterResult` の集合をそのまま渡せる。 */
 export interface MissingScope {
@@ -96,17 +97,35 @@ function countOne(
     if (ids !== null && !ids.has(id)) return;
     total += 1;
     const v = getAttr(attrs, def.key);
-    if (v === undefined) absent += 1;
-    else if (v.kind === 'missing') byReason[v.reason] += 1;
-    else present += 1;
-  };
-  if (def.appliesTo === 'node') {
-    for (const n of dataset.nodes) {
-      if (def.nodeType !== undefined && n.type !== def.nodeType) continue;
-      visit(n.id, n.attrs);
+    if (v === undefined) {
+      absent += 1;
+      return;
     }
-  } else {
-    for (const e of dataset.edges) visit(e.id, e.attrs);
+    // 【TS】判別共用体 `AttrValue` を `kind` で分岐する。`assertNever` は、種類が増えて分岐を書き忘れると型エラーにする。
+    switch (v.kind) {
+      case 'missing':
+        byReason[v.reason] += 1;
+        break;
+      case 'value':
+      case 'date':
+        present += 1;
+        break;
+      default:
+        assertNever(v, 'AttrValue');
+    }
+  };
+  switch (def.appliesTo) {
+    case 'node':
+      for (const n of dataset.nodes) {
+        if (def.nodeType !== undefined && n.type !== def.nodeType) continue;
+        visit(n.id, n.attrs);
+      }
+      break;
+    case 'edge':
+      for (const e of dataset.edges) visit(e.id, e.attrs);
+      break;
+    default:
+      assertNever(def.appliesTo, 'AttributeDef.appliesTo');
   }
   let missing = 0;
   for (const r of MISSING_REASONS) missing += byReason[r];
