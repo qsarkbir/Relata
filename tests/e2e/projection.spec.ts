@@ -23,6 +23,8 @@ import {
 interface Options {
   readonly types?: readonly string[];
   readonly projection?: { target: string; via: string; method: string };
+  /** 組織 o1 だけにつながる人物を、この数だけ足す（大きすぎる射影の確認用）。 */
+  readonly extraPersons?: number;
 }
 
 /** 小さな二部グラフのプロジェクトファイル。 */
@@ -54,6 +56,8 @@ function projectFile(options: Options = {}) {
     node('o3', 'org', 'Org Three', 'B'),
     node('l1', 'place', 'Fes', 'P'),
   ].filter((n) => types.includes(n.type));
+  const extra = Array.from({ length: options.extraPersons ?? 0 }, (_, i) => `q${String(i)}`);
+  nodes.push(...extra.map((id) => node(id, 'person', id, 'P')));
   const ids = new Set(nodes.map((n) => n.id));
   const edges = [
     edge('e1', 'p1', 'o1'),
@@ -65,6 +69,7 @@ function projectFile(options: Options = {}) {
     edge('e7', 'p4', 'o3'),
     edge('e8', 'p5', 'o3'),
     edge('e9', 'p1', 'l1'),
+    ...extra.map((id) => edge(`x-${id}`, id, 'o1')),
   ].filter((e) => ids.has(e.source) && ids.has(e.target));
   return {
     name: 'bipartite.relata.json',
@@ -292,9 +297,7 @@ test.describe('日本語の画面（特別なデータ）', () => {
     await expect(page.getByTestId('metric-global-nodeCount')).toHaveText('9');
     await expect(buildToggle(page)).toHaveText('構築: 射影（適用できません）');
     await expect(
-      page
-        .getByText('仲介する型「ghost」がこのデータにありません。射影は適用していません。')
-        .first(),
+      page.getByText('仲介する型「ghost」がこのデータにありません。射影は適用していません。'),
     ).toBeVisible();
     await expect(counts(page)).toBeVisible();
   });
@@ -312,6 +315,105 @@ test.describe('日本語の画面（特別なデータ）', () => {
     // 射影先と仲介を同じ型にすると、もう一方が入れ替わる（無効な組にならない）。
     await panel.getByLabel('射影先の型（残すノード）').selectOption('place');
     await expect(panel.getByLabel('仲介する型（根拠になるノード）')).toHaveValue('person');
+  });
+});
+
+test.describe('日本語の画面（構築の追加の確認）', () => {
+  test.use({ locale: 'ja-JP' });
+  test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await startApp(page);
+  });
+
+  test('FR-GR-03: パネルの中の Ctrl+Z は構築の設定を戻し、フィルタの Undo は走らない', async ({
+    page,
+  }) => {
+    await openProject(page, projectFile());
+    // 先にフィルタを 1 つ足す（これが戻ってしまえば失敗とわかる）。
+    const box = await openAttr(page, 'Tag');
+    await facetValue(box, 'P').check();
+    await facetValue(box, 'A').check();
+    await expect(conditions(page)).toContainText('フィルタ 1');
+    const panel = await project(page);
+    const method = panel.getByLabel('重み付けの方式');
+    await method.selectOption('newman');
+    await method.focus();
+    await page.keyboard.press('Control+z');
+    await expect(method).toHaveValue('shared');
+    await expect(conditions(page)).toContainText('フィルタ 1');
+    await page.keyboard.press('Control+Shift+z');
+    await expect(method).toHaveValue('newman');
+    await page.keyboard.press('Control+z');
+    await page.keyboard.press('Control+z');
+    await expect(panel.getByRole('checkbox', { name: '射影する' })).not.toBeChecked();
+    await expect(conditions(page)).toContainText('フィルタ 1');
+  });
+
+  test('FR-GR-03: 型が 1 つのデータで射影の設定を持つファイルでも、射影を外せる', async ({
+    page,
+  }) => {
+    await openProject(
+      page,
+      projectFile({
+        types: ['person'],
+        projection: { target: 'person', via: 'org', method: 'shared' },
+      }),
+    );
+    const panel = await openBuildPanel(page);
+    const checkbox = panel.getByRole('checkbox', { name: '射影する' });
+    await expect(checkbox).toBeEnabled();
+    // 射影は効いていない（無効）ので、重みの欄は触れる。
+    await expect(panel.getByLabel('重みの集計')).toBeEnabled();
+    await checkbox.uncheck();
+    await expect(checkbox).toBeDisabled();
+    await expect(buildToggle(page)).toHaveText('ネットワークの構築');
+  });
+
+  test('FR-GR-04: 選んだエッジが今のグラフに無くなったら、表示されていないと示して解除できる', async ({
+    page,
+  }) => {
+    await openProject(page, projectFile());
+    const panel = await project(page);
+    await page.keyboard.press('Escape');
+    await selectNode(page, 'p2');
+    const card = page.getByRole('region', { name: '選択したノードの詳細' });
+    await card.getByRole('button', { name: 'このエッジを選ぶ: Carol' }).click();
+    await expect(card.getByTestId('evidence-edge')).toHaveCount(1);
+    await buildToggle(page).click();
+    await panel.getByLabel('仲介する型（根拠になるノード）').selectOption('place');
+    await expect(card).toContainText('選んだエッジは、今のグラフに表示されていません。');
+    // パネルは図の上に重なるので、閉じてからカードを操作する。
+    await page.keyboard.press('Escape');
+    await card.getByRole('button', { name: 'エッジの選択を解除' }).click();
+    await expect(card).not.toContainText('選んだエッジは、今のグラフに表示されていません。');
+  });
+
+  test('NFR-03: 組の数が上限を超える射影は適用せず、大きな仲介ノードを示す', async ({ page }) => {
+    await openProject(page, projectFile({ extraPersons: 201 }));
+    const panel = await project(page);
+    await expect(
+      panel.getByText(/上限（20000 組）を超えるため、射影は適用していません/),
+    ).toBeVisible();
+    await expect(panel.getByText(/大きな仲介ノード:/)).toContainText('Org One');
+    await expect(panel.getByText(/絞り込みで除くと/)).toBeVisible();
+    await expect(buildToggle(page)).toHaveText('構築: 射影（適用できません）');
+    // パネルが開いている間は、図の上に同じ文を重ねて出さない。
+    await expect(page.getByText(/射影は適用していません/)).toHaveCount(1);
+  });
+
+  test('FR-FL-05: 孤立ノードを表示しないとき、射影で孤立した射影先ノードも除く', async ({
+    page,
+  }) => {
+    await openProject(page, projectFile());
+    await project(page);
+    await page.keyboard.press('Escape');
+    const box = await openAttr(page, 'Tag');
+    // 組織 o1（A）と人物だけを残す。p4、p5 は残った組織につながらない。
+    await facetValue(box, 'P').check();
+    await facetValue(box, 'A').check();
+    await expect(conditions(page)).toContainText('射影後: ノード 3 · エッジ 3');
+    await page.getByRole('checkbox', { name: '孤立ノードを表示する' }).check();
+    await expect(conditions(page)).toContainText('射影後: ノード 5 · エッジ 3');
   });
 });
 

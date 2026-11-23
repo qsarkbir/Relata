@@ -101,3 +101,11 @@
   display: flex;
   justify-content: flex-end;
 }
+
+.build-issue-line {
+  display: block;
+  font-weight: normal;
+}
+.build-issue-line:first-child {
+  font-weight: 600;
+}

@@ -21,12 +21,33 @@ import type { ProjectionMethod, ProjectionOptions } from './options';
  * - `unknownTarget`: 射影先の型が、データセットのノード型にない
  * - `unknownVia`: 仲介する型が、データセットのノード型にない
  * - `sameType`: 射影先と仲介が同じ型（射影にならない）
+ * - `tooLarge`: 射影すると組の数が上限（`MAX_PROJECTION_PAIRS`）を超える。`hubs` は次数の大きい仲介ノード
  */
 // 【TS】`code` の値で形が決まる判別共用体。`type` を持つのは型の名前を示す問題だけ。
 export type ProjectionIssue =
   | { readonly code: 'unknownTarget'; readonly type: NodeTypeId }
   | { readonly code: 'unknownVia'; readonly type: NodeTypeId }
-  | { readonly code: 'sameType'; readonly type: NodeTypeId };
+  | { readonly code: 'sameType'; readonly type: NodeTypeId }
+  | {
+      readonly code: 'tooLarge';
+      /** 射影で作られる射影先ノードの組の数（共通の仲介ごとの組の合計。同じ組は重ねて数える）。 */
+      readonly pairs: number;
+      readonly limit: number;
+      /** 組の数への寄与が大きい仲介ノード（次数 = つながる射影先ノードの数の多い順、同数は ID 順）。 */
+      readonly hubs: readonly { readonly id: NodeId; readonly degree: number }[];
+    };
+
+/**
+ * 射影してよい組の数の上限。
+ *
+ * 【なぜ】射影の計算量は仲介ノードごとに O(d²)（d は射影先の近傍数）。たくさんの人物が属する 1 つの
+ * 組織（d = 1 万など）があると、1 つで数千万の組ができ、画面が固まる。要件 NFR-03 の想定規模
+ * （エッジ約 2 万）に合わせて、射影後のエッジの上限の目安を 20,000 組にする。
+ */
+export const MAX_PROJECTION_PAIRS = 20_000;
+
+/** 大きすぎる射影の理由に添える、次数の大きい仲介ノードの件数。 */
+const HUB_COUNT = 3;
 
 /**
  * 射影の設定を検査する。
@@ -49,12 +70,57 @@ export function validateProjection(
 }
 
 /**
+ * 射影の前に、作られる組の数を数えて、大きすぎれば理由を返す。
+ *
+ * 組の数は Σ d_k(d_k − 1) / 2（d_k は仲介ノード k につながる射影先ノードの数）。射影そのものより
+ * 軽い O(エッジ数) で数えられる。
+ *
+ * @param graph - `buildGraph` の結果
+ * @param projection - 射影の設定
+ * @returns 大きすぎるなら `tooLarge`、そうでなければ null
+ */
+export function checkProjectionSize(
+  graph: RelataGraph,
+  projection: ProjectionOptions,
+): Extract<ProjectionIssue, { code: 'tooLarge' }> | null {
+  let pairs = 0;
+  const degrees: { id: NodeId; degree: number }[] = [];
+  graph.forEachNode((k, a) => {
+    if (a.type !== projection.via) return;
+    const near = new Set<string>();
+    graph.forEachEdge(k, (_e, _attrs, s, t) => {
+      if (s === t) return; // 自己ループは数えない（射影と同じ）
+      const other = s === k ? t : s;
+      if (graph.getNodeAttribute(other, 'type') === projection.target) near.add(other);
+    });
+    const d = near.size;
+    pairs += (d * (d - 1)) / 2;
+    // 【TS】キーは NodeId として入れたものを読み戻している（射影本体と同じ理由）。
+    degrees.push({ id: k as NodeId, degree: d });
+  });
+  if (pairs <= MAX_PROJECTION_PAIRS) return null;
+  degrees.sort((x, y) => y.degree - x.degree || byId(x.id, y.id));
+  return {
+    code: 'tooLarge',
+    pairs,
+    limit: MAX_PROJECTION_PAIRS,
+    hubs: degrees.slice(0, HUB_COUNT),
+  };
+}
+
+/**
  * 射影のときの注意。呼ぶ側が画面に出す。
  *
  * - `directedAsUndirected`: 射影に使うエッジに有向のものがあった。向きは無視して無向として射影した。
  */
 export interface ProjectionWarning {
   readonly code: 'directedAsUndirected';
+}
+
+/** `projectGraph` の実行時の選択肢。 */
+export interface ProjectionRunOptions {
+  /** true なら、射影後に 1 本もエッジを持たない射影先ノードを除く（既定は残す）。 */
+  readonly dropIsolated?: boolean;
 }
 
 /** 射影の結果。 */
@@ -123,7 +189,8 @@ function byId(a: string, b: string): number {
  *   選択の対応づけに使う。D-40）、`via` ＝仲介ノード ID。どちらも ID の昇順で決定的。
  *
  * @param graph - `buildGraph` の結果
- * @param projection - 射影の設定（型の検査は `validateProjection` で先にする）
+ * @param projection - 射影の設定（型の検査は `validateProjection`、大きさの検査は `checkProjectionSize` で先にする）
+ * @param options - `dropIsolated`: true なら、射影で孤立した射影先ノードを結果から除く
  * @returns 射影したグラフと注意
  *
  * @example
@@ -133,7 +200,11 @@ function byId(a: string, b: string): number {
  * });
  * ```
  */
-export function projectGraph(graph: RelataGraph, projection: ProjectionOptions): ProjectionResult {
+export function projectGraph(
+  graph: RelataGraph,
+  projection: ProjectionOptions,
+  options: ProjectionRunOptions = {},
+): ProjectionResult {
   const out: RelataGraph = new Graph<
     RelataNodeAttributes,
     RelataEdgeAttributes,
@@ -234,6 +305,12 @@ export function projectGraph(graph: RelataGraph, projection: ProjectionOptions):
       via: p.via, // k を昇順に処理したので昇順
     };
     out.addUndirectedEdgeWithKey(key, p.u, p.v, attrs);
+  }
+
+  // 5. 「孤立ノードを表示しない」（FR-FL-05）を射影後のグラフにも当てる。射影前は他の型のノードとつながって
+  //    いて表示されていた射影先ノードも、共通の仲介が無ければ射影後は孤立する。
+  if (options.dropIsolated === true) {
+    for (const id of out.nodes()) if (out.degree(id) === 0) out.dropNode(id);
   }
 
   return { graph: out, warnings: seen.directed ? [{ code: 'directedAsUndirected' }] : [] };

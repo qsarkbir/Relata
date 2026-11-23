@@ -82,9 +82,6 @@ export const en = {
   'graph.section.layout': 'Layout',
   'graph.section.appearance': 'Appearance',
   'graph.section.labels': 'Labels and direction',
-  'graph.section.build': 'Build (weights, self-loops)',
-  'graph.section.buildNote':
-    'Shared by the graph and the metrics. Changing it recomputes the metrics too.',
   'graph.selection.clear': 'Clear selection',
   'graph.selection.count': '{count} selected',
   'graph.selection.more': '{count} more selected',
@@ -539,12 +536,10 @@ export const en = {
     'Multiple node types are present. Interpret these metrics carefully because they assume a single node type.',
   // ---- T2-02: ネットワークの構築（射影）と根拠 ----
   'build.open': 'Network construction',
-  'build.openDescription':
-    'Open the construction settings shared by the graph and metrics (weight, self-loops, projection)',
   'build.summaryPrefix': 'Construction:',
   'build.summary.projection': 'Projection',
   'build.summary.projectionInvalid': 'Projection (not applicable)',
-  'build.summary.weight': 'Weight: {value}',
+  'build.summary.weight': 'Weight:',
   'build.summary.noLoops': 'No self-loops',
   'build.afterProjection': 'After projection: {nodes} nodes · {edges} edges',
   'build.title': 'Network construction',
@@ -594,4 +589,13 @@ export const en = {
   'metrics.projected': 'Computed on the projected graph',
   'metrics.projectedDetail':
     'Projection is on in the construction settings, so the metrics are computed on the projected graph.',
+  'evidence.clearEdges': 'Clear the edge selection',
+  'build.noteShortcut':
+    'Inside this panel, Ctrl+Z (Cmd+Z on Mac) undoes construction changes and Shift+Ctrl+Z redoes them.',
+  'build.issue.tooLarge':
+    'Projecting would create {pairs} candidate edges, over the limit of {limit}, so projection is not applied.',
+  'build.issue.tooLargeHubs': 'Large via nodes:',
+  'build.issue.hub': '{label} ({count})',
+  'build.issue.tooLargeHint':
+    'Filter out these via nodes in the left panel; projection may then be possible.',
 } satisfies Record<MessageKey, string>;

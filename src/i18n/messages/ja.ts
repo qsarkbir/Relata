@@ -80,8 +80,6 @@ export const ja = {
   'graph.section.layout': '配置',
   'graph.section.appearance': '見た目',
   'graph.section.labels': 'ラベルと向き',
-  'graph.section.build': '構築（重み・自己ループ）',
-  'graph.section.buildNote': 'グラフと指標に共通の設定です。変えると指標も計算し直します。',
   'graph.selection.clear': '選択を解除',
   'graph.selection.count': '{count} 件を選択中',
   'graph.selection.more': '他に {count} 件を選択中',
@@ -520,11 +518,10 @@ export const ja = {
     'ノード型が複数あります。次の指標は1種類のノードを前提とするため、解釈に注意してください。',
   // ---- T2-02: ネットワークの構築（射影）と根拠 ----
   'build.open': 'ネットワークの構築',
-  'build.openDescription': 'グラフと指標に共通の構築の設定（重み、自己ループ、射影）を開きます',
   'build.summaryPrefix': '構築:',
   'build.summary.projection': '射影',
   'build.summary.projectionInvalid': '射影（適用できません）',
-  'build.summary.weight': '重み: {value}',
+  'build.summary.weight': '重み:',
   'build.summary.noLoops': '自己ループなし',
   'build.afterProjection': '射影後: ノード {nodes} · エッジ {edges}',
   'build.title': 'ネットワークの構築',
@@ -573,6 +570,15 @@ export const ja = {
   'evidence.edgeHidden': '選んだエッジは、今のグラフに表示されていません。',
   'metrics.projected': '射影後のグラフで計算',
   'metrics.projectedDetail': '構築の設定で射影しているため、指標は射影後のグラフで計算しています。',
+  'evidence.clearEdges': 'エッジの選択を解除',
+  'build.noteShortcut':
+    'パネルの中では Ctrl+Z（Mac は Cmd+Z）で構築の設定を戻し、Shift+Ctrl+Z でやり直します。',
+  'build.issue.tooLarge':
+    '射影すると {pairs} 組のエッジ候補ができ、上限（{limit} 組）を超えるため、射影は適用していません。',
+  'build.issue.tooLargeHubs': '大きな仲介ノード:',
+  'build.issue.hub': '{label}（{count} 件）',
+  'build.issue.tooLargeHint':
+    '左のパネルで、これらの仲介ノードを絞り込みで除くと、射影できる場合があります。',
 } as const;
 
 /**

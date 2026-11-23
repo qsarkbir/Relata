@@ -12,7 +12,9 @@ import { applyFilters, DEFAULT_FILTER_STATE, type FilterResult } from '../filter
 import { computeMetrics } from '../metrics';
 import {
   DEFAULT_GRAPH_OPTIONS,
+  MAX_PROJECTION_PAIRS,
   buildGraph,
+  checkProjectionSize,
   parseGraphOptions,
   projectGraph,
   toSnapshot,
@@ -242,5 +244,72 @@ describe('FR-MT-05: 射影の後は二部グラフへの注意が消える', () 
     expect(before).toContain('multipleNodeTypes');
     const after = computeMetrics(toSnapshot(projectGraph(g, proj('shared')).graph)).notes;
     expect(after.map((n) => n.code)).not.toContain('multipleNodeTypes');
+  });
+});
+
+describe('FR-GR-03: 射影後に孤立した射影先ノード（FR-FL-05 を射影後にも当てる）', () => {
+  // p1、p2 は組織 o1 を共有。p3 は o2 だけにつながり、射影すると孤立する。
+  const d = mk(
+    'undirected',
+    [
+      ['p1', 'person'],
+      ['p2', 'person'],
+      ['p3', 'person'],
+      ['o1', 'org'],
+      ['o2', 'org'],
+    ],
+    [
+      ['e1', 'p1', 'o1'],
+      ['e2', 'p2', 'o1'],
+      ['e3', 'p3', 'o2'],
+    ],
+  );
+  it('FR-GR-03: 既定では孤立した射影先ノードも残す', () => {
+    const g = projectGraph(buildGraph(d, all(d)), proj('shared')).graph;
+    expect(g.order).toBe(3);
+  });
+  it('FR-FL-05: dropIsolated を付けると、射影で孤立したノードを除く', () => {
+    const g = projectGraph(buildGraph(d, all(d)), proj('shared'), { dropIsolated: true }).graph;
+    expect([...g.nodes()].sort()).toEqual(['p1', 'p2']);
+    expect(g.size).toBe(1);
+  });
+});
+
+describe('NFR-03: 大きすぎる射影の検査（checkProjectionSize）', () => {
+  // 組織 hub に n 人、組織 small に 2 人がつながるデータ。
+  const star = (n: number): Dataset =>
+    mk(
+      'undirected',
+      [
+        ...Array.from({ length: n }, (_, i): [string, string] => ['p' + String(i), 'person']),
+        ['hub', 'org'],
+        ['small', 'org'],
+      ],
+      [
+        ...Array.from({ length: n }, (_, i): [string, string, string] => [
+          'e' + String(i),
+          'p' + String(i),
+          'hub',
+        ]),
+        ['s1', 'p0', 'small'],
+        ['s2', 'p1', 'small'],
+      ],
+    );
+  it('NFR-03: 上限以内なら null', () => {
+    const d = star(200); // 200 × 199 / 2 = 19,900 + small の 1 = 19,901
+    expect(checkProjectionSize(buildGraph(d, all(d)), proj('shared'))).toBeNull();
+  });
+  it('NFR-03: 上限を超えると tooLarge。組の数と、次数の大きい仲介ノードを返す', () => {
+    const d = star(201); // 20,100 + 1
+    const issue = checkProjectionSize(buildGraph(d, all(d)), proj('shared'));
+    expect(issue).toEqual({
+      code: 'tooLarge',
+      pairs: 20101,
+      limit: MAX_PROJECTION_PAIRS,
+      hubs: [
+        { id: 'hub', degree: 201 },
+        { id: 'small', degree: 2 },
+      ],
+    });
   });
 });

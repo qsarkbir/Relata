@@ -31,6 +31,7 @@ import {
 } from '../state';
 import { useData, useSelection, useT, useUi } from './hooks';
 import { useNetwork } from './useNetwork';
+import { buildPanelStore } from './buildPanelStore';
 import { ProjectionIssues } from './ProjectionNotice';
 import { NeighborEvidence, SelectedEdges } from './ProjectionEvidence';
 import './graph.css';
@@ -129,6 +130,8 @@ export function GraphView() {
   } | null>(null);
   // 【なぜ】描画・配置・指標が、同じ射影後のグラフを使う。計算は state の getNetwork が 1 か所で行う（D-39）。
   const network = useNetwork();
+  // 【なぜ】構築のパネルが開いている間は、同じ理由をパネルの中だけに出す（支援技術の二重の読み上げを防ぐ）。
+  const buildPanelOpen = useStore(buildPanelStore, (b) => b.open);
   const graph = network?.graph ?? null;
   const selectedEdgeKeys = useMemo(
     () => (graph === null ? [] : selectedGraphEdges(graph, selectedEdges)),
@@ -446,7 +449,10 @@ export function GraphView() {
     }
   };
 
-  const hasSelection = selected.size > 0 || selectedEdgeKeys.length > 0;
+  // 選んだ元のエッジが、今のグラフのどのエッジにも対応しない（射影の設定やフィルタが変わった）。
+  // 【なぜ】選択は消さず、表示されていないと示す（D-40）。
+  const hiddenEdges = selectedEdges.size > 0 && selectedEdgeKeys.length === 0;
+  const hasSelection = selected.size > 0 || selectedEdges.size > 0;
   const selectedFirst = [...selected][0];
   const selectionText =
     selected.size === 1 && selectedFirst !== undefined ? (
@@ -455,7 +461,11 @@ export function GraphView() {
         {!visibleSelected.has(selectedFirst) && <> ({t('graph.selection.hiddenShort')})</>}
       </>
     ) : selected.size === 0 ? (
-      t('evidence.edgeCount', { count: nf.format(selectedEdgeKeys.length) })
+      hiddenEdges ? (
+        t('evidence.selectedEdges')
+      ) : (
+        t('evidence.edgeCount', { count: nf.format(selectedEdgeKeys.length) })
+      )
     ) : (
       t('graph.selection.count', { count: nf.format(selected.size) })
     );
@@ -463,7 +473,9 @@ export function GraphView() {
   const cardHeading =
     selectedId !== undefined
       ? nodeLabel(selectedId)
-      : t('evidence.edgeCount', { count: nf.format(selectedEdgeKeys.length) });
+      : hiddenEdges
+        ? t('evidence.selectedEdges')
+        : t('evidence.edgeCount', { count: nf.format(selectedEdgeKeys.length) });
   const selectedVisible = selectedId !== undefined && graph.hasNode(selectedId);
   return (
     <section className="graph-view" aria-labelledby="graph-title">
@@ -560,7 +572,7 @@ export function GraphView() {
           <Icon name="settings" /> {t('graph.settings')}
         </button>
       </Toolbar>
-      {network !== null && <ProjectionIssues status={network.projection} />}
+      {network !== null && !buildPanelOpen && <ProjectionIssues status={network.projection} />}
       {graph.order === 0 && (
         <StatusMessage
           state={
@@ -698,7 +710,7 @@ export function GraphView() {
                 />
               </svg>
             </div>
-            {(selectedId !== undefined || selectedEdgeKeys.length > 0) && (
+            {(selectedId !== undefined || selectedEdges.size > 0) && (
               <section className="graph-card" aria-label={t('graph.details')}>
                 <div className="graph-card-head">
                   <h3 ref={cardTitle} tabIndex={-1} title={cardHeading}>
@@ -732,6 +744,20 @@ export function GraphView() {
                   )}
                   {selectedEdgeKeys.length > 0 && (
                     <SelectedEdges graph={graph} edgeKeys={selectedEdgeKeys} />
+                  )}
+                  {hiddenEdges && (
+                    <>
+                      <p className="graph-card-hidden">{t('evidence.edgeHidden')}</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          // ノードの選択は残し、表示されていないエッジの選択だけを解除する。
+                          selectionStore.getState().select({ nodes: selected });
+                        }}
+                      >
+                        {t('evidence.clearEdges')}
+                      </button>
+                    </>
                   )}
                   {selectedId === undefined ? null : selectedVisible ? (
                     <>

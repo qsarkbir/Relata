@@ -11,6 +11,8 @@ const VIA_PREVIEW = 5;
 /** {@link ViaList} の props。 */
 interface ViaListProps {
   readonly ids: readonly NodeId[];
+  /** 仲介ノードの ID → ラベル（呼ぶ側が 1 回だけ作って渡す）。 */
+  readonly labels: ReadonlyMap<NodeId, string>;
 }
 
 /**
@@ -20,17 +22,11 @@ interface ViaListProps {
  * @param props - 仲介ノードの ID（昇順）
  * @returns 件数と一覧
  */
-function ViaList({ ids }: ViaListProps) {
+function ViaList({ ids, labels }: ViaListProps) {
   const t = useT();
   const locale = useUi((s) => s.locale);
   const nf = getNumberFormat(locale);
-  const dataset = useData((s) => s.dataset);
   const [expanded, setExpanded] = useState(false);
-  // 【なぜ】ID からラベルを引く表は、データが替わったときだけ作る（ラベルで照合せず、ID で引く）。
-  const labels = useMemo(
-    () => new Map((dataset?.nodes ?? []).map((node) => [node.id, node.label])),
-    [dataset],
-  );
   const shown = expanded ? ids : ids.slice(0, VIA_PREVIEW);
   return (
     <div className="evidence-via">
@@ -74,6 +70,13 @@ export function SelectedEdges({ graph, edgeKeys }: SelectedEdgesProps) {
   const t = useT();
   const locale = useUi((s) => s.locale);
   const nf = getNumberFormat(locale);
+  const dataset = useData((s) => s.dataset);
+  // 【なぜ】ID からラベルを引く表は、データが替わったときだけ作る（ラベルで照合せず、ID で引く）。
+  // エッジごとの一覧で作り直さないよう、ここで 1 回だけ作って渡す。
+  const labels = useMemo(
+    () => new Map((dataset?.nodes ?? []).map((node) => [node.id, node.label])),
+    [dataset],
+  );
   return (
     <section className="evidence" aria-label={t('evidence.selectedEdges')}>
       <h4>{t('evidence.selectedEdges')}</h4>
@@ -93,7 +96,7 @@ export function SelectedEdges({ graph, edgeKeys }: SelectedEdgesProps) {
                   {t('evidence.originalEdges', { count: nf.format(attrs.edgeIds.length) })}
                 </p>
               ) : (
-                <ViaList ids={attrs.via} />
+                <ViaList ids={attrs.via} labels={labels} />
               )}
             </li>
           );

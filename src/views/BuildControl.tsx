@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { useStore } from 'zustand';
 import { PROJECTION_METHODS } from '../core/graph';
 import type { GraphOptions, ProjectionMethod } from '../core/graph';
@@ -6,9 +6,11 @@ import type { Dataset, NodeTypeId } from '../core/model';
 import { DEFAULT_GRAPH_OPTIONS } from '../core/graph';
 import { buildOptions, graphViewStore, selectGraphOptions } from '../state';
 import type { MessageKey } from '../i18n';
+import { assertNever } from '../core/util/assertNever';
 import { useData, useT, useUi } from './hooks';
 import { getNumberFormat } from './intl';
 import { useNetwork } from './useNetwork';
+import { buildPanelStore } from './buildPanelStore';
 import { useCurrentMetrics } from './metrics/useCurrentMetrics';
 import { Chip } from './ui/Chip';
 import { Field } from './ui/Field';
@@ -16,6 +18,7 @@ import { IconButton } from './ui/icons';
 import { ProjectionIssues } from './ProjectionNotice';
 import './conditions.css';
 
+// 【TS】`Record<ProjectionMethod, MessageKey>` は、方式の全部をキーに持つ表。方式を足して書き忘れると型エラーになる。
 const METHOD_NAMES: Record<ProjectionMethod, MessageKey> = {
   shared: 'build.projection.method.shared',
   newman: 'build.projection.method.newman',
@@ -54,7 +57,11 @@ export function BuildControl() {
   const dataset = useData((s) => s.dataset);
   const options = useStore(graphViewStore, selectGraphOptions);
   const network = useNetwork();
-  const [open, setOpen] = useState(false);
+  // 【なぜ】開閉は小さなストアに置く。図の上の注意（ProjectionIssues）が、開いている間は出ないように共有する。
+  const open = useStore(buildPanelStore, (b) => b.open);
+  const setOpen = (value: boolean) => {
+    buildPanelStore.getState().setOpen(value);
+  };
   const toggle = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLElement>(null);
   const panelId = useId();
@@ -70,7 +77,7 @@ export function BuildControl() {
       const target = event.target;
       if (!(target instanceof Node)) return;
       if (panel.current?.contains(target) || toggle.current?.contains(target)) return;
-      setOpen(false);
+      buildPanelStore.getState().setOpen(false);
     };
     document.addEventListener('pointerdown', onPointerDown);
     return () => {
@@ -87,15 +94,23 @@ export function BuildControl() {
 
   // 項目に出す、実際に適用されている値。
   const parts: ReactNode[] = [];
-  if (status.kind === 'applied') {
-    parts.push(
-      <span key="projection">
-        {t('build.summary.projection')} <bdi>{typeLabel(dataset, status.options.target)}</bdi> ←{' '}
-        <bdi>{typeLabel(dataset, status.options.via)}</bdi>
-      </span>,
-    );
-  } else if (status.kind === 'invalid') {
-    parts.push(<span key="projection">{t('build.summary.projectionInvalid')}</span>);
+  // 【TS】`switch` と `assertNever` で、射影の状態を足したときの書き忘れを型で検出する。
+  switch (status.kind) {
+    case 'none':
+      break;
+    case 'applied':
+      parts.push(
+        <span key="projection">
+          {t('build.summary.projection')} <bdi>{typeLabel(dataset, status.options.target)}</bdi> ←{' '}
+          <bdi>{typeLabel(dataset, status.options.via)}</bdi>
+        </span>,
+      );
+      break;
+    case 'invalid':
+      parts.push(<span key="projection">{t('build.summary.projectionInvalid')}</span>);
+      break;
+    default:
+      assertNever(status);
   }
   if (options.weight !== DEFAULT_GRAPH_OPTIONS.weight) {
     const w = options.weight;
@@ -107,8 +122,7 @@ export function BuildControl() {
         : (dataset.schema.find((a) => a.key === w.attr)?.label ?? w.attr);
     parts.push(
       <span key="weight">
-        {t('build.summary.weight', { value: '' })}
-        <bdi>{weightName}</bdi>
+        {t('build.summary.weight')} <bdi>{weightName}</bdi>
       </span>,
     );
   }
@@ -140,7 +154,7 @@ export function BuildControl() {
         aria-controls={open ? panelId : undefined}
         aria-haspopup="dialog"
         onClick={() => {
-          setOpen((v) => !v);
+          setOpen(!open);
         }}
       >
         <span className="rl-chip-text">{label}</span>
@@ -166,6 +180,19 @@ export function BuildControl() {
             if (event.key === 'Escape') {
               event.stopPropagation();
               close();
+              return;
+            }
+            // 【なぜ】パネルの中の Ctrl/Cmd+Z は、フィルタではなく構築の設定の Undo/Redo にする。パネルの中の欄は
+            // select とチェックボックスだけで、文字を打つ欄が無いので、ブラウザ標準の取り消しとは衝突しない。
+            // `stopPropagation` で、document に付いたフィルタのショートカット（useFilterShortcuts）へ届かせない。
+            if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+              const key = event.key.toLowerCase();
+              if (key === 'z' || (key === 'y' && event.ctrlKey && !event.shiftKey)) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (key === 'y' || event.shiftKey) buildOptions.redo();
+                else buildOptions.undo();
+              }
             }
           }}
         >
@@ -204,9 +231,16 @@ function BuildPanelBody({ dataset, options, titleId }: BodyProps) {
   const projection = options.projection;
   const canProject = types.length >= 2;
   const projecting = projection !== undefined;
-  const busy = metrics.phase === 'waiting' || metrics.phase === 'running';
+  // 【なぜ】進行は、指標の計算と、配置の計算（uiStore の進行表示に載る）の両方を見る。
+  const layoutBusy = useUi((s) => s.tasks.some((task) => task.label.key === 'graph.layoutTask'));
+  const busy = metrics.phase === 'waiting' || metrics.phase === 'running' || layoutBusy;
+  // 【なぜ】射影が実際に効いているとき（applied）だけ、重みと自己ループを無効にする。射影の設定があっても
+  // 無効（型が無いなど）なら、これらの設定は使われているので触れるようにする。
+  const projectionApplied = network?.projection.kind === 'applied';
   const methodHelpId = useId();
 
+  // 【TS】`GraphOptions['projection']` は「射影の設定」の型（任意項目なので undefined を含む）。`NonNullable` で
+  //       undefined を除き、`Partial` で「変えたい項目だけ」を渡せるようにする。
   const setProjection = (next: Partial<NonNullable<GraphOptions['projection']>> | null) => {
     buildOptions.apply((current) => {
       const base: GraphOptions = { weight: current.weight, selfLoops: current.selfLoops };
@@ -216,7 +250,7 @@ function BuildPanelBody({ dataset, options, titleId }: BodyProps) {
       const from =
         current.projection ??
         (first && second
-          ? { target: first.id, via: second.id, method: 'shared' as const }
+          ? { target: first.id, via: second.id, method: 'shared' as const } // `as const` で、method を string ではなくリテラル型 'shared' に保つ
           : undefined);
       if (from === undefined) return current;
       const merged = { ...from, ...next };
@@ -267,6 +301,7 @@ function BuildPanelBody({ dataset, options, titleId }: BodyProps) {
         />
       </div>
       <p className="rl-section-note">{t('build.scope')}</p>
+      <p className="rl-section-note">{t('build.noteShortcut')}</p>
       <div role="status" className="build-progress">
         {busy && (
           <>
@@ -281,7 +316,7 @@ function BuildPanelBody({ dataset, options, titleId }: BodyProps) {
         <Field label={t('graph.weight')}>
           <select
             aria-label={t('graph.weight')}
-            disabled={projecting}
+            disabled={projectionApplied}
             value={
               typeof options.weight === 'string' ? options.weight : 'attr:' + options.weight.attr
             }
@@ -307,7 +342,7 @@ function BuildPanelBody({ dataset, options, titleId }: BodyProps) {
         <Field label={t('graph.selfLoops')} inline>
           <input
             type="checkbox"
-            disabled={projecting}
+            disabled={projectionApplied}
             checked={options.selfLoops}
             onChange={(e) => {
               const checked = e.currentTarget.checked;
@@ -315,7 +350,7 @@ function BuildPanelBody({ dataset, options, titleId }: BodyProps) {
             }}
           />
         </Field>
-        {projecting && <p className="rl-section-note">{t('build.aggregateIgnored')}</p>}
+        {projectionApplied && <p className="rl-section-note">{t('build.aggregateIgnored')}</p>}
       </fieldset>
 
       <fieldset className="build-group">
@@ -323,7 +358,8 @@ function BuildPanelBody({ dataset, options, titleId }: BodyProps) {
         <Field label={t('build.projection.enable')} inline>
           <input
             type="checkbox"
-            disabled={!canProject}
+            // 型が足りなくても、すでに射影の設定があるときは外せるようにする（抜け出せなくならないように）。
+            disabled={!canProject && !projecting}
             checked={projecting}
             onChange={(e) => {
               setProjection(e.currentTarget.checked ? {} : null);
