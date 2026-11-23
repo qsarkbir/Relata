@@ -221,6 +221,32 @@ describe('性質: checkDataset が空なら、JSON を往復しても parseDatas
     ],
     ['ノードだけ', { ...sample, edges: [] }],
     [
+      '属性の値と日付が確からしさを持つ',
+      {
+        ...sample,
+        nodes: sample.nodes.map((n) => ({
+          ...n,
+          attrs: makeAttrs([
+            ['k', { kind: 'value', value: 'v', certainty: 'possible' }],
+            ['d', { kind: 'date', value: { ...bceDate, certainty: 'probable' } }],
+          ]),
+        })),
+        schema: [
+          { key: 'k', label: 'k', appliesTo: 'node', valueType: 'string' },
+          { key: 'd', label: 'd', appliesTo: 'node', valueType: 'date' },
+        ],
+        edges: [],
+      },
+    ],
+    [
+      '確からしさつきのノードとエッジ',
+      {
+        ...sample,
+        nodes: sample.nodes.map((n, i) => (i === 0 ? { ...n, certainty: 'possible' as const } : n)),
+        edges: sample.edges.map((e, i) => (i === 0 ? { ...e, certainty: 'probable' as const } : e)),
+      },
+    ],
+    [
       '辺の期間つき',
       {
         ...sample,
@@ -234,5 +260,27 @@ describe('性質: checkDataset が空なら、JSON を往復しても parseDatas
     const r = parseDataset(roundTrip(ds));
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.value).toEqual(ds);
+  });
+});
+
+describe('確からしさ（D-37、FR-DM-06）', () => {
+  it('FR-DM-06: ノードとエッジの certainty を読み、不正な値は経路つきで拒否する', () => {
+    const base = roundTrip(sampleDataset());
+    // 理由: roundTrip は JSON.parse の結果で、nodes と edges はオブジェクトの配列と分かっている
+    const nodes = base.nodes as Record<string, unknown>[];
+    const edges = base.edges as Record<string, unknown>[];
+    const okNode = parseDataset({ ...base, nodes: [{ ...nodes[0], certainty: 'certain' }] });
+    expect(okNode.ok && okNode.value.nodes[0]?.certainty).toBe('certain');
+    expect(failPath({ ...base, nodes: [{ ...nodes[0], certainty: 'sure' }] })).toBe(
+      'nodes[0].certainty',
+    );
+    expect(failPath({ ...base, edges: [{ ...edges[0], certainty: 1 }] })).toBe(
+      'edges[0].certainty',
+    );
+  });
+
+  it('FR-DM-06: certainty が無い要素には項目を作らない', () => {
+    const r = parseDataset(roundTrip(sampleDataset()));
+    expect(r.ok && Object.hasOwn(r.value.nodes[0] ?? {}, 'certainty')).toBe(false);
   });
 });

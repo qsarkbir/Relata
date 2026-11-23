@@ -98,7 +98,9 @@ type NumberFormatter = Pick<Intl.NumberFormat, 'format'>;
 // 対象の語（ノード／エッジ）。ノード型のフィルタはノード専用。
 function targetText(t: Translate, f: FilterDef): string {
   return t(
-    f.kind === 'nodeType' || f.target === 'node' ? 'filter.target.node' : 'filter.target.edge',
+    f.kind === 'nodeType' || f.kind === 'nodeSet' || f.target === 'node'
+      ? 'filter.target.node'
+      : 'filter.target.edge',
   );
 }
 
@@ -161,6 +163,14 @@ function summary(t: Translate, nf: NumberFormatter, dataset: Dataset, f: FilterD
           ))}
         </>
       );
+    case 'nodeSet':
+      return t('filter.summary.nodeSet', { count: f.include.length });
+    case 'certainty':
+      return (
+        <>
+          {t('filter.certainty')}: {f.include.map((k) => t(`filter.certainty.${k}`)).join(', ')}
+        </>
+      );
     default:
       return assertNever(f, 'FilterDef');
   }
@@ -188,6 +198,12 @@ function plainSummary(t: Translate, nf: NumberFormatter, dataset: Dataset, f: Fi
         .join(', ');
       return `${targetText(t, f)} ${t('filter.nodeTypes')}: ${names}`;
     }
+    case 'nodeSet':
+      return `${targetText(t, f)} ${t('filter.summary.nodeSet', { count: f.include.length })}`;
+    case 'certainty':
+      return `${targetText(t, f)} ${t('filter.certainty')}: ${f.include
+        .map((k) => t(`filter.certainty.${k}`))
+        .join(', ')}`;
     default:
       return assertNever(f, 'FilterDef');
   }
@@ -212,6 +228,10 @@ function issueText(t: Translate, i: FilterIssue): ReactNode {
       );
     case 'reversed-range':
       return t('filter.issue.reversed-range');
+    case 'attr-not-date':
+      return t('filter.issue.attr-not-date');
+    case 'unknown-node-id':
+      return t('filter.issue.unknown-node-id');
     default:
       return assertNever(i, 'FilterIssue');
   }

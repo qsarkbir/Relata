@@ -407,3 +407,32 @@ describe('checkDataset（FR-DM-01〜08）', () => {
     ).toEqual([]);
   });
 });
+
+describe('checkDataset: 確からしさ（FR-DM-06）', () => {
+  it('FR-DM-06: 正しい certainty は問題にしない', () => {
+    const ds = sampleDataset();
+    const [n0, ...rest] = ds.nodes;
+    if (n0 === undefined) throw new Error('サンプルにノードが必要');
+    expect(checkDataset({ ...ds, nodes: [{ ...n0, certainty: 'possible' }, ...rest] })).toEqual([]);
+  });
+
+  it('FR-DM-06: 不正な certainty（JSON 由来）を報告する', () => {
+    const ds = sampleDataset();
+    const [n0, ...rest] = ds.nodes;
+    if (n0 === undefined) throw new Error('サンプルにノードが必要');
+    // 理由: JSON から来た型の保証が無い値を再現するため、あえて型を外す
+    const broken = { ...n0, certainty: 'sure' } as unknown as GraphNode;
+    expect(codes({ ...ds, nodes: [broken, ...rest] })).toEqual(['certainty-invalid']);
+  });
+
+  it('FR-DM-06: 属性の値と日付の不正な certainty を報告する', () => {
+    // 理由: JSON から来た型の保証が無い値を再現するため、あえて型を外す
+    const badValue = { kind: 'value', value: 'x', certainty: 'sure' } as unknown as AttrValue;
+    expect(codes(withNodes(personWith('note', badValue)))).toContain('certainty-invalid');
+    const badDate = {
+      kind: 'date',
+      value: { ...bceDate, certainty: 'sure' },
+    } as unknown as AttrValue;
+    expect(codes(withNodes(personWith('born', badDate)))).toContain('certainty-invalid');
+  });
+});

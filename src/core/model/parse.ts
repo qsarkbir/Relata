@@ -30,6 +30,7 @@ import {
   isCertainty,
   isMissingReason,
   type AttrValue,
+  type Certainty,
   type FuzzyDate,
   type Missing,
   type Scalar,
@@ -329,6 +330,12 @@ function parseNodeType(x: unknown, path: string): ParseResult<NodeType> {
   });
 }
 
+// 確からしさ（ノードとエッジの `certainty`）を検査する。
+//
+function parseCertaintyField(x: unknown, path: string): ParseResult<Certainty> {
+  return isCertainty(x) ? ok(x) : fail(path, '確からしさが正しくありません');
+}
+
 // GraphNode を組み立てる。
 //
 function parseNode(x: unknown, path: string): ParseResult<GraphNode> {
@@ -346,6 +353,12 @@ function parseNode(x: unknown, path: string): ParseResult<GraphNode> {
   if (!geo.ok) return geo;
   const time = optional(get(o.value, 'time'), child(path, 'time'), parseTimeValue);
   if (!time.ok) return time;
+  const certainty = optional(
+    get(o.value, 'certainty'),
+    child(path, 'certainty'),
+    parseCertaintyField,
+  );
+  if (!certainty.ok) return certainty;
   return ok({
     id: toNodeId(id.value),
     type: toNodeTypeId(type.value),
@@ -353,6 +366,7 @@ function parseNode(x: unknown, path: string): ParseResult<GraphNode> {
     attrs: attrs.value,
     ...(geo.value !== undefined && { geo: geo.value }),
     ...(time.value !== undefined && { time: time.value }),
+    ...(certainty.value !== undefined && { certainty: certainty.value }),
   });
 }
 
@@ -375,6 +389,12 @@ function parseEdge(x: unknown, path: string): ParseResult<GraphEdge> {
   if (!weight.ok) return weight;
   const time = optional(get(o.value, 'time'), child(path, 'time'), parseTimeValue);
   if (!time.ok) return time;
+  const certainty = optional(
+    get(o.value, 'certainty'),
+    child(path, 'certainty'),
+    parseCertaintyField,
+  );
+  if (!certainty.ok) return certainty;
   const attrs = parseAttrs(get(o.value, 'attrs'), child(path, 'attrs'));
   if (!attrs.ok) return attrs;
   return ok({
@@ -385,6 +405,7 @@ function parseEdge(x: unknown, path: string): ParseResult<GraphEdge> {
     ...(relation.value !== undefined && { relation: relation.value }),
     weight: weight.value,
     ...(time.value !== undefined && { time: time.value }),
+    ...(certainty.value !== undefined && { certainty: certainty.value }),
     attrs: attrs.value,
   });
 }

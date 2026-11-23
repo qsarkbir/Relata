@@ -1,6 +1,6 @@
 {
   "app": "Relata",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "savedAt": "2026-11-21T00:00:00.000Z",
   "dataset": {
     "graphMode": "directed",

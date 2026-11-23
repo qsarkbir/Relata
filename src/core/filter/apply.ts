@@ -10,10 +10,12 @@
  */
 import { assertNever } from '../util/assertNever';
 import {
+  dateValues,
   getAttr,
   isMissing,
   scalarValues,
   type Attrs,
+  type Certainty,
   type Dataset,
   type EdgeId,
   type NodeId,
@@ -22,7 +24,14 @@ import {
 } from '../model';
 import { LOOSE_MATCH, STRICT_MATCH, matchKey, type MatchOptions } from '../text';
 import { categoryKeyId, categoryKeysOf } from './keys';
-import type { FilterDef, FilterId, FilterState, MissingPolicy, Target } from './types';
+import type {
+  CertaintyKey,
+  FilterDef,
+  FilterId,
+  FilterState,
+  MissingPolicy,
+  Target,
+} from './types';
 
 /** 表示件数と全体の件数（FR-FL-09 の「絞り込み後 / 全体」の表示に使う）。 */
 export interface FilterCounts {
@@ -55,6 +64,10 @@ export interface FilterResult {
  * ノードとエッジで同じ判定の関数を使い回すため。
  */
 export interface Subject {
+  /** ノードならノード ID（エッジは undefined）。`nodeSet` のフィルタが見る。 */
+  readonly nodeId: NodeId | undefined;
+  /** 確からしさ（無ければ undefined = 指定なし）。 */
+  readonly certainty: Certainty | undefined;
   /** ノードならラベル、エッジなら relation（無ければ undefined）。テキスト検索の対象。 */
   readonly primaryText: string | undefined;
   readonly attrs: Attrs;
@@ -75,6 +88,10 @@ export interface Compiled {
   readonly target: Target;
   readonly test: (s: Subject) => Verdict;
 }
+
+// 時間フィルタの定義の型（kind が 'time' のもの）。
+// 【TS】`Extract<U, T>` は共用体 U から T に当てはまるものだけを取り出す。
+type TimeDef = Extract<FilterDef, { kind: 'time' }>;
 
 // 欠損の扱いの設定を判定にする。
 //
@@ -159,29 +176,27 @@ function compile(def: FilterDef): Compiled {
         id: def.id,
         target: def.target,
         test: (s) => {
-          // 項目が無い（時期の列が無いデータ）要素は通す。Missing は設定に従う（D-21 (4)、D-18）。
-          if (s.time === undefined) return 'pass';
-          if (s.time.kind === 'missing') return missingVerdict(def.missing);
-          // 逆転した範囲（from > to）は何も通さない（範囲フィルタと同じ。D-21 (6)）。
-          if (def.from > def.to) return 'fail';
-          // 期間は [始点の earliest, 終点の latest]。終点が無ければ 1 点の日付なので始点の latest。
-          // 終わりが分からない（Missing）なら終わりを無限とみなす。
-          // 【なぜ】幅のある年代（「c.1650」など）は、最も早い日と最も遅い日の幅の端まで取る。
-          //   「重なる」は幅のどこかが範囲に入ればよく、「収まる」は幅が全部入る必要がある。
-          const start = s.time.start.earliest;
-          const end =
-            s.time.end === undefined
-              ? s.time.start.latest
-              : isMissing(s.time.end)
-                ? Number.POSITIVE_INFINITY
-                : s.time.end.latest;
-          switch (def.match) {
-            case 'overlaps':
-              return verdict(start <= def.to && end >= def.from);
-            case 'within':
-              return verdict(start >= def.from && end <= def.to);
+          // 【TS】`def.source.kind` で分岐すれば `def.source` も絞り込まれ、'attr' の case では
+          //   `def.source.attr` が使える（入れ子の判別共用体）。
+          // 【なぜ】変数に取る。assertNever に絞り込み後の値（never）を渡す形にでき、case ごとに
+          //   `def.source` と書く繰り返しも避けられるため。
+          const source = def.source;
+          switch (source.kind) {
+            case 'span':
+              return testSpan(def, s.time);
+            case 'attr': {
+              const a = getAttr(s.attrs, source.attr);
+              // 【なぜ】キーを持たない要素（その型に当てはまらない属性）は通す（D-35。category と同じ）。
+              if (a === undefined) return 'pass';
+              if (isMissing(a)) return missingVerdict(def.missing);
+              // 日付でない値（文字列、数値など）は条件に合わない（range が日付を通さないのと対称）。
+              if (a.kind !== 'date') return 'fail';
+              if (def.from > def.to) return 'fail';
+              // 【なぜ】複数値の日付は、どれか 1 つが条件に合えば通す（カテゴリの複数値と同じ。D-35）。
+              return verdict(dateValues(a).some((d) => spanMatches(def, d.earliest, d.latest)));
+            }
             default:
-              return assertNever(def.match, 'TimeMatch');
+              return assertNever(source, 'TimeSource');
           }
         },
       };
@@ -217,8 +232,68 @@ function compile(def: FilterDef): Compiled {
         test: (s) => verdict(s.typeId !== undefined && types.has(s.typeId)),
       };
     }
+    case 'nodeSet': {
+      const ids = new Set<string>(def.include);
+      return {
+        id: def.id,
+        target: 'node',
+        // 【なぜ】include が空なら何も通さない（nodeType と同じ）。ID で照合し、ラベルは見ない。
+        test: (s) => verdict(s.nodeId !== undefined && ids.has(s.nodeId)),
+      };
+    }
+    case 'certainty': {
+      const wanted = new Set<CertaintyKey>(def.include);
+      return {
+        id: def.id,
+        target: def.target,
+        test: (s) => verdict(wanted.has(certaintyKeyOf(s.certainty))),
+      };
+    }
     default:
       return assertNever(def, 'FilterDef');
+  }
+}
+
+/**
+ * 確からしさ（無いこともある）を、フィルタの項目にする。
+ *
+ * @param c - 要素の確からしさ。無ければ undefined
+ * @returns 項目（無ければ 'unspecified'）
+ */
+export function certaintyKeyOf(c: Certainty | undefined): CertaintyKey {
+  return c ?? 'unspecified';
+}
+
+// 時間フィルタの `span` の出どころ（要素の time）の判定。
+//
+function testSpan(def: TimeDef, time: TimeValue | undefined): Verdict {
+  // 項目が無い（時期の列が無いデータ）要素は通す。Missing は設定に従う（D-21 (4)、D-18）。
+  if (time === undefined) return 'pass';
+  if (time.kind === 'missing') return missingVerdict(def.missing);
+  // 逆転した範囲（from > to）は何も通さない（範囲フィルタと同じ。D-21 (6)）。
+  if (def.from > def.to) return 'fail';
+  // 期間は [始点の earliest, 終点の latest]。終点が無ければ 1 点の日付なので始点の latest。
+  // 終わりが分からない（Missing）なら終わりを無限とみなす。
+  const end =
+    time.end === undefined
+      ? time.start.latest
+      : isMissing(time.end)
+        ? Number.POSITIVE_INFINITY
+        : time.end.latest;
+  return verdict(spanMatches(def, time.start.earliest, end));
+}
+
+// 【なぜ】幅のある年代（「c.1650」など）は、最も早い日と最も遅い日の幅の端まで取る。
+//   「重なる」は幅のどこかが範囲に入ればよく、「収まる」は幅が全部入る必要がある。
+//
+function spanMatches(def: TimeDef, start: number, end: number): boolean {
+  switch (def.match) {
+    case 'overlaps':
+      return start <= def.to && end >= def.from;
+    case 'within':
+      return start >= def.from && end <= def.to;
+    default:
+      return assertNever(def.match, 'TimeMatch');
   }
 }
 
@@ -233,12 +308,16 @@ export interface Subjects {
 function buildSubjects(dataset: Dataset): Subjects {
   return {
     nodes: dataset.nodes.map((n) => ({
+      nodeId: n.id,
+      certainty: n.certainty,
       primaryText: n.label,
       attrs: n.attrs,
       time: n.time,
       typeId: n.type,
     })),
     edges: dataset.edges.map((e) => ({
+      nodeId: undefined,
+      certainty: e.certainty,
       primaryText: e.relation,
       attrs: e.attrs,
       time: e.time,
@@ -343,7 +422,7 @@ export function passingFlags(
  * 5. 範囲と時間のフィルタについて、欠損で除いた件数を数える（他のフィルタは 0）。
  *
  * 入力は書き換えない。属性のキーを持たない型のノードは、カテゴリ・範囲のフィルタを通る
- * （k-partite。D-21 (2)）。
+ * （k-partite。D-21 (2)）。出どころが `attr` の時間フィルタも、キーを持たない要素を通す（D-35）。
  *
  * @param dataset - データセット
  * @param state - フィルタの状態

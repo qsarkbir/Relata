@@ -353,7 +353,16 @@ describe('applyFilters: 時間（FR-FL-03、D-21 (4)）', () => {
     match: 'overlaps' | 'within',
     missing: 'include' | 'exclude' = 'exclude',
     target: 'node' | 'edge' = 'node',
-  ): FilterDef => ({ id: fid('tm'), kind: 'time', target, from, to, match, missing });
+  ): FilterDef => ({
+    id: fid('tm'),
+    kind: 'time',
+    target,
+    source: { kind: 'span' },
+    from,
+    to,
+    match,
+    missing,
+  });
   const nodes = (f: FilterDef): string[] =>
     sorted(applyFilters(ds, st([f], { showIsolated: true })).nodeIds);
 
@@ -510,6 +519,7 @@ describe('applyFilters: 逆転した範囲（D-21 (6)）', () => {
       id: fid('tm'),
       kind: 'time',
       target: 'node',
+      source: { kind: 'span' },
       from: 500,
       to: 100,
       match: 'overlaps',

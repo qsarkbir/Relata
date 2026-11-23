@@ -39,7 +39,7 @@ export interface SingleTableEndpoint {
 export interface SingleTableEdge extends Omit<TableMapping, 'fields'> {
   readonly fields: Pick<
     TableMapping['fields'],
-    'id' | 'directed' | 'relation' | 'weight' | 'date' | 'start' | 'end'
+    'id' | 'directed' | 'relation' | 'weight' | 'date' | 'start' | 'end' | 'certainty'
   >;
 }
 /** 1 表の対応。残余列の利用先を明示し、型は各属性列で指定する。 */

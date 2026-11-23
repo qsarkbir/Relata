@@ -1,8 +1,11 @@
 import type { AttrValue, CalendarId, FuzzyDate, Scalar, ValueType } from '../../core/model';
 import { parseDate } from '../../core/time';
-import { compileMissingTokens, matchMissingToken } from '../project/missing';
+import { compileMissingTokens, EDGE_JUNK, matchMissingToken } from '../project/missing';
 import type { CompiledMissingTokens } from '../project/missing';
 import type { MissingToken } from '../project/types';
+
+const TRAILING_JUNK_RE = new RegExp(`[${EDGE_JUNK}]+$`, 'u');
+const TRAILING_MARKS_RE = /[?\uFF1F\u061F]+$/u;
 
 /** 列の型と、複数値・暦の利用者による指定。 */
 export interface ColumnOptions {
@@ -10,6 +13,13 @@ export interface ColumnOptions {
   readonly calendar?: CalendarId;
   readonly separator?: string;
   readonly missingTokens?: readonly MissingToken[];
+  /**
+   * 値の末尾の `?`（1 個以上）を外し、値に `certainty: 'possible'` を付ける（D-37、FR-DM-06）。既定は無効。
+   * 日付の型には効かない（日付の解析が `?` を自分で扱うため）。
+   * 【なぜ】原文が変わる（`Basra?` → `Basra`）ので、列ごとの選択にする。複数値のセルでは、
+   * どれかの要素に `?` があれば値全体を `possible` にする（確からしさは 1 つの AttrValue に 1 つだけ持てるため）。
+   */
+  readonly possibleSuffix?: boolean;
 }
 
 /** セルの変換結果。失敗時も原文を残し、利用者が修正できるようにする。 */
@@ -60,14 +70,36 @@ function convertWithTokens(
   const scalars: Scalar[] = [];
   const dates: FuzzyDate[] = [];
   const warnings: string[] = [];
+  let possible = false;
   const invalid = (): CellResult => ({
     ok: false,
     value: { kind: 'value', value: text },
     warnings: ['指定した列の型に変換できません。原文を保持しました。'],
   });
-  for (const piece of pieces) {
-    // 【なぜ】複数値の途中の欠損を削ると、史料の情報を失う。セル全体を修正対象として残す。
+  for (let piece of pieces) {
+    // 【なぜ】欠損の照合は、`?` を外す前の原文で行う（「?」だけの記号を欠損として登録できるように）。
+    // 複数値の途中の欠損を削ると、史料の情報を失う。セル全体を修正対象として残す。
     if (matchMissingToken(piece, tokens) !== undefined) return invalid();
+    if (options.possibleSuffix === true && options.type !== 'date') {
+      // 【なぜ】末尾の見えない書式文字（RLM など。アラビア文字の表に紛れやすい）を先に除いてから、
+      // `?`、全角の `？`、アラビア語の疑問符 `؟` を判定する。
+      const tail = piece.replace(TRAILING_JUNK_RE, '');
+      const marks = TRAILING_MARKS_RE.exec(tail);
+      if (marks !== null) {
+        const stripped = tail.slice(0, tail.length - marks[0].length).replace(TRAILING_JUNK_RE, '');
+        // 【なぜ】`?` だけの要素（外すと空になる）は、外さず原文のまま読む。空の値を作らないため。
+        if (stripped !== '') {
+          // 外した値が欠損の記号（「unknown?」「〔欠〕?」）なら、値にせず、その記号の欠損として扱う。
+          const strippedReason = matchMissingToken(stripped, tokens);
+          if (strippedReason !== undefined)
+            return options.separator === undefined
+              ? { ok: true, value: { kind: 'missing', reason: strippedReason }, warnings: [] }
+              : invalid();
+          piece = stripped;
+          possible = true;
+        }
+      }
+    }
     switch (options.type) {
       case 'string':
       case 'category':
@@ -111,7 +143,11 @@ function convertWithTokens(
   if (first === undefined) return invalid();
   return {
     ok: true,
-    value: { kind: 'value', value: options.separator === undefined ? first : scalars },
+    value: {
+      kind: 'value',
+      value: options.separator === undefined ? first : scalars,
+      ...(possible && { certainty: 'possible' as const }),
+    },
     warnings,
   };
 }

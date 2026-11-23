@@ -13,7 +13,14 @@ import type { AttributeDef, Dataset } from './graph';
 import type { EdgeId, NodeId, NodeTypeId } from './ids';
 import type { DayNumber, TimeValue } from './time';
 import type { GeoValue } from './geo';
-import { dateValues, isMissing, scalarValues, type AttrValue, type FuzzyDate } from './values';
+import {
+  dateValues,
+  isCertainty,
+  isMissing,
+  scalarValues,
+  type AttrValue,
+  type FuzzyDate,
+} from './values';
 
 /**
  * 問題の持ち主。ノード、エッジ、ノード型、schema の定義（キーで指す）のどれか。
@@ -61,6 +68,7 @@ export type DatasetIssue =
       endLatest: DayNumber;
     }
   | { code: 'geo-out-of-range'; owner: IssueOwner; lat: number; lon: number }
+  | { code: 'certainty-invalid'; owner: IssueOwner; value: unknown }
   | { code: 'weight-invalid'; owner: IssueOwner; weight: number }
   | { code: 'non-finite-scalar'; owner: IssueOwner; path: string }
   | { code: 'empty-value'; owner: IssueOwner; path: string }
@@ -170,6 +178,7 @@ export function checkDataset(ds: Dataset): DatasetIssue[] {
     }
     checkGeo(owner, node.geo, issues);
     checkTime(owner, node.time, issues);
+    checkCertainty(owner, node.certainty, issues);
     const present = checkAttrs(owner, node.attrs, nodeDefs, node.type, issues);
     // 当てはまる属性の数に足りなければ、どのキーが無いかを調べる（キーが無い ＝ 当てはまらない、または違反）
     const expected = generalNodeDefs + (typedNodeDefs.get(node.type) ?? 0);
@@ -211,6 +220,7 @@ export function checkDataset(ds: Dataset): DatasetIssue[] {
       issues.push({ code: 'weight-invalid', owner, weight: edge.weight });
     }
     checkTime(owner, edge.time, issues);
+    checkCertainty(owner, edge.certainty, issues);
     const present = checkAttrs(owner, edge.attrs, edgeDefs, undefined, issues);
     if (present < edgeExpected) {
       for (const def of edgeDefs.values()) {
@@ -252,6 +262,7 @@ function checkGeo(owner: IssueOwner, geo: GeoValue | undefined, issues: DatasetI
  * @param issues - 問題の追加先
  */
 function checkFuzzy(owner: IssueOwner, path: string, d: FuzzyDate, issues: DatasetIssue[]): void {
+  checkCertainty(owner, d.certainty, issues);
   let integral = true;
   for (const field of ['earliest', 'latest'] as const) {
     if (!Number.isSafeInteger(d[field])) {
@@ -269,6 +280,21 @@ function checkFuzzy(owner: IssueOwner, path: string, d: FuzzyDate, issues: Datas
       latest: d.latest,
     });
   }
+}
+
+/**
+ * `certainty`（確からしさ）を検査する。
+ *
+ * 【なぜ】型の上では Certainty だけだが、JSON から来たデータは型の保証が無い。
+ * `parseDataset` が拒否する値を、ここでも報告して「問題なし ならば往復できる」を守る。
+ *
+ * @param owner - 問題の持ち主
+ * @param certainty - 検査する値。undefined（指定なし）は問題にしない
+ * @param issues - 問題の追加先
+ */
+function checkCertainty(owner: IssueOwner, certainty: unknown, issues: DatasetIssue[]): void {
+  if (certainty === undefined) return;
+  if (!isCertainty(certainty)) issues.push({ code: 'certainty-invalid', owner, value: certainty });
 }
 
 /**
@@ -386,6 +412,7 @@ function checkValue(
     case 'missing':
       return;
     case 'value': {
+      checkCertainty(owner, value.certainty, issues);
       const scalars = scalarValues(value);
       // 空の配列と空文字は値として持たない（Missing で表す。filter-audit #10）
       if (typeof value.value === 'object' && scalars.length === 0) {

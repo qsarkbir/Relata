@@ -9,8 +9,11 @@ import type { GraphViewSettings } from './graphView';
 import type { CalendarId, Dataset, MissingReason } from '../model';
 import type { FilterState } from '../filter';
 
-/** 今のプロジェクトファイルの版。互換性のない変更（列挙の要素の追加を含む）のときだけ上げる（D-24）。 */
-export const CURRENT_FORMAT_VERSION = 1;
+/**
+ * 今のプロジェクトファイルの版。互換性のない変更（列挙の要素の追加を含む）のときだけ上げる（D-24）。
+ * 版 2 はフェーズ 2 の間は開発中で、v0.2 の公開で確定する（D-36）。
+ */
+export const CURRENT_FORMAT_VERSION = 2;
 
 // 【TS】`readonly` を付けた項目は代入できない。`readonly T[]` は「要素の追加や置き換えができない配列」。
 //       読み込んだ設定を、うっかり書き換えないための約束。
@@ -36,6 +39,17 @@ export interface ColumnCalendar {
 }
 
 /**
+ * 「値の末尾の `?` を可能性ありと読む」列の指定 1 件（D-37、FR-DM-06）。
+ * 列の名前の決め方は `ColumnCalendar` と同じ。
+ */
+export interface ColumnRef {
+  /** 列名（`ColumnCalendar.column` と同じ規則）。 */
+  readonly column: string;
+  /** 2 表で読み込んだときの、どちらの表の列か。1 表のときは持たない。 */
+  readonly table?: 'node' | 'edge';
+}
+
+/**
  * 読み込みの設定。再読み込みや、保存したプロジェクトの再現のために持つ。
  */
 // 【なぜ】利用者の列名をキーにした辞書にせず、配列で持つ。列名は `__proto__` などもありうるため（D-24）。
@@ -44,6 +58,11 @@ export interface ImportSettings {
   readonly missingTokens: readonly MissingToken[];
   readonly encoding?: string;
   readonly columnCalendars: readonly ColumnCalendar[];
+  /**
+   * 属性の値の末尾の `?` を「可能性あり」と読む列（D-37）。無ければ空と同じ（既定は無効）。
+   * 【なぜ】原文の値が変わる（`Basra?` → `Basra`）ので、列ごとの選択にする。任意の項目なので版は上げない（D-24）。
+   */
+  readonly possibleSuffixColumns?: readonly ColumnRef[];
 }
 
 /** 既定の読み込み設定。記号の対応は空（空欄だけが欠損になる）。 */

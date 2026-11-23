@@ -64,13 +64,13 @@
 | D-31 | シーンと SVG（T1-11、§8.1、R-10）: `buildScene(graph, positions, encoded, options)` は、ノードの位置（レイアウトの結果。今は引数で受け取る）と割り当ての結果（D-23）から `Scene` を作る。書き出す図は、画面の拡大に関係なくグラフ全体を収める。選択の強調は、既定では書き出しに含めず、選べるようにする。`renderSvg(scene)` はノード、エッジ、ラベル、凡例をそれぞれ `<g>` にまとめた SVG の文字列を返す（FR-OUT-01。T1-14 の書き出しでそのまま使う）。文字列と属性値はすべてエスケープし、色は `#rrggbb` を検証する。ラベルの向きは、最初の強い向きの文字（Unicode の Bidi_Class）で判定し、右から左のラベルには `direction="rtl"` を付ける。文字の幅の測定は関数で受け取る（D-17）。T1-11 ではエッジは直線だけを描き、矢印と曲線は T1-12、ラベルの重なりの解消は T1-13 で足す。**補足（T1-11 のレビュー）**: §8.1 の型に、`SceneEdge` の `source`/`target`/`directed`、`SceneNode` の `strokeWidth`/`selected`、`Scene` の `fontFamily`（測定と描画で同じものを使う）と `omitted`（位置の無いノード、端点の無いエッジ、自己ループ、太さの対応が 1 件も無いこと）を足す。ラベルの `anchor` は物理的な意味（x が文字列の左端か右端か）とし、SVG では `direction` と組み合わせて `text-anchor` を決める（`direction="rtl"` のとき `end` は左端になるため）。位置の無いノードとそのエッジはシーンに入れない。画面に埋め込むときの id の衝突を避けるため `idPrefix` を持つ（英数字、`_`、`-` 以外は `_` に替え、先頭が英字か `_` でなければ `_` を付ける。XML の id と CSS のセレクタの両方で使えるようにするため） | 進行表の R-10 の推奨どおり。論文の図に使うので、画面の状態に左右されない全体の図が既定であるべきため |
 | D-32 | フィルタパネルと保存の画面（T1-18、T1-21、§10）: `filterStore` は `FilterHistory`（D-21 の履歴）だけを持ち、現在の `FilterState` は履歴の現在の値とする（別に持たない）。絞り込みの結果（`FilterResult`）とファセットの件数は、ストアに入れず、`Dataset` と `FilterState` から計算して覚えておく（同じ入力なら計算し直さない）。属性の型ごとの部品: `category`、`string`、`boolean` はファセット、`number` は範囲、`date` は時間（フェーズ 2）。`checkFilterState` の問題は、該当するフィルタの横に示す。`views` と `app` は `io` を呼んでよい（ファイルの読み書きの画面のため）。`state` は `io` を呼ばない。自動保存は IndexedDB に、データ・フィルタ・設定が変わってから 1 秒後に保存する（§10）。プロジェクトの保存は JSON のファイルとして書き出し、読み込みはファイルの選択で行う | 状態を 1 か所に保つ原則（§1 の 4）をストアでも守るため。旧版の「表示と実際の絞り込みのずれ」（filter-audit #2、#3）を構造的に防ぐため |
 | D-33 | 保存・読み込みの画面の細部（T1-21 のレビュー）: (1) データがあるときに別のプロジェクトを開くと、置き換える前に確認する（ファイルに保存していない作業は戻らないため）。(2) 起動時の自動保存の復元は、利用者が先にファイルを開いていれば適用しない。復元でも進行表示を出す。ファイルを開く処理は、解析の前までは取り消せる（解析は同期なので、その間は取り消せない）。(3) 読み込みの警告はデータと組にして持ち、一時的な知らせ（保存の失敗、消したことなど）で上書きされないようにする。(4) 自動保存の失敗は種類ごとに知らせる（容量の不足は「ファイルに保存してください」と促す）。消す操作の失敗は毎回知らせる。消した後も作業を続ければまた保存されることを文言で伝え、進行中の保存の完了を待ってから消す。(5) 同じアプリを別のタブでも開いていることを `BroadcastChannel` で検出し、「自動保存は最後に変更したタブのものだけが残る」と知らせる。(6) 復元しようとした自動保存がこのアプリより新しい版なら、自動保存を止めて上書きしない。(7) 知らせの中の利用者の値（題名、ID、path）は `<bdi>` で隔離する。(8) 読み込みの設定とプロジェクトの部品の型（`ImportSettings`、`ProjectParts`、`ProjectView`、`ProjectWarning`）は、state が io を import できないため、後のタスクで `src/core/project/` に移し、io はそれを再 export する。それまでは state 側の写しと io の型の一致をテストで確かめる。(9) 自動保存は、データが無い（`dataset` が null）ときは何も書かない（起動直後に前回の保存を空で上書きしないため）。将来「プロジェクトを閉じる」「新規作成」を足すときは、その操作で自動保存も消す（`clear`）。消さないと、閉じたはずのプロジェクトが次に開いたときに復元される。(10) 置き換えの確認のダイアログは、親が閉じた（「開く」を選んだ）ときに、`close` イベントから「やめる」の処理を呼ばない | 利用者の作業を黙って失わないため。共用の端末で「消した」と誤解させないため（NFR-02）。アラビア文字の題名の前後の記号の並びが崩れないようにするため（NFR-09） |
-| D-35 | 時間フィルタと年表の日付の出どころ（R-14）: 時間フィルタに `source: { kind: 'span' } \| { kind: 'attr'; attr: string }` を持たせる。`span` は要素の `time`（今までの意味）、`attr` は日付の属性（`valueType: 'date'`）。複数値の日付は、どれか 1 つが条件に合えば通す（カテゴリの複数値と同じ。D-21）。属性を持たない要素（型に当てはまらない属性）は `span` で項目が無いときと同じく通す。年表も同じ `source` で日付を選ぶ | Palladio 式 1 表で読み込むと日付が属性になり、`time` だけでは時間で絞り込めないため |
+| D-35 | 時間フィルタと年表の日付の出どころ（R-14）: 時間フィルタに `source: { kind: 'span' } \| { kind: 'attr'; attr: string }` を持たせる。`span` は要素の `time`（今までの意味）、`attr` は日付の属性（`valueType: 'date'`）。複数値の日付は、どれか 1 つが条件に合えば通す（カテゴリの複数値と同じ。D-21）。属性を持たない要素（型に当てはまらない属性）は `span` で項目が無いときと同じく通す。年表も同じ `source` で日付を選ぶ。**補足（T2-01）**: 日付でない値は通さない。出どころが `attr` でも逆転した範囲は何も通さない（キーの無い要素と、欠損を含める設定の欠損だけ通る）。属性が無い・日付型でない・対象と `appliesTo` が合わないときは `checkFilterState` が `unknown-attr` か `attr-not-date` で報告する | Palladio 式 1 表で読み込むと日付が属性になり、`time` だけでは時間で絞り込めないため |
 | D-36 | プロジェクトファイルの版 2（R-15。利用者の確認 2026-11-23）: フェーズ 2 の型の追加（時間フィルタの `source`、`nodeSet` のフィルタ、確からしさ、配置の方式など）を版 2 への 1 回の更新にまとめる。版 1 → 2 の移行関数を置き、v0.1 のファイル（公開サンプルを含む）が開けることをテストする（FR-PJ-03）。移行では、時間フィルタに `source: { kind: 'span' }` を補う。フェーズ 2 の間は版 2 を開発中とし、v0.2 の公開で確定する（未公開の版なので途中の要素の追加では版を上げない）。v0.1 のアプリは版 2 のファイルを「新しい版」として開かない | 版の更新を 1 回にして移行関数を増やさないため。古いアプリが未知の項目を黙って落とし、意味の違う絞り込みをしないため |
-| D-37 | 確からしさ（R-16、FR-DM-06。利用者の確認 2026-11-23）: `GraphNode` と `GraphEdge` に任意の `certainty?: Certainty` を足す（関係や存在そのものの確からしさ）。読み込みで「確からしさ」の列を対応づけられ、`確実／おそらく／可能性あり`、`certain/probable/possible`、`?`（possible）、`??`（possible）を照合キー（D-20）で受け付け、空欄は持たず、読めない値は警告する。属性の値の末尾の `?` を「可能性あり」と読むのは列ごとの選択で、既定は無効（原文が変わるため）。フェーズ 2 では、絞り込み（ファセット）、表の列、書き出しで使い、見た目への割り当ては行わない（破線の欠損と紛れるため。UI 刷新の課題） | 歴史ネットワークでは関係そのものの確からしさを記録することが多いため |
+| D-37 | 確からしさ（R-16、FR-DM-06。利用者の確認 2026-11-23）: `GraphNode` と `GraphEdge` に任意の `certainty?: Certainty` を足す（関係や存在そのものの確からしさ）。読み込みで「確からしさ」の列を対応づけられ、`確実／おそらく／可能性あり`、`certain/probable/possible`、`?`（possible）、`??`（possible）を照合キー（D-20）で受け付け、空欄は持たず、読めない値は警告する。属性の値の末尾の `?` を「可能性あり」と読むのは列ごとの選択で、既定は無効（原文が変わるため）。フェーズ 2 では、絞り込み（ファセット）、表の列、書き出しで使い、見た目への割り当ては行わない（破線の欠損と紛れるため。UI 刷新の課題）。**補足（T2-01）**: 列の役割は `TableMapping.fields.certainty`（1 表ではエッジ側だけ）。読めない値は警告 `invalid-certainty`、欠損の記号に当たる値は持たない。末尾の `?` の選択は列の `possibleSuffix`（日付の列には効かない。欠損の記号は `?` を外す前の原文で照合。複数値はどれかの要素に `?` があれば全体を possible）。選んだ列は `ImportSettings.possibleSuffixColumns?: { column; table? }[]`（`columnCalendars` と同じ規則。任意の項目）に保存する。CSV の書き出しは予約列 `certainty`。絞り込みは新しい種類 `certainty`（`include: CertaintyKey[]`。確からしさを持たない要素は `'unspecified'`）。ファセットは常に 4 項目を確実・おそらく・可能性あり・指定なしの順で返し、件数の数え方は D-21 (6) と同じ（`certaintyFacetCounts`）。`parseCertainty` は `؟`（U+061F）と全角の `？` も possible と読む（アラビア語・ペルシア語のキーボードの `?` キーが U+061F を入れるため）。末尾の `?` の選択も `?`、`？`、`؟` を対象にし、末尾の見えない書式文字を先に除く。`?` を外した値が欠損の記号に当たるときは欠損として扱う | 歴史ネットワークでは関係そのものの確からしさを記録することが多いため |
 | D-38 | 時間の再生（R-17）: 再生は表示だけを変える。累積では時刻より後の要素を、移動窓では窓の外の要素を薄くする（消さない）。フィルタ、件数、指標、表は変えない。時刻で絞り込むのは年表の範囲選択（時間フィルタ）で行い、画面でもこの違いを示す | 再生のたびに指標を計算し直さない（軽い表示の変更にする）ため |
 | D-39 | 射影の位置（R-18）: `applyFilters` → `buildGraph`（重みの集約）→ 射影 → 指標・配置の順にする。フィルタは射影前の元のデータにかかる。設定は `GraphOptions.projection`（任意。射影先の型、仲介する型、方式 `shared`／`newman`／`jaccard`）。射影したエッジは根拠の相手ノードの一覧 `via` と元のエッジ ID の一覧を持つ。有向の二部グラフは無向として射影し、注意を返す。表ビューは射影前の元のデータを表示する | 組織などを絞り込んだ結果が射影の根拠にも反映されるようにするため |
 | D-40 | 選択の状態（R-19）: 選択は state の `selectionStore` に置き、ノード ID と元のエッジ ID の集合を持つ。集約・射影したエッジは元のエッジ ID の一覧で対応づける。プロジェクトには保存しない。フィルタで見えなくなった要素の選択は消さず、「表示されていない」と示す。データを置き換えたら空にする | 表とグラフの選択を連動させるため（FR-TB-02）。状態を 1 か所に保つため |
-| D-41 | ビュー上の範囲選択（R-20、FR-FL-11）: グラフでは Shift ＋ ドラッグの矩形でノードを選択し、選択の欄の「選択したノードで絞り込む」でフィルタの新しい種類 `nodeSet`（`include: NodeId[]`、ノード専用）を足す。年表ではドラッグを離した時点で時間フィルタを足すか置き換える（即時反映。Undo で戻せる） | 範囲選択と絞り込みを分け、誤操作で絞り込まないため。年表は既存の即時反映に合わせるため |
+| D-41 | ビュー上の範囲選択（R-20、FR-FL-11）: グラフでは Shift ＋ ドラッグの矩形でノードを選択し、選択の欄の「選択したノードで絞り込む」でフィルタの新しい種類 `nodeSet`（`include: NodeId[]`、ノード専用）を足す（ID の完全一致。空の `include` は何も通さない。Dataset に無い ID は `unknown-node-id` で報告し、フィルタは落とさない）。年表ではドラッグを離した時点で時間フィルタを足すか置き換える（即時反映。Undo で戻せる） | 範囲選択と絞り込みを分け、誤操作で絞り込まないため。年表は既存の即時反映に合わせるため |
 | D-42 | 欠損率の一覧（R-21、FR-VG-12）: 絞り込み後の集合で数え直し、全体の値を並べる。属性ごとに理由別の件数と割合を出す。時期ごとの欠損率は、年表と同じ日付の出どころと区切り（1・10・25・100 年）で数え、年代のない要素は別の行にする | 集計は絞り込み後の集合から計算し直す規約のため。UC-4 で偏りを比べられるようにするため |
 | D-43 | PDF のフォント（R-22。利用者の確認 2026-11-23）: Noto Sans JP と Noto Naskh Arabic（SIL OFL 1.1）をこのサイトから配信し、PDF の書き出しのときだけ読み込む（外部へ通信しない。NFR-02）。使った文字だけに絞って埋め込む。初回に数 MB を読み込むことを画面に示し、フォントとライセンスを「このツールについて」に載せる | 日本語とアラビア文字を正しく出すため。普段の起動を重くしないため |
 | D-44 | ビューの配置の保存（R-23）: 下の段（開いているタブ、開閉、高さ）を `view.workspace`、表の設定（ノード／エッジ、並べ替え、表示する列）を `view.table`、年表の設定（日付の出どころ、区切り）を `view.timeline`、時間の状態（再生中かどうかを除く）を `view.time` に、いずれも任意の項目として保存する。左右のパネルの開閉は今のまま保存しない | FR-PJ-01 の「ビューの配置」を満たすため。既存の挙動を変えないため |
@@ -258,6 +258,7 @@ export interface GraphNode {
   readonly attrs: Attrs;
   readonly geo?: GeoPoint | Missing;
   readonly time?: TimeSpan | Missing;
+  readonly certainty?: Certainty;  // 関係・存在そのものの確からしさ（D-37）
 }
 
 export interface GraphEdge {
@@ -268,6 +269,7 @@ export interface GraphEdge {
   readonly relation?: string;
   readonly weight: number;  // 既定 1。有限で 0 以上
   readonly time?: TimeSpan | Missing;
+  readonly certainty?: Certainty;  // 関係・存在そのものの確からしさ（D-37）
   readonly attrs: Attrs;
 }
 
@@ -353,12 +355,16 @@ export interface Dataset {
 export type FilterDef =
   | { id: FilterId; kind: 'category'; target: Target; attr: string; include: CategoryKey[] }
   | { id: FilterId; kind: 'range';    target: Target; attr: string; min?: number; max?: number; missing: MissingPolicy }
-  | { id: FilterId; kind: 'time';     target: Target; from: DayNumber; to: DayNumber; match: 'overlaps' | 'within'; missing: MissingPolicy }
+  | { id: FilterId; kind: 'time';     target: Target; source: TimeSource; from: DayNumber; to: DayNumber; match: 'overlaps' | 'within'; missing: MissingPolicy }  // source は D-35
   | { id: FilterId; kind: 'text';     target: Target; query: string; matching: 'loose' | 'strict' }  // D-21
-  | { id: FilterId; kind: 'nodeType'; include: NodeTypeId[] };
+  | { id: FilterId; kind: 'nodeType'; include: NodeTypeId[] }
+  | { id: FilterId; kind: 'nodeSet'; include: NodeId[] }                                   // D-41
+  | { id: FilterId; kind: 'certainty'; target: Target; include: CertaintyKey[] };           // D-37
 
 export type Target = 'node' | 'edge';
 export type MissingPolicy = 'include' | 'exclude';
+export type TimeSource = { kind: 'span' } | { kind: 'attr'; attr: string };  // D-35
+export type CertaintyKey = Certainty | 'unspecified';                         // D-37
 /** ファセットの項目。値そのものか、理由つきの欠損（FR-FL-06） */
 export type CategoryKey = { kind: 'value'; value: string } | { kind: 'missing'; reason: MissingReason };
 
@@ -609,7 +615,7 @@ interface TimeState {
 - T1-15 / R-12: CSV は UTF-8 BOM と式保護をそれぞれ選択でき、どちらも既定で有効。文字列が式候補または先頭アポストロフィなら1個追加し、明示した読戻し設定だけで1個外す。通常のCSV読込は変更しない。実数値は式保護で文字列にしない。ヘッダも同じ保護とRFC4180引用を適用する。
 - CSV は現在のフィルタ対象の全ノード・元エッジ（集約前）と全ノード指標・全体指標を4ファイルへ出す。ページング・表のソートで行を省略しない。IDはcanonical IDで参照を揃える。属性はschemaと対象レコードのown属性キーの和集合を出し、未宣言の値も残す。列は attr./missing./kind./certainty. 接頭辞を付けて特殊な属性名と予約列の衝突を防ぐ。欠損は空欄と理由列、属性なしはnot-applicableのkindで区別する。複数値・幅のある日付・期間はJSON文字列で原文・暦・確からしさ・境界を保ち、曖昧な区切りで結合しない。完全なモデル往復はプロジェクトJSONの役割で、CSVの再読込では型と列対応を利用者が指定する。失敗した指標は空欄とstatusへ出し、0にしない。古い結果がある間は指標CSVを無効にする。
 - 図: §8.1（SVG、PNG、PDF）、§9.4（地図）
-- CSV: ノード、エッジ、指標を別々のファイルにする。欠損は空欄にし、理由は別の列に書く。
+- CSV: ノード、エッジ、指標を別々のファイルにする。欠損は空欄にし、理由は別の列に書く。予約列 `certainty`（ノードとエッジの確からしさ。接頭辞なし。D-37）を `time.kind` の後に置く。
 - GraphML、GEXF: graphology の対応ライブラリを使う。
 - PDF の日本語: Noto Sans JP を、図に使われている文字だけに絞って埋め込む。
 - PDF のアラビア文字: jsPDF は、アラビア文字の連結（語頭形・語中形・語末形の選択）と、左右の向きが混ざる文の並べ替えを、自分では正しく行えない。そこで、アラビア文字を含むラベルは harfbuzzjs で整形し、字形の輪郭（パス）として PDF に描く。SVG と PNG はブラウザが整形するので、この処理は不要。

@@ -5,6 +5,7 @@ import type { Attrs } from './attrs';
 import type { GeoValue } from './geo';
 import type { EdgeId, NodeId, NodeTypeId } from './ids';
 import type { TimeValue } from './time';
+import type { Certainty } from './values';
 
 /** ノード図形の種類。 */
 export type NodeShape = 'circle' | 'square' | 'triangle' | 'diamond';
@@ -37,6 +38,11 @@ export interface GraphNode {
   readonly attrs: Attrs;
   readonly geo?: GeoValue;
   readonly time?: TimeValue;
+  /**
+   * 存在そのものの確からしさ（D-37、FR-DM-06）。無ければ「指定なし」。
+   * 歴史資料では「この人物は実在したか」「この人物とこの人物は同一か」が不確かなことがある。
+   */
+  readonly certainty?: Certainty;
 }
 
 /** エッジ。自己ループも多重エッジも許す（FR-DM-08）。 */
@@ -50,6 +56,11 @@ export interface GraphEdge {
   /** 既定 1。有限で 0 以上。 */
   readonly weight: number;
   readonly time?: TimeValue;
+  /**
+   * 関係そのものの確からしさ（D-37、FR-DM-06）。無ければ「指定なし」。
+   * 史料に「おそらく師弟関係にあった」などと書かれる場合に使う。
+   */
+  readonly certainty?: Certainty;
   readonly attrs: Attrs;
 }
 
