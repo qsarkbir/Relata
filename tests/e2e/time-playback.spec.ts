@@ -8,7 +8,14 @@
  */
 import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { openProject, readAutosave, saveProjectFile, startApp, waitForAutosave } from './support';
+import {
+  openExportDialog,
+  openProject,
+  readAutosave,
+  saveProjectFile,
+  startApp,
+  waitForAutosave,
+} from './support';
 
 test.use({ locale: 'ja-JP' });
 
@@ -283,5 +290,31 @@ test.describe('時間の再生', () => {
     });
     await page.getByRole('tab', { name: '年表' }).click();
     await expect(timeState(page)).toHaveText(stateText);
+  });
+
+  test('FR-TM-02 / FR-OUT-01: 再生で薄く表示している要素は、書き出した SVG でも薄い。外すと通常の図になる', async ({
+    page,
+  }) => {
+    await loadSample(page);
+    await seekRatio(page, 0.3);
+    await expect(fadedNodes(page).first()).toBeAttached();
+    const onScreen = await fadedNodes(page).count();
+
+    const dialog = await openExportDialog(page);
+    const include = dialog.getByLabel('時間の再生の薄い表示を図に含める', { exact: false });
+    await expect(include).toBeChecked();
+    const svgOf = async (): Promise<string> => {
+      const pending = page.waitForEvent('download');
+      await dialog.getByRole('button', { name: 'SVG', exact: true }).click();
+      return readFileSync(await (await pending).path(), 'utf8');
+    };
+    const faded = await svgOf();
+    // 図のノードのグループの中で、画面と同じ数のノードが薄い。
+    const nodesGroup = faded.slice(faded.indexOf('id="nodes"'), faded.indexOf('id="labels"'));
+    expect(nodesGroup.match(/data-out-of-time="true"/g)?.length).toBe(onScreen);
+
+    await include.uncheck();
+    const plain = await svgOf();
+    expect(plain).not.toContain('data-out-of-time');
   });
 });

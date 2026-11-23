@@ -383,6 +383,11 @@ export function GraphView() {
           measureText: request.measureText ?? measureText,
           ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
           ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
+          // 【なぜ】画面で薄く表示している要素を、書き出しでも薄くする（画面と図を食い違わせない）。
+          // 利用者が「書き出し」のダイアログで外したときと、何も薄くしていないときは付けない。
+          ...(request.timeFade && (timeFade.nodes.size > 0 || timeFade.edges.size > 0)
+            ? { timeFade }
+            : {}),
           title: dataset.meta.title,
         };
         const plain = createSvgExport(graph, positions, encoding, options);
@@ -431,6 +436,7 @@ export function GraphView() {
     visibleSelected,
     measureText,
     missingMarks,
+    timeFade,
     t,
     nf,
   ]);

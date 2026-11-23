@@ -57,6 +57,8 @@ export function exportBaseName(title: string, date: string): string {
 export interface FigureChoices {
   readonly legend: boolean;
   readonly credit: boolean;
+  /** 時間の再生の薄い表示を図に含めるか。 */
+  readonly timeFade: boolean;
   readonly pngScale: number;
   /** PDF のフォントのフォルダの URL。 */
   readonly fontBaseUrl: string;
@@ -91,7 +93,12 @@ export function exportSvgFigure(
 }
 
 function request(choices: FigureChoices, date: string): FigureRequest {
-  return { legend: choices.legend, credit: choices.credit, createdAt: date };
+  return {
+    legend: choices.legend,
+    credit: choices.credit,
+    timeFade: choices.timeFade,
+    createdAt: date,
+  };
 }
 
 /**

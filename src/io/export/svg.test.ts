@@ -153,3 +153,21 @@ it.each([
   expect(anchor.remove).toHaveBeenCalledOnce();
   vi.advanceTimersByTime(10_000);
 });
+
+it('FR-TM-02 / D-38: 再生の薄い表示を渡すと、書き出しのシーンと SVG でも薄く描く。渡さなければ通常の図', () => {
+  const plain = createSvgExport(graph(), positions);
+  expect(plain.svg).not.toContain('data-out-of-time');
+  const faded = createSvgExport(
+    graph(),
+    positions,
+    {},
+    {
+      timeFade: { nodes: new Set([a]), edges: new Set(['edge']) },
+    },
+  );
+  expect(faded.scene.nodes.find((n) => n.id === a)?.faded).toBe(true);
+  expect(faded.scene.nodes.find((n) => n.id === b)?.faded).toBeUndefined();
+  expect(faded.scene.edges[0]?.faded).toBe(true);
+  // ノード a とそのラベル、エッジの 3 か所に印が付く（PNG はこの SVG から、PDF はこのシーンから作る）。
+  expect(faded.svg.match(/data-out-of-time="true"/g)?.length).toBe(3);
+});

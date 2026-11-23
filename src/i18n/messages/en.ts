@@ -408,6 +408,8 @@ export const en = {
     'Exports the whole graph, regardless of the on-screen zoom and position. All formats are made from the same figure as the screen, so their contents match.',
   'export.figure.legend': 'Include a legend (colour, size, direction, dashed missing data)',
   'export.figure.credit': 'Include a credit line (data name, date, "Made with Relata")',
+  'export.figure.timeFade':
+    'Include the playback fading (draws {nodes} nodes and {edges} edges outside the current time faded; clear it for a figure without the time state)',
   'export.figure.none': 'There is no figure to export. Show a graph with at least one node.',
   'export.svg': 'SVG',
   'export.png': 'PNG',

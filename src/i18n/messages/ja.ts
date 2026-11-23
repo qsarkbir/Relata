@@ -397,6 +397,8 @@ export const ja = {
     '画面の拡大や位置とは関係なく、グラフ全体を収めた図を書き出します。画面と同じ図から作るので、形式が違っても同じ内容になります。',
   'export.figure.legend': '凡例を入れる（色・大きさ・向き・欠損の破線）',
   'export.figure.credit': '出典表記を入れる（データ名・作成日・「Relata で作成」）',
+  'export.figure.timeFade':
+    '時間の再生の薄い表示を図に含める（時刻の外のノード {nodes} 件・エッジ {edges} 件を薄く描く。外すと時刻を反映しない通常の図）',
   'export.figure.none': '書き出せる図がありません。ノードのあるグラフを表示してください。',
   'export.svg': 'SVG',
   'export.png': 'PNG',

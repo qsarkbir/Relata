@@ -19,6 +19,11 @@ export interface FigureRequest {
   /** 作成日（`YYYY-MM-DD`）。 */
   readonly createdAt: string;
   /**
+   * 時間の再生で薄く表示している要素を、書き出した図でも薄く描くか（D-38）。
+   * 時刻が決まっていなければ、true でも何も変わらない。
+   */
+  readonly timeFade: boolean;
+  /**
    * 文字の幅を測る関数。省略すると画面と同じ測り方。PDF では、PDF に描くフォントで測る関数を渡す
    * （ラベルと凡例の重なり・はみ出しの判断を、描く文字と一致させるため）。
    */

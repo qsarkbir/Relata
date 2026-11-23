@@ -14,6 +14,7 @@
  */
 import { assertNever } from '../../core/util/assertNever';
 import { shapeExtent } from '../scene/build';
+import { FADED_OPACITY } from '../scene/timeFade';
 import type {
   PathCommand,
   Scene,
@@ -272,7 +273,9 @@ function setDash(w: Writer, on: boolean, pattern: string): void {
 
 function drawNode(w: Writer, n: SceneNode): void {
   w.op('q');
-  w.alpha(1, 1);
+  // 【なぜ】時間の再生で時刻の外の要素は、SVG と同じ不透明度で薄く描く（D-38）。
+  const fade = n.faded === true ? FADED_OPACITY : 1;
+  w.alpha(fade, fade);
   w.op(`${rgb(n.fill, '#999999')} rg ${rgb(n.stroke, '#333333')} RG ${fmt(n.strokeWidth)} w`);
   // 【なぜ】破線の間隔は SVG と同じ（値の欠損 3 2、指定した属性の欠損 6 3）。
   if (n.dashed) setDash(w, true, n.attrMissing === true ? '6 3' : '3 2');
@@ -306,7 +309,7 @@ function flatten(path: readonly PathCommand[], perCurve: number): { x: number; y
 
 function drawEdge(w: Writer, e: SceneEdge): void {
   const color = rgb(e.color, '#999999');
-  const opacity = Math.min(1, Math.max(0, e.opacity));
+  const opacity = Math.min(1, Math.max(0, e.opacity)) * (e.faded === true ? FADED_OPACITY : 1);
   const dash = e.attrMissing === true ? '9 4' : '4 3';
   w.op('q');
   if (e.ribbon !== undefined) {
@@ -476,7 +479,16 @@ export function renderPdfContent(scene: Scene, options: PdfSceneOptions): PdfCon
   for (const e of scene.edges) drawEdge(w, e);
   for (const n of scene.nodes) drawNode(w, n);
   w.op('0.133 0.133 0.133 rg');
-  for (const l of scene.labels) drawText(w, l, options.outline, false);
+  for (const l of scene.labels) {
+    if (l.faded === true) {
+      w.op('q');
+      w.alpha(FADED_OPACITY, FADED_OPACITY);
+      drawText(w, l, options.outline, false);
+      w.op('Q');
+    } else {
+      drawText(w, l, options.outline, false);
+    }
+  }
   if (scene.legend !== undefined) {
     const lg = scene.legend;
     w.op('q');

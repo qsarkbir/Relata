@@ -1,7 +1,7 @@
 /** SVG ファイルの組み立てと保存（FR-OUT-01、D-31）。 */
 import type { RelataGraph } from '../../core/graph';
 import type { NodeId } from '../../core/model';
-import { buildScene, renderSvg } from '../../render';
+import { buildScene, markOutOfTime, renderSvg } from '../../render';
 import type { Scene } from '../../render';
 import { downloadBlob, withExtension } from './download';
 import type { BuildSceneOptions, SceneEncoding, SceneOmitted } from '../../render';
@@ -14,6 +14,14 @@ export interface SvgExportOptions extends BuildSceneOptions {
   readonly title?: string;
   /** 他の図と同じ文書に貼るときの id の接頭辞。 */
   readonly idPrefix?: string;
+  /**
+   * 時間の再生で薄く表示している要素（D-38）。渡すと、書き出した図でも画面と同じく薄く描く。
+   * 省略すると、時刻を反映しない通常の図になる。
+   */
+  readonly timeFade?: {
+    readonly nodes: ReadonlySet<string>;
+    readonly edges: ReadonlySet<string>;
+  };
 }
 
 /** 保存する SVG と、図に含められなかったものの報告。 */
@@ -48,7 +56,13 @@ export function createSvgExport(
   encoding: SceneEncoding = {},
   options: SvgExportOptions = {},
 ): SvgExport {
-  const scene = buildScene(graph, positions, encoding, options);
+  const built = buildScene(graph, positions, encoding, options);
+  // 【なぜ】薄い印は、画面と同じく組み立て済みのシーンに後から付ける（markOutOfTime）。SVG・PNG・PDF は
+  // どれもこのシーンから作るので、3 つの形式で薄い表示がそろう。
+  const scene =
+    options.timeFade === undefined
+      ? built
+      : markOutOfTime(built, options.timeFade.nodes, options.timeFade.edges);
   const svg = renderSvg(scene, options);
   // 【なぜ】外部の CSS や画面の transform を使わない、単独で開ける文書にする。
   const blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n', svg], {

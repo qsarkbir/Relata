@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { RelataGraph } from '../../core/graph';
 import { toNodeId, toNodeTypeId } from '../../core/model';
 import { buildScene } from '../scene/build';
+import { FADED_OPACITY, markOutOfTime } from '../scene/timeFade';
 import { renderSvg } from '../svg/render';
 import { buildPdf, pdfString } from './document';
 import { parseGlyphPath } from './outline';
@@ -86,6 +87,23 @@ describe('FR-OUT-04: PDF の部品', () => {
     expect(scene.edges[0]?.head).toBeDefined();
     expect(c.stream).toContain('\nf\n');
   });
+  it('FR-TM-02 / D-38: 時間の再生で時刻の外の要素は、SVG と同じ不透明度で薄く描く', () => {
+    const base = buildScene(graph(), positions, {}, {});
+    const plain = renderPdfContent(base, { outline: boxes });
+    // 薄くしないときは、不透明度 0.2 の状態を使わない。
+    expect(plain.graphicsStates.some((g) => g.fill === FADED_OPACITY)).toBe(false);
+    const scene = markOutOfTime(base, new Set(['a']), new Set(['e']));
+    const c = renderPdfContent(scene, { outline: boxes });
+    // ノード a とそのラベルは線も塗りも 0.2、エッジ e は元の不透明度に 0.2 を掛けた値。
+    expect(c.graphicsStates).toContainEqual(
+      expect.objectContaining({ stroke: FADED_OPACITY, fill: FADED_OPACITY }),
+    );
+    const edge = base.edges[0];
+    if (edge === undefined) throw new Error('エッジが無い');
+    const faded = Math.min(1, edge.opacity) * FADED_OPACITY;
+    expect(c.graphicsStates.some((g) => Math.abs(g.stroke - faded) < 1e-3)).toBe(true);
+  });
+
   it('欠損の破線は SVG と同じ間隔: ノード 3 2 と 6 3', () => {
     const base = buildScene(graph(), positions, {}, {});
     const scene = {

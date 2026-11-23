@@ -15,6 +15,7 @@ import {
   localDateString,
 } from './exportActions';
 import type { FigureChoices, FigureOutcome } from './exportActions';
+import { useTimeFade } from '../timeFade';
 
 /**
  * 上部の「書き出し」ボタンと、書き出しのダイアログ（FR-OUT-01〜05、07）。
@@ -69,6 +70,11 @@ function ExportBody() {
   const { dataset, filter, result, graphOptions } = useCurrentMetrics();
   const [legend, setLegend] = useState(true);
   const [credit, setCredit] = useState(true);
+  // 【なぜ】既定は「含める」。画面で薄く見えている図をそのまま書き出す方が、見たものと図が食い違わない。
+  // 時刻を反映しない通常の図が要るときは外せる。
+  const [includeFade, setIncludeFade] = useState(true);
+  const fade = useTimeFade();
+  const fading = fade.nodes.size > 0 || fade.edges.size > 0;
   const [pngScale, setPngScale] = useState<number>(2);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   // 実行中の書き出し（押したボタンの種類）。押したボタンだけを aria-disabled にして、フォーカスを保つ。
@@ -81,6 +87,7 @@ function ExportBody() {
   const choices = (): FigureChoices => ({
     legend,
     credit,
+    timeFade: includeFade,
     pngScale,
     // 【なぜ】フォントはこのサイトのものを読む（外部の CDN には通信しない。NFR-02、D-43）。
     fontBaseUrl: `${import.meta.env.BASE_URL}fonts/`,
@@ -150,6 +157,21 @@ function ExportBody() {
           />
           {t('export.figure.credit')}
         </label>
+        {fading && (
+          <label>
+            <input
+              type="checkbox"
+              checked={includeFade}
+              onChange={(e) => {
+                setIncludeFade(e.target.checked);
+              }}
+            />
+            {t('export.figure.timeFade', {
+              nodes: nf.format(fade.nodes.size),
+              edges: nf.format(fade.edges.size),
+            })}
+          </label>
+        )}
         <label>
           {t('export.png.scale')}{' '}
           <select

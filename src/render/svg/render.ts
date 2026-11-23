@@ -87,8 +87,8 @@ function nodeSvg(n: SceneNode, index: number, prefix: string): string {
     ` id="${prefix}node-${String(index)}" data-id="${escapeXml(n.id)}"` +
     (n.selected ? ' class="selected"' : '') +
     // 【なぜ】再生の時刻の外は薄くする（消さない。D-38）。`data-out-of-time` は色や濃さに頼らず、
-    //   画面の図と支援技術、テストから「時刻の外」と分かる印。書き出しには印を付けない
-    //   （書き出しは再生の薄い表示を含めない方針。呼ぶ側が `markOutOfTime` を通さない）。
+    //   画面の図と支援技術、テスト、書き出した SVG から「時刻の外」と分かる印。書き出しでは、
+    //   利用者が「書き出し」のダイアログで外したとき、呼ぶ側が `markOutOfTime` を通さない。
     (n.faded === true ? ` opacity="${num(FADED_OPACITY)}" data-out-of-time="true"` : '');
   return shapeElement(n.shape, n.x, n.y, n.r, attrs);
 }
