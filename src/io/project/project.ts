@@ -470,6 +470,8 @@ export function parseProject(
             'layout',
             'seed',
             'positions',
+            'columnOrder',
+            'geoAttrs',
             'labels',
             'largeLabelCount',
             'direction',

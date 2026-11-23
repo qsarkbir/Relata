@@ -19,6 +19,8 @@ import { Icon, IconButton } from './ui/icons';
 import { InfoTip } from './ui/InfoTip';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Field } from './ui/Field';
+import { LayoutMethodControls, NoCoordinatesNote } from './LayoutMethodControls';
+import { geoInputsFor, resolveGeoSelection } from './geoInputs';
 import { GraphSearch } from './GraphSearch';
 import { getNumberFormat } from './intl';
 import { StatusMessage } from './ui/StatusMessage';
@@ -114,6 +116,9 @@ export function GraphView() {
   // 「再配置する」を押すまで、位置の決まらないノードが図に出ない）。
   const interrupted = useRef(false);
   const handledIteration = useRef(0);
+  // 【なぜ】方式を変えたとき、再配置のとき、列の順や属性を変えたときは、計算の後に図を収め直す
+  // （「全体を表示」と同じ）。位置が全く変わるので、前の拡大率のままだと図が画面の外に出ることがある。
+  const refitAfterLayout = useRef(false);
   const svg = useRef<SVGSVGElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   // 【なぜ】枠の大きさは利用者がつまみで変えられる。SVG の座標を CSS ピクセルと 1 対 1 にするため、
@@ -247,7 +252,15 @@ export function GraphView() {
     const current = graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW;
     const savedIds = new Set(current.positions.map((p) => p.id));
     const allSaved = graph.nodes().every((id) => savedIds.has(toNodeId(id)));
-    if (allSaved && iteration === handledIteration.current) {
+    // 【なぜ】地理座標は緯度・経度の両方が選ばれるまで計算しない（それまでの配置を上書きしない）。
+    const geoSelection =
+      current.layout === 'geo' && dataset !== null
+        ? resolveGeoSelection(dataset, current.geoAttrs)
+        : null;
+    const waitingForGeo =
+      geoSelection !== null && (geoSelection.lat === undefined || geoSelection.lon === undefined);
+    if (waitingForGeo) handledIteration.current = iteration;
+    if (waitingForGeo || (allSaved && iteration === handledIteration.current)) {
       queueMicrotask(() => {
         if (!isStale()) {
           setBusy(false);
@@ -269,10 +282,17 @@ export function GraphView() {
       setBusy(true);
       setError(false);
       const kind = current.layout === 'fixed' && !allSaved ? 'circular' : current.layout;
+      // 層状・地理座標の入力。属性の値の検査（座標なし）はここ（メインスレッド）で済ませ、Worker へは数だけ渡す。
+      const methodOptions =
+        kind === 'layered'
+          ? { columnOrder: current.columnOrder ?? [] }
+          : kind === 'geo' && dataset !== null
+            ? { geo: geoInputsFor(dataset, graph, current.geoAttrs) }
+            : {};
       const outcome = await layoutController.run({
         job: {
           snapshot: toSnapshot(graph),
-          options: { kind, seed: current.seed, positions: current.positions },
+          options: { kind, seed: current.seed, positions: current.positions, ...methodOptions },
         },
         rounds: kind === 'forceatlas2' ? 10 : 0,
         onProgress: (fraction) => {
@@ -282,6 +302,8 @@ export function GraphView() {
           const merged = new Map(current.positions.map((p) => [p.id, p]));
           for (const p of positions) merged.set(p.id, p);
           const nextPositions = [...merged.values()];
+          const refit = refitAfterLayout.current;
+          refitAfterLayout.current = false;
           // 保存された全座標は再開時にそのまま使う。初回だけ全体を収める。
           const raw = new Map(nextPositions.map((p) => [p.id, p]));
           const built = buildScene(graph, raw, encoding, { measureText });
@@ -297,7 +319,7 @@ export function GraphView() {
           const zoom = fitZoom(built.width, built.height, size);
           patch({
             positions: nextPositions,
-            ...(current.positions.length === 0
+            ...(current.positions.length === 0 || refit
               ? {
                   viewport: {
                     zoom,
@@ -320,7 +342,7 @@ export function GraphView() {
       uiStore.getState().endTask(task);
     };
     // 位置・viewportの保存更新では反復を再開しない。入力グラフと方式/seed、明示再計算だけを監視する。
-  }, [graph, view.layout, view.seed, iteration, measureText, encoding]);
+  }, [graph, dataset, view.layout, view.seed, iteration, measureText, encoding]);
   const hasFigure = dataset !== null && graph !== null && scene !== null;
   // 【なぜ】「保存」のダイアログから図を保存できるよう、今の図を保存する関数を登録する（svgExport.ts）。
   const canExport = hasFigure && scene.nodes.length > 0;
@@ -599,6 +621,7 @@ export function GraphView() {
         </button>
       </Toolbar>
       {network !== null && !buildPanelOpen && <ProjectionIssues status={network.projection} />}
+      <NoCoordinatesNote dataset={dataset} graph={graph} view={view} />
       {graph.order === 0 && (
         <StatusMessage
           state={
@@ -877,8 +900,15 @@ export function GraphView() {
                 value={view.layout}
                 onChange={(e) => {
                   const value = e.currentTarget.value;
-                  if (value === 'forceatlas2' || value === 'circular' || value === 'fixed') {
+                  if (
+                    value === 'forceatlas2' ||
+                    value === 'circular' ||
+                    value === 'fixed' ||
+                    value === 'layered' ||
+                    value === 'geo'
+                  ) {
                     patch({ layout: value });
+                    refitAfterLayout.current = true;
                     setIteration((v) => v + 1);
                   }
                 }}
@@ -886,8 +916,21 @@ export function GraphView() {
                 <option value="forceatlas2">ForceAtlas2</option>
                 <option value="circular">{t('graph.circular')}</option>
                 <option value="fixed">{t('graph.fixed')}</option>
+                <option value="layered">{t('graph.layered')}</option>
+                <option value="geo">{t('graph.geo')}</option>
               </select>
             </Field>
+            <LayoutMethodControls
+              dataset={dataset}
+              graph={graph}
+              view={view}
+              onChange={(change) => {
+                // 【なぜ】列の順・属性の変更は配置の明示的な操作なので、ここで計算を始める。
+                patch(change);
+                refitAfterLayout.current = true;
+                setIteration((v) => v + 1);
+              }}
+            />
             <Field label={t('graph.seed')}>
               <input
                 type="number"
@@ -907,6 +950,7 @@ export function GraphView() {
               type="button"
               disabled={busy}
               onClick={() => {
+                refitAfterLayout.current = true;
                 setIteration((v) => v + 1);
               }}
             >

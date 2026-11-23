@@ -13,6 +13,10 @@ export interface GraphViewSettings {
   readonly layout: LayoutKind;
   readonly seed: number;
   readonly positions: readonly LayoutPosition[];
+  /** 層状の配置の列の順（型 ID）。任意（D-24）。無ければ型 ID の昇順（FR-VG-02）。 */
+  readonly columnOrder?: readonly string[];
+  /** 地理座標の配置の緯度・経度の属性のキー。任意（D-24）。無ければ未選択（FR-VG-02）。 */
+  readonly geoAttrs?: { readonly lat?: string; readonly lon?: string };
   readonly labels: 'all' | 'selected' | 'large';
   readonly largeLabelCount: number;
   readonly direction: 'arrow' | 'taper' | 'gradient';
@@ -64,7 +68,13 @@ export function parseGraphView(x: unknown): ParseResult<GraphViewSettings> {
   const direction = value('direction', DEFAULT_GRAPH_VIEW.direction);
   const seed = value('seed', DEFAULT_GRAPH_VIEW.seed);
   const largeLabelCount = value('largeLabelCount', DEFAULT_GRAPH_VIEW.largeLabelCount);
-  if (layout !== 'forceatlas2' && layout !== 'circular' && layout !== 'fixed')
+  if (
+    layout !== 'forceatlas2' &&
+    layout !== 'circular' &&
+    layout !== 'fixed' &&
+    layout !== 'layered' &&
+    layout !== 'geo'
+  )
     return fail('layout');
   if (labels !== 'all' && labels !== 'selected' && labels !== 'large') return fail('labels');
   if (direction !== 'arrow' && direction !== 'taper' && direction !== 'gradient')
@@ -78,6 +88,26 @@ export function parseGraphView(x: unknown): ParseResult<GraphViewSettings> {
     largeLabelCount > 10000
   )
     return fail('largeLabelCount');
+  const rawOrder = get('columnOrder');
+  if (
+    rawOrder !== undefined &&
+    (!Array.isArray(rawOrder) || rawOrder.some((t) => typeof t !== 'string' || t === ''))
+  )
+    return fail('columnOrder');
+  const rawGeo = get('geoAttrs');
+  if (
+    rawGeo !== undefined &&
+    (!isPlainObject(rawGeo) ||
+      [rawGeo.lat, rawGeo.lon].some((k) => k !== undefined && (typeof k !== 'string' || k === '')))
+  )
+    return fail('geoAttrs');
+  const geoAttrs =
+    rawGeo === undefined || !isPlainObject(rawGeo)
+      ? undefined
+      : {
+          ...(typeof rawGeo.lat === 'string' ? { lat: rawGeo.lat } : {}),
+          ...(typeof rawGeo.lon === 'string' ? { lon: rawGeo.lon } : {}),
+        };
   const rawPositions = value('positions', []);
   if (!Array.isArray(rawPositions)) return fail('positions');
   const positions: LayoutPosition[] = [];
@@ -125,6 +155,10 @@ export function parseGraphView(x: unknown): ParseResult<GraphViewSettings> {
       seed,
       largeLabelCount,
       positions,
+      // 【なぜ】任意項目は、あるときだけ値に含める（D-24。無い項目は既定値で補う）。
+      ...(rawOrder === undefined ? {} : { columnOrder: (rawOrder as string[]).slice() }), // 理由: 上で全要素が文字列だと検査済み
+      // 【なぜ】片方だけ選んだ状態も保存できる。選んでいない側は項目ごと省き、両方なければ geoAttrs ごと省く。
+      ...(geoAttrs === undefined || Object.keys(geoAttrs).length === 0 ? {} : { geoAttrs }),
       viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
       missingDisplay: missingDisplay.value,
     },
