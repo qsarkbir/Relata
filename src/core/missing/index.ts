@@ -16,3 +16,5 @@ export type {
   MissingScope,
   ReasonCounts,
 } from './stats';
+export { countMissingByPeriod } from './period';
+export type { PeriodAttr, PeriodMissing, PeriodRow, PeriodSpecialRow } from './period';

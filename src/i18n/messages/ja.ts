@@ -642,6 +642,29 @@ export const ja = {
   'missing.display.legend':
     '破線の見分け方: 長い破線は、選んだ属性が欠損している要素です。短い破線は、大きさ・色・太さに使う値が欠損している要素です。',
   'missing.filteredOut': '絞り込みで 0 件です。「絞り込み後」の行には割合が出ません。',
+  'missing.period.title': '時期ごと',
+  'missing.period.basis':
+    '年表の設定に従って数えています（変えるには年表のタブで）。対象: {target}、日付の出どころ: {source}、区切り: {width} 年。',
+  'missing.period.region': '時期ごとの欠損率',
+  'missing.period.col.period': '時期（数えた要素数）',
+  'missing.period.cell': '{missing} / {total}（{rate}）',
+  'missing.period.noDate': '年代なし',
+  'missing.period.inconsistent': '日付が不整合',
+  'missing.period.calendar.gregorian': '時期は西暦の年で区切ります。',
+  'missing.period.calendar.hijri': '時期はヒジュラ暦の年で区切ります。',
+  'missing.period.noSource': '日付がないため、時期ごとには数えられません。',
+  'missing.period.tooMany':
+    '日付の範囲が広すぎて、区切りが多くなりすぎるため、時期ごとには数えません。',
+  'missing.period.tooManyWide':
+    '日付が {from} から {to} まで離れていて、100 年区切りでも区切りが多くなりすぎるため、数えません。',
+  'missing.period.tooMany.hint':
+    '年表のタブで区切りの幅を大きくするか、離れた日付（入力の誤りなど）がないか確かめてください。',
+  'missing.period.noDated': '絞り込み後の要素に、日付のあるものがありません。',
+  'missing.period.others': '日付で区切れない要素',
+  'missing.period.noAttrs': 'この対象には属性がありません。',
+  'missing.period.filteredOut': '絞り込みで 0 件です。時期ごとの欠損率は数えられません。',
+  'missing.period.note':
+    '各セルは「欠損 / その時期に数えた、その属性が当てはまる要素（割合）」です。幅のある年代は、重なる区切りのすべてに数えます。キーを持たない要素は欠損に数えません。',
   'missing.display.nodes': 'ノードの属性',
   'missing.display.edges': 'エッジの属性',
   'missing.display.none': '選べる属性がありません。',

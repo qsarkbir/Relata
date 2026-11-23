@@ -664,6 +664,29 @@ export const en = {
   'missing.display.legend':
     'Dash styles: long dashes mean the chosen attribute is missing. Short dashes mean a value used for size, color, or width is missing.',
   'missing.filteredOut': 'The filters leave 0 items. The Filtered rows show no rates.',
+  'missing.period.title': 'By period',
+  'missing.period.basis':
+    'Counted with the timeline settings (change them in the Timeline tab). Target: {target}; date source: {source}; bins: {width} years.',
+  'missing.period.region': 'Missing values by period',
+  'missing.period.col.period': 'Period (items counted)',
+  'missing.period.cell': '{missing} / {total} ({rate})',
+  'missing.period.noDate': 'No date',
+  'missing.period.inconsistent': 'Inconsistent dates',
+  'missing.period.calendar.gregorian': 'Periods follow Gregorian years.',
+  'missing.period.calendar.hijri': 'Periods follow Hijri years.',
+  'missing.period.noSource': 'There are no dates, so nothing can be counted by period.',
+  'missing.period.tooMany':
+    'The date range is too wide and would make too many bins, so nothing is counted by period.',
+  'missing.period.tooManyWide':
+    'Dates range from {from} to {to}, which makes too many bins even at 100 years, so nothing is counted.',
+  'missing.period.tooMany.hint':
+    'Widen the bins in the Timeline tab, or check for a distant date (for example a typing mistake).',
+  'missing.period.noDated': 'None of the items left by the filters has a date.',
+  'missing.period.others': 'Items that cannot be placed in a period',
+  'missing.period.noAttrs': 'This target has no attributes.',
+  'missing.period.filteredOut': 'The filters leave 0 items, so nothing can be counted by period.',
+  'missing.period.note':
+    'Each cell is missing / items counted in that period that the attribute applies to (rate). An item with a date range is counted in every bin it overlaps. Items without the key are not counted as missing.',
   'missing.display.nodes': 'Node attributes',
   'missing.display.edges': 'Edge attributes',
   'missing.display.none': 'No attributes to choose from.',

@@ -5,7 +5,15 @@
  * （差分で更新しない。共通規約）、全体の値と並べて示せるように、集合は引数で切り替える。
  * 歴史資料では「史料に書かれていない」と「史料が失われた」は別の事情なので、理由を分けて数える。
  */
-import type { AttributeDef, Attrs, Dataset, EdgeId, MissingReason, NodeId } from '../model';
+import type {
+  AttrValue,
+  AttributeDef,
+  Attrs,
+  Dataset,
+  EdgeId,
+  MissingReason,
+  NodeId,
+} from '../model';
 import { MISSING_REASONS, getAttr } from '../model';
 import { assertNever } from '../util/assertNever';
 
@@ -72,8 +80,71 @@ export function reasonRate(counts: MissingCounts, reason: MissingReason): number
   return counts.total === 0 ? null : counts.byReason[reason] / counts.total;
 }
 
-function emptyReasons(): Record<MissingReason, number> {
-  return { unrecorded: 0, lost: 0, illegible: 0, 'not-applicable': 0 };
+/** 数え途中の集計（書き換えてよい）。時期ごとの集計（period.ts）も同じ数え方を使う。 */
+export interface Tally {
+  total: number;
+  present: number;
+  absent: number;
+  readonly byReason: Record<MissingReason, number>;
+}
+
+/**
+ * 空の集計を作る。
+ *
+ * @returns すべて 0 の集計
+ */
+export function newTally(): Tally {
+  return {
+    total: 0,
+    present: 0,
+    absent: 0,
+    byReason: { unrecorded: 0, lost: 0, illegible: 0, 'not-applicable': 0 },
+  };
+}
+
+/**
+ * 属性の値 1 つ（キーが無ければ undefined）を集計に足す。数え方は属性ごとの一覧と時期ごとの一覧で共通。
+ *
+ * @param tally - 足す先
+ * @param v - 属性の値。キーを持たなければ undefined
+ */
+export function addToTally(tally: Tally, v: AttrValue | undefined): void {
+  tally.total += 1;
+  if (v === undefined) {
+    // 【なぜ】キーが無いのは欠損ではない（D-19）。「キーなし」に分けて数える。
+    tally.absent += 1;
+    return;
+  }
+  // 【TS】判別共用体 `AttrValue` を `kind` で分岐する。`assertNever` は、種類が増えて分岐を書き忘れると型エラーにする。
+  switch (v.kind) {
+    case 'missing':
+      tally.byReason[v.reason] += 1;
+      break;
+    case 'value':
+    case 'date':
+      tally.present += 1;
+      break;
+    default:
+      assertNever(v, 'AttrValue');
+  }
+}
+
+/**
+ * 集計を、読み取り専用の数え上げにする（欠損の合計を理由から求める）。
+ *
+ * @param tally - 数え終えた集計
+ * @returns 数え上げ
+ */
+export function tallyToCounts(tally: Tally): MissingCounts {
+  let missing = 0;
+  for (const r of MISSING_REASONS) missing += tally.byReason[r];
+  return {
+    total: tally.total,
+    present: tally.present,
+    missing,
+    byReason: { ...tally.byReason },
+    absent: tally.absent,
+  };
 }
 
 /**
@@ -89,30 +160,10 @@ function countOne(
   dataset: Dataset,
   ids: ReadonlySet<string> | null,
 ): MissingCounts {
-  const byReason = emptyReasons();
-  let total = 0;
-  let present = 0;
-  let absent = 0;
+  const tally = newTally();
   const visit = (id: string, attrs: Attrs) => {
     if (ids !== null && !ids.has(id)) return;
-    total += 1;
-    const v = getAttr(attrs, def.key);
-    if (v === undefined) {
-      absent += 1;
-      return;
-    }
-    // 【TS】判別共用体 `AttrValue` を `kind` で分岐する。`assertNever` は、種類が増えて分岐を書き忘れると型エラーにする。
-    switch (v.kind) {
-      case 'missing':
-        byReason[v.reason] += 1;
-        break;
-      case 'value':
-      case 'date':
-        present += 1;
-        break;
-      default:
-        assertNever(v, 'AttrValue');
-    }
+    addToTally(tally, getAttr(attrs, def.key));
   };
   switch (def.appliesTo) {
     case 'node':
@@ -127,9 +178,7 @@ function countOne(
     default:
       assertNever(def.appliesTo, 'AttributeDef.appliesTo');
   }
-  let missing = 0;
-  for (const r of MISSING_REASONS) missing += byReason[r];
-  return { total, present, missing, byReason, absent };
+  return tallyToCounts(tally);
 }
 
 /**
