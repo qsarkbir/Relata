@@ -723,7 +723,7 @@ T1-23 は MVP で利用できる #1〜10 と関連 issue の回帰を確認す�
 |---|---|---|
 | `core-model` | データモデル、フィルタ、時間、グラフ構築、射影、見た目への割り当て | `src/core/`（`metrics/` と `layout/` を除く） |
 | `graph-algo` | 指標、レイアウト、edge bundling の算法、Worker | `src/workers/`、`src/core/metrics/`、`src/core/layout/`、`src/render/bundling/`、`tests/golden/` |
-| `renderer` | シーン層、SVG 描画、有向エッジの幾何、図の書き出し | `src/render/`（`bundling/` を除く）、`src/io/export/` の図の部分 |
+| `renderer` | シーン層、SVG 描画、有向エッジの幾何、図の書き出し | `src/render/`（`bundling/` を除く）、`src/io/export/` の図の部分、`public/fonts/`（PDF のフォント） |
 | `map-geo` | 地図ビュー、時間アニメーション、地図の書き出し | `src/map/` |
 | `ui` | React の画面、状態管理、読み込みウィザード、多言語対応 | `src/views/`、`src/state/`、`src/app/`、`src/i18n/`、`index.html` |
 | `io` | 各形式の読み込みと書き出し（図以外）、プロジェクトファイル、サンプルデータ | `src/io/`（図の書き出しを除く）、`public/samples/` |
