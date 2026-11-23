@@ -13,3 +13,110 @@
   font-size: var(--rl-font-sm);
   font-weight: 600;
 }
+
+/* ---- ネットワークの構築（T2-02）: 項目と、そこから開く小さなパネル ---- */
+/* 【なぜ】パネルは条件の行を基準に、図の上へ重ねて出す（図の上に常時展開しない。方針 §1.2）。 */
+.conditions-bar {
+  position: relative;
+}
+.build-toggle {
+  cursor: pointer;
+}
+.build-toggle[aria-expanded='true'] {
+  background: var(--rl-selected);
+  border-color: var(--rl-accent);
+  border-width: 2px;
+}
+.build-toggle .rl-chip-text {
+  /* 長い要約は 2 行まで折り返す（日本語・英語の両方ではみ出さない）。 */
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.build-panel {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: 0;
+  z-index: 6;
+  box-sizing: border-box;
+  inline-size: min(26rem, 100%);
+  max-block-size: 70vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rl-space-2);
+  padding: var(--rl-space-3);
+  background: var(--rl-surface);
+  border: var(--rl-border-width) solid var(--rl-border);
+  border-radius: var(--rl-radius);
+  box-shadow: var(--rl-shadow);
+  font-size: var(--rl-font-md);
+  line-height: var(--rl-leading);
+}
+.build-panel:focus-visible {
+  outline: var(--rl-focus-ring);
+}
+.build-panel-head {
+  display: flex;
+  align-items: center;
+  gap: var(--rl-space-1);
+}
+.build-panel-head h3 {
+  flex: 1;
+  margin: 0;
+  font-size: var(--rl-font-lg);
+}
+.build-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--rl-space-2);
+  min-block-size: 0;
+  color: var(--rl-text-muted);
+  font-size: var(--rl-font-sm);
+}
+.build-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rl-space-2);
+  margin: 0;
+  padding: var(--rl-space-2);
+  border: var(--rl-border-width) solid var(--rl-border);
+  border-radius: var(--rl-radius);
+}
+.build-group legend {
+  padding-inline: var(--rl-space-1);
+  font-weight: 600;
+}
+.build-group .rl-field {
+  margin: 0;
+}
+.build-issues {
+  margin: 0;
+  padding: var(--rl-space-2) var(--rl-space-3);
+  list-style: none;
+  border: var(--rl-border-width) solid var(--rl-danger);
+  border-radius: var(--rl-radius);
+  font-weight: 600;
+}
+.build-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.build-issue-line {
+  display: block;
+  font-weight: normal;
+}
+.build-issue-line:first-child {
+  font-weight: 600;
+}
+/* 暦の切り替え。チップと同じ枠の中に、名前と選択欄を並べる。 */
+.conditions-calendar {
+  gap: var(--rl-space-2);
+}
+.conditions-calendar select {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}

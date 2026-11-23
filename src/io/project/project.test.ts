@@ -15,7 +15,13 @@ import {
 } from './project';
 import { DEFAULT_IMPORT_SETTINGS, PROJECT_VIEW_KEYS, type ProjectParts } from './types';
 
-import { DEFAULT_GRAPH_VIEW } from '../../core/project';
+import {
+  DEFAULT_GRAPH_VIEW,
+  DEFAULT_TABLE_VIEW,
+  DEFAULT_WORKSPACE,
+  type TableViewSettings,
+  type WorkspaceSettings,
+} from '../../core/project';
 
 const AT = '2026-11-18T00:00:00Z';
 const parts: ProjectParts = {
@@ -75,13 +81,74 @@ describe('プロジェクトの往復', () => {
     expect(ok(serializeProject(r.value, AT)).value).toEqual(r.value);
   });
   it('FR-PJ-01: ProjectView のすべてのキーが保存され、読み込み後も残る', () => {
-    const full = { ...parts, view: { ...parts.view, graph: DEFAULT_GRAPH_VIEW } };
+    const full = {
+      ...parts,
+      view: {
+        ...parts.view,
+        graph: DEFAULT_GRAPH_VIEW,
+        table: DEFAULT_TABLE_VIEW,
+        workspace: DEFAULT_WORKSPACE,
+        display: { calendar: 'hijri' as const },
+      },
+    };
     const saved = sub(obj(serializeProject(full, AT)), 'view');
     const loaded = ok(serializeProject(full, AT)).value.view;
     for (const key of PROJECT_VIEW_KEYS) {
       expect(Object.hasOwn(saved, key)).toBe(true);
       expect(Object.hasOwn(loaded, key)).toBe(true);
     }
+  });
+  it('FR-TB-01: 表の設定と下の段が往復し、無い項目は持たない（D-44）', () => {
+    const table: TableViewSettings = {
+      target: 'edge',
+      node: { sort: { column: 'label', direction: 'desc' }, columns: ['label', 'id'] },
+      edge: { sort: null, columns: [] },
+    };
+    const workspace: WorkspaceSettings = { tab: 'table', open: true, height: 420 };
+    const r = ok(serializeProject({ ...parts, view: { ...parts.view, table, workspace } }, AT));
+    expect(r.value.view.table).toEqual(table);
+    expect(r.value.view.workspace).toEqual(workspace);
+    expect(r.warnings).toEqual([]);
+    // 既定の補いは読み込み側でなく、項目が無いまま（読む側のストアが既定を使う）。
+    const plain = ok(serializeProject(parts, AT));
+    expect(plain.value.view.table).toBeUndefined();
+    expect(plain.value.view.workspace).toBeUndefined();
+  });
+  it('FR-UI-02: 下の段の設定の壊れた項目は既定で補い、範囲外の高さは収める', () => {
+    const text = serializeProject(parts, AT);
+    const file = obj(text);
+    const broken = {
+      ...file,
+      view: {
+        ...sub(file, 'view'),
+        workspace: { tab: 'timeline', open: 'yes', height: 99999 },
+        table: {
+          target: 'x',
+          node: { sort: { column: '', direction: 'up' }, columns: [1, 'a', 'a'] },
+        },
+      },
+    };
+    const r = ok(JSON.stringify(broken));
+    expect(r.value.view.workspace).toEqual({ ...DEFAULT_WORKSPACE, height: 800 });
+    expect(r.value.view.table?.target).toBe('node');
+    expect(r.value.view.table?.node).toEqual({ sort: null, columns: ['a'] });
+    expect(r.value.view.table?.edge).toEqual(DEFAULT_TABLE_VIEW.edge);
+    expect(r.warnings).toEqual([]);
+  });
+  it('FR-UI-02: table と workspace が null でもファイルは開け、既定で補って警告で返す', () => {
+    const file = obj(serializeProject(parts, AT));
+    const text = JSON.stringify({
+      ...file,
+      view: { ...sub(file, 'view'), table: null, workspace: null },
+    });
+    const r = ok(text);
+    expect(r.value.view.table).toBeUndefined();
+    expect(r.value.view.workspace).toBeUndefined();
+    expect(
+      r.warnings
+        .filter((w) => w.source === 'project')
+        .map((w) => (w.issue as { path: string }).path),
+    ).toEqual(['view.table', 'view.workspace']);
   });
   it('FR-PJ-01: 問題のあるデータも、往復で変わらず、警告で返る', () => {
     const base = cleanDataset();
@@ -413,5 +480,50 @@ describe('値の末尾の ? を可能性ありと読む列の設定（D-37）', 
       const r = parseImportSettings({ possibleSuffixColumns: bad });
       expect(!r.ok && r.path).toBe(path);
     }
+  });
+});
+
+describe('FR-TM-09: 表示する暦（view.display.calendar、R-24、D-45）', () => {
+  const withDisplay = (calendar: unknown): string =>
+    mutated((o) => {
+      sub(o, 'view').display = { calendar };
+    });
+  it('FR-TM-09: 保存して読み直すと暦が戻る（版は 2 のまま）', () => {
+    for (const calendar of ['gregorian', 'hijri', 'both'] as const) {
+      const text = serializeProject(
+        { ...parts, view: { ...parts.view, display: { calendar } } },
+        AT,
+      );
+      expect(obj(text).formatVersion).toBe(CURRENT_FORMAT_VERSION);
+      const r = parseProject(text);
+      expect(r.ok && r.value.view.display).toEqual({ calendar });
+    }
+  });
+  it('FR-TM-09: display が無ければ持たない（読む側が既定の西暦にする）', () => {
+    const r = parseProject(serializeProject(parts, AT));
+    expect(r.ok && r.value.view.display).toBeUndefined();
+  });
+  it('FR-TM-09: 暦の値が不正なら、view.display.calendar の壊れとして拒む', () => {
+    const r = parseProject(withDisplay('julian'));
+    expect(r).toMatchObject({ ok: false, kind: 'broken', path: 'view.display.calendar' });
+  });
+  it('FR-TM-09: display が空のオブジェクトなら既定の西暦で補う', () => {
+    const r = parseProject(
+      mutated((o) => {
+        sub(o, 'view').display = {};
+      }),
+    );
+    expect(r.ok && r.value.view.display).toEqual({ calendar: 'gregorian' });
+  });
+  it('FR-TM-09: display の未知の項目は警告にして落とす', () => {
+    const r = parseProject(
+      mutated((o) => {
+        sub(o, 'view').display = { calendar: 'hijri', zoom: 1 };
+      }),
+    );
+    expect(r.ok && r.warnings).toContainEqual({
+      source: 'project',
+      issue: { kind: 'unknown-field', path: 'view.display.zoom' },
+    });
   });
 });

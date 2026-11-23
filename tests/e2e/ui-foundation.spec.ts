@@ -63,7 +63,8 @@ test.describe('日本語の画面', () => {
     const drawer = await openGraphSettings(page);
     await expect(drawer).toBeFocused();
     await expect(drawer).toContainText('グラフだけ');
-    await expect(drawer).toContainText('グラフと指標に共通');
+    // 重みと自己ループは「ネットワークの構築」のパネルへ移した（T2-02）。引き出しには残さない。
+    await expect(drawer).not.toContainText('自己ループ');
     // 節を畳んで開き直しても、選択は残る。
     await drawer.getByText('ラベルと向き', { exact: true }).click();
     await drawer.getByText('ラベルと向き', { exact: true }).click();

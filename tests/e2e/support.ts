@@ -342,3 +342,23 @@ export async function selectNode(page: Page, id: string): Promise<void> {
     .filter({ has: page.locator('bdi', { hasText: new RegExp(`^${id}$`) }) })
     .click();
 }
+
+/** 適用中の条件の行の「ネットワークの構築」の項目（既定のときは名前だけ、適用中の値があれば「構築: …」）。 */
+export function buildToggle(page: Page): Locator {
+  return page.getByRole('region', { name: /適用中の条件|Applied conditions/ }).getByRole('button', {
+    name: /^(ネットワークの構築|構築:|Network construction|Construction:)/,
+  });
+}
+
+/** 「ネットワークの構築」のパネル（小さなダイアログ。非モーダル）。 */
+export function buildPanel(page: Page): Locator {
+  return page.getByRole('dialog', { name: /^(ネットワークの構築|Network construction)$/ });
+}
+
+/** 「ネットワークの構築」のパネルを開く（既に開いていれば何もしない）。 */
+export async function openBuildPanel(page: Page): Promise<Locator> {
+  const toggle = buildToggle(page);
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await expect(buildPanel(page)).toBeVisible();
+  return buildPanel(page);
+}

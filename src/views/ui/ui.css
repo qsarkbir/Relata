@@ -150,3 +150,27 @@ button.rl-chip:hover {
 .rl-section > summary::-webkit-details-marker {
   display: none;
 }
+
+/* タブ（下の段で使う。選択中は下線と太字で示し、色だけに頼らない） */
+.rl-tabs {
+  display: flex;
+  gap: var(--rl-space-1);
+}
+.rl-tab {
+  min-block-size: var(--rl-control-size);
+  padding-inline: var(--rl-space-3);
+  border: 0;
+  border-block-end: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--rl-text);
+  font-size: var(--rl-font-md);
+  cursor: pointer;
+}
+.rl-tab[aria-selected='true'] {
+  border-block-end-color: var(--rl-accent);
+  font-weight: 700;
+}
+.rl-tab:hover {
+  background: var(--rl-selected);
+}

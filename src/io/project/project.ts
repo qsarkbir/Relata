@@ -1,4 +1,11 @@
-import { parseGraphView, type ProjectWarning } from '../../core/project';
+import {
+  parseGraphView,
+  parseTableView,
+  parseWorkspace,
+  type DisplaySettings,
+  type ProjectWarning,
+} from '../../core/project';
+import { DEFAULT_CALENDAR_DISPLAY, isCalendarDisplay } from '../../core/time';
 /**
  * プロジェクトファイルの保存と読み込み（FR-PJ-01、FR-IN-08、D-24、設計書 §11.3）。
  *
@@ -118,6 +125,9 @@ export function serializeProject(parts: ProjectParts, savedAt: string): string {
     view: {
       filter: parts.view.filter,
       ...(parts.view.graph === undefined ? {} : { graph: parts.view.graph }),
+      ...(parts.view.table === undefined ? {} : { table: parts.view.table }),
+      ...(parts.view.workspace === undefined ? {} : { workspace: parts.view.workspace }),
+      ...(parts.view.display === undefined ? {} : { display: parts.view.display }),
     },
   };
   return JSON.stringify(file);
@@ -380,6 +390,38 @@ export function parseProject(
         positions: parsedGraph.positions.filter((p) => nodeIds.has(p.id)),
       };
   }
+  // 表ビューと下の段（D-44）。任意の項目で、読めない中身は既定で補う（parseTableView、parseWorkspace）。
+  // 【なぜ】graph と違い、オブジェクトでない値（`null` など）も失敗にしない。表示の好みの 1 つのために、
+  //   データを含むファイル全体を開けなくしない。落としたことは警告で返す。
+  const viewWarnings: ProjectWarning[] = [];
+  const optionalView = <T>(key: 'table' | 'workspace', parse: (x: unknown) => ParseResult<T>) => {
+    const raw = viewRaw === undefined ? undefined : get(viewRaw, key);
+    if (raw === undefined) return undefined;
+    const parsed = parse(raw);
+    if (parsed.ok) return parsed.value;
+    viewWarnings.push({
+      source: 'project',
+      issue: { kind: 'unknown-field', path: `view.${key}` },
+    });
+    return undefined;
+  };
+  const table = optionalView('table', parseTableView);
+  const workspace = optionalView('workspace', parseWorkspace);
+  // 表示設定（R-24）。無ければ持たない（読む側が既定の西暦にする）。
+  const displayRaw = viewRaw === undefined ? undefined : get(viewRaw, 'display');
+  let display: DisplaySettings | undefined;
+  if (displayRaw !== undefined) {
+    if (!isPlainObject(displayRaw))
+      return failure('broken', 'view.display', 'オブジェクトが必要です');
+    const calendar = get(displayRaw, 'calendar');
+    if (calendar !== undefined && !isCalendarDisplay(calendar))
+      return failure(
+        'broken',
+        'view.display.calendar',
+        'gregorian、hijri、both のいずれかが必要です',
+      );
+    display = { calendar: calendar ?? DEFAULT_CALENDAR_DISPLAY };
+  }
   const savedAt = get(data, 'savedAt');
   if (savedAt !== undefined && typeof savedAt !== 'string')
     return failure('broken', 'savedAt', '文字列が必要です');
@@ -406,7 +448,9 @@ export function parseProject(
           'view.graph.',
         )
       : []),
+    ...(isPlainObject(displayRaw) ? unknownFields(displayRaw, ['calendar'], 'view.display.') : []),
     ...positionWarnings,
+    ...viewWarnings,
     ...checkDataset(dataset.value).map((issue): ProjectWarning => ({ source: 'dataset', issue })),
     ...checkFilterState(dataset.value, filter).map((issue): ProjectWarning => ({
       source: 'filter',
@@ -422,7 +466,13 @@ export function parseProject(
       ...(savedAt !== undefined && { savedAt }),
       dataset: dataset.value,
       importSettings: settings.value,
-      view: { filter, ...(graph === undefined ? {} : { graph }) },
+      view: {
+        filter,
+        ...(graph === undefined ? {} : { graph }),
+        ...(table === undefined ? {} : { table }),
+        ...(workspace === undefined ? {} : { workspace }),
+        ...(display === undefined ? {} : { display }),
+      },
     },
     warnings,
   };

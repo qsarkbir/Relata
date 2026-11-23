@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { fixturePath, openProject, startApp } from './support';
 
 test.use({ locale: 'ja-JP' });
-test('FR-FL-08: 保存済みの時間フィルタを日英の暦の日付で表示し解除ボタンも同じ説明にする', async ({
+test('FR-FL-08 / FR-TM-09: 保存済みの時間フィルタを日英の暦の日付で表示し解除ボタンも同じ説明にする', async ({
   page,
 }) => {
   const source: unknown = JSON.parse(readFileSync(fixturePath('maghrib.relata.json'), 'utf8'));
@@ -37,10 +37,10 @@ test('FR-FL-08: 保存済みの時間フィルタを日英の暦の日付で表�
     buffer: Buffer.from(text),
   });
   const applied = page.getByRole('region', { name: /適用中のフィルタ|Active filters/ });
-  await expect(applied).toContainText('グレゴリオ暦 2000年01月01日〜2000年02月29日');
-  await expect(page.getByRole('button', { name: /グレゴリオ暦 2000年01月01日/ })).toBeVisible();
+  await expect(applied).toContainText('期間: 2000年1月〜2000年2月（重なる）');
+  await expect(page.getByRole('button', { name: /期間: 2000年1月〜2000年2月/ })).toBeVisible();
   await page.getByRole('button', { name: 'English', exact: true }).click();
-  await expect(applied).toContainText('Gregorian 2000-01-01 to 2000-02-29');
-  await page.getByRole('button', { name: /Gregorian 2000-01-01/ }).click();
-  await expect(applied).not.toContainText('Gregorian');
+  await expect(applied).toContainText('Element period: Jan 2000–Feb 2000 (overlaps)');
+  await page.getByRole('button', { name: /Element period: Jan 2000–Feb 2000/ }).click();
+  await expect(applied).not.toContainText('Jan 2000');
 });

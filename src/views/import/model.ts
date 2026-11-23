@@ -1,8 +1,14 @@
 /** 読み込みウィザードの列対応を、io の公開 API に渡す（FR-IN-03〜07）。 */
 import type { CalendarId, Dataset, GraphMode, ValueType } from '../../core/model';
-import { inferColumnType, importSingleTable, importTables } from '../../io/table';
+import {
+  inferColumnType,
+  importSingleTable,
+  importTables,
+  isPossibleSuffixColumn,
+  toColumnRef,
+} from '../../io/table';
 import type { AttributeColumn, TableMapping, TableWarning, TextTable } from '../../io/table';
-import type { ColumnCalendar, ImportSettings, MissingToken } from '../../io/project';
+import type { ColumnCalendar, ColumnRef, ImportSettings, MissingToken } from '../../io/project';
 
 /** 表の構造。 */
 export type ImportMode = 'single' | 'pair';
@@ -25,6 +31,7 @@ export const FIELD_ROLES = [
   'date',
   'start',
   'end',
+  'certainty',
 ] as const;
 type FieldRole = (typeof FIELD_ROLES)[number];
 /** 列を使う場所。 */
@@ -45,6 +52,8 @@ export interface ColumnDraft {
   readonly type: ValueType;
   readonly calendar: CalendarId;
   readonly separator: string;
+  /** 属性の値の末尾の ? を「可能性あり」と読む（D-37）。既定は無効。日付の列と属性以外の列では効かない。 */
+  readonly possibleSuffix: boolean;
 }
 /** 編集中の表と読み込み時の情報。 */
 export interface ImportDraft {
@@ -98,6 +107,7 @@ const nodeRoles: readonly ColumnRole[] = [
   'lon',
   'start',
   'end',
+  'certainty',
 ];
 const edgeRoles: readonly ColumnRole[] = [
   'ignore',
@@ -113,6 +123,7 @@ const edgeRoles: readonly ColumnRole[] = [
   'date',
   'start',
   'end',
+  'certainty',
 ];
 const singleRoles: readonly ColumnRole[] = [
   'ignore',
@@ -130,6 +141,7 @@ const singleRoles: readonly ColumnRole[] = [
   'date',
   'start',
   'end',
+  'certainty',
 ];
 /**
  * 対象の表で使える列の用途を返す。
@@ -176,9 +188,55 @@ export function draftTable(
       type: columnType(role, inferColumnType(table.rows.map((row) => row[index] ?? ''))),
       calendar: 'gregorian',
       separator: '',
+      possibleSuffix: false,
     };
   });
   return { table, columns, name, ...(encoding === undefined ? {} : { encoding }) };
+}
+
+const ATTRIBUTE_ROLES: readonly ColumnRole[] = ['attr', 'sourceAttr', 'targetAttr', 'edgeAttr'];
+/**
+ * 「末尾の ? を可能性ありと読む」を選べる列か。役割が属性で、型が日付でないものだけ（選択の有無は見ない）。
+ *
+ * 【なぜ】画面（選択欄を出すか）と変換・保存が同じ判定を通る。日付の列は、日付の解析が `?` を
+ * 自分で扱うので対象にしない（io の仕様）。
+ * @param column - 編集中の列
+ * @returns 選べるなら true
+ */
+export function canUsePossibleSuffix(column: ColumnDraft): boolean {
+  return ATTRIBUTE_ROLES.includes(column.role) && column.type !== 'date';
+}
+/**
+ * 「末尾の ? を可能性ありと読む」が実際に効く列か（選べて、選んでいる）。
+ * @param column - 編集中の列
+ * @returns 効くなら true
+ */
+export function isSuffixActive(column: ColumnDraft): boolean {
+  return column.possibleSuffix && canUsePossibleSuffix(column);
+}
+/**
+ * 保存した読み込みの設定から、列の「末尾の ? を可能性ありと読む」の選択を再現する。
+ *
+ * 保存した設定からウィザードを再現する画面ができるまでは、保存と変換の往復をテストで確かめるための入口。
+ * 列は key で照合する。利用者が key を書き換えた列と、列名が変わったファイルは再現の対象外
+ * （その列は無効になる）。
+ * @param draft - 編集中の表
+ * @param refs - `ImportSettings.possibleSuffixColumns`
+ * @param table - 2 表のときの表の区別。1 表なら省略
+ * @returns 選択を反映した表
+ */
+export function restorePossibleSuffix(
+  draft: ImportDraft,
+  refs: readonly ColumnRef[] | undefined,
+  table?: 'node' | 'edge',
+): ImportDraft {
+  return {
+    ...draft,
+    columns: draft.columns.map((column) => ({
+      ...column,
+      possibleSuffix: isPossibleSuffixColumn(refs, column.key, table),
+    })),
+  };
 }
 
 function attributes(
@@ -198,6 +256,7 @@ function attributes(
             calendar: column.calendar,
             missingTokens,
             ...(column.separator === '' ? {} : { separator: column.separator }),
+            ...(isSuffixActive(column) ? { possibleSuffix: true } : {}),
           },
         ],
   );
@@ -272,9 +331,23 @@ export function previewImport(
         : [],
     ),
   );
+  const suffixes = [first, ...(second === null ? [] : [second])].flatMap((draft, tableIndex) =>
+    draft.columns.flatMap((column): ColumnRef[] =>
+      isSuffixActive(column)
+        ? [
+            toColumnRef(
+              column.key,
+              mode === 'pair' ? (tableIndex === 0 ? 'node' : 'edge') : undefined,
+            ),
+          ]
+        : [],
+    ),
+  );
   const settings: ImportSettings = {
     missingTokens,
     columnCalendars: calendars,
+    // 【なぜ】選択が無いときは項目を持たない（既定は無効。空の配列を足さず、保存の形を変えない）。
+    ...(suffixes.length > 0 && { possibleSuffixColumns: suffixes }),
     ...(first.encoding === undefined ? {} : { encoding: first.encoding }),
   };
   const decodeWarnings: WizardWarning[] = [first, ...(second === null ? [] : [second])].flatMap(

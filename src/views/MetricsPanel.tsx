@@ -9,6 +9,7 @@ import {
 } from '../core/metrics/types';
 import { metricsController } from '../state';
 import { useData, useT, useUi } from './hooks';
+import { useNetwork } from './useNetwork';
 import { InfoTip } from './ui/InfoTip';
 import { getCollator } from './intl';
 import {
@@ -125,6 +126,8 @@ function MetricResults({ result }: { readonly result: MetricsResult }) {
   const t = useT();
   const locale = useUi((s) => s.locale);
   const dataset = useData((s) => s.dataset);
+  // 射影中は、指標が射影後のグラフで計算されていることを見出しの横に示す（FR-GR-03）。
+  const projected = useNetwork()?.projection.kind === 'applied';
   const nf = useMemo(
     () => new Intl.NumberFormat(locale, { maximumSignificantDigits: 6 }),
     [locale],
@@ -187,6 +190,11 @@ function MetricResults({ result }: { readonly result: MetricsResult }) {
       <section aria-labelledby="metrics-global-title">
         <h3 id="metrics-global-title">
           {t('metrics.global')}{' '}
+          {projected && (
+            <span className="metrics-projected" title={t('metrics.projectedDetail')}>
+              {t('metrics.projected')}
+            </span>
+          )}{' '}
           {/* 【なぜ】計算上の注意と指標の意味を、1 つのアイコンにまとめる。狭いパネルに長い説明を
               広げると読みにくいため、ダイアログで読む（利用者の指摘、2026-11-22）。
               注意があるときは、件数をアイコンの横に示して気づけるようにする。 */}

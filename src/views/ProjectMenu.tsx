@@ -1,6 +1,14 @@
 import { useRef, useState } from 'react';
 import { serializeProject } from '../io/project';
-import { takeSnapshot, dataStore, filterStore, uiStore, graphViewStore } from '../state';
+import {
+  takeSnapshot,
+  dataStore,
+  filterStore,
+  uiStore,
+  graphViewStore,
+  workspaceStore,
+  displayStore,
+} from '../state';
 import { useData, useT, useUi } from './hooks';
 import { ModalDialog } from './ModalDialog';
 import { useSvgExporter } from './svgExport';
@@ -35,7 +43,11 @@ export function ProjectMenu({ onClearAutosave }: ProjectMenuProps) {
   const [pending, setPending] = useState<File | null>(null);
 
   const save = (): void => {
-    const snapshot = takeSnapshot(dataStore, filterStore, graphViewStore);
+    const snapshot = takeSnapshot(dataStore, filterStore, {
+      graph: graphViewStore,
+      workspace: workspaceStore,
+      display: displayStore,
+    });
     if (snapshot === null) return;
     // 【なぜ】日時は呼ぶ側（ここ）で作って渡す。io は Date を使わない（CLAUDE.md）。
     const savedAt = new Date().toISOString();
