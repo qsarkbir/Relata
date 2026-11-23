@@ -219,7 +219,9 @@ test.describe('日本語の画面', () => {
     if ((await missing.count()) > 0) await expect(missing.first()).not.toHaveText('');
   });
 
-  test('FR-TB-01: 数千行でなくても、ページ送りで 1 ページ 50 行に収まる', async ({ page }) => {
+  test('FR-TB-01: 130 行は 50 行ずつのページ送りになり、1 ページの行数が一定に保たれる', async ({
+    page,
+  }) => {
     await openProject(page, bigProject());
     await openBottom(page);
     await expect(table(page).locator('tbody tr')).toHaveCount(50);
@@ -262,13 +264,14 @@ test.describe('日本語の画面', () => {
     await row(page, 'p7').getByRole('button').focus();
     await page.keyboard.press('Enter');
     await expect(row(page, 'p7')).toHaveAttribute('data-selected', 'true');
-    // エッジの行を選ぶと、両端のノードが図のカードに出る。
+    // エッジの行を選ぶと、エッジだけが選択に入る（端のノードは選択中にならない）。
+    // 図のカードの表示は、エッジだけの選択に対応する T2-02 との統合のときに足す。
     await workspace(page).getByRole('button', { name: 'エッジ表' }).click();
     await row(page, 'e1').locator('td').nth(1).click();
     await expect(row(page, 'e1')).toHaveAttribute('data-selected', 'true');
-    await expect(card).toContainText('他に 1 件を選択中');
     await workspace(page).getByRole('button', { name: 'ノード表' }).click();
-    await expect(row(page, 'p1')).toHaveAttribute('data-selected', 'true');
+    await expect(row(page, 'p1')).toHaveAttribute('data-selected', 'false');
+    await expect(table(page).locator('tr[data-selected="true"]')).toHaveCount(0);
   });
 
   test('FR-TB-02: 図で選んだノードが別のページにあれば、そのページへ移る。「選択した行へ移る」でも戻れる', async ({
@@ -285,7 +288,27 @@ test.describe('日本語の画面', () => {
     await expect(row(page, 'n120')).toBeVisible();
   });
 
-  test('FR-TB-01: 絞り込みで 0 件のときと、列が無いときは、別の文言になる', async ({ page }) => {
+  test('FR-TB-02: 表の中で追加選択してもページは変わらず、ページに選択が無いときだけ図の選択で移る', async ({
+    page,
+  }) => {
+    await openProject(page, bigProject());
+    await openBottom(page);
+    await workspace(page).getByRole('button', { name: '次のページ' }).click();
+    await workspace(page).getByRole('button', { name: '次のページ' }).click();
+    await expect(workspace(page)).toContainText('ページ 3 / 3');
+    await row(page, 'n101').locator('td').nth(1).click();
+    await row(page, 'n102')
+      .locator('td')
+      .nth(1)
+      .click({ modifiers: ['Control'] });
+    await expect(workspace(page)).toContainText('ページ 3 / 3');
+    await expect(table(page).locator('tr[data-selected="true"]')).toHaveCount(2);
+    // 図で選ぶと選択が置き換わり、今のページに選択行が無くなるので、その行のページへ移る。
+    await selectNode(page, 'n005');
+    await expect(workspace(page)).toContainText('ページ 1 / 3');
+  });
+
+  test('FR-TB-01: データなし・絞り込みで 0 件・列が 0 は、別の文言になる', async ({ page }) => {
     await openProject(page, 'maghrib.relata.json');
     await openBottom(page);
     const search = page.getByRole('search', { name: 'ノードのテキスト検索' });
@@ -293,6 +316,29 @@ test.describe('日本語の画面', () => {
     await search.getByRole('button', { name: '検索', exact: true }).click();
     await expect(workspace(page)).toContainText('絞り込みに合うノードがありません');
     await expect(workspace(page)).not.toContainText('データがありません');
+    // 検索をやめて、列をすべて外すと、別の文言（列が無い）になる。
+    await search.getByRole('searchbox').fill('');
+    await search.getByRole('button', { name: '検索', exact: true }).click();
+    await expect(table(page)).toBeVisible();
+    await workspace(page).locator('summary', { hasText: '列' }).click();
+    const boxes = workspace(page).getByRole('checkbox', { name: / を表示$/ });
+    for (let i = (await boxes.count()) - 1; i >= 0; i--) await boxes.nth(i).uncheck();
+    await expect(workspace(page)).toContainText('表示する列がありません');
+    await expect(workspace(page)).not.toContainText('絞り込みに合うノードがありません');
+  });
+
+  test('FR-UI-02: 下の段を開いた後で図の高さを大きくしても、段の見出しは画面の外へ出ない', async ({
+    page,
+  }) => {
+    await openProject(page, 'maghrib.relata.json');
+    await openBottom(page);
+    await page.locator('.graph-canvas').evaluate((el) => {
+      (el as HTMLElement).style.height = '2000px'; // 理由: 利用者がつまみで高さを変えた状態を再現する
+    });
+    const bar = page.getByRole('tab', { name: '表' });
+    const box = await bar.boundingBox();
+    expect(box).not.toBeNull();
+    expect((box?.y ?? 9999) + (box?.height ?? 0)).toBeLessThanOrEqual(800);
   });
 
   test('FR-UI-02: 保存して開き直すと、表の設定と下の段が戻る（ファイルと自動保存）', async ({
@@ -351,12 +397,19 @@ test.describe('日本語の画面', () => {
     }
   });
 
-  test('FR-PJ-03: 表と下の段の項目が無い版 2 のファイルも開け、下の段は既定（閉じている）になる', async ({
+  test('FR-PJ-03: 表と下の段の項目が無いファイルを開くと、前の設定を残さず既定（閉じている）に戻る', async ({
     page,
   }) => {
     await openProject(page, 'maghrib.relata.json');
-    await expect(page.getByRole('tab', { name: '表' })).toBeVisible();
+    await openBottom(page);
+    await workspace(page).getByRole('button', { name: 'エッジ表' }).click();
+    await openProject(page, 'maghrib.relata.json');
     await expect(table(page)).toBeHidden();
+    await page.getByRole('tab', { name: '表' }).click();
+    await expect(workspace(page).getByRole('button', { name: 'ノード表' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 });
 

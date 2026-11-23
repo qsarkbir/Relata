@@ -25,7 +25,11 @@ import { getNumberFormat } from './intl';
 import { StatusMessage } from './ui/StatusMessage';
 import './workspace.css';
 
+const EMPTY_ROWS: readonly TableItem[] = [];
+
 /** 欠損の理由の表示に使う辞書のキー（フィルタの欄と同じ文言）。 */
+// 【TS】`as const satisfies Record<…>`: `as const` で値をリテラルのまま保ち、`satisfies` で「辞書のキーとして
+//       正しいか」だけを検査する（型は広げない）。理由の種類を足して書き忘れると、型エラーになる。
 const MISSING_KEYS = {
   unrecorded: 'filter.missing.unrecorded',
   lost: 'filter.missing.lost',
@@ -48,6 +52,27 @@ function plainNumber(locale: string, value: number): string {
     plainNumbers.set(locale, f);
   }
   return f.format(value);
+}
+
+/**
+ * セルの値 1 つを、画面に出す文字列にする。表示と title（省略時の全体）で同じ整形を使う。
+ * @param item - セルの値
+ * @param locale - 数の書式に使う言語
+ * @param t - 翻訳の関数
+ * @returns 文字列
+ */
+function itemText(item: CellItem, locale: string, t: (key: MessageKey) => string): string {
+  switch (item.kind) {
+    case 'text':
+    case 'date':
+      return item.text;
+    case 'number':
+      return plainNumber(locale, item.value);
+    case 'boolean':
+      return t(item.value ? 'table.bool.true' : 'table.bool.false');
+    default:
+      return assertNever(item, 'CellItem');
+  }
 }
 
 /**
@@ -78,27 +103,14 @@ function CellView({ cell, locale }: { cell: TableCell; locale: string }) {
       </span>
     );
   }
-  const render = (item: CellItem): string => {
-    switch (item.kind) {
-      case 'text':
-      case 'date':
-        return item.text;
-      case 'number':
-        return plainNumber(locale, item.value);
-      case 'boolean':
-        return t(item.value ? 'table.bool.true' : 'table.bool.false');
-      default:
-        return assertNever(item, 'CellItem');
-    }
-  };
-  const texts = cell.items.map(render);
+  const texts = cell.items.map((item) => itemText(item, locale, t));
   return (
     <>
       {cell.items.map((item, i) => (
         // 【なぜ】key は位置。同じ値が複数値に重なりうる（値そのものは一意でない）。
         <span key={i}>
           {i > 0 && <span className="table-sep">; </span>}
-          <bdi title={texts.join('; ')}>{render(item)}</bdi>
+          <bdi title={texts.join('; ')}>{texts[i]}</bdi>
           {item.kind === 'date' && item.certainty !== undefined && item.certainty !== 'certain' && (
             <> ({t(CERTAINTY_KEYS[item.certainty])})</>
           )}
@@ -112,28 +124,35 @@ function CellView({ cell, locale }: { cell: TableCell; locale: string }) {
 }
 
 /**
- * セルの title（長い値を省略したときに全体を見せる）。
+ * セルの title（長い値を省略したときに全体を見せる）。表示と同じ整形を使う。
  * @param cell - 表のセル
+ * @param locale - 数の書式に使う言語
+ * @param t - 翻訳の関数
  * @returns 値を `; ` でつないだ文字列。欠損は空
  */
-function cellTitle(cell: TableCell): string {
+function cellTitle(cell: TableCell, locale: string, t: (key: MessageKey) => string): string {
   if (cell.kind === 'missing') return '';
-  return cell.items
-    .map((i) => (i.kind === 'text' || i.kind === 'date' ? i.text : String(i.value)))
-    .join('; ');
+  return cell.items.map((i) => itemText(i, locale, t)).join('; ');
 }
 
 /**
  * 行の名前（選ぶボタンの名前に使う）。エッジは「起点 → 終点」。
  * @param row - 表の行
  * @param columns - 列の一覧（端のノードのラベルを引く）
+ * @param locale - 数の書式に使う言語
+ * @param t - 翻訳の関数
  * @returns 名前
  */
-function rowName(row: TableItem, columns: readonly TableColumn[]): string {
+function rowName(
+  row: TableItem,
+  columns: readonly TableColumn[],
+  locale: string,
+  t: (key: MessageKey) => string,
+): string {
   if (!isEdgeItem(row)) return row.label;
   const text = (key: string): string => {
     const cell = columns.find((c) => c.key === key)?.cell(row);
-    return cell === undefined ? '' : cellTitle(cell);
+    return cell === undefined ? '' : cellTitle(cell, locale, t);
   };
   return `${text('sourceLabel')} → ${text('targetLabel')}`;
 }
@@ -176,23 +195,44 @@ export function TableView() {
   const shown = visibleColumns(columns, settings.columns);
   const rows =
     dataset === null || result === null
-      ? []
+      ? EMPTY_ROWS
       : getTableRows(dataset, result, target, settings.sort, locale);
   const pages = pageCount(rows.length);
   const current = Math.min(page, pages - 1);
   const selection = { nodes: selectedNodes, edges: selectedEdges };
   const isSelected = (row: TableItem) => isRowSelected(selection, row);
 
-  // 【なぜ】図や別の操作で選択が変わり、選択した行が今のページに無いときは、そのページへ移る。
-  //   「選んだのに表で見つからない」を避ける。描画の途中で state を更新する書き方は、React が
-  //   前の値との比較で変化を検知するときの標準の形（GraphView のデータ置き換えと同じ）。
-  const [seen, setSeen] = useState(selection);
-  if (seen.nodes !== selectedNodes || seen.edges !== selectedEdges) {
-    setSeen(selection);
-    const index = firstSelectedIndex(rows, isSelected);
-    if (index >= 0 && Math.floor(index / TABLE_PAGE_SIZE) !== current)
-      setPage(Math.floor(index / TABLE_PAGE_SIZE));
+  // 【なぜ】行の集合（絞り込み、並べ替え、データ、対象の切り替え）が変わったら先頭ページへ戻す。
+  //   前の集合のページ番号が、新しい集合の範囲外や別の場所を指すのを避ける。描画の途中で state を
+  //   更新する書き方は、前の値との比較で変化を検知する React の標準の形（GraphView と同じ）。
+  const [seenRows, setSeenRows] = useState(rows);
+  if (seenRows !== rows) {
+    setSeenRows(rows);
+    setPage(0);
   }
+
+  // 【なぜ】図など表の外で選択が変わり、選択した行が今のページに 1 つも無いときだけ、そのページへ移る。
+  //   表の中の操作（行のクリック）で選択が変わったときは移らない（3 ページ目で追加選択しても、
+  //   ページが勝手に変わらないように、ref で区別する）。
+  const internalSelection = useRef(false);
+  const latest = useRef({ rows, current });
+  useEffect(() => {
+    latest.current = { rows, current };
+  });
+  useEffect(() => {
+    if (internalSelection.current) {
+      internalSelection.current = false;
+      return;
+    }
+    const state = selectionStore.getState();
+    const { rows: all, current: now } = latest.current;
+    const pick = (row: TableItem) => isRowSelected(state, row);
+    const onPage = all.slice(now * TABLE_PAGE_SIZE, (now + 1) * TABLE_PAGE_SIZE).some(pick);
+    const index = firstSelectedIndex(all, pick);
+    if (onPage || index < 0) return;
+    setPage(Math.floor(index / TABLE_PAGE_SIZE));
+    setScrollTick((n) => n + 1);
+  }, [selectedNodes, selectedEdges]);
 
   // 選んだ行が見える位置まで表をスクロールする（「選択した行へ移る」の後）。
   useEffect(() => {
@@ -241,6 +281,7 @@ export function TableView() {
     setPage(0);
   };
   const onRowClick = (row: TableItem, e: MouseEvent) => {
+    internalSelection.current = true;
     selectRow(selectionStore, row, e.ctrlKey || e.metaKey || e.shiftKey);
   };
   const selectedIndex = firstSelectedIndex(rows, isSelected);
@@ -325,7 +366,7 @@ export function TableView() {
           <tbody>
             {pageRows.map((row) => {
               const selected = isSelected(row);
-              const name = rowName(row, columns);
+              const name = rowName(row, columns, locale, t);
               return (
                 <tr
                   key={row.id}
@@ -354,7 +395,11 @@ export function TableView() {
                   {shown.map((c) => {
                     const cell = c.cell(row);
                     return (
-                      <td key={c.key} data-numeric={c.numeric} title={cellTitle(cell) || undefined}>
+                      <td
+                        key={c.key}
+                        data-numeric={c.numeric}
+                        title={cellTitle(cell, locale, t) || undefined}
+                      >
                         <CellView cell={cell} locale={locale} />
                       </td>
                     );

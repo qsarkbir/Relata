@@ -37,8 +37,7 @@ export function isRowSelected(selection: SelectionSets, row: TableItem): boolean
  * - 通常: その行だけを選ぶ。すでにその行だけが選ばれていれば解除する。
  * - 追加（Ctrl、Cmd、Shift を押したクリック）: その行を選択に加える。選択中なら外す。
  *
- * エッジの行を選ぶと、両端のノードも選択に入れる。図は選択中のノードを強調し、選択中のカードも
- * ノードを表示するので、エッジを選んだときに図で見つかるようにするため。
+ * エッジの行は、元のエッジ ID だけを選択に入れる（両端のノードは入れない。D-40）。
  *
  * @param selection - 選択のストア
  * @param row - 選ぶ行
@@ -51,9 +50,9 @@ export function selectRow(
 ): void {
   const state = selection.getState();
   const selected = isRowSelected(state, row);
-  const parts = isEdgeItem(row)
-    ? { nodes: [row.source, row.target], edges: [row.id] }
-    : { nodes: [row.id], edges: [] };
+  // 【なぜ】エッジの行は、エッジだけを選ぶ（両端のノードは入れない）。ノード表で端のノードが
+  //   選択中に見えるのは誤りで、図の側がエッジだけの選択も強調する（統括役の決定）。
+  const parts = isEdgeItem(row) ? { edges: [row.id] } : { nodes: [row.id] };
   if (additive) {
     if (selected) state.remove(parts);
     else state.add(parts);

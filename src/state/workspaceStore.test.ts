@@ -47,14 +47,14 @@ describe('workspaceStore', () => {
     expect(workspace.getState().table).toBe(before.table);
   });
 
-  it('FR-TB-01: データを置き換えたときだけ初期化する', () => {
+  it('FR-TB-01: データを置き換えると、表の設定だけ初期化し、下の段の開閉と高さは保つ', () => {
     const { data, workspace } = stores();
     workspace.getState().patchTable({ target: 'edge' });
     workspace.getState().patchWorkspace({ open: true });
     expect(workspace.getState().table.target).toBe('edge');
     data.getState().setDataset(sampleDataset());
     expect(workspace.getState().table).toBe(DEFAULT_TABLE_VIEW);
-    expect(workspace.getState().workspace).toBe(DEFAULT_WORKSPACE);
+    expect(workspace.getState().workspace.open).toBe(true);
   });
 });
 
@@ -62,30 +62,26 @@ describe('保存と読み込みのスナップショット', () => {
   it('FR-UI-02: 既定のままなら書かず、変えると保存され、読み込むと戻る', () => {
     const { data, filter, workspace } = stores();
     data.getState().setDataset(sampleDataset());
-    const plain = takeSnapshot(data, filter, undefined, workspace);
+    const plain = takeSnapshot(data, filter, { workspace });
     expect(plain?.view.table).toBeUndefined();
     expect(plain?.view.workspace).toBeUndefined();
     workspace.getState().patchTable({ target: 'edge' });
     workspace.getState().patchWorkspace({ open: true, height: 410 });
-    const snap = takeSnapshot(data, filter, undefined, workspace);
+    const snap = takeSnapshot(data, filter, { workspace });
     expect(snap?.view.table?.target).toBe('edge');
     expect(snap?.view.workspace).toEqual({ tab: 'table', open: true, height: 410 });
     if (snap === null) throw new Error('snapshot');
 
     // 別のストアへ読み込むと、設定が戻る。
     const other = stores();
-    applySnapshot(snap, other.data, other.filter, undefined, other.workspace);
+    applySnapshot(snap, other.data, other.filter, { workspace: other.workspace });
     expect(other.workspace.getState().table.target).toBe('edge');
     expect(other.workspace.getState().workspace.height).toBe(410);
     // 項目の無い（版 1 や古い版 2 の）ファイルを読むと、前の設定を残さず既定に戻る。
     const viewWithout = { filter: snap.view.filter };
-    applySnapshot(
-      { ...snap, view: viewWithout },
-      other.data,
-      other.filter,
-      undefined,
-      other.workspace,
-    );
+    applySnapshot({ ...snap, view: viewWithout }, other.data, other.filter, {
+      workspace: other.workspace,
+    });
     expect(other.workspace.getState().table).toBe(DEFAULT_TABLE_VIEW);
     expect(other.workspace.getState().workspace).toBe(DEFAULT_WORKSPACE);
   });

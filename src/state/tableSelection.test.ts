@@ -36,14 +36,14 @@ describe('表の行と選択', () => {
     expect([...store.getState().nodes]).toEqual([p2.id]);
   });
 
-  it('FR-TB-02: エッジの行は元のエッジ ID と両端のノードを選び、エッジ表の強調はエッジ ID で決まる', () => {
+  it('FR-TB-02: エッジの行は元のエッジ ID だけを選び（端のノードは入れない）、強調はエッジ ID で決まる', () => {
     const store = createSelectionStore();
     selectRow(store, e3, false);
     expect(isEdgeItem(e3)).toBe(true);
     expect([...store.getState().edges]).toEqual([e3.id]);
-    expect([...store.getState().nodes].sort()).toEqual([e3.source, e3.target].sort());
-    // 両端のノードの行は、ノード表で強調される。別のエッジ（同じ端点でも）は強調されない。
-    expect(isRowSelected(store.getState(), p1)).toBe(true);
+    expect(store.getState().nodes.size).toBe(0);
+    // 両端のノードの行は、ノード表で強調されない。別のエッジ（同じ端点でも）も強調されない。
+    expect(isRowSelected(store.getState(), p1)).toBe(false);
     const e4 = must(dataset.edges.find((e) => e.id === 'e4'));
     expect(isRowSelected(store.getState(), e4)).toBe(false);
   });

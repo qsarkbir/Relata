@@ -24,25 +24,33 @@ const VIEW_PROJECTORS: {
 };
 
 /**
+ * 保存する表示設定のストアの組。どれも任意。
+ * 【なぜ】位置引数を並べず 1 つのオブジェクトにまとめる。表示設定のストアが増えても（暦、年表など）、
+ * 呼ぶ側の引数の順を気にせず、項目を足すだけで済む。
+ */
+export interface ViewTargets {
+  readonly graph?: StoreApi<GraphViewState>;
+  readonly workspace?: StoreApi<WorkspaceViewState>;
+}
+
+/**
  * ストアから保存する中身を取り出す。
  *
  * @param data - dataStore
  * @param filter - filterStore
- * @param graph - 任意のグラフ表示ストア
- * @param workspace - 任意の下の段・表の設定のストア
+ * @param targets - 任意の表示設定のストア（`graph`: グラフ表示、`workspace`: 下の段と表）
  * @returns 保存する中身。データが無ければ null（保存するものが無い）
  */
 export function takeSnapshot(
   data: StoreApi<DataState>,
   filter: StoreApi<FilterStoreState>,
-  graph?: StoreApi<GraphViewState>,
-  workspace?: StoreApi<WorkspaceViewState>,
+  targets: ViewTargets = {},
 ): ProjectSnapshot | null {
   const { dataset, importSettings } = data.getState();
   if (dataset === null) return null;
   const f = filter.getState();
-  const graphView = graph?.getState().view;
-  const ws = workspace?.getState();
+  const graphView = targets.graph?.getState().view;
+  const ws = targets.workspace?.getState();
   return {
     dataset,
     importSettings,
@@ -67,16 +75,15 @@ export function takeSnapshot(
  * @param snapshot - 読み込んだ中身
  * @param data - dataStore
  * @param filter - filterStore
- * @param graph - 任意のグラフ表示ストア
- * @param workspace - 任意の下の段・表の設定のストア
+ * @param targets - 任意の表示設定のストア（`graph`: グラフ表示、`workspace`: 下の段と表）
  */
 export function applySnapshot(
   snapshot: ProjectSnapshot,
   data: StoreApi<DataState>,
   filter: StoreApi<FilterStoreState>,
-  graph?: StoreApi<GraphViewState>,
-  workspace?: StoreApi<WorkspaceViewState>,
+  targets: ViewTargets = {},
 ): void {
+  const { graph, workspace } = targets;
   data.getState().loadDataset(snapshot.dataset, snapshot.importSettings);
   filter.getState().reset(snapshot.view.filter);
   graph?.getState().setView(snapshot.view.graph ?? null);

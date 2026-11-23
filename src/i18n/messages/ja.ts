@@ -526,7 +526,6 @@ export const ja = {
   'workspace.tab.table': '表',
   'workspace.resize': '下の段の高さ',
   'workspace.resize.hint': '上下の矢印キーで高さを変えます（Home で最小、End で最大）',
-  'table.title': 'データの表',
   'table.target': '表の種類',
   'table.target.node': 'ノード表',
   'table.target.edge': 'エッジ表',
@@ -550,7 +549,6 @@ export const ja = {
   'table.sort': '{column} で並べ替える',
   'table.sort.asc': '昇順',
   'table.sort.desc': '降順',
-  'table.sort.none': '並べ替えなし',
   'table.scroll': '{kind}の表（横にスクロールできます）',
   'table.select': '{label} を選ぶ',
   'table.goSelected': '選択した行へ移る',
@@ -570,7 +568,6 @@ export const ja = {
   'table.noResults.hint': '左のパネルの「適用中のフィルタ」を確かめてください。',
   'table.noColumns': '表示する列がありません。「列」から選んでください。',
   'table.cell.notApplicable': 'この行には当てはまりません',
-  'table.cell.missing': '欠損',
   'table.bool.true': 'はい',
   'table.bool.false': 'いいえ',
 } as const;

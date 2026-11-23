@@ -546,7 +546,6 @@ export const en = {
   'workspace.resize': 'Bottom panel height',
   'workspace.resize.hint':
     'Use the up and down arrow keys to change the height (Home for minimum, End for maximum)',
-  'table.title': 'Data table',
   'table.target': 'Table type',
   'table.target.node': 'Node table',
   'table.target.edge': 'Edge table',
@@ -570,7 +569,6 @@ export const en = {
   'table.sort': 'Sort by {column}',
   'table.sort.asc': 'ascending',
   'table.sort.desc': 'descending',
-  'table.sort.none': 'not sorted',
   'table.scroll': '{kind} (scrolls horizontally)',
   'table.select': 'Select {label}',
   'table.goSelected': 'Go to selected row',
@@ -589,7 +587,6 @@ export const en = {
   'table.noResults.hint': 'Check the applied filters in the left panel.',
   'table.noColumns': 'No columns are shown. Choose some from "Columns".',
   'table.cell.notApplicable': 'Does not apply to this row',
-  'table.cell.missing': 'Missing',
   'table.bool.true': 'Yes',
   'table.bool.false': 'No',
 } satisfies Record<MessageKey, string>;

@@ -55,7 +55,10 @@ export function loadProjectText(
     });
     return result;
   }
-  applySnapshot(result.value, targets.data, targets.filter, targets.graph, targets.workspace);
+  applySnapshot(result.value, targets.data, targets.filter, {
+    ...(targets.graph === undefined ? {} : { graph: targets.graph }),
+    ...(targets.workspace === undefined ? {} : { workspace: targets.workspace }),
+  });
   targets.notice.getState().setReport({
     source,
     title: result.value.dataset.meta.title,

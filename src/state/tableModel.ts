@@ -16,6 +16,7 @@ import type {
 import { attrValues, getAttr, isMissing } from '../core/model';
 import type { AttrValue, Attrs } from '../core/model';
 import type { SortDirection, TableSort, TableTarget } from '../core/project';
+import { matchKey } from '../core/text';
 import type { Locale, MessageKey } from '../i18n';
 
 /** 表の 1 つの値。 */
@@ -166,8 +167,32 @@ function attrKey(attrs: Attrs, key: string): SortKey {
   return first.earliest;
 }
 
-const nodeOf = (row: TableItem): GraphNode => row as GraphNode; // 理由: node 表の列は node 表の行にだけ使う
-const edgeOf = (row: TableItem): GraphEdge => row as GraphEdge; // 理由: edge 表の列は edge 表の行にだけ使う
+/** 行の型 R に絞った列の定義。`as` で行の型を決め打ちせず、型ガードで絞ってから使うための形。 */
+interface ColumnDef<R extends TableItem> {
+  readonly key: string;
+  readonly header: ColumnHeader;
+  readonly numeric: boolean;
+  readonly defaultVisible: boolean;
+  readonly cell: (row: R) => TableCell;
+  readonly sortKey: (row: R) => SortKey;
+}
+
+// 【TS】型ガード `row is R`。true のとき、row を R として扱える（`as` の決め打ちをしない）。
+const isEdgeRow = (row: TableItem): row is GraphEdge => 'source' in row;
+const isNodeRow = (row: TableItem): row is GraphNode => !isEdgeRow(row);
+
+// 【なぜ】列は対象の表の行にだけ使うが、型の上では TableItem を受ける。違う種類の行が来たら
+//   例外にせず「当てはまらない」セルと並べ替えの欠損にする（壊れた表示より安全）。
+function adapt<R extends TableItem>(
+  def: ColumnDef<R>,
+  guard: (row: TableItem) => row is R,
+): TableColumn {
+  return {
+    ...def,
+    cell: (row) => (guard(row) ? def.cell(row) : ABSENT),
+    sortKey: (row) => (guard(row) ? def.sortKey(row) : null),
+  };
+}
 
 const columnCache = new WeakMap<Dataset, Map<TableTarget, readonly TableColumn[]>>();
 
@@ -221,48 +246,51 @@ function buildNodeColumns(dataset: Dataset): readonly TableColumn[] {
   const typeLabel = new Map(dataset.nodeTypes.map((t) => [t.id, t.label]));
   const hasTime = dataset.nodes.some((n) => n.time !== undefined);
   const hasCertainty = dataset.nodes.some((n) => n.certainty !== undefined);
-  return [
+  const defs: ColumnDef<GraphNode>[] = [
     {
       key: 'label',
       header: { kind: 'message', key: 'table.col.label' },
       numeric: false,
       defaultVisible: true,
-      cell: (r) => text(nodeOf(r).label),
-      sortKey: (r) => nodeOf(r).label,
+      cell: (r: GraphNode) => text(r.label),
+      sortKey: (r: GraphNode) => r.label,
     },
     {
       key: 'id',
       header: { kind: 'message', key: 'table.col.id' },
       numeric: false,
       defaultVisible: true,
-      cell: (r) => text(nodeOf(r).id),
-      sortKey: (r) => nodeOf(r).id,
+      cell: (r: GraphNode) => text(r.id),
+      sortKey: (r: GraphNode) => r.id,
     },
     {
       key: 'type',
       header: { kind: 'message', key: 'table.col.type' },
       numeric: false,
       defaultVisible: true,
-      cell: (r) => text(typeLabel.get(nodeOf(r).type) ?? nodeOf(r).type),
-      sortKey: (r) => typeLabel.get(nodeOf(r).type) ?? nodeOf(r).type,
+      cell: (r: GraphNode) => text(typeLabel.get(r.type) ?? r.type),
+      sortKey: (r: GraphNode) => typeLabel.get(r.type) ?? r.type,
     },
     {
       key: 'time',
       header: { kind: 'message', key: 'table.col.time' },
       numeric: false,
       defaultVisible: hasTime,
-      cell: (r) => timeCell(nodeOf(r).time),
-      sortKey: (r) => timeKey(nodeOf(r).time),
+      cell: (r: GraphNode) => timeCell(r.time),
+      sortKey: (r: GraphNode) => timeKey(r.time),
     },
     {
       key: 'certainty',
       header: { kind: 'message', key: 'table.col.certainty' },
       numeric: false,
       defaultVisible: hasCertainty,
-      cell: (r) => certaintyCell(nodeOf(r).certainty),
-      sortKey: (r) => certaintyRank(nodeOf(r).certainty),
+      cell: (r: GraphNode) => certaintyCell(r.certainty),
+      sortKey: (r: GraphNode) => certaintyRank(r.certainty),
     },
-    ...attrColumns(dataset, 'node', (r) => nodeOf(r).attrs, dataset.nodes),
+  ];
+  return [
+    ...defs.map((d) => adapt(d, isNodeRow)),
+    ...attrColumns(dataset, 'node', (r) => r.attrs, dataset.nodes),
   ];
 }
 
@@ -275,91 +303,94 @@ function buildEdgeColumns(dataset: Dataset): readonly TableColumn[] {
   const hasRelation = dataset.edges.some((e) => e.relation !== undefined);
   const hasTime = dataset.edges.some((e) => e.time !== undefined);
   const hasCertainty = dataset.edges.some((e) => e.certainty !== undefined);
-  return [
+  const defs: ColumnDef<GraphEdge>[] = [
     {
       key: 'sourceLabel',
       header: { kind: 'message', key: 'table.col.source' },
       numeric: false,
       defaultVisible: true,
-      cell: (r) => text(label(edgeOf(r).source)),
-      sortKey: (r) => label(edgeOf(r).source),
+      cell: (r: GraphEdge) => text(label(r.source)),
+      sortKey: (r: GraphEdge) => label(r.source),
     },
     {
       key: 'targetLabel',
       header: { kind: 'message', key: 'table.col.target' },
       numeric: false,
       defaultVisible: true,
-      cell: (r) => text(label(edgeOf(r).target)),
-      sortKey: (r) => label(edgeOf(r).target),
+      cell: (r: GraphEdge) => text(label(r.target)),
+      sortKey: (r: GraphEdge) => label(r.target),
     },
     {
       key: 'relation',
       header: { kind: 'message', key: 'table.col.relation' },
       numeric: false,
       defaultVisible: hasRelation,
-      cell: (r) => {
-        const rel = edgeOf(r).relation;
+      cell: (r: GraphEdge) => {
+        const rel = r.relation;
         return rel === undefined ? ABSENT : text(rel);
       },
-      sortKey: (r) => edgeOf(r).relation ?? null,
+      sortKey: (r: GraphEdge) => r.relation ?? null,
     },
     {
       key: 'weight',
       header: { kind: 'message', key: 'table.col.weight' },
       numeric: true,
       defaultVisible: true,
-      cell: (r) => ({ kind: 'values', items: [{ kind: 'number', value: edgeOf(r).weight }] }),
-      sortKey: (r) => edgeOf(r).weight,
+      cell: (r: GraphEdge) => ({ kind: 'values', items: [{ kind: 'number', value: r.weight }] }),
+      sortKey: (r: GraphEdge) => r.weight,
     },
     {
       key: 'directed',
       header: { kind: 'message', key: 'table.col.directed' },
       numeric: false,
       defaultVisible: dataset.graphMode === 'mixed',
-      cell: (r) => ({ kind: 'values', items: [{ kind: 'boolean', value: edgeOf(r).directed }] }),
-      sortKey: (r) => (edgeOf(r).directed ? 1 : 0),
+      cell: (r: GraphEdge) => ({ kind: 'values', items: [{ kind: 'boolean', value: r.directed }] }),
+      sortKey: (r: GraphEdge) => (r.directed ? 1 : 0),
     },
     {
       key: 'time',
       header: { kind: 'message', key: 'table.col.time' },
       numeric: false,
       defaultVisible: hasTime,
-      cell: (r) => timeCell(edgeOf(r).time),
-      sortKey: (r) => timeKey(edgeOf(r).time),
+      cell: (r: GraphEdge) => timeCell(r.time),
+      sortKey: (r: GraphEdge) => timeKey(r.time),
     },
     {
       key: 'certainty',
       header: { kind: 'message', key: 'table.col.certainty' },
       numeric: false,
       defaultVisible: hasCertainty,
-      cell: (r) => certaintyCell(edgeOf(r).certainty),
-      sortKey: (r) => certaintyRank(edgeOf(r).certainty),
+      cell: (r: GraphEdge) => certaintyCell(r.certainty),
+      sortKey: (r: GraphEdge) => certaintyRank(r.certainty),
     },
     {
       key: 'id',
       header: { kind: 'message', key: 'table.col.id' },
       numeric: false,
       defaultVisible: true,
-      cell: (r) => text(edgeOf(r).id),
-      sortKey: (r) => edgeOf(r).id,
+      cell: (r: GraphEdge) => text(r.id),
+      sortKey: (r: GraphEdge) => r.id,
     },
     {
       key: 'sourceId',
       header: { kind: 'message', key: 'table.col.sourceId' },
       numeric: false,
       defaultVisible: false,
-      cell: (r) => text(edgeOf(r).source),
-      sortKey: (r) => edgeOf(r).source,
+      cell: (r: GraphEdge) => text(r.source),
+      sortKey: (r: GraphEdge) => r.source,
     },
     {
       key: 'targetId',
       header: { kind: 'message', key: 'table.col.targetId' },
       numeric: false,
       defaultVisible: false,
-      cell: (r) => text(edgeOf(r).target),
-      sortKey: (r) => edgeOf(r).target,
+      cell: (r: GraphEdge) => text(r.target),
+      sortKey: (r: GraphEdge) => r.target,
     },
-    ...attrColumns(dataset, 'edge', (r) => edgeOf(r).attrs, dataset.edges),
+  ];
+  return [
+    ...defs.map((d) => adapt(d, isEdgeRow)),
+    ...attrColumns(dataset, 'edge', (r) => r.attrs, dataset.edges),
   ];
 }
 
@@ -387,20 +418,34 @@ export function visibleColumns(
 
 const collators = new Map<string, Intl.Collator>();
 
-function collatorFor(locale: Locale): Intl.Collator {
-  let c = collators.get(locale);
+// 【なぜ】numeric で「p2」が「p10」より前に来る。`tie` が true の collator は、照合キーが同じ
+//   ときの第 2 の鍵で、元の表記の違い（大文字小文字、アラビア文字の記号の有無）で順を決める。
+function collatorFor(locale: Locale, tie: boolean): Intl.Collator {
+  const id = `${locale}:${String(tie)}`;
+  let c = collators.get(id);
   if (c === undefined) {
-    // 【なぜ】numeric で「p2」が「p10」より前に来る。base でアラビア文字のダイアクリティカルマークの
-    //   有無だけでは順序を変えない（元の表記は書き換えず、並べ替えの比較にだけ使う）。
-    c = new Intl.Collator(locale, { numeric: true, sensitivity: 'base' });
-    collators.set(locale, c);
+    c = new Intl.Collator(locale, tie ? { numeric: true } : { numeric: true, sensitivity: 'base' });
+    collators.set(id, c);
   }
   return c;
 }
 
-function compareKeys(a: SortKey, b: SortKey, collator: Intl.Collator): number {
-  if (typeof a === 'number' && typeof b === 'number') return a - b;
-  return collator.compare(String(a), String(b));
+/** 並べ替えの行 1 件。鍵は行ごとに 1 回だけ作る。 */
+interface Keyed {
+  readonly row: TableItem;
+  readonly key: SortKey;
+  /** 文字列の鍵の照合キー（`core/text`。表記の揺れを無視する）。数や欠損のときは null。 */
+  readonly match: string | null;
+}
+
+// 第 1 の鍵は照合キー（ʿ や記号、アラビア文字の表記の揺れを除いた形。元の表記は書き換えない。
+// 設計書 §5.2）、第 2 の鍵は元の表記の Collator。数は数として比べる。
+function compareKeyed(a: Keyed, b: Keyed, locale: Locale): number {
+  const x = a.key;
+  const y = b.key;
+  if (typeof x === 'number' && typeof y === 'number') return x - y;
+  const primary = collatorFor(locale, false).compare(a.match ?? String(x), b.match ?? String(y));
+  return primary !== 0 ? primary : collatorFor(locale, true).compare(String(x), String(y));
 }
 
 /** 絞り込み後の行を、並べ替えて返す。同じ入力なら同じ配列を返す。 */
@@ -445,9 +490,11 @@ export function getTableRows(
       : dataset.edges.filter((e) => result.edgeIds.has(e.id));
   let sorted: readonly TableItem[] = rows;
   if (column !== undefined) {
-    const collator = collatorFor(locale);
-    // 鍵は行ごとに 1 回だけ作る（比較のたびに作らない）。
-    const keyed = rows.map((row) => ({ row, key: column.sortKey(row) }));
+    // 鍵と照合キーは行ごとに 1 回だけ作る（比較のたびに作らない）。
+    const keyed: Keyed[] = rows.map((row) => {
+      const key = column.sortKey(row);
+      return { row, key, match: typeof key === 'string' ? matchKey(key) : null };
+    });
     const sign = direction === 'asc' ? 1 : -1;
     // 【TS】Array.prototype.sort は安定（ES2019 から）。同じ鍵の行は元の順を保つ。
     keyed.sort((x, y) => {
@@ -455,7 +502,7 @@ export function getTableRows(
         if (x.key === y.key) return 0;
         return x.key === null ? 1 : -1; // 欠損は向きによらず末尾
       }
-      return sign * compareKeys(x.key, y.key, collator);
+      return sign * compareKeyed(x, y, locale);
     });
     sorted = keyed.map((k) => k.row);
   }

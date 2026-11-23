@@ -109,7 +109,10 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
   const write = async (): Promise<void> => {
     timer = undefined;
     if (stopped) return;
-    const snapshot = takeSnapshot(data, filter, deps.targets.graph, deps.targets.workspace);
+    const snapshot = takeSnapshot(data, filter, {
+      ...(deps.targets.graph === undefined ? {} : { graph: deps.targets.graph }),
+      ...(deps.targets.workspace === undefined ? {} : { workspace: deps.targets.workspace }),
+    });
     if (snapshot === null) return;
     let text: string;
     try {

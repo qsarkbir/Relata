@@ -134,6 +134,21 @@ describe('プロジェクトの往復', () => {
     expect(r.value.view.table?.edge).toEqual(DEFAULT_TABLE_VIEW.edge);
     expect(r.warnings).toEqual([]);
   });
+  it('FR-UI-02: table と workspace が null でもファイルは開け、既定で補って警告で返す', () => {
+    const file = obj(serializeProject(parts, AT));
+    const text = JSON.stringify({
+      ...file,
+      view: { ...sub(file, 'view'), table: null, workspace: null },
+    });
+    const r = ok(text);
+    expect(r.value.view.table).toBeUndefined();
+    expect(r.value.view.workspace).toBeUndefined();
+    expect(
+      r.warnings
+        .filter((w) => w.source === 'project')
+        .map((w) => (w.issue as { path: string }).path),
+    ).toEqual(['view.table', 'view.workspace']);
+  });
   it('FR-PJ-01: 問題のあるデータも、往復で変わらず、警告で返る', () => {
     const base = cleanDataset();
     const bad: Dataset = {

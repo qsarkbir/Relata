@@ -62,7 +62,7 @@ export function createWorkspaceStore() {
 }
 
 /**
- * データの置き換えで、前のデータの列や並べ替えを引き継がないよう初期化する。
+ * データの置き換えで、前のデータの列や並べ替えを引き継がないよう表の設定を初期化する（下の段は保つ）。
  *
  * @param workspace - 設定のストア
  * @param data - データのストア
@@ -73,7 +73,10 @@ export function bindWorkspaceToData(
   data: StoreApi<DataState>,
 ): () => void {
   return data.subscribe((s, prev) => {
-    if (s.dataset !== prev.dataset) workspace.getState().reset();
+    // 【なぜ】表の列や並べ替えは前のデータの属性を指すので戻す。下の段の開閉と高さは利用者の
+    //   画面の好みで、データとは無関係なので保つ。プロジェクトを開くときは applySnapshot が置き直す。
+    if (s.dataset !== prev.dataset)
+      workspace.getState().reset({ workspace: workspace.getState().workspace });
   });
 }
 

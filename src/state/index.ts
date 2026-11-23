@@ -3,7 +3,7 @@ export type { DialogId, SidePanelId, Task, UiState } from './uiStore';
 export { createDataStore, dataStore, EMPTY_IMPORT_SETTINGS } from './dataStore';
 export type { DataState, StoredImportSettings } from './dataStore';
 export { applySnapshot, takeSnapshot } from './project';
-export type { ProjectSnapshot, ProjectSnapshotView } from './project';
+export type { ProjectSnapshot, ProjectSnapshotView, ViewTargets } from './project';
 export {
   bindFilterToData,
   createFilterStore,

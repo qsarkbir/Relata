@@ -33,6 +33,7 @@ export function BottomPanel() {
   const patch = (change: { open?: boolean; height?: number; tab?: WorkspaceTab }) => {
     workspaceStore.getState().patchWorkspace(change);
   };
+  // 【TS】`as const` で ID を `string` ではなく文字列リテラル型 `'table'` に保つ（`Tabs` の型引数 Id になる）。
   const tabs = [{ id: 'table' as const, label: t('workspace.tab.table') }];
   const toggleLabel = t(open ? 'workspace.close' : 'workspace.open');
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -56,6 +57,9 @@ export function BottomPanel() {
     patch({ height: change });
   };
   const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    // 【なぜ】既定の動作（ドラッグ中の文字の選択、画像のドラッグ）を止める。止めないと、つかんだまま
+    //   動かすと下の表の文字が選択されてしまう。
+    e.preventDefault();
     drag.current = { y: e.clientY, height };
     e.currentTarget.setPointerCapture(e.pointerId);
   };
@@ -77,6 +81,7 @@ export function BottomPanel() {
           className="bottom-resizer"
           role="separator"
           aria-orientation="horizontal"
+          aria-controls={tabPanelElementId(PREFIX, tab)}
           aria-label={t('workspace.resize')}
           aria-valuenow={height}
           aria-valuemin={WORKSPACE_HEIGHT_MIN}

@@ -40,6 +40,8 @@ export interface TableViewSettings {
   readonly edge: TableTargetSettings;
 }
 
+// 【TS】`as const` は配列を読み取り専用の「リテラルの組」にする。`(typeof X)[number]` はその要素の型
+//       （ここでは `'table'`）。タブを足すと、型も自動で広がる。
 /** 開けるタブの一覧。年表と欠損は、それぞれのタスクで足す（空のタブを置かない）。 */
 export const WORKSPACE_TABS = ['table'] as const;
 
@@ -80,6 +82,7 @@ export function clampWorkspaceHeight(height: number): number {
   return Math.min(WORKSPACE_HEIGHT_MAX, Math.max(WORKSPACE_HEIGHT_MIN, Math.round(height)));
 }
 
+// 【TS】`unknown` は「何が入っているか分からない値」。型ガード（`typeof`、`isPlainObject`）で絞ってから使う。
 function parseTarget(x: unknown): TableTargetSettings {
   if (!isPlainObject(x)) return EMPTY_TARGET;
   const get = (k: string): unknown => (Object.hasOwn(x, k) ? x[k] : undefined);
