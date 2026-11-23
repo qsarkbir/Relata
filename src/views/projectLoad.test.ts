@@ -112,9 +112,12 @@ describe('loadProjectText', () => {
     loadProjectText(validText(), 'file', t);
     const snap = takeSnapshot(t.data, t.filter);
     expect(Object.keys(snap?.view ?? {}).sort()).toEqual(
-      PROJECT_VIEW_KEYS.filter((key) => key !== 'graph').sort(),
+      PROJECT_VIEW_KEYS.filter((key) => !['graph', 'table', 'workspace'].includes(key)).sort(),
     );
+    // 既定のままの任意の項目は書かない（読み込みで既定が補われる）。
     expect(snap?.view.graph).toBeUndefined();
+    expect(snap?.view.table).toBeUndefined();
+    expect(snap?.view.workspace).toBeUndefined();
     const parts: ProjectParts | undefined = snap ?? undefined; // 型が io と合うこと
     expect(parts).toBeDefined();
     // 型の一致（任意の項目を含めて、相互に代入できること）。食い違うとコンパイルできない。

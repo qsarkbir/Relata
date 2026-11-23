@@ -1,4 +1,9 @@
-import { parseGraphView, type ProjectWarning } from '../../core/project';
+import {
+  parseGraphView,
+  parseTableView,
+  parseWorkspace,
+  type ProjectWarning,
+} from '../../core/project';
 /**
  * プロジェクトファイルの保存と読み込み（FR-PJ-01、FR-IN-08、D-24、設計書 §11.3）。
  *
@@ -118,6 +123,8 @@ export function serializeProject(parts: ProjectParts, savedAt: string): string {
     view: {
       filter: parts.view.filter,
       ...(parts.view.graph === undefined ? {} : { graph: parts.view.graph }),
+      ...(parts.view.table === undefined ? {} : { table: parts.view.table }),
+      ...(parts.view.workspace === undefined ? {} : { workspace: parts.view.workspace }),
     },
   };
   return JSON.stringify(file);
@@ -380,6 +387,15 @@ export function parseProject(
         positions: parsedGraph.positions.filter((p) => nodeIds.has(p.id)),
       };
   }
+  // 表ビューと下の段（D-44）。任意の項目で、読めない中身は既定で補う（parseTableView、parseWorkspace）。
+  const tableRaw = viewRaw === undefined ? undefined : get(viewRaw, 'table');
+  const tableParsed = tableRaw === undefined ? undefined : parseTableView(tableRaw);
+  if (tableParsed !== undefined && !tableParsed.ok)
+    return failure('broken', 'view.table', tableParsed.reason);
+  const workspaceRaw = viewRaw === undefined ? undefined : get(viewRaw, 'workspace');
+  const workspaceParsed = workspaceRaw === undefined ? undefined : parseWorkspace(workspaceRaw);
+  if (workspaceParsed !== undefined && !workspaceParsed.ok)
+    return failure('broken', 'view.workspace', workspaceParsed.reason);
   const savedAt = get(data, 'savedAt');
   if (savedAt !== undefined && typeof savedAt !== 'string')
     return failure('broken', 'savedAt', '文字列が必要です');
@@ -422,7 +438,12 @@ export function parseProject(
       ...(savedAt !== undefined && { savedAt }),
       dataset: dataset.value,
       importSettings: settings.value,
-      view: { filter, ...(graph === undefined ? {} : { graph }) },
+      view: {
+        filter,
+        ...(graph === undefined ? {} : { graph }),
+        ...(tableParsed?.ok === true ? { table: tableParsed.value } : {}),
+        ...(workspaceParsed?.ok === true ? { workspace: workspaceParsed.value } : {}),
+      },
     },
     warnings,
   };

@@ -1,0 +1,234 @@
+/* 下の段と表ビュー（T2-07a）。値は src/app/tokens.css の --rl-… から取る。 */
+.bottom-panel {
+  margin-block-start: var(--rl-space-3);
+  border: var(--rl-border-width) solid var(--rl-border);
+  border-radius: var(--rl-radius);
+  background: var(--rl-surface);
+  min-inline-size: 0;
+}
+.bottom-resizer {
+  block-size: 10px;
+  cursor: row-resize;
+  touch-action: none;
+  background: var(--rl-surface-subtle);
+  border-block-end: var(--rl-border-width) solid var(--rl-border);
+  /* つまみの印（色だけに頼らず、形で「つかめる」ことを示す） */
+  background-image: linear-gradient(var(--rl-border-strong), var(--rl-border-strong));
+  background-size: 48px 2px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+.bottom-resizer:hover {
+  background-color: var(--rl-selected);
+}
+.bottom-resizer:focus-visible {
+  outline: var(--rl-focus-ring);
+  outline-offset: -3px;
+}
+.bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rl-space-2);
+  padding-inline: var(--rl-space-2);
+  background: var(--rl-surface-subtle);
+}
+.bottom-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rl-space-2);
+  padding: var(--rl-space-2);
+  box-sizing: border-box;
+  min-block-size: 0;
+}
+/* display を指定した要素では、hidden 属性が効かなくなるため。 */
+.bottom-body[hidden] {
+  display: none;
+}
+/* 下の段を開いている間は、図を少し低くして、段が画面の外へ押し出されないようにする。 */
+.region-main[data-bottom='open'] .graph-canvas {
+  height: 45vh;
+}
+
+/* ---- 表ビュー ---- */
+.table-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rl-space-2);
+  min-block-size: 0;
+  flex: 1 1 auto;
+  font-size: var(--rl-font-md);
+  line-height: var(--rl-leading);
+}
+.table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rl-space-2) var(--rl-space-3);
+}
+.table-target {
+  display: inline-flex;
+}
+.table-target button {
+  min-block-size: var(--rl-control-size);
+  border: var(--rl-border-width) solid var(--rl-border-strong);
+  background: var(--rl-surface);
+  color: var(--rl-text);
+}
+.table-target button:first-child {
+  border-start-start-radius: var(--rl-radius);
+  border-end-start-radius: var(--rl-radius);
+}
+.table-target button:last-child {
+  border-start-end-radius: var(--rl-radius);
+  border-end-end-radius: var(--rl-radius);
+}
+.table-target button[aria-pressed='true'] {
+  background: var(--rl-selected);
+  font-weight: 700;
+  border-color: var(--rl-accent);
+}
+.table-toolbar > button {
+  min-block-size: var(--rl-control-size);
+}
+.table-columns {
+  position: relative;
+}
+.table-columns > summary {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: var(--rl-control-size);
+  padding-inline: var(--rl-space-3);
+  border: var(--rl-border-width) solid var(--rl-border-strong);
+  border-radius: var(--rl-radius);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.table-columns-menu {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: 100%;
+  z-index: 5;
+  min-inline-size: 14rem;
+  max-inline-size: min(24rem, 80vw);
+  max-block-size: 16rem;
+  overflow: auto;
+  margin-block-start: var(--rl-space-1);
+  padding: var(--rl-space-2);
+  background: var(--rl-surface);
+  border: var(--rl-border-width) solid var(--rl-border-strong);
+  border-radius: var(--rl-radius);
+  box-shadow: var(--rl-shadow);
+}
+.table-columns-menu label {
+  display: flex;
+  align-items: center;
+  gap: var(--rl-space-2);
+  min-block-size: var(--rl-control-size);
+}
+.table-count {
+  color: var(--rl-text-muted);
+  font-size: var(--rl-font-sm);
+}
+.table-scroll {
+  flex: 1 1 auto;
+  min-block-size: 0;
+  overflow: auto;
+  border: var(--rl-border-width) solid var(--rl-border);
+  border-radius: var(--rl-radius);
+}
+.table-scroll table {
+  border-collapse: separate;
+  border-spacing: 0;
+  inline-size: max-content;
+  min-inline-size: 100%;
+}
+.table-scroll th,
+.table-scroll td {
+  /* 行の高さを詰めすぎない。アラビア文字の上下の記号（ダイアクリティカルマーク）が切れないため。 */
+  padding: 0.35rem var(--rl-space-3);
+  line-height: 1.8;
+  text-align: start;
+  vertical-align: middle;
+  border-block-end: var(--rl-border-width) solid var(--rl-border);
+  max-inline-size: 22rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table-scroll thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  background: var(--rl-surface-subtle);
+  font-weight: 600;
+}
+.table-scroll td[data-numeric='true'],
+.table-scroll th[data-numeric='true'] {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+.table-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rl-space-1);
+  min-block-size: var(--rl-control-size);
+  padding-inline: var(--rl-space-1);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.table-sort:hover {
+  background: var(--rl-selected);
+}
+.table-scroll tbody tr {
+  cursor: pointer;
+}
+.table-scroll tbody tr:hover {
+  background: var(--rl-surface-subtle);
+}
+/* 選択中の行: 背景と左端の太い線と、選ぶボタンのチェックで示す（色だけに頼らない）。 */
+.table-scroll tbody tr[data-selected='true'] {
+  background: var(--rl-selected);
+}
+.table-scroll tbody tr[data-selected='true'] > :first-child {
+  border-inline-start: 4px solid var(--rl-accent);
+}
+.table-select {
+  inline-size: var(--rl-control-size);
+  block-size: var(--rl-control-size);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--rl-border-width) solid var(--rl-border-strong);
+  border-radius: var(--rl-radius);
+  background: var(--rl-surface);
+  color: var(--rl-text);
+}
+.table-select[aria-pressed='true'] {
+  background: var(--rl-accent);
+  color: var(--rl-accent-text);
+}
+.table-missing {
+  color: var(--rl-text-muted);
+  font-style: italic;
+  border-block-end: 1px dashed var(--rl-border-strong);
+}
+.table-na {
+  color: var(--rl-text-muted);
+}
+.table-sep {
+  color: var(--rl-text-muted);
+}
+.table-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--rl-space-2) var(--rl-space-3);
+}
+.table-pager button {
+  min-block-size: var(--rl-control-size);
+}

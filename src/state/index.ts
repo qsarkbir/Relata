@@ -32,3 +32,16 @@ export { createLayoutController, layoutController } from './layoutController';
 export type { LayoutController, LayoutOutcome, LayoutRequest } from './layoutController';
 export { bindSelectionToData, createSelectionStore, selectionStore } from './selectionStore';
 export type { SelectionSets, SelectionState } from './selectionStore';
+export { bindWorkspaceToData, createWorkspaceStore, workspaceStore } from './workspaceStore';
+export type { WorkspaceViewState } from './workspaceStore';
+export {
+  TABLE_PAGE_SIZE,
+  attrColumnKey,
+  firstSelectedIndex,
+  getTableColumns,
+  getTableRows,
+  pageCount,
+  visibleColumns,
+} from './tableModel';
+export type { CellItem, ColumnHeader, TableCell, TableColumn, TableItem } from './tableModel';
+export { isEdgeItem, isRowSelected, selectRow } from './tableSelection';

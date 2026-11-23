@@ -1,4 +1,5 @@
 import { GraphView } from '../views/GraphView';
+import { BottomPanel } from '../views/BottomPanel';
 import { ConditionsBar } from '../views/ConditionsBar';
 import { AboutDialog } from '../views/AboutDialog';
 import { CsvExportMenu } from '../views/metrics/CsvExportMenu';
@@ -10,7 +11,7 @@ import { ImportWizard } from '../views/ImportWizard';
 import { ProjectNotice } from '../views/ProjectNoticePanel';
 import { TaskPanel } from '../views/TaskPanel';
 import { MetricsPanel } from '../views/MetricsPanel';
-import { useData, useT, useUi } from '../views/hooks';
+import { useData, useT, useUi, useWorkspaceView } from '../views/hooks';
 import { LOCALES, LOCALE_NAMES } from '../i18n';
 import { clearAutosave } from './autosaveService';
 import './tokens.css';
@@ -33,6 +34,7 @@ export function App() {
   const setOpenDialog = useUi((s) => s.setOpenDialog);
   const dataset = useData((s) => s.dataset);
   const collapsed = useUi((s) => s.collapsedPanels);
+  const bottomOpen = useWorkspaceView((s) => s.workspace.open);
 
   return (
     <div className="app">
@@ -86,7 +88,11 @@ export function App() {
         >
           <FilterPanel />
         </SidePanel>
-        <main className="region-main" aria-label={t('app.region.main')}>
+        <main
+          className="region-main"
+          aria-label={t('app.region.main')}
+          data-bottom={bottomOpen ? 'open' : 'closed'}
+        >
           <ConditionsBar />
           <GraphView />
           {dataset === null ? (
@@ -96,6 +102,7 @@ export function App() {
               <SampleCard />
             </div>
           ) : null}
+          <BottomPanel />
         </main>
         <SidePanel
           id="metrics"
