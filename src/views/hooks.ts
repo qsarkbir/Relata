@@ -2,8 +2,8 @@ import { useCallback } from 'react';
 import { useStore } from 'zustand';
 import { translate } from '../i18n';
 import type { MessageKey, MessageParams } from '../i18n';
-import { dataStore, filterStore, uiStore } from '../state';
-import type { DataState, FilterStoreState, UiState } from '../state';
+import { dataStore, filterStore, selectionStore, uiStore } from '../state';
+import type { DataState, FilterStoreState, SelectionState, UiState } from '../state';
 import { projectNoticeStore } from './projectNotice';
 import type { ProjectNoticeState } from './projectNotice';
 
@@ -38,6 +38,16 @@ export function useData<T>(selector: (s: DataState) => T): T {
  */
 export function useFilter<T>(selector: (s: FilterStoreState) => T): T {
   return useStore(filterStore, selector);
+}
+
+/**
+ * selectionStore（ノードと元のエッジの選択）の一部を購読する。
+ *
+ * @param selector - 取り出す値を選ぶ関数
+ * @returns 選んだ値
+ */
+export function useSelection<T>(selector: (s: SelectionState) => T): T {
+  return useStore(selectionStore, selector);
 }
 
 /**

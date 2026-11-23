@@ -1,12 +1,3 @@
-.graph-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-block: 0.5rem;
-}
-.graph-controls input[type='number'] {
-  width: 9rem;
-}
 .graph-canvas {
   border: 1px solid #777;
   overflow: hidden;
@@ -22,17 +13,8 @@
   height: 100%;
   user-select: none;
 }
-.graph-settings > summary {
-  cursor: pointer;
-  font-weight: bold;
-  margin-block: 0.5rem;
-}
 .graph-canvas [data-id] {
   cursor: pointer;
-}
-.graph-search-results {
-  max-height: 10rem;
-  overflow: auto;
 }
 .graph-view label {
   display: inline-block;
@@ -41,4 +23,223 @@
 .graph-view input,
 .graph-view select {
   max-width: 100%;
+}
+
+/* ---- フェーズ 2 の土台（T2-11）: ツールバー、表示の設定の引き出し、選択中のカード ---- */
+/* 【なぜ】引き出しを図の横に出すか、図に重ねるかは、窓ではなく中央の列の幅で決める。左右のパネルを
+   開閉すると、中央の列の幅が変わるため（コンテナクエリ）。 */
+.graph-view {
+  container-type: inline-size;
+}
+.graph-view h2 {
+  margin-block: 0 var(--rl-space-2);
+  font-size: var(--rl-font-lg);
+}
+.graph-view .rl-toolbar {
+  margin-block-end: var(--rl-space-2);
+}
+.graph-view .rl-field {
+  display: flex;
+  margin: 0;
+}
+.graph-view .rl-field-inline {
+  flex-direction: row;
+}
+.graph-body {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--rl-space-3);
+}
+.graph-main {
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+.graph-stage {
+  position: relative;
+}
+.graph-search {
+  position: relative;
+  inline-size: 14rem;
+  max-inline-size: 100%;
+}
+.graph-search input {
+  inline-size: 100%;
+}
+.graph-search-popup {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 100%;
+  z-index: 3;
+  background: var(--rl-surface);
+  border: var(--rl-border-width) solid var(--rl-border);
+  border-radius: var(--rl-radius);
+  box-shadow: var(--rl-shadow);
+}
+.graph-search-results {
+  max-block-size: 14rem;
+  overflow: auto;
+  margin: 0;
+  padding: var(--rl-space-1);
+  list-style: none;
+}
+.graph-settings-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rl-space-1);
+  min-block-size: var(--rl-control-size);
+}
+/* 押されている（開いている）ことを、色だけでなく枠の太さでも示す。 */
+.graph-settings-toggle[aria-expanded='true'] {
+  background: var(--rl-selected);
+  border-color: var(--rl-accent);
+  border-width: 2px;
+}
+.graph-drawer {
+  flex: 0 0 20rem;
+  box-sizing: border-box;
+  max-block-size: 85vh;
+  overflow: auto;
+  background: var(--rl-surface);
+  border: var(--rl-border-width) solid var(--rl-border);
+  border-radius: var(--rl-radius);
+}
+.graph-drawer[hidden] {
+  display: none;
+}
+.graph-drawer:focus-visible {
+  outline: var(--rl-focus-ring);
+}
+.graph-drawer-title {
+  margin: 0;
+  padding: var(--rl-space-2);
+  font-size: var(--rl-font-md);
+  border-block-end: var(--rl-border-width) solid var(--rl-border);
+}
+.graph-drawer .graph-encoding label {
+  display: flex;
+  flex-direction: column;
+  margin: 0 0 var(--rl-space-2);
+  font-size: var(--rl-font-md);
+}
+.graph-drawer .graph-encoding select,
+.graph-drawer .graph-encoding input {
+  inline-size: 100%;
+  box-sizing: border-box;
+  min-block-size: var(--rl-control-size);
+}
+@container (max-width: 46rem) {
+  .graph-drawer {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    z-index: 4;
+    flex: none;
+    inline-size: min(20rem, 100%);
+    max-block-size: none;
+    box-shadow: var(--rl-shadow);
+  }
+}
+.graph-card {
+  position: absolute;
+  inset-block-start: var(--rl-space-2);
+  inset-inline-start: var(--rl-space-2);
+  z-index: 1;
+  box-sizing: border-box;
+  inline-size: 16rem;
+  max-inline-size: calc(100% - var(--rl-space-4));
+  max-block-size: calc(100% - var(--rl-space-4));
+  overflow: auto;
+  padding: var(--rl-space-2);
+  background: var(--rl-surface);
+  border: var(--rl-border-width) solid var(--rl-border);
+  border-radius: var(--rl-radius);
+  box-shadow: var(--rl-shadow);
+  font-size: var(--rl-font-md);
+  line-height: var(--rl-leading);
+}
+.graph-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rl-space-2);
+}
+.graph-card-head h3 {
+  margin: 0;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--rl-font-md);
+}
+.graph-card-more {
+  color: var(--rl-text-muted);
+  font-weight: normal;
+  font-size: var(--rl-font-sm);
+}
+.graph-card-body[hidden] {
+  display: none;
+}
+.graph-card-body p {
+  margin-block: 0 var(--rl-space-2);
+  color: var(--rl-text-muted);
+  overflow-wrap: anywhere;
+}
+.graph-card-body h4 {
+  margin-block: var(--rl-space-2) 0;
+  font-size: var(--rl-font-sm);
+  color: var(--rl-text-muted);
+}
+.graph-card-body ul {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+.graph-card-body .graph-card-hidden {
+  color: var(--rl-text);
+}
+
+/* 検索の結果の行（選択肢）。 */
+.graph-search-results li {
+  display: flex;
+  align-items: center;
+  gap: var(--rl-space-2);
+  min-block-size: var(--rl-control-size);
+  padding-inline: var(--rl-space-2);
+  border-radius: var(--rl-radius);
+  cursor: pointer;
+}
+.graph-search-results li:hover,
+.graph-search-results li[aria-selected='true'] {
+  background: var(--rl-selected);
+}
+/* 色だけに頼らず、選択中の行は枠でも示す。 */
+.graph-search-results li[aria-selected='true'] {
+  outline: 2px solid var(--rl-accent);
+  outline-offset: -2px;
+}
+.graph-search-id {
+  color: var(--rl-text-muted);
+  font-size: var(--rl-font-sm);
+}
+.graph-search-more {
+  margin: 0;
+  padding: var(--rl-space-1) var(--rl-space-2);
+  border-block-start: var(--rl-border-width) solid var(--rl-border);
+  color: var(--rl-text-muted);
+  font-size: var(--rl-font-sm);
+}
+.graph-drawer-note {
+  padding-inline: var(--rl-space-2);
+}
+/* クリックの領域は 32px 以上（新しい画面の範囲）。 */
+.graph-view button:not(.info-tip) {
+  min-block-size: var(--rl-control-size);
+}
+.graph-view .info-tip {
+  min-inline-size: var(--rl-control-size);
+  min-block-size: var(--rl-control-size);
+  justify-content: center;
+}
+.graph-card-head h3:focus-visible {
+  outline: var(--rl-focus-ring);
 }

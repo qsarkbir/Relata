@@ -9,7 +9,18 @@ import type { ReactNode } from 'react';
 
 /** アイコンの種類。 */
 export type IconName =
-  'info' | 'zoomIn' | 'zoomOut' | 'fit' | 'undo' | 'redo' | 'collapseStart' | 'collapseEnd';
+  | 'info'
+  | 'zoomIn'
+  | 'zoomOut'
+  | 'fit'
+  | 'undo'
+  | 'redo'
+  | 'collapseStart'
+  | 'collapseEnd'
+  | 'settings'
+  | 'close'
+  | 'chevronUp'
+  | 'chevronDown';
 
 // 【TS】`Record<IconName, ReactNode>` は、IconName のすべての値をキーに持つことを型で強制する。
 //       種類を足して図を書き忘れると、型検査で分かる。
@@ -44,6 +55,18 @@ const PATHS: Record<IconName, ReactNode> = {
   // 二重の山括弧。パネルを左（行の始め）へ畳む／右（行の終わり）へ畳む向きを示す。
   collapseStart: <path d="M12 6l-6 6 6 6M18 6l-6 6 6 6" />,
   collapseEnd: <path d="M6 6l6 6-6 6M12 6l6 6-6 6" />,
+  // 3 本の線とつまみ（調整のスライダー）。「表示の設定」を開くボタン。
+  settings: (
+    <>
+      <path d="M4 7h9M17 7h3M4 12h3M11 12h9M4 17h11M19 17h1" />
+      <circle cx="15" cy="7" r="2" />
+      <circle cx="9" cy="12" r="2" />
+      <circle cx="17" cy="17" r="2" />
+    </>
+  ),
+  close: <path d="M6 6l12 12M18 6L6 18" />,
+  chevronUp: <path d="M6 15l6-6 6 6" />,
+  chevronDown: <path d="M6 9l6 6 6-6" />,
 };
 
 /**

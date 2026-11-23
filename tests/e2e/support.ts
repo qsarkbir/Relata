@@ -310,3 +310,35 @@ export async function openCsvDialog(page: Page): Promise<Locator> {
   await expect(dialog).toBeVisible();
   return dialog;
 }
+
+/** グラフの「表示の設定」の引き出しを開く（既に開いていれば何もしない）。既定では閉じている。 */
+export async function openGraphSettings(page: Page): Promise<Locator> {
+  const toggle = page.getByRole('button', { name: /^(表示の設定|Display settings)$/ });
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  const drawer = page.getByRole('complementary', { name: /表示の設定|Display settings/ });
+  await expect(drawer).toBeVisible();
+  return drawer;
+}
+
+/** 引き出しの節（見出しは `<summary>`）を開く。引き出しも開く。 */
+export async function openGraphSection(page: Page, title: string | RegExp): Promise<void> {
+  const drawer = await openGraphSettings(page);
+  const section = drawer.locator('details.rl-section').filter({
+    has: page.locator('summary', { hasText: title }),
+  });
+  if ((await section.getAttribute('open')) === null) await section.locator('summary').click();
+  await expect(section).toHaveAttribute('open', '');
+}
+
+/**
+ * ノードを ID で選ぶ。検索の欄に ID を入れ、結果の一覧から ID が完全に一致する行を押す。
+ *
+ * 【なぜ】以前の「ノードを選択」の選択肢は、検索と結果の一覧に統合した（T2-11）。
+ */
+export async function selectNode(page: Page, id: string): Promise<void> {
+  await page.getByLabel(/^(ノードを検索|Find a node)$/).fill(id);
+  await page
+    .locator('.graph-search-results [role="option"]')
+    .filter({ has: page.locator('bdi', { hasText: new RegExp(`^${id}$`) }) })
+    .click();
+}

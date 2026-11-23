@@ -41,8 +41,8 @@ export function EncodingControls({ dataset, settings, onChange }: Props) {
         ? 'attr:' + color.attr
         : 'metric:' + color.metric;
   return (
-    <details className="graph-encoding">
-      <summary>{t('graph.appearance')}</summary>
+    // 【なぜ】見出しと開閉は、表示の設定の引き出しの節（CollapsibleSection）が持つ。ここでは中身だけを返す。
+    <div className="graph-encoding">
       <label>
         {t('graph.sizeSource')}{' '}
         <select
@@ -200,6 +200,6 @@ export function EncodingControls({ dataset, settings, onChange }: Props) {
         </InfoTip>
       </div>
       <div role="alert">{invalid ? t('graph.invalidEncoding') : ''}</div>
-    </details>
+    </div>
   );
 }
