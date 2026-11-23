@@ -2,6 +2,7 @@
 import type { AttrValue, Dataset, TimeValue } from '../../core/model';
 import { getAttr } from '../../core/model';
 import type { FilterResult } from '../../core/filter';
+import type { GraphOptions } from '../../core/graph';
 import type { MetricsResult } from '../../core/metrics';
 import { GLOBAL_METRIC_IDS, NODE_METRIC_IDS } from '../../core/metrics';
 import { protectFormula } from '../table/formula';
@@ -183,18 +184,50 @@ function numericColumns(name: string, value: unknown): NumericColumn[] {
   );
 }
 
+/** 指標の CSV に残す、グラフの設定の列名（行の最後に付ける）。 */
+export const GRAPH_SETTING_COLUMNS = [
+  'setting.weight',
+  'setting.selfLoops',
+  'setting.projection.target',
+  'setting.projection.via',
+  'setting.projection.method',
+] as const;
+
+// グラフの設定（重み、自己ループ、射影）を、CSV の 1 行ぶんのセルにする。
+//
+// 射影しないときは、射影の 3 列を空にし、方式を `none` とする（空欄は「設定なし」ではなく
+// 「射影していない」ことを `none` で明示する）。
+function settingCells(g: GraphOptions): readonly CsvCell[] {
+  const weight = typeof g.weight === 'object' ? 'attr:' + g.weight.attr : g.weight;
+  return g.projection === undefined
+    ? [weight, g.selfLoops, '', '', 'none']
+    : [weight, g.selfLoops, g.projection.target, g.projection.via, g.projection.method];
+}
+
 /**
  * ノード指標と全体指標を別CSVへ出す。失敗や非該当は空値とstatusで区別する。
+ *
+ * `graphOptions` を渡すと、どの設定のグラフの指標かが分かるよう、行の最後に列を足す（§9.1）:
+ * 重みの選び方、自己ループ、射影の射影先・仲介・方式。
+ * 【なぜ】先頭のコメント行（`# projection: …`）にすると、表計算ソフトや CSV の読み手が
+ * ヘッダ行を取り違えるので、列として足す。列を最後に足すので、既存の列の位置は変わらない。
+ * 射影した指標と、しない指標を取り違えると、結果の解釈が変わる（二部グラフの射影の次数は
+ * 共有した仲介ノードの数に依る）ため、設定を指標のファイルに残す。
  * @param dataset - 表示名を持つ元データ
  * @param result - 現在の全計算結果（ページ分割前）
  * @param options - BOMと式保護
+ * @param graphOptions - 指標を計算したグラフの設定。省略すると設定の列を付けない
  * @returns ノード指標と全体指標のCSV
  */
 export function exportMetricsCsv(
   dataset: Dataset,
   result: MetricsResult,
   options: CsvOptions = {},
+  graphOptions?: GraphOptions,
 ): { readonly metrics: CsvFile; readonly global: CsvFile } {
+  const settingHeaders: readonly CsvCell[] =
+    graphOptions === undefined ? [] : GRAPH_SETTING_COLUMNS;
+  const settings: readonly CsvCell[] = graphOptions === undefined ? [] : settingCells(graphOptions);
   const columns = NODE_METRIC_IDS.flatMap((id) => {
     const outcome = result.node[id];
     return outcome?.ok ? numericColumns(id, outcome.value) : [];
@@ -205,6 +238,7 @@ export function exportMetricsCsv(
     'label',
     ...columns.map((c) => c.name),
     ...NODE_METRIC_IDS.map((id) => id + '.status'),
+    ...settingHeaders,
   ];
   const rows: CsvCell[][] = [headers];
   result.nodeIds.forEach((id, index) => {
@@ -219,9 +253,12 @@ export function exportMetricsCsv(
         const outcome = result.node[metric];
         return outcome === undefined ? 'notComputed' : outcome.ok ? 'ok' : outcome.code;
       }),
+      ...settings,
     ]);
   });
-  const global: CsvCell[][] = [['metric', 'value', 'status', 'graphKind', 'notes']];
+  const global: CsvCell[][] = [
+    ['metric', 'value', 'status', 'graphKind', 'notes', ...settingHeaders],
+  ];
   for (const id of GLOBAL_METRIC_IDS) {
     const outcome = result.global[id];
     global.push([
@@ -230,6 +267,7 @@ export function exportMetricsCsv(
       outcome === undefined ? 'notComputed' : outcome.ok ? 'ok' : outcome.code,
       result.kind,
       JSON.stringify(result.notes),
+      ...settings,
     ]);
   }
   return {

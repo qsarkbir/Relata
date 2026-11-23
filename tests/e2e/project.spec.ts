@@ -28,7 +28,7 @@ import {
   waitForAutosave,
   type SavedProject,
   saveProjectFile,
-  csvButton,
+  exportButton,
   saveDialog,
 } from './support';
 
@@ -246,7 +246,7 @@ test.describe('FR-UI-03: 進行表示', () => {
       (window as unknown as { __releaseRead: () => void }).__releaseRead();
     });
     // 期待: データは入らず、空の表示のまま（「保存」は押せない）。
-    await expect(csvButton(page)).toBeDisabled();
+    await expect(exportButton(page)).toBeDisabled();
     await expect(
       page.getByRole('heading', { name: 'データがまだ読み込まれていません' }),
     ).toBeVisible();
@@ -340,7 +340,7 @@ test.describe('FR-PJ-02: 自動保存', () => {
     await expect(
       page.getByRole('heading', { name: 'データがまだ読み込まれていません' }),
     ).toBeVisible();
-    await expect(csvButton(page)).toBeDisabled();
+    await expect(exportButton(page)).toBeDisabled();
     await expect(loadedNotice(page)).toHaveCount(0);
     expect(await readAutosave(page)).toBeNull();
   });
@@ -427,7 +427,7 @@ test.describe('NFR-07: 保存と開くのキーボード操作', () => {
     // 操作: もう一度開き、Tab で「自動保存を消す」まで進んで Enter。
     await page.keyboard.press('Enter');
     await expect(dialog).toBeVisible();
-    await page.keyboard.press('Tab');
+    // 【なぜ】図の書き出しは「書き出し」に移した（T2-08）ので、保存のダイアログの選択肢は 2 つ。Tab は 1 回。
     await page.keyboard.press('Tab');
     await expect(dialog.getByRole('button', { name: '自動保存を消す' })).toBeFocused();
     await page.keyboard.press('Enter');

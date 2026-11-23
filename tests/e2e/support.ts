@@ -48,9 +48,9 @@ export function saveButton(page: Page): Locator {
   return page.getByRole('button', { name: /^(保存|Save)$/ });
 }
 
-/** 上部の「CSV出力」ボタン。データが無いときは押せない。 */
-export function csvButton(page: Page): Locator {
-  return page.getByRole('button', { name: /^(CSV出力|Export CSV)$/ });
+/** 上部の「書き出し」ボタン（T2-08）。データが無いときは押せない。 */
+export function exportButton(page: Page): Locator {
+  return page.getByRole('button', { name: /^(書き出し|Export)$/ });
 }
 
 /** 「保存」を押して開くダイアログ。 */
@@ -72,16 +72,33 @@ export async function saveProjectFile(page: Page): Promise<void> {
 }
 
 /**
- * 「保存」のダイアログを開き、図（SVG）の保存を選ぶ（FR-OUT-01）。ダウンロードの待ちは呼ぶ側で登録する。
+ * 「書き出し」のダイアログを開き、図の書き出しの形式のボタンを押す（FR-OUT-01、03、04）。
+ * ダウンロードの待ちは呼ぶ側で登録する。押したあと、ダイアログは開いたまま（続けて別の形式を出せる）。
+ *
+ * @param page - ページ
+ * @param format - 形式のボタンの名前
+ * @returns 書き出しのダイアログ
+ */
+export async function exportFigureAs(
+  page: Page,
+  format: 'SVG' | 'PNG' | 'PDF' | 'GraphML' | 'GEXF',
+): Promise<Locator> {
+  const dialog = await openExportDialog(page);
+  await dialog.getByRole('button', { name: format, exact: true }).click();
+  return dialog;
+}
+
+/**
+ * 「書き出し」のダイアログを開き、SVG の書き出しを選んで閉じる（FR-OUT-01）。
+ * ダウンロードの待ちは呼ぶ側で登録する。
  *
  * @param page - ページ
  */
 export async function saveSvgFile(page: Page): Promise<void> {
-  await saveButton(page).click();
-  await saveDialog(page)
-    .getByRole('button', { name: /^(図を保存|Save figure)/ })
-    .click();
-  await expect(saveDialog(page)).toBeHidden();
+  const dialog = await exportFigureAs(page, 'SVG');
+  // 【なぜ】ダウンロードの開始は押した直後に起きる。閉じる操作は Esc でよい。
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
 }
 
 /** 置き換えの確認のダイアログ（D-33）。 */
@@ -105,8 +122,8 @@ export async function openProject(
   file: string | { name: string; mimeType: string; buffer: Buffer },
   expectNotice: Locator = loadedNotice(page),
 ): Promise<void> {
-  // 【なぜ】「保存」はデータが無くても押せる（自動保存を消すため）。データの有無は「CSV出力」で判断する。
-  const hasData = await csvButton(page).isEnabled();
+  // 【なぜ】「保存」はデータが無くても押せる（自動保存を消すため）。データの有無は「書き出し」で判断する。
+  const hasData = await exportButton(page).isEnabled();
   await page
     .getByTestId('project-file-input')
     .setInputFiles(typeof file === 'string' ? fixturePath(file) : file);
@@ -299,17 +316,22 @@ export async function advanceClockUntilLoaded(page: Page): Promise<void> {
 }
 
 /**
- * 上部の「CSV出力」からダイアログを開き、その dialog を返す（FR-OUT-02）。
+ * 上部の「書き出し」からダイアログを開き、その dialog を返す（FR-OUT-02）。
  *
  * @param page - ページ
  * @returns CSV 出力のダイアログ
  */
-export async function openCsvDialog(page: Page): Promise<Locator> {
-  await page.getByRole('button', { name: 'CSV出力', exact: true }).click();
-  const dialog = page.getByRole('dialog', { name: 'CSV出力', exact: true });
+export async function openExportDialog(page: Page): Promise<Locator> {
+  const dialog = page.getByRole('dialog', { name: '書き出し', exact: true });
+  // 【なぜ】既に開いていれば、そのまま使う（続けて別の形式を書き出せる）。
+  if (!(await dialog.isVisible()))
+    await page.getByRole('button', { name: '書き出し', exact: true }).click();
   await expect(dialog).toBeVisible();
   return dialog;
 }
+
+/** 「書き出し」のダイアログを開く（CSV の操作もここにある。FR-OUT-02）。 */
+export const openCsvDialog = openExportDialog;
 
 /** グラフの「表示の設定」の引き出しを開く（既に開いていれば何もしない）。既定では閉じている。 */
 export async function openGraphSettings(page: Page): Promise<Locator> {

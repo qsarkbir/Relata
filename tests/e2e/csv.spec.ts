@@ -3,11 +3,11 @@ import { readFile } from 'node:fs/promises';
 import { startApp, openCsvDialog, openProject } from './support';
 test.use({ locale: 'ja-JP' });
 
-test('FR-OUT-02 / FR-MT-04: 上部の「CSV出力」から、ノード・エッジ・指標を別々のUTF8 CSVとして保存できる', async ({
+test('FR-OUT-02 / FR-MT-04: 上部の「書き出し」から、ノード・エッジ・指標を別々のUTF8 CSVとして保存できる', async ({
   page,
 }) => {
   await startApp(page);
-  await expect(page.getByRole('button', { name: 'CSV出力', exact: true })).toBeDisabled();
+  await expect(page.getByRole('button', { name: '書き出し', exact: true })).toBeDisabled();
   await openProject(page, 'maghrib.relata.json');
   // 【なぜ】指標の計算が終わってから開くと、指標の CSV も保存できる。
   await expect(page.getByTestId('metric-global-nodeCount')).toBeVisible();

@@ -1,6 +1,6 @@
 import { EncodingControls } from './EncodingControls';
 import { MissingDisplayControls } from './MissingDisplayControls';
-import { graphEncoding } from './graphEncoding';
+import { graphEncodingWithLegends } from './graphEncoding';
 import { createGraphMeasure } from './graphMeasure';
 /** グラフ表示と操作。元データとフィルタは既存ストアを参照する（T1-19）。 */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -13,8 +13,9 @@ import { toNodeId } from '../core/model';
 import { findMissingElements } from '../core/missing';
 import { matchIncludes, LOOSE_MATCH } from '../core/text';
 import { buildScene, markOutOfTime, renderSvg } from '../render';
-import { createSvgExport, downloadSvg } from '../io/export';
-import { setSvgExporter } from './svgExport';
+import { createSvgExport } from '../io/export';
+import { setFigureSource } from './figureExport';
+import { buildFigureLegend } from './figureLegend';
 import { Icon, IconButton } from './ui/icons';
 import { InfoTip } from './ui/InfoTip';
 import { CollapsibleSection } from './ui/CollapsibleSection';
@@ -161,10 +162,14 @@ export function GraphView() {
       .getState()
       .setView({ ...(graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW), ...change });
   };
-  const encoding = useMemo(
-    () => (graph === null || dataset === null ? {} : graphEncoding(dataset, graph, view.encoding)),
+  const encodingWithLegends = useMemo(
+    () =>
+      graph === null || dataset === null
+        ? null
+        : graphEncodingWithLegends(dataset, graph, view.encoding),
     [graph, dataset, view.encoding],
   );
+  const encoding = useMemo(() => encodingWithLegends?.encoding ?? {}, [encodingWithLegends]);
   // 【なぜ】「欠損の表示」の判定は core の関数で行う。図のエッジはまとめた後のものなので、元のエッジのどれかが
   // 欠損していれば、そのエッジ（グラフのキー）を破線にする。位置や配置の計算には関わらない（再配置しない）。
   const missingMarks = useMemo(() => {
@@ -358,31 +363,59 @@ export function GraphView() {
     // 位置・viewportの保存更新では反復を再開しない。入力グラフと方式/seed、明示再計算だけを監視する。
   }, [graph, dataset, view.layout, view.seed, iteration, measureText, encoding]);
   const hasFigure = dataset !== null && graph !== null && scene !== null;
-  // 【なぜ】「保存」のダイアログから図を保存できるよう、今の図を保存する関数を登録する（svgExport.ts）。
+  // 【なぜ】「書き出し」のダイアログから図を書き出せるよう、今の図を作る関数を登録する（figureExport.ts）。
   const canExport = hasFigure && scene.nodes.length > 0;
   useEffect(() => {
-    if (!canExport) {
-      setSvgExporter(null);
+    if (!canExport || encodingWithLegends === null) {
+      setFigureSource(null);
       return;
     }
-    setSvgExporter(() => {
-      downloadSvg(
-        createSvgExport(graph, positions, encoding, {
+    setFigureSource({
+      title: dataset.meta.title,
+      build: (request) => {
+        const options = {
           labels: view.labels,
           largeLabelCount: view.largeLabelCount,
-          // 【なぜ】選択ラベルの候補は渡し、選択の輪郭だけを保存から除く。
+          // 【なぜ】選択ラベルの候補は渡し、選択の輪郭だけを書き出しから除く。
           selected: visibleSelected,
           includeSelection: false,
           directedStyle: view.direction,
-          measureText,
+          measureText: request.measureText ?? measureText,
           ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
           ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
           title: dataset.meta.title,
-        }),
-      );
+        };
+        const plain = createSvgExport(graph, positions, encoding, options);
+        if (!request.legend && !request.credit) return plain;
+        // 凡例は、図に現れた破線の種類などを調べるため、凡例なしのシーンを見てから作る。
+        const legend = buildFigureLegend({
+          t,
+          formatNumber: (n) => nf.format(n),
+          dataset,
+          graph,
+          settings: view.encoding,
+          encoding,
+          legends: encodingWithLegends.legends,
+          directedStyle: view.direction,
+          scene: plain.scene,
+          legend: request.legend,
+          ...(request.credit
+            ? {
+                credit: {
+                  title: dataset.meta.title,
+                  ...(dataset.meta.source === undefined ? {} : { source: dataset.meta.source }),
+                  date: request.createdAt,
+                },
+              }
+            : {}),
+        });
+        return legend === undefined
+          ? plain
+          : createSvgExport(graph, positions, encoding, { ...options, legend });
+      },
     });
     return () => {
-      setSvgExporter(null);
+      setFigureSource(null);
     };
   }, [
     canExport,
@@ -390,12 +423,16 @@ export function GraphView() {
     graph,
     positions,
     encoding,
+    encodingWithLegends,
     view.labels,
     view.largeLabelCount,
     view.direction,
+    view.encoding,
     visibleSelected,
     measureText,
     missingMarks,
+    t,
+    nf,
   ]);
   useEffect(() => {
     const element = svg.current;

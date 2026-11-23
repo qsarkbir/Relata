@@ -5,11 +5,30 @@ import {
   encodeNodeColorsByCategory,
   encodeNodeColorsByNumber,
 } from '../core/encode';
-import type { EncodingSettings, CategoryValue } from '../core/encode';
+import type {
+  EncodingSettings,
+  CategoryValue,
+  CategoryLegend,
+  GradientLegend,
+  ScaleLegend,
+} from '../core/encode';
 import { getAttr, toNodeId, toEdgeId } from '../core/model';
 import type { Dataset, Missing, NodeId } from '../core/model';
 import type { RelataGraph } from '../core/graph';
 import type { SceneEncoding } from '../render';
+/** 凡例を作るための、割り当ての要約（書き出しの凡例。FR-OUT-07）。 */
+export interface EncodingLegends {
+  /** 大きさの凡例。定数のときは null。 */
+  readonly size: ScaleLegend | null;
+  /** エッジの太さの凡例。定数のときは null。 */
+  readonly width: ScaleLegend | null;
+  /** 色の凡例。型の色のときは `nodeType`。 */
+  readonly color:
+    | { readonly kind: 'nodeType' }
+    | { readonly kind: 'category'; readonly attr: string; readonly legend: CategoryLegend }
+    | { readonly kind: 'gradient'; readonly metric: string; readonly legend: GradientLegend };
+}
+
 /**
  * UIの割当設定を、現在のグラフの数値と元データからシーンへ接続する。
  * @param dataset - 元データ。カテゴリの色の基準集合もここから求める
@@ -22,6 +41,24 @@ export function graphEncoding(
   graph: RelataGraph,
   settings: EncodingSettings,
 ): SceneEncoding {
+  return graphEncodingWithLegends(dataset, graph, settings).encoding;
+}
+
+/**
+ * `graphEncoding` と同じ割り当てに、凡例の要約を添えて返す。
+ *
+ * 【なぜ】凡例は図と同じ割り当てから作る（食い違うと読み手が取り違える）。計算を二重に書かず、
+ * 割り当ての関数が返す凡例の情報をそのまま渡す。
+ * @param dataset - 元データ
+ * @param graph - 絞り込みと集計後のグラフ
+ * @param settings - 保存可能な見た目設定
+ * @returns シーンの割り当てと、凡例の要約
+ */
+export function graphEncodingWithLegends(
+  dataset: Dataset,
+  graph: RelataGraph,
+  settings: EncodingSettings,
+): { readonly encoding: SceneEncoding; readonly legends: EncodingLegends } {
   const styles = typeStyles(dataset.nodeTypes, settings.nodeShape);
   const ids = graph.nodes().map(toNodeId);
   const nodes = new Map(dataset.nodes.map((node) => [node.id, node]));
@@ -69,8 +106,12 @@ export function graphEncoding(
     settings.edgeWidth,
   );
   let colors: SceneEncoding['colors'];
-  if (settings.nodeColor.kind === 'metric')
-    colors = encodeNodeColorsByNumber(numeric('metric', settings.nodeColor.metric)).colors;
+  let colorLegend: EncodingLegends['color'] = { kind: 'nodeType' };
+  if (settings.nodeColor.kind === 'metric') {
+    const byNumber = encodeNodeColorsByNumber(numeric('metric', settings.nodeColor.metric));
+    colors = byNumber.colors;
+    colorLegend = { kind: 'gradient', metric: settings.nodeColor.metric, legend: byNumber.legend };
+  }
   if (settings.nodeColor.kind === 'attr') {
     const key = settings.nodeColor.attr;
     const basis = new Map<NodeId, CategoryValue>(
@@ -88,16 +129,21 @@ export function graphEncoding(
         ];
       }),
     );
-    colors = encodeNodeColorsByCategory(
+    const byCategory = encodeNodeColorsByCategory(
       new Map(ids.map((id) => [id, basis.get(id) ?? { kind: 'missing', reason: 'unrecorded' }])),
       basis,
-    ).colors;
+    );
+    colors = byCategory.colors;
+    colorLegend = { kind: 'category', attr: key, legend: byCategory.legend };
   }
   return {
-    typeColors: styles.colors,
-    shapes: styles.shapes,
-    sizes: sizes.sizes,
-    widths: widths.widths,
-    ...(colors === undefined ? {} : { colors }),
+    encoding: {
+      typeColors: styles.colors,
+      shapes: styles.shapes,
+      sizes: sizes.sizes,
+      widths: widths.widths,
+      ...(colors === undefined ? {} : { colors }),
+    },
+    legends: { size: sizes.legend, width: widths.legend, color: colorLegend },
   };
 }

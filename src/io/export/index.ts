@@ -1,2 +1,13 @@
 export { createSvgExport, downloadSvg } from './svg';
 export type { SvgExport, SvgExportOptions } from './svg';
+export { downloadBlob, withExtension } from './download';
+export { MAX_CANVAS_AREA, MAX_CANVAS_SIDE, PNG_SCALES, pngSize, renderPng } from './png';
+export type { PngResult, PngScale, PngSize } from './png';
+export { exportGraphml, graphmlFromTable } from './graphml';
+export { exportGexf, gexfFromTable } from './gexf';
+export type { GexfOptions } from './gexf';
+export { buildNetworkTable, jdnToIso } from './network';
+export type { NetworkTable } from './network';
+export { PDF_FONT_BYTES_ESTIMATE, PDF_FONT_FILES, createPdf, loadPdfShaper } from './pdf';
+export type { PdfExportOptions } from './pdf';
+export type { TextShaper } from './pdfText';

@@ -4,6 +4,7 @@ export type {
   SceneNode,
   SceneEdge,
   SceneLabel,
+  LegendMark,
   SceneLegendItem,
   SceneLegend,
   SceneOmitted,
@@ -17,7 +18,7 @@ export type {
   LabelMode,
   BuildSceneOptions,
 } from './build';
-export { buildScene, shapeExtent } from './build';
+export { buildScene, shapeExtent, DEFAULT_EDGE_COLOR, DEFAULT_EDGE_OPACITY } from './build';
 
 export type { DirectedEdgeStyle, EdgePoint } from '../edges/geometry';
 export { FADED_OPACITY, markOutOfTime } from './timeFade';
