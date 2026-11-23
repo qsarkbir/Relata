@@ -1,5 +1,10 @@
 import { expect, it } from 'vitest';
-import { convertCell, createCellConverter, inferColumnType } from './columns';
+import {
+  convertCell,
+  createCellConverter,
+  inferColumnType,
+  isPossibleSuffixColumn,
+} from './columns';
 
 it('FR-IN-05: 列全体を検査し、年だけの列は数値を優先する', () => {
   expect(inferColumnType(['', '1650', '1660'])).toBe('number');
@@ -114,4 +119,13 @@ it('FR-DM-06: アラビア語の疑問符、全角の ？、末尾の RLM を扱
   expect(convertCell('بصرة‏؟', on).value).toEqual(possible('بصرة'));
   expect(convertCell('東京？', on).value).toEqual(possible('東京'));
   expect(convertCell('بصرة‏', on).value).toEqual({ kind: 'value', value: 'بصرة‏' });
+});
+
+it('FR-DM-06: 保存した possibleSuffixColumns から列ごとの有効・無効を引く（表の区別つき）', () => {
+  const refs = [{ column: 'place' }, { column: 'note', table: 'node' as const }];
+  expect(isPossibleSuffixColumn(refs, 'place')).toBe(true);
+  expect(isPossibleSuffixColumn(refs, 'note', 'node')).toBe(true);
+  expect(isPossibleSuffixColumn(refs, 'note', 'edge')).toBe(false);
+  expect(isPossibleSuffixColumn(refs, 'note')).toBe(false);
+  expect(isPossibleSuffixColumn(undefined, 'place')).toBe(false);
 });

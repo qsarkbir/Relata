@@ -322,6 +322,16 @@ export const en = {
   'filter.certainty.probable': 'Probable',
   'filter.certainty.possible': 'Possible',
   'filter.certainty.unspecified': 'Not specified',
+  // T2-01b: certainty (D-37, FR-DM-06)
+  'import.role.certainty': 'Certainty (certain / probable / possible, ?)',
+  'import.possibleSuffix': 'Read a trailing ? as possible',
+  'import.possibleSuffix.hint':
+    'In this attribute column, a value ending in ? (the full-width ？ and Arabic ؟ count too) is read as "possible" and the ? is removed from the stored value. Example: "Basra?" becomes the value "Basra" marked as possible. This changes the original text, so you choose it per column. It is off by default and is not offered for date columns, because date parsing handles ? itself.',
+  'import.warning.invalid-certainty':
+    'This certainty value could not be read. Use certain / probable / possible (確実 / おそらく / 可能性あり), or ?. The value is not kept. To keep the value as text, set this column\'s role to "Attribute".',
+  'filter.certainty.topic': 'Filter by certainty',
+  'filter.certainty.hint':
+    'Shows only items with the checked certainty. Counts are "matching other conditions / total". "Not specified" means the item has no certainty.',
   'filter.issue.attr-not-date': 'This attribute is not a date.',
   'filter.issue.unknown-node-id': 'This selection includes a node that is not in the data.',
   'filter.issue.reversed-range': 'The range is reversed. Nothing will be shown.',

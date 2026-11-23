@@ -2,7 +2,7 @@ import { VALUE_TYPES } from '../../core/model';
 import type { ValueType } from '../../core/model';
 import { useT } from '../hooks';
 import type { ColumnDraft, ImportDraft, TableTarget } from './model';
-import { columnRoles, columnType } from './model';
+import { canUsePossibleSuffix, columnRoles, columnType } from './model';
 import { ROLE_NAMES } from './messages';
 import { InfoTip } from '../ui/InfoTip';
 /** 列の型・暦・区切り・用途の編集。 */
@@ -39,23 +39,35 @@ export function Columns({ draft, target, label, onChange }: ColumnsProps) {
         <table>
           <thead>
             <tr>
-              {['column', 'use', 'key', 'label', 'type', 'calendar', 'separator'].map((key) => (
-                <th key={key} scope="col">
-                  {key === 'column'
-                    ? t('import.column')
-                    : key === 'use'
-                      ? t('import.use')
-                      : key === 'key'
-                        ? t('import.key')
-                        : key === 'label'
-                          ? t('import.label')
-                          : key === 'type'
-                            ? t('import.type')
-                            : key === 'calendar'
-                              ? t('import.calendar')
-                              : t('import.separator')}
-                </th>
-              ))}
+              {['column', 'use', 'key', 'label', 'type', 'calendar', 'separator', 'suffix'].map(
+                (key) => (
+                  <th key={key} scope="col">
+                    {key === 'column'
+                      ? t('import.column')
+                      : key === 'use'
+                        ? t('import.use')
+                        : key === 'key'
+                          ? t('import.key')
+                          : key === 'label'
+                            ? t('import.label')
+                            : key === 'type'
+                              ? t('import.type')
+                              : key === 'calendar'
+                                ? t('import.calendar')
+                                : key === 'separator'
+                                  ? t('import.separator')
+                                  : t('import.possibleSuffix')}
+                    {key === 'suffix' && (
+                      <>
+                        {' '}
+                        <InfoTip topic={t('import.possibleSuffix')}>
+                          <p>{t('import.possibleSuffix.hint')}</p>
+                        </InfoTip>
+                      </>
+                    )}
+                  </th>
+                ),
+              )}
             </tr>
           </thead>
           <tbody>
@@ -164,6 +176,19 @@ export function Columns({ draft, target, label, onChange }: ColumnsProps) {
                         change(index, { separator: event.currentTarget.value });
                       }}
                     />
+                  </td>
+                  <td>
+                    {/* 【なぜ】日付の列と属性以外の列には出さない（日付の解析が ? を自分で扱う。D-37）。 */}
+                    {canUsePossibleSuffix(column) && (
+                      <input
+                        type="checkbox"
+                        aria-label={prefix + ' ' + t('import.possibleSuffix')}
+                        checked={column.possibleSuffix}
+                        onChange={(event) => {
+                          change(index, { possibleSuffix: event.currentTarget.checked });
+                        }}
+                      />
+                    )}
                   </td>
                 </tr>
               );
