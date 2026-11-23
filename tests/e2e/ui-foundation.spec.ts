@@ -119,6 +119,9 @@ test.describe('日本語の画面', () => {
   });
 
   test('NFR-07: キーボードだけで、検索 → 選択 → 固定ができる', async ({ page }) => {
+    // 【なぜ】配置の計算が終わって位置が出るまで、固定の操作は効かない（固定する位置が無い）。
+    //   負荷が高いと計算が遅れるので、他の固定のテストと同じく、ノードが描かれるのを待つ。
+    await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]')).toHaveCount(14);
     await page.getByLabel('ノードを検索', { exact: true }).focus();
     await page.keyboard.type('p6');
     await expect(page.locator('.graph-search-results [role="option"]')).toHaveCount(1);
