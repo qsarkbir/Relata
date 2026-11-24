@@ -97,14 +97,17 @@ jobs:
             test-results/
           retention-days: 7
 
-      # 【なぜ】ビルド成果物を残す。下の deploy ジョブが、検査を通ったこの dist をそのまま配信に使うため。
-      - name: dist を保存
-        uses: actions/upload-artifact@v7
+      # 【なぜ】検査を通ったこの dist を、Pages 用の形式（名前 github-pages の artifact）で残す。下の deploy ジョブは、
+      # これをそのまま配信する（build し直さないので、検査・E2E を通ったものと公開するものが同一になる）。
+      # 【なぜ】ここ（前のジョブ）で上げる。以前は deploy ジョブの中で上げた直後に deploy-pages を呼んでいたが、
+      # 上げたばかりの artifact が一覧にまだ現れず「No artifacts named "github-pages"」で配信が失敗することが
+      # 繰り返し起きた（2026-11 の main の実行 7 回のうち 3 回）。GitHub の Pages の公式の雛形と同じく、
+      # 上げるジョブと配信するジョブを分ける。main への push のときだけ上げる（PR では配信しないため）。
+      - name: 配信用の成果物を作る
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v5
         with:
-          name: dist
           path: dist/
-          if-no-files-found: error
-          retention-days: 7
 
   # 配信（デプロイ）: 検査を通った dist を GitHub Pages に公開する。公開先は https://qsarkbir.github.io/Relata/ 。
   #
@@ -137,20 +140,7 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      # 【なぜ】verify が保存した dist を取り出す。ここで build し直さないので、
-      # 検査・E2E を通ったものと、公開するものが同一になる。
-      - name: dist を取り出す
-        uses: actions/download-artifact@v8
-        with:
-          name: dist
-          path: dist/
-
-      # 【なぜ】Pages 用の形式（tar）に包んで保存する。deploy-pages は、この専用の artifact（名前 github-pages）だけを配信する。
-      - name: 配信用の成果物を作る
-        uses: actions/upload-pages-artifact@v5
-        with:
-          path: dist/
-
+      # 【なぜ】verify が上げた Pages 用の artifact（github-pages）を配信する。取り出しや包み直しはしない。
       # 【なぜ】Pages に公開する。公開先の URL は、上の environment の url に渡される。
       - name: GitHub Pages に配信
         id: deployment
