@@ -67,7 +67,12 @@ export type { DisplayState } from './displayStore';
 export { getMissingRows } from './missingView';
 export { createTimeFadeStore, timeFadeStore } from './timeFadeStore';
 export type { GraphFade, TimeFadeSources } from './timeFadeStore';
-export { getTimeAxis, resolveSource as resolveTimeSource } from './timeAxis';
+export {
+  getPlaybackAxis,
+  getTimeAxis,
+  resolveSource as resolveTimeSource,
+  restrictAxis,
+} from './timeAxis';
 export {
   bindTimeToAxis,
   bindTimeToData,

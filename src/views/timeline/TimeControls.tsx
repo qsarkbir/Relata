@@ -4,14 +4,16 @@ import {
   TIME_SPEEDS,
   TIME_WINDOW_YEARS,
   binIndexOfTime,
+  describeDayRange,
   isTimeMode,
   isTimeSpeed,
   isTimeWindowYears,
 } from '../../core/time';
 import type { TimeMode } from '../../core/time';
 import type { MessageKey } from '../../i18n';
-import { getTimeAxis, timeStore } from '../../state';
-import { useData, useDisplay, useT, useTime, useTimelineView } from '../hooks';
+import { getPlaybackAxis, getTimeAxis, selectFilterState, timeStore } from '../../state';
+import { useData, useDisplay, useFilter, useT, useTime, useTimelineView } from '../hooks';
+import { renderingsText } from '../filter/timeText';
 import { timeStateText } from '../timeFade';
 import { InfoTip } from '../ui/InfoTip';
 import './timeline.css';
@@ -45,10 +47,14 @@ export function TimeControls() {
   const windowYears = useTime((s) => s.windowYears);
   const speed = useTime((s) => s.speed);
   const playing = useTime((s) => s.playing);
+  const filters = useFilter(selectFilterState);
+  // 【なぜ】範囲を選んでいるときは、つまみとコマ送りもその範囲に限る（時計と同じ軸。FR-TM-02）。
   const axis = useMemo(
-    () => (dataset === null ? null : getTimeAxis(dataset, timeline, display)),
-    [dataset, timeline, display],
+    () => (dataset === null ? null : getPlaybackAxis(dataset, timeline, display, filters)),
+    [dataset, timeline, display, filters],
   );
+  const restricted =
+    axis !== null && dataset !== null && getTimeAxis(dataset, timeline, display) !== axis;
   const store = timeStore.getState();
   const disabled = axis === null;
   const text = timeStateText(t, display, { at, mode, windowYears, speed });
@@ -160,6 +166,7 @@ export function TimeControls() {
         </button>
         <InfoTip topic={t('time.info.topic')}>
           <p>{t('time.note')}</p>
+          <p>{t('time.note.range')}</p>
         </InfoTip>
       </div>
       {/* 【なぜ】見える 1 行に、時刻と「表示だけを変える」旨を置く（R-17）。詳しい説明は (i) の中。
@@ -168,7 +175,18 @@ export function TimeControls() {
         <strong data-testid="time-state">
           <bdi>{text === '' ? t('time.none') : text}</bdi>
         </strong>{' '}
-        <span className="hint">{t(axis === null ? 'time.noAxis' : 'time.noteShort')}</span>
+        <span className="hint" data-testid="time-note">
+          {axis === null
+            ? t('time.noAxis')
+            : restricted
+              ? t('time.noteRestricted', {
+                  range: renderingsText(
+                    t,
+                    describeDayRange({ earliest: axis.min, latest: axis.max }, display, 'year'),
+                  ),
+                })
+              : t('time.noteShort')}
+        </span>
       </p>
     </div>
   );

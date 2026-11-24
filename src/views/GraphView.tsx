@@ -705,7 +705,6 @@ export function GraphView() {
       </Toolbar>
       {network !== null && !buildPanelOpen && <ProjectionIssues status={network.projection} />}
       <NoCoordinatesNote dataset={dataset} graph={graph} view={view} />
-      <TimeFadeNote fade={timeFade} />
       {graph.order === 0 && (
         <StatusMessage
           state={
@@ -871,6 +870,7 @@ export function GraphView() {
                 />
               </svg>
             </div>
+            <TimeFadeNote fade={timeFade} />
             {(selectedId !== undefined || selectedEdges.size > 0) && (
               <section
                 className="graph-card"

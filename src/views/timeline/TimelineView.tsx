@@ -1,5 +1,5 @@
 import { memo, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { KeyboardEvent, PointerEvent } from 'react';
+import type { KeyboardEvent, MouseEvent, PointerEvent } from 'react';
 import {
   aggregateTimeline,
   describeTimeFilter,
@@ -330,8 +330,16 @@ export function TimelineView() {
     const box = e.currentTarget.getBoundingClientRect();
     return binIndexAt(e.clientX - box.left, box.width, n);
   };
+  // 【なぜ】ページに選択された文字がある（Ctrl+A、別の場所のドラッグ、ダブルクリックなど）と、その上の
+  //       押下はブラウザの「選択内容のドラッグ」になり、`pointercancel` で操作が打ち切られて範囲を選べなくなる。
+  //       `mousedown` の既定の動作（選択の開始とドラッグ）を止める。止めるとフォーカスも移らないので、
+  //       下の `onPointerDown` で年表に自分で移す（キーボードの操作を続けられるように）。
+  const onMouseDown = (e: MouseEvent<SVGRectElement>) => {
+    e.preventDefault();
+  };
   const onPointerDown = (e: PointerEvent<SVGRectElement>) => {
     if (n === 0 || e.button !== 0) return;
+    chartRef.current?.focus({ preventScroll: true });
     const i = indexAtEvent(e);
     e.currentTarget.setPointerCapture(e.pointerId);
     setSel({ anchor: i, cursor: i, dragging: true });
@@ -594,6 +602,7 @@ export function TimelineView() {
                   y={0}
                   width={plotW}
                   height={plotH}
+                  onMouseDown={onMouseDown}
                   onPointerDown={onPointerDown}
                   onPointerMove={onPointerMove}
                   onPointerUp={onPointerUp}

@@ -810,9 +810,11 @@ export const en = {
   'time.noAxis': 'There are no dates, so playback is unavailable.',
   'time.state.cumulative': 'up to {time} (cumulative)',
   'time.state.window': '{range} (moving window of {years} yr)',
-  'time.conditions': 'Playback: {time}',
-  'time.conditions.hint':
-    'Playback changes the display only. Use a timeline range selection to filter.',
+  'time.noteRestricted':
+    'Playback runs only within the selected range ({range}). It changes the display only.',
+  'time.note.range':
+    'While a timeline range is selected, the start, end, stepping, slider and stop at the end of playback are limited to that range. Clearing the range restores the whole axis. A time outside the range is moved to its nearest end.',
+  'time.fadeShort': '{time} · dimmed: {nodes} nodes, {edges} edges',
   'time.fadeNote':
     'Playback time {time}: {nodes} nodes and {edges} edges outside the time are dimmed (not hidden; counts and tables do not change).',
   'table.target': 'Table type',
