@@ -316,8 +316,19 @@
   padding-inline-start: 1.2em;
 }
 .graph-time-note {
+  /* 【なぜ】図の上の行を増やさず、窓の角に小さく重ねる。操作（パン、ドラッグ、クリック）は通す。 */
+  position: absolute;
+  inset-block-end: var(--rl-space-1);
+  inset-inline-start: var(--rl-space-2);
+  z-index: 1;
+  max-inline-size: calc(100% - 4rem);
   margin: 0;
-  padding: var(--rl-space-1) var(--rl-space-2);
+  padding: 0 var(--rl-space-1);
   color: var(--rl-text-muted);
-  font-size: var(--rl-font-sm);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  background: color-mix(in srgb, var(--rl-surface, #fff) 80%, transparent);
+  border-radius: 2px;
+  pointer-events: none;
+  overflow-wrap: anywhere;
 }

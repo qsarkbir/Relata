@@ -97,15 +97,28 @@ test.describe('日本語の画面', () => {
     await page.mouse.move(box.x + 120, box.y + 80, { steps: 4 });
     await page.mouse.up();
     // 画面に見えている（図の枠の中に中心がある）ノードの数を、画面から数える。
-    const visible = await page.evaluate((sel) => {
+    // 【なぜ】パンの後の描き直しが終わってから数える（2 フレーム待つ）。数える範囲は、下の shiftDragAll が
+    // 囲む範囲（枠から内側へ 2 px）と同じにする。枠の端から 2 px 以内に中心があるノードを「見えている」と
+    // 数えると、囲んだ範囲には入らず、件数が 1 つずれて CI で失敗した。
+    const visible = await page.evaluate(async (sel) => {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+      });
       const svg = document.querySelector('.graph-canvas svg');
       if (svg === null) return -1;
       const f = svg.getBoundingClientRect();
+      const inset = 2;
       return [...document.querySelectorAll(sel)].filter((el) => {
         const r = el.getBoundingClientRect();
         const x = (r.left + r.right) / 2;
         const y = (r.top + r.bottom) / 2;
-        return x >= f.left && x <= f.right && y >= f.top && y <= f.bottom;
+        return (
+          x >= f.left + inset && x <= f.right - inset && y >= f.top + inset && y <= f.bottom - inset
+        );
       }).length;
     }, NODES);
     await shiftDragAll(page);

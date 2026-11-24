@@ -244,7 +244,7 @@ function ExportBody() {
               onClick={() => {
                 if (network === null) return;
                 void run(kind, () => {
-                  exportNetworkFile(kind, dataset, network.graph, date);
+                  exportNetworkFile(kind, dataset, network.graph, date, source);
                   return {};
                 });
               }}

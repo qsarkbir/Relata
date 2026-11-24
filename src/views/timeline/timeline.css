@@ -104,6 +104,9 @@
   fill: var(--rl-text-muted);
   font-size: 11px;
 }
+.timeline-chart svg {
+  user-select: none;
+}
 .tl-hit {
   fill: transparent;
   cursor: crosshair;

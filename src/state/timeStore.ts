@@ -23,7 +23,8 @@ import type {
 import type { DataState } from './dataStore';
 import { dataStore } from './dataStore';
 import { displayStore } from './displayStore';
-import { getTimeAxis } from './timeAxis';
+import { filterStore, selectFilterState } from './filterStore';
+import { getPlaybackAxis } from './timeAxis';
 import { timelineStore } from './timelineStore';
 
 /**
@@ -220,9 +221,14 @@ export function bindTimeToAxis(
 function appAxis(): TimeAxis | null {
   const dataset = dataStore.getState().dataset;
   if (dataset === null) return null;
-  return getTimeAxis(dataset, timelineStore.getState().timeline, displayStore.getState().calendar);
+  return getPlaybackAxis(
+    dataset,
+    timelineStore.getState().timeline,
+    displayStore.getState().calendar,
+    selectFilterState(filterStore.getState()),
+  );
 }
 /** アプリ全体の時間の状態。 */
 export const timeStore = createTimeStore(appAxis);
 bindTimeToData(timeStore, dataStore);
-bindTimeToAxis(timeStore, appAxis, [timelineStore, displayStore]);
+bindTimeToAxis(timeStore, appAxis, [timelineStore, displayStore, filterStore]);

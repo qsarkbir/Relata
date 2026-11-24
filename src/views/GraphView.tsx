@@ -3,7 +3,7 @@ import { MissingDisplayControls } from './MissingDisplayControls';
 import { graphEncodingWithLegends } from './graphEncoding';
 import { createGraphMeasure } from './graphMeasure';
 /** グラフ表示と操作。元データとフィルタは既存ストアを参照する（T1-19）。 */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { toSnapshot } from '../core/graph';
 import { DEFAULT_GRAPH_VIEW } from '../core/project';
@@ -12,7 +12,7 @@ import type { NodeId } from '../core/model';
 import { toNodeId } from '../core/model';
 import { findMissingElements } from '../core/missing';
 import { matchIncludes, LOOSE_MATCH } from '../core/text';
-import { buildScene, markOutOfTime, renderSvg } from '../render';
+import { buildScene, fitZoomFor, markOutOfTime, renderSvg, MAX_ZOOM, MIN_ZOOM } from '../render';
 import { createSvgExport } from '../io/export';
 import { setFigureSource } from './figureExport';
 import { buildFigureLegend } from './figureLegend';
@@ -47,8 +47,13 @@ import './graph.css';
 
 /** 図の枠の既定の大きさ（CSS ピクセル）。枠の大きさを測るまでと、測れない環境で使う。 */
 const DEFAULT_CANVAS = { width: 800, height: 500 } as const;
-/** 全体を収めるときに、枠の上下左右に残す余白（CSS ピクセル）。 */
-const FIT_MARGIN = 20;
+/**
+ * シーンの組み直しを、拡大の操作の後まで待つ大きさの目安（ノード数 + エッジ数）。
+ * これを超える図は、拡大の最中は今のシーンを引き伸ばし、操作が止まってから作り直す（NFR-03）。
+ */
+const LIVE_SCENE_LIMIT = 3000;
+/** 重い図で、拡大の操作が止まってからシーンを作り直すまでの待ち（ミリ秒）。 */
+const RESCALE_DELAY = 120;
 
 /**
  * 図の中の点 (x, y) を動かさずに、拡大率を factor 倍にする。
@@ -61,7 +66,7 @@ const FIT_MARGIN = 20;
  */
 function zoomAround(factor: number, x: number, y: number): void {
   const current = graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW;
-  const zoom = Math.max(0.1, Math.min(10, current.viewport.zoom * factor));
+  const zoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, current.viewport.zoom * factor));
   graphViewStore.getState().setView({
     ...current,
     viewport: {
@@ -70,23 +75,6 @@ function zoomAround(factor: number, x: number, y: number): void {
       y: y - ((y - current.viewport.y) * zoom) / current.viewport.zoom,
     },
   });
-}
-
-/**
- * 図の全体を、余白を残して枠に収める拡大率を求める。
- *
- * @param width - 図の幅
- * @param height - 図の高さ
- * @param size - 枠の大きさ
- * @returns 0.1〜10 に収めた拡大率
- */
-function fitZoom(
-  width: number,
-  height: number,
-  size: { readonly width: number; readonly height: number },
-): number {
-  const room = (length: number) => Math.max(1, length - FIT_MARGIN * 2);
-  return Math.max(0.1, Math.min(10, room(size.width) / width, room(size.height) / height));
 }
 
 /**
@@ -195,52 +183,102 @@ export function GraphView() {
   // 【なぜ】再生の「時刻の外」は、配置やシーンの組み立てには入れない（再生のたびに再配置・再構築しない。R-17）。
   //   組み立て済みのシーンに、薄くする印だけを後から付ける。フィルタ、件数、指標には関わらない。
   const timeFade = useTimeFade();
-  const scene = useMemo(
-    () =>
-      graph === null
-        ? null
-        : buildScene(graph, positions, encoding, {
-            labels: view.labels,
-            largeLabelCount: view.largeLabelCount,
-            selected: visibleSelected,
-            includeSelection: true,
-            directedStyle: view.direction,
-            measureText,
-            // 【TS】条件付きスプレッド: `...(条件 ? {} : { 項目 })` は、値がある時だけ項目を足す。
-            //   値が無いとき、項目そのものを作らず、既定の扱いを buildScene 側に任せるため。
-            ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
-            ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
-          }),
+  // 【なぜ】半径・線の太さ・文字・矢じりは、拡大しても設定した px のままにする（利用者の報告）。
+  //   図全体を scale() で拡大せず、シーンの側で位置だけを倍率に合わせて作る（buildScene の zoom）。
+  //   倍率が変わるとシーンを作り直すので、重い図は、拡大の操作が止まってから作り直し、その間は
+  //   今のシーンを引き伸ばして見せる（NFR-03）。軽い図は、操作のたびにそのまま作り直す。
+  const [settledZoom, setSettledZoom] = useState(view.viewport.zoom);
+  const live = graph === null || graph.order + graph.size <= LIVE_SCENE_LIMIT;
+  const sceneZoom = live ? view.viewport.zoom : settledZoom;
+  useEffect(() => {
+    if (live || settledZoom === view.viewport.zoom) return;
+    const timer = setTimeout(() => {
+      setSettledZoom(view.viewport.zoom);
+    }, RESCALE_DELAY);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [live, settledZoom, view.viewport.zoom]);
+  /** 倍率 zoom のシーンを作る（図に出す要素の指定は、画面の描画と全体表示で同じ）。 */
+  const buildAt = useCallback(
+    (
+      sourceGraph: NonNullable<typeof graph>,
+      sourcePositions: ReadonlyMap<NodeId, { readonly x: number; readonly y: number }>,
+      zoom: number,
+    ) =>
+      buildScene(sourceGraph, sourcePositions, encoding, {
+        labels: view.labels,
+        largeLabelCount: view.largeLabelCount,
+        selected: visibleSelected,
+        includeSelection: true,
+        directedStyle: view.direction,
+        measureText,
+        zoom,
+        // 【TS】条件付きスプレッド: `...(条件 ? {} : { 項目 })` は、値がある時だけ項目を足す。
+        //   値が無いとき、項目そのものを作らず、既定の扱いを buildScene 側に任せるため。
+        ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
+        ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
+      }),
     [
-      missingMarks,
-      graph,
-      positions,
       encoding,
       view.labels,
       view.largeLabelCount,
       visibleSelected,
       view.direction,
       measureText,
+      missingMarks,
     ],
   );
+  const scene = useMemo(
+    () => (graph === null ? null : buildAt(graph, positions, sceneZoom)),
+    [graph, positions, sceneZoom, buildAt],
+  );
+  // 【なぜ】シーンの座標は「位置 × 倍率 ＋ ずれ」。ずれは最初のノードから逆算する（余白と範囲の補正）。
   const offset =
     scene?.nodes[0] === undefined
       ? { x: 0, y: 0 }
       : {
-          x: scene.nodes[0].x - (positions.get(scene.nodes[0].id)?.x ?? 0),
-          y: scene.nodes[0].y - (positions.get(scene.nodes[0].id)?.y ?? 0),
+          x: scene.nodes[0].x - (positions.get(scene.nodes[0].id)?.x ?? 0) * sceneZoom,
+          y: scene.nodes[0].y - (positions.get(scene.nodes[0].id)?.y ?? 0) * sceneZoom,
         };
-  const fit = () => {
-    if (scene === null) return;
-    const zoom = fitZoom(scene.width, scene.height, canvas);
-    patch({
+  /**
+   * 全体が枠に収まるように、倍率と位置を決めて反映する。ノードが 0 件のときは何もしない。
+   * 【なぜ】0 件の図は余白だけなので、収める倍率が巨大になり、フィルタを解除した後も残ってしまう。
+   */
+  const fit = useCallback(() => {
+    if (graph === null) return;
+    const fitted = fitZoomFor((z) => buildAt(graph, positions, z), canvas);
+    const first = fitted.scene.nodes[0];
+    if (first === undefined) return;
+    const dx = first.x - (positions.get(first.id)?.x ?? 0) * fitted.zoom;
+    const dy = first.y - (positions.get(first.id)?.y ?? 0) * fitted.zoom;
+    setSettledZoom(fitted.zoom);
+    graphViewStore.getState().setView({
+      ...(graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW),
       viewport: {
-        zoom,
-        x: canvas.width / 2 - (scene.width / 2 - offset.x) * zoom,
-        y: canvas.height / 2 - (scene.height / 2 - offset.y) * zoom,
+        zoom: fitted.zoom,
+        x: canvas.width / 2 - (fitted.scene.width / 2 - dx),
+        y: canvas.height / 2 - (fitted.scene.height / 2 - dy),
       },
     });
-  };
+  }, [graph, positions, canvas, buildAt]);
+  const hasNodes = (scene?.nodes.length ?? 0) > 0;
+  // 【なぜ】フィルタなどで 0 件になった後、1 件以上に戻ったときは、自動で全体を表示する。0 件の間に
+  //   変えた倍率（や、以前の巨大な倍率）を引き継ぐと、解除した直後の図が画面の外に出る（利用者の報告）。
+  //   データを開いた直後（保存した表示を復元する場合）は対象にしない。0 件になったのが絞り込みの結果で、
+  //   同じデータのまま戻ったときだけ行う。
+  const emptyByFilter =
+    graph !== null && dataset !== null && graph.order === 0 && dataset.nodes.length > 0;
+  const wasEmpty = useRef<{ empty: boolean; dataset: typeof dataset }>({
+    empty: false,
+    dataset,
+  });
+  const restored = graph !== null && graph.order > 0;
+  useEffect(() => {
+    const before = wasEmpty.current;
+    wasEmpty.current = { empty: emptyByFilter, dataset };
+    if (before.empty && before.dataset === dataset && restored) fit();
+  }, [emptyByFilter, restored, dataset, fit]);
   /** 操作のために計算を中止する。計算中だったら、後でやり直す印を付ける。 */
   const interruptLayout = () => {
     if (busy) interrupted.current = true;
@@ -325,29 +363,28 @@ export function GraphView() {
           refitAfterLayout.current = false;
           // 保存された全座標は再開時にそのまま使う。初回だけ全体を収める。
           const raw = new Map(nextPositions.map((p) => [p.id, p]));
-          const built = buildScene(graph, raw, encoding, { measureText });
-          const first = built.nodes[0];
-          const delta =
-            first === undefined
-              ? { x: 0, y: 0 }
-              : {
-                  x: first.x - (raw.get(first.id)?.x ?? 0),
-                  y: first.y - (raw.get(first.id)?.y ?? 0),
-                };
           const size = canvasRef.current;
-          const zoom = fitZoom(built.width, built.height, size);
-          patch({
-            positions: nextPositions,
-            ...(current.positions.length === 0 || refit
-              ? {
-                  viewport: {
-                    zoom,
-                    x: size.width / 2 - (built.width / 2 - delta.x) * zoom,
-                    y: size.height / 2 - (built.height / 2 - delta.y) * zoom,
-                  },
-                }
-              : {}),
-          });
+          // 【なぜ】全体表示の倍率は、半径や文字が px のままのシーンから求める（fitZoomFor）。
+          //   収め直すときだけ計算する（シーンの組み立てを 3 回するため。計算の途中の反映では省く）。
+          const fitted =
+            current.positions.length === 0 || refit
+              ? fitZoomFor((z) => buildScene(graph, raw, encoding, { measureText, zoom: z }), size)
+              : null;
+          const first = fitted?.scene.nodes[0];
+          // 【なぜ】ノードが 0 件のときは倍率を変えない（収める対象が無い）。
+          if (fitted !== null && first !== undefined) {
+            const dx = first.x - (raw.get(first.id)?.x ?? 0) * fitted.zoom;
+            const dy = first.y - (raw.get(first.id)?.y ?? 0) * fitted.zoom;
+            setSettledZoom(fitted.zoom);
+            patch({
+              positions: nextPositions,
+              viewport: {
+                zoom: fitted.zoom,
+                x: size.width / 2 - (fitted.scene.width / 2 - dx),
+                y: size.height / 2 - (fitted.scene.height / 2 - dy),
+              },
+            });
+          } else patch({ positions: nextPositions });
         },
       });
       uiStore.getState().endTask(task);
@@ -447,6 +484,8 @@ export function GraphView() {
     // ページもスクロールしてしまう。DOM に直接 passive: false で登録して、ページのスクロールを止める。
     const onWheel = (event: WheelEvent) => {
       event.preventDefault();
+      // 【なぜ】ノードが無いときは拡大・縮小しない（巨大な倍率が残るため）。
+      if (!hasNodes) return;
       const matrix = element.getScreenCTM();
       const p =
         matrix === null
@@ -458,7 +497,7 @@ export function GraphView() {
     return () => {
       element.removeEventListener('wheel', onWheel);
     };
-  }, [hasFigure]);
+  }, [hasFigure, hasNodes]);
   useEffect(() => {
     const element = frame.current;
     if (!hasFigure || element === null || typeof ResizeObserver === 'undefined') return;
@@ -536,7 +575,11 @@ export function GraphView() {
   // 表示中の選択を優先し、無ければ（絞り込みで見えなくなった）選択の先頭をカードに出す。
   const selectedId = [...visibleSelected][0] ?? [...selected][0];
   const point = (clientX: number, clientY: number) => clientToSvg(svg.current, clientX, clientY);
+  // 【なぜ】シーンは倍率 sceneZoom で作ってある。今の倍率との差は、作り直しを待つ間だけ引き伸ばして見せる
+  //   （軽い図や、待ちが終わった後は 1 で、`translate` だけ）。位置が viewport.zoom のとおりに並ぶ。
+  const stretch = view.viewport.zoom / sceneZoom;
   const zoomBy = (factor: number) => {
+    if (!hasNodes) return;
     zoomAround(factor, canvas.width / 2, canvas.height / 2);
   };
   const choose = (id: string) => {
@@ -678,6 +721,8 @@ export function GraphView() {
           <IconButton
             icon="zoomIn"
             label={t('graph.zoomIn')}
+            disabled={!hasNodes}
+            description={hasNodes ? undefined : t('graph.zoomDisabled')}
             onClick={() => {
               zoomBy(1.25);
             }}
@@ -685,11 +730,19 @@ export function GraphView() {
           <IconButton
             icon="zoomOut"
             label={t('graph.zoomOut')}
+            disabled={!hasNodes}
+            description={hasNodes ? undefined : t('graph.zoomDisabled')}
             onClick={() => {
               zoomBy(0.8);
             }}
           />
-          <IconButton icon="fit" label={t('graph.fit')} onClick={fit} />
+          <IconButton
+            icon="fit"
+            label={t('graph.fit')}
+            onClick={fit}
+            disabled={!hasNodes}
+            description={hasNodes ? undefined : t('graph.zoomDisabled')}
+          />
         </ToolbarGroup>
         <span className="rl-toolbar-spacer" />
         <button
@@ -705,7 +758,6 @@ export function GraphView() {
       </Toolbar>
       {network !== null && !buildPanelOpen && <ProjectionIssues status={network.projection} />}
       <NoCoordinatesNote dataset={dataset} graph={graph} view={view} />
-      <TimeFadeNote fade={timeFade} />
       {graph.order === 0 && (
         <StatusMessage
           state={
@@ -858,7 +910,7 @@ export function GraphView() {
                 }}
               >
                 <g
-                  transform={`translate(${String(view.viewport.x - offset.x * view.viewport.zoom)} ${String(view.viewport.y - offset.y * view.viewport.zoom)}) scale(${String(view.viewport.zoom)})`}
+                  transform={`translate(${String(view.viewport.x - offset.x * stretch)} ${String(view.viewport.y - offset.y * stretch)}) scale(${String(stretch)})`}
                   dangerouslySetInnerHTML={{ __html: inner }}
                 />
                 {/* 【なぜ】矩形は常に置き、フックが属性を直接書き換える（ドラッグ中に再描画しない）。
@@ -871,6 +923,7 @@ export function GraphView() {
                 />
               </svg>
             </div>
+            <TimeFadeNote fade={timeFade} />
             {(selectedId !== undefined || selectedEdges.size > 0) && (
               <section
                 className="graph-card"

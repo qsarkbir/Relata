@@ -86,6 +86,15 @@ export interface BuildSceneOptions {
   readonly directedStyle?: DirectedEdgeStyle;
   /** 図の余白（px）。既定 24。 */
   readonly margin?: number;
+  /**
+   * 位置に掛ける倍率。既定 1。
+   *
+   * 【なぜ】画面では、拡大しても半径・線の太さ・文字・矢じりを設定した px のままにしたい（利用者の報告）。
+   * そのため、図全体を `scale()` で拡大せず、ノードの位置だけをこの倍率で動かしてシーンを作る。
+   * 半径、太さ、矢じり、ラベルの大きさは px のままなので、ラベルの重なりの判定も、画面の上の距離で行われる。
+   * 書き出しは 1 のまま（図の座標）。
+   */
+  readonly zoom?: number;
   /** 選択中のノード。 */
   readonly selected?: ReadonlySet<NodeId>;
   /** 選択の強調を図に含めるか。既定は含めない（D-31）。 */
@@ -223,6 +232,10 @@ export function buildScene(
   options: BuildSceneOptions = {},
 ): Scene {
   const margin = nonNeg(options.margin, 24);
+  const zoom =
+    options.zoom !== undefined && Number.isFinite(options.zoom) && options.zoom > 0
+      ? options.zoom
+      : 1;
   const fontSize = nonNeg(options.labelFontSize, 12);
   const fontFamily = options.fontFamily ?? 'sans-serif';
   const font = `${String(fontSize)}px ${fontFamily}`;
@@ -264,8 +277,8 @@ export function buildScene(
     const valueMissing = size?.missing === true || color?.missing === true;
     rawNodes.push({
       id,
-      x: pos.x,
-      y: pos.y,
+      x: pos.x * zoom,
+      y: pos.y * zoom,
       r: size !== undefined && Number.isFinite(size.size) ? Math.max(0, size.size) : DEFAULT_RADIUS,
       shape: encoding.shapes?.get(attrs.type) ?? 'circle',
       fill,

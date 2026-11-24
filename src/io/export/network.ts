@@ -66,6 +66,11 @@ export interface NetworkNode {
 /** 書き出すエッジ。 */
 export interface NetworkEdge {
   readonly id: string;
+  /**
+   * 表示中のグラフでのエッジのキー。シーンのエッジの `id` と同じ値で、見た目（色、太さ）の対応に使う。
+   * 【なぜ】`id` は書き出し用に付け替える（元が 1 本なら元の ID、まとめたものは連番）ので、別に持つ。
+   */
+  readonly graphKey: string;
   readonly source: string;
   readonly target: string;
   readonly directed: boolean;
@@ -157,6 +162,9 @@ function inferType(values: readonly NetworkValue[]): NetworkColumnType {
   return 'string';
 }
 
+/** Gephi が位置・大きさ・色として読むノードの属性名（visual.ts が書く）。 */
+const VISUAL_NODE_NAMES = ['x', 'y', 'size', 'r', 'g', 'b'] as const;
+
 // 列名を、予約名と重ならないようにする。
 //
 // 利用者の属性のキーが `type` や `weight` のとき、予約の列とぶつかるので、後ろに `_attr` を付ける。
@@ -231,9 +239,15 @@ function buildColumns(
  *
  * @param dataset - 元のデータセット（属性、型の名前、期間を引く）
  * @param graph - 表示中のグラフ（絞り込み・集計・射影の後）
+ * @param options - `reserveVisualNames`: 表示情報（`x`、`y`、`size`、`r`、`g`、`b`）を書くときに true。
+ *   利用者の属性が同じ名前なら、後ろに `_attr` を付けて避ける（Gephi が位置・色と読み違えないため）
  * @returns 書き出し用の表
  */
-export function buildNetworkTable(dataset: Dataset, graph: RelataGraph): NetworkTable {
+export function buildNetworkTable(
+  dataset: Dataset,
+  graph: RelataGraph,
+  options: { readonly reserveVisualNames?: boolean } = {},
+): NetworkTable {
   const nodeById = new Map<string, GraphNode>(dataset.nodes.map((n) => [n.id, n]));
   const edgeById = new Map<string, GraphEdge>(dataset.edges.map((e) => [e.id, e]));
   const typeLabel = new Map<string, string>(dataset.nodeTypes.map((t) => [t.id, t.label]));
@@ -262,7 +276,9 @@ export function buildNetworkTable(dataset: Dataset, graph: RelataGraph): Network
     ],
     nodeRecords.map((r) => ({ attrs: r.node?.attrs ?? {}, row: r.row })),
     dataset.schema.filter((a) => a.appliesTo === 'node').map((a) => a.key),
-    ['label', 'start', 'end'],
+    options.reserveVisualNames === true
+      ? ['label', 'start', 'end', ...VISUAL_NODE_NAMES]
+      : ['label', 'start', 'end'],
   );
   const nodes: NetworkNode[] = nodeRecords.map((r, i) => {
     const span = nodeSpans[i];
@@ -296,6 +312,7 @@ export function buildNetworkTable(dataset: Dataset, graph: RelataGraph): Network
     ];
     return {
       id,
+      key,
       row: newRow(),
       source: graph.source(key),
       target: graph.target(key),
@@ -325,6 +342,7 @@ export function buildNetworkTable(dataset: Dataset, graph: RelataGraph): Network
   );
   const edges: NetworkEdge[] = edgeRecords.map((r) => ({
     id: r.id,
+    graphKey: r.key,
     source: r.source,
     target: r.target,
     directed: r.attrs.directed,

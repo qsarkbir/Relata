@@ -173,7 +173,7 @@ test('UC-5 / FR-TM-02 / FR-TM-03: 時間の再生は表示だけを変え、件�
   // 先頭の区切りまでの累積: まだ始まっていない多くのノードが薄くなる。消えてはいない。
   await expect.poll(() => faded(page).count()).toBeGreaterThan(0);
   await expect(nodes(page)).toHaveCount(7);
-  await expect(page.getByTestId('time-fade-note')).toContainText('件数と表は変わりません');
+  await expect(page.getByTestId('time-fade-note-sr')).toContainText('件数と表は変わりません');
   await expect(conditions(page)).toContainText('ノード 7 / 7');
   await expect(conditions(page)).toContainText('フィルタ 0');
   await page.getByRole('tab', { name: '表', exact: true }).click();

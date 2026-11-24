@@ -13,6 +13,7 @@ import {
   exportGraphml,
   loadPdfShaper,
   renderPng,
+  visualFromScene,
   withExtension,
 } from '../../io/export';
 import type { PngSize } from '../../io/export';
@@ -152,18 +153,30 @@ export async function exportPdfFigure(
  * @param dataset - 元のデータ
  * @param graph - 表示中のグラフ
  * @param date - 作成日（GEXF の更新日にも使う）
+ * @param source - 図の作り手。あれば、画面の図と同じ位置・大きさ・色を書く。null なら表示情報を省く
  */
 export function exportNetworkFile(
   kind: 'graphml' | 'gexf',
   dataset: Dataset,
   graph: RelataGraph,
   date: string,
+  source: FigureSource | null = null,
 ): void {
   const base = exportBaseName(dataset.meta.title, date);
+  // 【なぜ】凡例・出典・時間の薄い表示は、位置や色に影響しない（図の外側に足すだけ）ので最小の要求で作る。
+  const visual =
+    source === null
+      ? undefined
+      : visualFromScene(
+          source.build({ legend: false, credit: false, timeFade: false, createdAt: date }).scene,
+        );
   const text =
     kind === 'graphml'
-      ? exportGraphml(dataset, graph)
-      : exportGexf(dataset, graph, { modifiedDate: date });
+      ? exportGraphml(dataset, graph, visual)
+      : exportGexf(dataset, graph, {
+          modifiedDate: date,
+          ...(visual === undefined ? {} : { visual }),
+        });
   const type = kind === 'graphml' ? 'application/graphml+xml' : 'application/gexf+xml';
   downloadBlob(
     new Blob([text], { type: `${type};charset=utf-8` }),

@@ -102,6 +102,8 @@ interface IconButtonProps {
   readonly label: string;
   readonly onClick: () => void;
   readonly disabled?: boolean;
+  /** 押せないときの理由など、名前に添える説明。ツールチップだけに足す（読み上げの名前は変えない）。 */
+  readonly description?: string | undefined;
 }
 
 /**
@@ -110,13 +112,14 @@ interface IconButtonProps {
  * @param props - アイコン、名前、押したときの処理
  * @returns button 要素
  */
-export function IconButton({ icon, label, onClick, disabled }: IconButtonProps) {
+export function IconButton({ icon, label, onClick, disabled, description }: IconButtonProps) {
   return (
     <button
       type="button"
       className="icon-button"
       aria-label={label}
-      title={label}
+      title={description === undefined ? label : `${label}: ${description}`}
+      aria-description={description}
       disabled={disabled}
       onClick={onClick}
     >
