@@ -49,10 +49,10 @@ export interface EncodingSettings {
 // 【TS】`oneOf` などの型付きの定数: 注釈 `: EncodingSettings` で型に合うか検査する。
 /** 既定の割り当て。大きさと太さは平方根（D-08）。 */
 export const DEFAULT_ENCODING: EncodingSettings = {
-  nodeSize: { source: { kind: 'constant' }, scale: 'sqrt', min: 4, max: 16 },
+  nodeSize: { source: { kind: 'constant' }, scale: 'sqrt', min: 2.5, max: 10 },
   nodeColor: { kind: 'nodeType' },
   nodeShape: { kind: 'nodeType' },
-  edgeWidth: { source: { kind: 'weight' }, scale: 'sqrt', min: 1, max: 4 },
+  edgeWidth: { source: { kind: 'weight' }, scale: 'sqrt', min: 0.5, max: 2.5 },
 };
 
 interface Fail {
