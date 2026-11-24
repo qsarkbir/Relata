@@ -11,3 +11,5 @@ export type { NetworkTable } from './network';
 export { PDF_FONT_BYTES_ESTIMATE, PDF_FONT_FILES, createPdf, loadPdfShaper } from './pdf';
 export type { PdfExportOptions } from './pdf';
 export type { TextShaper } from './pdfText';
+export { visualFromScene } from './visual';
+export type { NetworkVisual } from './visual';

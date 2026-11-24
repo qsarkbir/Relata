@@ -138,7 +138,16 @@ test.describe('T2-08: 書き出し', () => {
     const graphml = await download(page, 'GraphML');
     expect(graphml.name).toMatch(/\.graphml$/);
     const gml = graphml.bytes.toString('utf8');
-    expect(gml).toContain('<graphml xmlns="http://graphml.graphdrawing.org/xmlns">');
+    expect(gml).toContain('xmlns="http://graphml.graphdrawing.org/xmlns"');
+    expect(gml).toContain('xsi:schemaLocation=');
+    // 外部のビューア（yEd、yFiles、Gephi）が図の見た目で開けるよう、位置・形・色・ラベルを含む。
+    expect(gml).toContain('xmlns:y="http://www.yworks.com/xml/graphml"');
+    expect((gml.match(/<y:ShapeNode>/g) ?? []).length).toBe(14);
+    expect(gml).toMatch(/<y:Geometry x="-?[\d.]+" y="-?[\d.]+" width="[\d.]+" height="[\d.]+"\/>/);
+    expect(gml).toMatch(/<y:Fill color="#[0-9A-F]{6}"/);
+    expect(gml).toContain('>ابن عسكر</y:NodeLabel>');
+    expect(gml).toContain('<y:Arrows source="none" target="standard"/>');
+    expect(gml).toContain('attr.name="size"');
     expect(gml).toContain('ابن عسكر');
     expect(gml).toContain('edgedefault="directed"');
     expect((gml.match(/<node /g) ?? []).length).toBe(14);
@@ -147,6 +156,9 @@ test.describe('T2-08: 書き出し', () => {
     const gx = gexf.bytes.toString('utf8');
     expect(gx).toContain('version="1.3"');
     expect(gx).toContain('label="ابن عسكر"');
+    expect(gx).toContain('xmlns:viz="http://gexf.net/1.3/viz"');
+    expect((gx.match(/<viz:position /g) ?? []).length).toBe(14);
+    expect(gx).toContain('<viz:thickness ');
     expect((gx.match(/<node /g) ?? []).length).toBe(14);
     expect((gx.match(/<edge /g) ?? []).length).toBeGreaterThan(0);
   });

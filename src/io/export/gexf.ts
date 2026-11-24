@@ -3,7 +3,17 @@ import type { RelataGraph } from '../../core/graph';
 import type { Dataset } from '../../core/model';
 import { buildNetworkTable } from './network';
 import type { NetworkColumn, NetworkTable, NetworkValue } from './network';
+import { num } from './visual';
+import type { NetworkVisual, VisualShape } from './visual';
 import { xmlAttr } from './xml';
+
+// GEXF の `viz:shape` の名前。
+const GEXF_SHAPE = {
+  circle: 'disc',
+  square: 'square',
+  triangle: 'triangle',
+  diamond: 'diamond',
+} as const satisfies Record<VisualShape, string>;
 
 // 【TS】`as const satisfies Record<K, string>`（graphml.ts と同じ）: 列の型ごとの GEXF の型名。
 const GEXF_TYPE = {
@@ -22,6 +32,14 @@ function valueAttr(v: NetworkValue): string {
 export interface GexfOptions {
   /** `<meta lastmodifieddate>` に入れる日付（`YYYY-MM-DD`）。省略すると書かない（io は Date を使わない）。 */
   readonly modifiedDate?: string;
+  /**
+   * 図の位置・大きさ・色（`visualFromScene`）。渡すと `viz:position`、`viz:size`、`viz:color`、`viz:shape`
+   * （エッジは `viz:thickness`、`viz:color`）を書く。省略すると書かない。
+   *
+   * 【なぜ y の符号を反転するか】シーンは y 下向き（SVG）。Gephi は y 上向きで読むので、そのまま書くと
+   * 図が上下に反転して見える。`viz:position` の y は符号を反転して書く（資料からの推測で、実機は未確認）。
+   */
+  readonly visual?: NetworkVisual;
 }
 
 /**
@@ -38,7 +56,13 @@ export interface GexfOptions {
  */
 export function gexfFromTable(table: NetworkTable, options: GexfOptions = {}): string {
   const out: string[] = ['<?xml version="1.0" encoding="UTF-8"?>'];
-  out.push('<gexf xmlns="http://gexf.net/1.3" version="1.3">');
+  // 【なぜ】viz は GEXF 1.3 の表示用の名前空間。表示情報を書くときだけ宣言する。
+  const visual = options.visual;
+  const viz = visual === undefined ? '' : '\n      xmlns:viz="http://gexf.net/1.3/viz"';
+  out.push(
+    `<gexf xmlns="http://gexf.net/1.3"${viz}\n      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"` +
+      '\n      xsi:schemaLocation="http://gexf.net/1.3 http://gexf.net/1.3/gexf.xsd" version="1.3">',
+  );
   const date =
     options.modifiedDate === undefined
       ? ''
@@ -90,6 +114,15 @@ export function gexfFromTable(table: NetworkTable, options: GexfOptions = {}): s
       `      <node id="${xmlAttr(n.id)}" label="${xmlAttr(n.label)}"${span(n.start, n.end)}>`,
     );
     attvalues(table.nodeColumns, n.values);
+    const nv = visual?.nodes.get(n.id);
+    if (nv !== undefined) {
+      out.push(
+        `          <viz:color r="${String(nv.color.r)}" g="${String(nv.color.g)}" b="${String(nv.color.b)}"/>`,
+        `          <viz:position x="${num(nv.x)}" y="${num(-nv.y)}" z="0.0"/>`,
+        `          <viz:size value="${num(2 * nv.r)}"/>`,
+        `          <viz:shape value="${GEXF_SHAPE[nv.shape]}"/>`,
+      );
+    }
     out.push('      </node>');
   }
   out.push('    </nodes>', '    <edges>');
@@ -100,6 +133,13 @@ export function gexfFromTable(table: NetworkTable, options: GexfOptions = {}): s
         ` type="${e.directed ? 'directed' : 'undirected'}" weight="${String(e.weight)}"${label}${span(e.start, e.end)}>`,
     );
     attvalues(edgeColumns, e.values);
+    const ev = visual?.edges.get(e.graphKey);
+    if (ev !== undefined) {
+      out.push(
+        `          <viz:color r="${String(ev.color.r)}" g="${String(ev.color.g)}" b="${String(ev.color.b)}"/>`,
+        `          <viz:thickness value="${num(ev.width)}"/>`,
+      );
+    }
     out.push('      </edge>');
   }
   out.push('    </edges>', '  </graph>', '</gexf>', '');
@@ -119,5 +159,8 @@ export function exportGexf(
   graph: RelataGraph,
   options: GexfOptions = {},
 ): string {
-  return gexfFromTable(buildNetworkTable(dataset, graph), options);
+  return gexfFromTable(
+    buildNetworkTable(dataset, graph, { reserveVisualNames: options.visual !== undefined }),
+    options,
+  );
 }
