@@ -246,6 +246,49 @@ test.describe('年表', () => {
     expect(await shownNodes(page)).toBeLessThan(total);
   });
 
+  test('FR-FL-11: キーボードで棒を選んだ後でも、ドラッグで範囲を選べる', async ({ page }) => {
+    await openTimeline(page);
+    await chart(page).focus();
+    await page.keyboard.press('Home');
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('ArrowRight');
+    await expect(status(page)).toContainText('区切り');
+    await drag(page, 0.5, 0.8);
+    await expect(conditions(page)).toContainText('時間（ノード）');
+    await expect(status(page)).toContainText('適用中の範囲');
+  });
+
+  test('FR-FL-11: ページの文字が選択されていても（Ctrl+A の後）、ドラッグで範囲を選べる', async ({
+    page,
+  }) => {
+    await openTimeline(page);
+    // 【なぜ】選択された内容の上の押下は、ブラウザの「選択のドラッグ」になり pointercancel で操作が途切れていた。
+    await page.getByRole('heading', { level: 2, name: '適用中の条件' }).click({ force: true });
+    await page.keyboard.press('Control+a');
+    await drag(page, 0.3, 0.6);
+    await expect(conditions(page)).toContainText('時間（ノード）');
+    await expect(status(page)).toContainText('適用中の範囲');
+    // 続けて、棒が適用中の範囲として選ばれたままでも、選び直せる。
+    const first = await shownNodes(page);
+    await page.keyboard.press('Control+a');
+    await drag(page, 0.7, 0.9);
+    await expect.poll(() => shownNodes(page)).not.toBe(first);
+  });
+
+  test('FR-FL-11: 範囲を適用した後（棒が選ばれたまま）でも、もう一度ドラッグで選び直せる', async ({
+    page,
+  }) => {
+    await openTimeline(page);
+    await chart(page).focus();
+    await page.keyboard.press('Home');
+    await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.press('Enter');
+    await expect(conditions(page)).toContainText('時間（ノード）');
+    const first = await shownNodes(page);
+    await drag(page, 0.6, 0.9);
+    await expect.poll(() => shownNodes(page)).not.toBe(first);
+  });
+
   test('FR-FL-11: 年表で選んだ範囲は、左のパネルの時間フィルタと同じ 1 件', async ({ page }) => {
     await openTimeline(page);
     await drag(page, 0.2, 0.4);

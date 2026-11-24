@@ -1,5 +1,6 @@
 import { aggregateTimeline, resolveTimelineSource, timelineSourceOptions } from '../core/filter';
-import type { TimeSource } from '../core/filter';
+import type { FilterState, TimeSource } from '../core/filter';
+import { sameTimeSource } from '../core/filter';
 import type { Dataset } from '../core/model';
 import type { TimelineSettings } from '../core/project';
 import { binCalendarOf, makeTimeAxis } from '../core/time';
@@ -65,4 +66,75 @@ export function getTimeAxis(
         );
   cache = { dataset, timeline, display, axis };
   return axis;
+}
+
+/**
+ * 軸を、日の範囲（両端を含む。無ければ開いた端）に狭める。
+ *
+ * 区切りは範囲に重なるものだけを残し、端の区切りは範囲で切る。時刻の最小・最大も範囲の端になる。
+ * 範囲が軸と重ならないときは、軸をそのまま返す（再生できなくなるより、全体で動く方がよい）。
+ *
+ * @param axis - 元の軸
+ * @param from - 範囲の始まり（無ければ軸の始まり）
+ * @param to - 範囲の終わり（無ければ軸の終わり）
+ * @returns 狭めた軸。変わらないときは元の軸と同じ参照
+ */
+export function restrictAxis(
+  axis: TimeAxis,
+  from: number | undefined,
+  to: number | undefined,
+): TimeAxis {
+  const min = Math.max(axis.min, from ?? axis.min);
+  const max = Math.min(axis.max, to ?? axis.max);
+  if (min > max) return axis;
+  if (min === axis.min && max === axis.max) return axis;
+  const bins = axis.bins
+    .filter((b) => b.latest >= min && b.earliest <= max)
+    .map((b) => ({ earliest: Math.max(b.earliest, min), latest: Math.min(b.latest, max) }));
+  return { calendar: axis.calendar, bins, min, max };
+}
+
+let restrictedCache: {
+  readonly axis: TimeAxis;
+  readonly from: number | undefined;
+  readonly to: number | undefined;
+  readonly result: TimeAxis;
+} | null = null;
+
+/**
+ * 再生の動く範囲の軸を求める（FR-TM-02、D-38）。
+ *
+ * 年表の軸のうち、今の出どころの時間フィルタ（年表で選んだ範囲）が適用中なら、その期間に限る。
+ * 始点、終点、コマ送り、つまみ、終わりでの停止は、すべてこの軸に従う。範囲を解除すれば全体に戻る。
+ * 出どころの違う時間フィルタ、別の対象の時間フィルタは見ない（年表の帯と同じ規則）。
+ *
+ * @param dataset - データセット
+ * @param timeline - 年表の設定
+ * @param display - 表示する暦の選択
+ * @param filters - フィルタの状態
+ * @returns 軸。日付が無ければ null
+ */
+export function getPlaybackAxis(
+  dataset: Dataset,
+  timeline: TimelineSettings,
+  display: CalendarDisplay,
+  filters: FilterState,
+): TimeAxis | null {
+  const axis = getTimeAxis(dataset, timeline, display);
+  if (axis === null) return null;
+  const source = resolveSource(dataset, timeline, timeline.target);
+  if (source === undefined) return axis;
+  let range: { from: number | undefined; to: number | undefined } | null = null;
+  for (const f of filters.filters) {
+    if (f.kind === 'time' && f.target === timeline.target && sameTimeSource(f.source, source)) {
+      range = { from: f.from, to: f.to };
+      break;
+    }
+  }
+  if (range === null) return axis;
+  const c = restrictedCache;
+  if (c !== null && c.axis === axis && c.from === range.from && c.to === range.to) return c.result;
+  const result = restrictAxis(axis, range.from, range.to);
+  restrictedCache = { axis, from: range.from, to: range.to, result };
+  return result;
 }

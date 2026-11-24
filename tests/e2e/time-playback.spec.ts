@@ -159,9 +159,23 @@ test.describe('時間の再生', () => {
     // 日付のないエッジは端点に従って薄くなる。
     await expect.poll(() => fadedEdges(page).count()).toBeGreaterThan(0);
     // 薄くしている理由が、図の上に文でも出る（消していないこと、件数が変わらないこと）。
+    // 図の窓の中に重ねた小さな文字（上の行は取らない）と、支援技術向けの詳しい文。
     const note = page.getByTestId('time-fade-note');
-    await expect(note).toContainText('薄く表示しています');
-    await expect(note).toContainText('件数と表は変わりません');
+    await expect(note).toContainText('薄く表示');
+    const canvasBox = await page.locator('.graph-canvas').boundingBox();
+    const noteBox = await note.boundingBox();
+    expect(canvasBox).not.toBeNull();
+    expect(noteBox).not.toBeNull();
+    if (canvasBox !== null && noteBox !== null) {
+      expect(noteBox.x).toBeGreaterThanOrEqual(canvasBox.x);
+      expect(noteBox.y).toBeGreaterThanOrEqual(canvasBox.y);
+      expect(noteBox.x + noteBox.width).toBeLessThanOrEqual(canvasBox.x + canvasBox.width + 1);
+      expect(noteBox.y + noteBox.height).toBeLessThanOrEqual(canvasBox.y + canvasBox.height + 1);
+    }
+    await expect(note).toHaveCSS('pointer-events', 'none');
+    const detail = page.getByTestId('time-fade-note-sr');
+    await expect(detail).toContainText('薄く表示しています');
+    await expect(detail).toContainText('件数と表は変わりません');
     // 件数（表示件数）とフィルタの数は変わらない。適用中の条件の行には時刻が加わるだけ。
     expect(await shownText()).toBe(countsBefore);
     await expect(conditions(page)).toContainText('フィルタ 0');
@@ -199,7 +213,7 @@ test.describe('時間の再生', () => {
     await expect.poll(() => fadedNodes(page).count()).toBe(cumulative);
   });
 
-  test('FR-TM-03: 年表のカーソルは時刻と連動して動き、適用中の条件の行の操作も同じ状態を使う', async ({
+  test('FR-TM-03: 年表のカーソルは時刻と連動して動き、適用中の条件の行には再生の項目が無い', async ({
     page,
   }) => {
     await loadSample(page);
@@ -213,14 +227,13 @@ test.describe('時間の再生', () => {
     await next.click();
     await expect.poll(async () => Number(await cursorLine.getAttribute('x1'))).toBeGreaterThan(x1);
 
-    // 適用中の条件の行に、時刻の文と小さな再生の操作がある。年表の再生と同じ状態を指す。
-    await expect(conditions(page)).toContainText('再生:');
-    await conditions(page).getByRole('button', { name: '再生', exact: true }).click();
-    await expect(pauseButton(page)).toBeVisible();
-    await conditions(page).getByRole('button', { name: '一時停止', exact: true }).click();
-    await expect(playButton(page)).toBeVisible();
-    // 条件の行の解除で、時刻が外れる。
-    await conditions(page).getByRole('button', { name: '時刻を解除' }).click();
+    // 適用中の条件の行には、再生のボタンも時刻の項目も無い（再生は表示だけを変えるので、条件ではない）。
+    await expect(conditions(page).getByRole('button', { name: '再生', exact: true })).toHaveCount(
+      0,
+    );
+    await expect(conditions(page)).not.toContainText('再生:');
+    // 時刻の解除は年表の操作に残っている。
+    await controls(page).getByRole('button', { name: '時刻を解除' }).click();
     await expect(cursorLine).toHaveCount(0);
   });
 
@@ -316,5 +329,110 @@ test.describe('時間の再生', () => {
     await include.uncheck();
     const plain = await svgOf();
     expect(plain).not.toContain('data-out-of-time');
+  });
+});
+
+/** 年表の描画の領域（ドラッグで範囲を選ぶ矩形）。 */
+function plot(page: Page): Locator {
+  return bottom(page).getByRole('application', { name: '年表の棒グラフ' }).locator('.tl-hit');
+}
+/** 年表の帯（適用中の時間フィルタ）の左右の端（SVG の座標）。 */
+async function bandEdges(page: Page): Promise<{ left: number; right: number }> {
+  const band = bottom(page).locator('.tl-band');
+  await expect(band).toBeAttached();
+  const x = Number(await band.getAttribute('x'));
+  const w = Number(await band.getAttribute('width'));
+  return { left: x, right: x + w };
+}
+async function cursorX(page: Page): Promise<number> {
+  return Number(await bottom(page).locator('.tl-time-cursor').getAttribute('x1'));
+}
+/** 描画の領域が動かなくなってから、左から from〜to（0〜1）をドラッグする。 */
+async function dragRange(page: Page, from: number, to: number): Promise<void> {
+  const target = plot(page);
+  await target.scrollIntoViewIfNeeded();
+  let prev = await target.boundingBox();
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(50);
+    const next = await target.boundingBox();
+    if (
+      prev !== null &&
+      next !== null &&
+      prev.x === next.x &&
+      prev.y === next.y &&
+      prev.width === next.width &&
+      prev.height === next.height
+    )
+      break;
+    prev = next;
+  }
+  const box = await target.boundingBox();
+  if (box === null) throw new Error('描画の領域が見えない');
+  const y = box.y + box.height / 2;
+  await page.mouse.move(box.x + box.width * from, y);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * ((from + to) / 2), y, { steps: 4 });
+  await page.mouse.move(box.x + box.width * to, y, { steps: 4 });
+  await page.mouse.up();
+}
+
+test.describe('時間の再生: 年表の範囲に限る', () => {
+  test('FR-TM-02: 範囲を選んでいる間は、コマ送りと終わりがその範囲の中に収まり、解除すると全体に戻る', async ({
+    page,
+  }) => {
+    await loadSample(page);
+    await dragRange(page, 0.4, 0.6);
+    const { left, right } = await bandEdges(page);
+    await expect(controls(page)).toContainText('選んだ範囲');
+    const next = controls(page).getByRole('button', { name: '次のコマ' });
+    // 先頭へ: 範囲の中の最初の区切り。
+    await next.click();
+    await expect.poll(() => cursorX(page)).toBeGreaterThanOrEqual(left - 0.5);
+    expect(await cursorX(page)).toBeLessThanOrEqual(right + 0.5);
+    // 何度でも進めても、範囲の終わりを超えない。
+    for (let i = 0; i < 40; i++) await next.click();
+    expect(await cursorX(page)).toBeLessThanOrEqual(right + 0.5);
+    expect(await cursorX(page)).toBeGreaterThan(right - (right - left) / 4);
+    // つまみの最大も範囲の中の区切りの数に限られる（全体より小さい）。
+    const slider = controls(page).getByRole('slider', { name: '時刻' });
+    const limitedMax = Number(await slider.getAttribute('max'));
+    // 範囲を解除すると全体に戻る。
+    await bottom(page).getByRole('button', { name: '範囲を解除' }).click();
+    await expect(controls(page)).not.toContainText('選んだ範囲');
+    await expect
+      .poll(async () => Number(await slider.getAttribute('max')))
+      .toBeGreaterThan(limitedMax);
+    await next.click();
+    await expect.poll(() => cursorX(page)).toBeGreaterThan(right);
+  });
+
+  test('FR-TM-02: 再生は範囲の始めから動き、範囲の終わりで止まる', async ({ page }) => {
+    await loadSample(page);
+    await dragRange(page, 0.4, 0.5);
+    const { left, right } = await bandEdges(page);
+    await controls(page).getByLabel('速度').selectOption('100');
+    await playButton(page).click();
+    // 再生は範囲の終わりに着くと止まる（ボタンが「再生」に戻る）。
+    await expect(playButton(page)).toBeVisible({ timeout: 15_000 });
+    expect(await cursorX(page)).toBeLessThanOrEqual(right + 0.5);
+    expect(await cursorX(page)).toBeGreaterThanOrEqual(right - (right - left) / 4);
+    // 終わりから再生し直すと、範囲の始めに戻る（全体の始めではない）。
+    await playButton(page).click();
+    await expect.poll(() => cursorX(page)).toBeLessThan(right);
+    expect(await cursorX(page)).toBeGreaterThanOrEqual(left - 0.5);
+  });
+
+  test('FR-TM-02: 時刻が範囲の外にあるとき、範囲を選ぶと時刻が範囲の端に収まる', async ({
+    page,
+  }) => {
+    await loadSample(page);
+    await seekRatio(page, 0.95);
+    await expect(bottom(page).locator('.tl-time-cursor')).toBeAttached();
+    const before = await cursorX(page);
+    await dragRange(page, 0.2, 0.4);
+    const { left, right } = await bandEdges(page);
+    expect(before).toBeGreaterThan(right);
+    await expect.poll(() => cursorX(page)).toBeLessThanOrEqual(right + 0.5);
+    expect(await cursorX(page)).toBeGreaterThanOrEqual(left - 0.5);
   });
 });

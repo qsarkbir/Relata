@@ -788,8 +788,10 @@ export const ja = {
   'time.noAxis': '日付がないため、再生できません。',
   'time.state.cumulative': '{time}まで（累積）',
   'time.state.window': '{range}（直近{years}年の窓）',
-  'time.conditions': '再生: {time}',
-  'time.conditions.hint': '再生は表示だけを変えます。絞り込みには年表の範囲選択を使います。',
+  'time.noteRestricted': '再生は選んだ範囲（{range}）の中だけで動きます。表示だけを変えます。',
+  'time.note.range':
+    '年表で範囲を選んでいる間は、再生の始点・終点・コマ送り・つまみ・終わりでの停止がその範囲に限られます。範囲を解除すると全体に戻ります。時刻が範囲の外にあるときは、範囲の端に寄せます。',
+  'time.fadeShort': '{time}・薄く表示 ノード {nodes}・エッジ {edges}',
   'time.fadeNote':
     '再生中の時刻 {time}: 時刻の外のノード {nodes} 件・エッジ {edges} 件を薄く表示しています（消してはいません。件数と表は変わりません）。',
   'table.target': '表の種類',
