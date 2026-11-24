@@ -80,6 +80,7 @@ export const ja = {
   'graph.zoomIn': '拡大',
   'graph.zoomOut': '縮小',
   'graph.fit': '全体を表示',
+  'graph.zoomDisabled': '表示するノードが無いため使えません',
   'graph.search': 'ノードを検索',
   'graph.highlight': '関係の強調',
   'graph.both': '入・出の両方',

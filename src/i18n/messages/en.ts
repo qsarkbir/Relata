@@ -83,6 +83,7 @@ export const en = {
   'graph.zoomIn': 'Zoom in',
   'graph.zoomOut': 'Zoom out',
   'graph.fit': 'Fit all',
+  'graph.zoomDisabled': 'Unavailable: no nodes are shown',
   'graph.search': 'Find a node',
   'graph.highlight': 'Highlight edges',
   'graph.both': 'Incoming and outgoing',
