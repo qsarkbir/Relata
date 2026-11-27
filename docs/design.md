@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 3.10（2026-11-27） |
+| 版 | 3.11（2026-11-27） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -91,6 +91,12 @@
 | D-59 | プロジェクトファイルの版 3（R-37。利用者の確認 2026-11-27）: `geo` のフィルタの追加で `formatVersion` を 3 に上げる（版 2 → 3 の移行は中身を変えない）。`view.geoSource`、`view.workspace.mainView`、`view.map`、`view.graph.bundling` は任意の項目。フェーズ 3 の間は版 3 を開発中とし、v0.3 の公開で確定する。v0.2 のアプリは版 3 のファイルを「新しい版」として開かない | D-24 の規則（判別共用体に要素を足すときは版を上げる）のため |
 | D-60 | 地図の書き出しと座標のないノード（R-38、FR-OUT-06、FR-MP-05）: 「書き出し」のダイアログに「地図」を足す。PNG は地図の Canvas を 1・2・4 倍で描き直し、タイルと帰属表示を画像に含める。SVG は d3-geo で簡易背景、ノード、エッジ、ラベル、凡例、出典表記を描き、タイルは含めない（その旨を示す）。地図の PDF はフェーズ 4 の候補。座標のないノードは地図の左下に「地図に載らないノード N 件」の一覧を出し、理由（座標の列が無い、欠損、範囲外）ごとに数える。片端が座標なしのエッジの件数も示す | 書き出した画像にもタイルの帰属表示が要るため。座標のないノードを黙って落とさないため |
 
+- **D-46・D-52・D-58・D-59 補足（T3-01b。2026-11-27）**:
+  - 座標の取り出しは `src/core/geo/`（`source.ts`、`bbox.ts`、`tileUrl.ts`）に置く。`nodeGeo(node, source, coverage?)` は座標か、座標なしの理由を返す。理由は 4 つ: `no-column`（その型のノードには座標が 1 つも無い）、`missing`（値が無い。io の読み込みは空欄・読めない値・範囲外を区別せず `geo` を付けないので、出どころが `geo` ならこれになる）、`invalid`（数として読めない、複数値など。属性の組のとき）、`out-of-range`（緯度 ±85.0511 を超える、経度 ±180 を超える）。属性の組の読み方は `extractGeoInputs`（T2-03）と同じ規則で、同じ結果になることをテストで確かめている（配置を `nodeGeo` に寄せるのは T3-03 以降）。`view.geoSource` が無く `view.graph.geoAttrs` の緯度・経度が両方あれば `attrs` として読み替える（`resolveGeoSource`）。
+  - **「座標を持つ型」はデータで判定する**（`geoSourceTypes`。schema は見ない。絞り込み前の全データで作る）: 出どころが `geo` なら点を 1 つでも持つノードがいる型、`attrs` なら緯度か経度の属性に欠損でない値（読めない値・範囲外を含む）を 1 つでも持つノードがいる型。対象外の型のノードは、欠損の値を持っていても `no-column`。空欄の座標は欠損（`unrecorded`）として読まれるので、型の定義や欠損の有無で判定すると、2 表で地名にだけ座標を書いたとき人物が全員除かれるため（レビューで再現）。
+  - **`geo` のフィルタは `source` を持つ**（`applyFilters(dataset, filterState)` が引数だけで決まるように。時間フィルタの `source` と同じ）。判定の順: `passTypes` の型は通す → 座標を持たない型は通す（D-21 (2) の「キーを持たない」と同じ。欠損の件数にも数えない）→ 対象の型の座標なしは `missing` の指定に従う（D-21 (3) の「数でない値は合わない」と違い、読めない値・範囲外も欠損と同じ扱い。FR-MP-05 の「地図に載らない」とそろえるため）→ 逆転した範囲（south > north）は何も通さない → 範囲は両端を含み、west > east は 180° をまたぐ範囲。座標を持つ型が 1 つも無いときは `checkFilterState` が `geo-no-coordinates` を返す。適用中の一覧には対象の型を示す（緯度か経度に値が 1 つ紛れただけで型全体が対象になるため）。
+  - **タイルの URL**（`checkTileUrl`、`stripTileKeys`）: `https:`、`{z}{x}{y}` が必須、ホストあり、空白・制御文字・userinfo なし。`{s}` は `subdomain-placeholder` として拒む（MapLibre が展開しないため）。鍵とみなす項目名は、大小と `_`・`-` を無視して末尾が `key`、`token`、`secret`、`signature`、`credential`、`password`、`passwd` のもの、および `sig`、`app_code`（`%` を復号し、前後の空白と末尾の `[]` を除いて判定）。`&` と `;` を区切りとし、残す項目は元の区切りでつなぐ。断片（`#` 以降）は保存しない。保存（`serializeProjectWithReport`。`serializeProject` もこれを通るので自動保存も同じ）で鍵を除き、`checkTileUrl` を通らない URL は空にする。除いた項目名は `customTiles.removedParams`（名前だけ。`=` の無い項目は固定の印 `(valueless)`。20 件・100 字まで）に保存し、開いた人に入れ直しを促す。URL が空なら保存しない。URL を編集したら一覧を消すのは画面の役目。
+  - **版 3**: `migrateV2ToV3` は版を上げるだけ。公開サンプルは版 2 のまま置き（移行で開ける）、v0.3 の公開時に版 3 で作り直す。`view.map` の読めない項目は既定に戻し、`unknown-field` の警告にする（壊れた `view.graph.bundling` も）。保存用の束ねる設定は `BundlingViewSettings`（`enabled`、`strength`〔既定 0.85〕、`style`〔`bands`／`overlay`〕）。`view.workspace.mainView` はメモリ上の型では必須、ファイルでは任意（無ければ `graph`）。
 - **D-35・D-41・D-42 補足（T2-05b、年表）**:
   - 区切りの算出は `src/core/time/bins.ts` の独立した関数（`TIME_BIN_WIDTHS`、`binCalendarOf`、`binStartYear`、`binDayRange`、`binsDayRange`）。区切りは**選んだ暦の年の整数倍**に合わせる（西暦なら 1500〜1509 年、ヒジュラ暦なら 900〜909 AH。100 年区切りは世紀ではなく 1500〜1599 年）。JDN を一定の日数で割らない（閏年や暦の長さの違いで年の境界がずれるため）。`both` は西暦で区切る（`inputCalendarOf` と同じ）。暦の換算は `getCalendar` 経由で、ユリウス暦などが `CalendarId` に加わっても変わらない。
   - 集計は `src/core/filter/timeline.ts` の `aggregateTimeline(dataset, target, ids, source, calendar, width)`。**日付の幅**は、`span` なら「開始の最も早い日から終了の最も遅い日まで」（終了が無い、または欠損なら開始の幅だけ。終わりを推測しない。ただし時間フィルタは終了が欠損の期間の終わりを +∞ とみなすので、開始より後の範囲で絞り込むとその要素は残る。年表の数え方と意図して違う。終了が開始より前の不整合な期間は、時間フィルタと同じくどの範囲とも重ならないものとして区切りに数えず、`inconsistent` として年代なしとは別に示す）、`attr` なら日付の値ごとの幅。要素は**幅と重なるすべての区切りに 1 回ずつ**数える（時間フィルタの「重なる」と同じ。区切りを選んで絞り込むと、時間フィルタが「重なる」のときに限り、数えた要素が残る。「収まる」でははみ出す要素が除かれる）。そのため棒の高さの合計は要素数と一致しない（画面の説明に書く）。日付の幅がすべて 1 つの区切りに収まる要素は `contained`、それ以外（幅が区切りをまたぐ）は斜線で示し、幅のある年代（FR-TM-04）を色だけに頼らず読めるようにする。
@@ -386,13 +392,16 @@ export type FilterDef =
   | { id: FilterId; kind: 'time';     target: Target; source: TimeSource; from?: DayNumber; to?: DayNumber; match: 'overlaps' | 'within'; missing: MissingPolicy }  // source は D-35。無い端は開いた端（D-35 の補足）
   | { id: FilterId; kind: 'text';     target: Target; query: string; matching: 'loose' | 'strict' }  // D-21
   | { id: FilterId; kind: 'nodeType'; include: NodeTypeId[] }
-  | { id: FilterId; kind: 'nodeSet'; include: NodeId[] }                                   // D-41
-  | { id: FilterId; kind: 'certainty'; target: Target; include: CertaintyKey[] };           // D-37
+  | { id: FilterId; kind: 'nodeSet'; include: NodeId[]; passTypes?: NodeTypeId[] }        // D-41
+  | { id: FilterId; kind: 'certainty'; target: Target; include: CertaintyKey[] }            // D-37
+  | { id: FilterId; kind: 'geo'; source: GeoSource; bbox: GeoBBox; missing: MissingPolicy; passTypes?: NodeTypeId[] };  // D-58。ノード専用
 
 export type Target = 'node' | 'edge';
 export type MissingPolicy = 'include' | 'exclude';
 export type TimeSource = { kind: 'span' } | { kind: 'attr'; attr: string };  // D-35
 export type CertaintyKey = Certainty | 'unspecified';                         // D-37
+export type GeoSource = { kind: 'geo' } | { kind: 'attrs'; lat: string; lon: string };  // D-46
+export type GeoBBox = { west: number; south: number; east: number; north: number };    // west > east は経度 180° をまたぐ
 /** ファセットの項目。値そのものか、理由つきの欠損（FR-FL-06） */
 export type CategoryKey = { kind: 'value'; value: string } | { kind: 'missing'; reason: MissingReason };
 
