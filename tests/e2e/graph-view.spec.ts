@@ -48,23 +48,82 @@ test('FR-VG-09/11: Workerで表示し検索・選択・向きの強調と拡大�
   for (const label of selectedLabel) expect(svg).toContain(label);
 });
 
+/** 復元の前後で比べる、描画に使った値。 */
+interface Placement {
+  /** svg の viewBox（枠の大きさを丸めた値）。 */
+  viewBox: string | null;
+  /** svg の data-zoom（保存した viewport の倍率）。 */
+  zoom: string | null;
+  /** ノードの中心の、svg の座標系での位置（viewport のパンと倍率を適用した後、枠の大きさに依存しない値）。 */
+  user: { x: number; y: number };
+  /** ノードの中心の、画面上の位置（図の枠の左上から）。 */
+  screen: { x: number; y: number };
+}
+
 /**
- * ノードが図の枠のどこに描かれているか（外接矩形の中心）を返す。
+ * ノードの描画位置を、svg の座標系と画面の両方で返す。
  *
- * 【なぜ】transform の文字列は、ラベルの有無などで図の範囲が変わると、補正のために値が変わる。
- * 利用者に見える位置そのものを比べる。
+ * 【なぜ】復元の正しさは「保存した viewport と配置が戻ったか」で確かめる。それは svg の座標系での位置
+ * （`<g>` の translate/scale を適用した値）に現れ、枠の大きさに左右されない。画面上の位置は、
+ * 周りの部品の幅や高さが小数のpxだけ変わると、viewBox を整数に丸めた分と合わせて動くため、
+ * 補助の確認（半ピクセルの許容）に使う。
  * @param page - ページ
  * @param id - ノードの ID
- * @returns 枠の左上を原点とする中心
+ * @returns viewBox・倍率・svg 座標での中心・画面での中心
  */
-async function nodeCenter(page: Page, id: string): Promise<{ x: number; y: number }> {
-  const box = await page
-    .locator(`.graph-canvas #graph-view-nodes > [data-id="${id}"]`)
-    .boundingBox();
-  const frame = await page.getByRole('img', { name: 'ネットワーク図' }).boundingBox();
-  if (box === null || frame === null) throw new Error('node box');
-  // 【なぜ】周りのパネルの幅で図の枠ごと動くことがあるので、枠の左上からの位置で比べる。
-  return { x: box.x + box.width / 2 - frame.x, y: box.y + box.height / 2 - frame.y };
+async function placement(page: Page, id: string): Promise<Placement> {
+  const result = await page.evaluate((nodeId) => {
+    const svg = document.querySelector('.graph-canvas svg');
+    const group = svg?.querySelector(':scope > g');
+    const node = document.querySelector(`.graph-canvas #graph-view-nodes > [data-id="${nodeId}"]`);
+    if (!(svg instanceof SVGSVGElement) || !(group instanceof SVGGElement)) return null;
+    if (!(node instanceof SVGGraphicsElement)) return null;
+    const bbox = node.getBBox();
+    // 【なぜ】getBBox は <g> の内側の座標。親の transform（translate と scale）を掛けて svg の座標にする。
+    const m = group.transform.baseVal.consolidate()?.matrix;
+    if (m === undefined) return null;
+    const cx = bbox.x + bbox.width / 2;
+    const cy = bbox.y + bbox.height / 2;
+    const rect = node.getBoundingClientRect();
+    const frameRect = svg.getBoundingClientRect();
+    return {
+      viewBox: svg.getAttribute('viewBox'),
+      zoom: svg.getAttribute('data-zoom'),
+      user: { x: m.a * cx + m.e, y: m.d * cy + m.f },
+      screen: {
+        x: rect.x + rect.width / 2 - frameRect.x,
+        y: rect.y + rect.height / 2 - frameRect.y,
+      },
+    };
+  }, id);
+  if (result === null) throw new Error('placement');
+  return result;
+}
+
+/**
+ * 復元後の描画位置が、保存前と一致することを確かめる。
+ *
+ * - viewBox・data-zoom・svg 座標での位置は、厳密に（1e-6 の誤差まで）一致するはず。
+ * - 画面上の位置は 0.5px 未満の差を許す。【なぜ】CI（別のフォント）では、再読み込みの前後で周りの部品の
+ *   高さが小数のpx（0.1px 程度）変わることがあり、枠の大きさが小数で変わる。viewBox は枠を整数に
+ *   丸めた値なので、svg が縮尺を 0.0002 倍ほど変えて描き、ノードの画面位置が 0.05px ずれる。
+ *   復元の失敗（パンや倍率が戻らない）は数px以上のずれになるので、0.5px で見分けられる。
+ * @param page - ページ
+ * @param before - 保存前の値
+ */
+async function expectRestored(page: Page, before: Placement): Promise<void> {
+  await expect
+    .poll(async () => {
+      const after = await placement(page, 'p1');
+      return {
+        zoom: after.zoom === before.zoom,
+        userX: Math.abs(after.user.x - before.user.x) < 1e-6,
+        userY: Math.abs(after.user.y - before.user.y) < 1e-6,
+        screenX: Math.abs(after.screen.x - before.screen.x) < 0.5,
+        screenY: Math.abs(after.screen.y - before.screen.y) < 0.5,
+      };
+    })
+    .toEqual({ zoom: true, userX: true, userY: true, screenX: true, screenY: true });
 }
 
 test('FR-PJ-01/02 / NFR-08: 配置・固定点・拡大と表示設定をファイルと自動保存から復元する', async ({
@@ -80,7 +139,7 @@ test('FR-PJ-01/02 / NFR-08: 配置・固定点・拡大と表示設定をファ�
   await page.getByLabel('ラベル', { exact: true }).selectOption('selected');
   await page.getByRole('button', { name: '拡大', exact: true }).click();
   const zoom = await page.getByRole('img', { name: 'ネットワーク図' }).getAttribute('data-zoom');
-  const center = await nodeCenter(page, 'p1');
+  const before = await placement(page, 'p1');
   const download = page.waitForEvent('download');
   await saveProjectFile(page);
   const file = await download;
@@ -97,8 +156,7 @@ test('FR-PJ-01/02 / NFR-08: 配置・固定点・拡大と表示設定をファ�
     'data-zoom',
     zoom ?? '',
   );
-  await expect.poll(async () => (await nodeCenter(page, 'p1')).x).toBeCloseTo(center.x, 1);
-  await expect.poll(async () => (await nodeCenter(page, 'p1')).y).toBeCloseTo(center.y, 1);
+  await expectRestored(page, before);
   await openProject(page, {
     name: 'saved.json',
     mimeType: 'application/json',
@@ -109,8 +167,7 @@ test('FR-PJ-01/02 / NFR-08: 配置・固定点・拡大と表示設定をファ�
     'data-zoom',
     zoom ?? '',
   );
-  await expect.poll(async () => (await nodeCenter(page, 'p1')).x).toBeCloseTo(center.x, 1);
-  await expect.poll(async () => (await nodeCenter(page, 'p1')).y).toBeCloseTo(center.y, 1);
+  await expectRestored(page, before);
 });
 
 test('FR-VG-11 / NFR-08: ドラッグした位置を固定し、ファイルと再配置で保つ', async ({ page }) => {
