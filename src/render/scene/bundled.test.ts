@@ -252,7 +252,9 @@ describe('FR-VG-13: 簡易版（overlay）', () => {
     const a = scene.edges.find((e) => e.id === 'a');
     const b = scene.edges.find((e) => e.id === 'b');
     expect(a?.opacity).toBeCloseTo(0.3, 6);
-    expect((b?.width ?? 0) / (a?.width ?? 1)).toBeCloseTo(2, 6);
+    // 割り当てが無いときは、束ねないときと同じ既定の幅 1.5 px（束のスケールではない）。
+    expect(a?.width).toBeCloseTo(1.5, 6);
+    expect(b?.width).toBeCloseTo(1.5, 6);
     expect(a?.path[0]?.type).toBe('M');
     expect(a?.path.length).toBeGreaterThan(5); // 束ねた折れ線のまま
   });
@@ -455,5 +457,84 @@ describe('FR-VG-13: 無向の車線・幅のなめらかなつなぎ・往復の
     const scene = buildScene(f.graph, f.positions, {}, { zoom: 0.1, bundled: f.bundled });
     const src = scene.nodes.find((n) => n.id === 'f:s');
     expect(mid(ribbonOf(scene, 'f')).cy).toBeCloseTo(src?.y ?? NaN, 6);
+  });
+});
+
+describe('FR-VG-13: レビューの修正', () => {
+  const specs: readonly Spec[] = [
+    ['a', 0, 0, 1000, 0, false, 1],
+    ['b', 0, 500, 1000, 500, false, 4],
+  ];
+  it('簡易版の線の太さは、割り当ての widths（束ねないときと同じ幅）で決まる', () => {
+    const f = fixture(specs);
+    const widths = new Map([
+      ['a', { width: 0.5, missing: false }],
+      ['b', { width: 2.5, missing: false }],
+    ]);
+    const scene = buildScene(
+      f.graph,
+      f.positions,
+      { widths },
+      { zoom: 0.1, bundled: { ...f.bundled, style: 'overlay' } },
+    );
+    expect(scene.edges.find((e) => e.id === 'a')?.width).toBeCloseTo(0.5, 6);
+    expect(scene.edges.find((e) => e.id === 'b')?.width).toBeCloseTo(2.5, 6);
+  });
+
+  it('W が 0 の区間へ、移動平均で幅がはみ出さない', () => {
+    const f = fixture(specs);
+    const bg = f.bundled.graph;
+    const w = Float64Array.from(bg.weight);
+    // a の前半の区間の束だけ W を残し、後半の束は 0 にする。
+    const segs = Array.from(
+      bg.segmentBundle.subarray(bg.segmentStart[0] ?? 0, bg.segmentStart[1] ?? 0),
+    );
+    segs.forEach((b, k) => {
+      if (k >= 4) w[b] = 0;
+    });
+    const scene = buildScene(
+      f.graph,
+      f.positions,
+      {},
+      { zoom: 0.1, bundled: { ...f.bundled, weights: w } },
+    );
+    const p = ribbonOf(scene, 'a').polygon;
+    const n = p.length / 2;
+    for (let i = 5; i < n; i++) {
+      const d = Math.hypot(
+        (p[i]?.x ?? 0) - (p[2 * n - 1 - i]?.x ?? 0),
+        (p[i]?.y ?? 0) - (p[2 * n - 1 - i]?.y ?? 0),
+      );
+      expect(d).toBeLessThan(1e-6);
+    }
+  });
+
+  it('選んだエッジは、帯の上に highlight の細い線で強調する（含めない指定では出さない）', () => {
+    const f = fixture(specs);
+    const on = buildScene(
+      f.graph,
+      f.positions,
+      {},
+      { bundled: f.bundled, selectedEdgeKeys: new Set(['b']), includeSelection: true },
+    );
+    expect(on.edges.map((e) => [e.id, e.role])).toEqual([['b', 'highlight']]);
+    const off = buildScene(
+      f.graph,
+      f.positions,
+      {},
+      { bundled: f.bundled, selectedEdgeKeys: new Set(['b']) },
+    );
+    expect(off.edges).toEqual([]);
+  });
+
+  it('矢じりの polygon にも、エッジのキーの data-id が付く', () => {
+    const f = fixture([['a', 0, 0, 1000, 0, true, 1]]);
+    const scene = buildScene(
+      f.graph,
+      f.positions,
+      {},
+      { zoom: 0.1, directedStyle: 'arrow', bundled: f.bundled },
+    );
+    expect(renderSvg(scene)).toMatch(/<polygon id="bundle-0-head" data-id="a" /);
   });
 });

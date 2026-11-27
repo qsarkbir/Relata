@@ -54,6 +54,8 @@ export interface SceneBundling {
    * 省略、または長さが合わないときは `graph.weight`（全期間）を使う。W が 0 の束は描かない。
    * 【なぜ】長さが合わないときに例外にしない: 束ねる計算のやり直しの途中で古い W が残っても、図を壊さないため。
    */
+  // 【TS】`ArrayLike<number>` は「length と添字で読める数の並び」。`Float64Array` も普通の配列も渡せる
+  //       （読むだけなので、書き換えられる型は要らない）。
   readonly weights?: ArrayLike<number>;
   /** 太さのスケール。既定は平方根（D-08）。 */
   readonly scale?: ScaleKind;
@@ -119,6 +121,8 @@ export interface BundleDrawEdge {
   readonly attrMissing: boolean;
   /** 選んだノードに関わるエッジか（選択の強調を図に含めるときだけ true）。 */
   readonly highlighted: boolean;
+  /** 束ねないときと同じエッジの幅（px。割り当ての `widths` で決まる）。簡易版の線の太さに使う。 */
+  readonly width: number;
 }
 
 /** `layoutBundled` の選択肢（`buildScene` から渡す）。 */
@@ -134,6 +138,7 @@ export interface BundleLayout {
   /** 簡易版の線、強調の線、欠損の破線。シーンの `edges` に足す。 */
   readonly lines: readonly SceneEdge[];
   /** この層で描いたエッジのキー。通常のエッジとしては描かない。 */
+  // 【TS】`ReadonlySet<T>` は、読むだけの Set（`add` や `delete` が型に無い）。受け取った側が書き換えない約束。
   readonly handled: ReadonlySet<string>;
 }
 
@@ -160,6 +165,8 @@ function finitePositive(v: number | undefined, fallback: number): number {
  * resolveBundleWidthScale({ paths, graph }).widthOf(4); // 最大が 16 なら sqrt(4/16) × 14 = 7
  */
 export function resolveBundleWidthScale(
+  // 【TS】`Pick<T, 'a' | 'b'>` は、型 T から指定した項目だけを取り出した型。この関数が読む項目だけを
+  //       要求するので、`SceneBundling` 全体（paths など）を渡さなくてもテストや凡例から呼べる。
   input: Pick<SceneBundling, 'graph' | 'scale' | 'maxWidth' | 'minWidth' | 'maxWeight'>,
 ): BundleWidthScale {
   const kind = input.scale ?? 'sqrt';
@@ -217,6 +224,7 @@ export function bundleLegendItems(
   return bundleLegendSamples(scale).map((s) => ({
     label: label(s.weight),
     fill: color,
+    // 【TS】`as const` は 'line' を string に広げず、リテラル型 'line' のまま保つ（`LegendMark` に合わせるため）。
     mark: 'line' as const,
     lineWidth: s.width,
   }));
@@ -440,7 +448,9 @@ export function layoutBundled(input: SceneBundling, options: BundleLayoutOptions
     const segBundles = segmentBundlesOf(graph, path.id);
     if (segBundles.length !== n - 1) continue;
 
-    const ownWidth = scale.widthOf(graph.edgeWeights[e] ?? 0);
+    // 【なぜ】簡易版は、束ねないときと同じエッジごとの幅（割り当ての `widths`、既定 0.5〜2.5 px）で描く。
+    // 凡例の「エッジの太さ」と一致させるため。帯は、束のスケール（0〜maxWidth px）で描く。
+    const ownWidth = style === 'overlay' ? info.width : scale.widthOf(graph.edgeWeights[e] ?? 0);
     // 区間ごとの幅（px）と、往復のずらし（px）。
     const segWidth: number[] = [];
     const segShift: number[] = [];
@@ -456,8 +466,16 @@ export function layoutBundled(input: SceneBundling, options: BundleLayoutOptions
     // 【なぜ】束は先着順の代表点で分けるので、扇の部分で W が区間ごとに上下する（例 147, 77, 106, 74）。
     // 帯の縁がギザギザにならないよう、帯の幅とずらしを 5 区間の移動平均でなめらかにする（W 一定の芯は変わらない）。
     if (style === 'bands') {
+      const raw = segWidth.slice();
       smooth(segWidth);
       smooth(segShift);
+      // 【なぜ】元の幅が 0（再生で W が 0 の区間）は 0 に戻す。平均が 0 の区間へはみ出さないように。
+      raw.forEach((w, k) => {
+        if (w === 0) {
+          segWidth[k] = 0;
+          segShift[k] = 0;
+        }
+      });
     }
     // 点の半幅とずらしは、隣り合う区間の平均（端は片側）。
     const avg = (a: readonly number[], i: number): number => {
@@ -634,6 +652,7 @@ function overlayLine(
     target: info.targetId,
     color,
     opacity,
+    // 【TS】`as const`: 同上。'overlay' のまま保たないと、`SceneEdge.role` の型に合わない。
     role: 'overlay' as const,
   };
   const first = vs[0];

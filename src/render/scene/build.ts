@@ -99,6 +99,11 @@ export interface BuildSceneOptions {
   readonly zoom?: number;
   /** 選択中のノード。 */
   readonly selected?: ReadonlySet<NodeId>;
+  /**
+   * 選択中のエッジ（グラフのエッジのキー）。束ねた図では、選んだエッジを帯の上に細い線（`role: 'highlight'`）で
+   * 強調する。`includeSelection` が true のときだけ（ノードの選択と同じ）。
+   */
+  readonly selectedEdgeKeys?: ReadonlySet<string>;
   /** 選択の強調を図に含めるか。既定は含めない（D-31）。 */
   readonly includeSelection?: boolean;
   /**
@@ -332,7 +337,13 @@ export function buildScene(
         target: { x: t.x, y: t.y, extent: shapeExtent(t.shape, t.r) + t.strokeWidth / 2 },
         dashed: encoding.widths?.get(key)?.missing === true || flagged,
         attrMissing: flagged,
-        highlighted: showSel && (selected.has(s.id) || selected.has(t.id)),
+        highlighted:
+          showSel &&
+          (selected.has(s.id) || selected.has(t.id) || options.selectedEdgeKeys?.has(key) === true),
+        width: (() => {
+          const w = encoding.widths?.get(key)?.width;
+          return w !== undefined && Number.isFinite(w) ? Math.max(0, w) : DEFAULT_EDGE_WIDTH;
+        })(),
       });
     });
     const layout = layoutBundled(options.bundled, {

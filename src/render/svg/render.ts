@@ -212,7 +212,15 @@ function bundleSvg(b: SceneBundle, prefix: string): string[] {
           '/>',
       );
       if (r.head !== undefined)
-        items.push('<polygon id="' + key + '-head" points="' + pts(r.head) + '"/>');
+        items.push(
+          '<polygon id="' +
+            key +
+            '-head" data-id="' +
+            escapeXml(r.edgeId) +
+            '" points="' +
+            pts(r.head) +
+            '"/>',
+        );
     }
     return items.length === 0
       ? []
