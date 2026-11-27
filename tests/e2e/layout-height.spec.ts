@@ -42,7 +42,8 @@ test('FR-UI-02: D-49 900 px の窓で、年表の棒グラフは見え、図は 
   await loadedNotice(page).getByRole('button', { name: '閉じる' }).click();
   await expect
     .poll(async () => (await page.locator('[data-main-frame]').boundingBox())?.height ?? 0)
-    .toBeGreaterThanOrEqual(290);
+    // 【なぜ】中央の「グラフ｜地図」のタブの行（約 36 px。D-48）の分だけ、以前の 290 px より低い。知らせの分だけ高くなることを確かめる。
+    .toBeGreaterThan((canvas?.height ?? 0) + 10);
   await expect(page.locator('.timeline-chart')).toBeInViewport({ ratio: 0.9 });
 });
 

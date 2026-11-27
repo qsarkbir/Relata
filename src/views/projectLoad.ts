@@ -1,6 +1,7 @@
 import type {
   DisplayState,
   GraphViewState,
+  MapViewState,
   TimelineViewState,
   TimeStoreState,
   WorkspaceViewState,
@@ -14,6 +15,7 @@ import {
   displayStore,
   filterStore,
   graphViewStore,
+  mapViewStore,
   timelineStore,
   timeStore,
   workspaceStore,
@@ -29,6 +31,7 @@ export interface ProjectLoadTargets {
   readonly display?: StoreApi<DisplayState>;
   readonly timeline?: StoreApi<TimelineViewState>;
   readonly time?: StoreApi<TimeStoreState>;
+  readonly map?: StoreApi<MapViewState>;
   readonly data: StoreApi<DataState>;
   readonly filter: StoreApi<FilterStoreState>;
   readonly notice: StoreApi<ProjectNoticeState>;
@@ -41,6 +44,7 @@ const DEFAULT_TARGETS: ProjectLoadTargets = {
   display: displayStore,
   timeline: timelineStore,
   time: timeStore,
+  map: mapViewStore,
   filter: filterStore,
   notice: projectNoticeStore,
 };
@@ -82,6 +86,7 @@ export function loadProjectText(
     ...(targets.display === undefined ? {} : { display: targets.display }),
     ...(targets.timeline === undefined ? {} : { timeline: targets.timeline }),
     ...(targets.time === undefined ? {} : { time: targets.time }),
+    ...(targets.map === undefined ? {} : { map: targets.map }),
   });
   targets.notice.getState().setReport({
     source,

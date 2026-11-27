@@ -6,7 +6,7 @@ import { createGraphMeasure } from './graphMeasure';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { toSnapshot } from '../core/graph';
-import { DEFAULT_GRAPH_VIEW } from '../core/project';
+import { DEFAULT_GRAPH_VIEW, resolveGeoSource } from '../core/project';
 import type { GraphViewSettings } from '../core/project';
 import type { NodeId } from '../core/model';
 import { toNodeId } from '../core/model';
@@ -21,7 +21,7 @@ import { InfoTip } from './ui/InfoTip';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Field } from './ui/Field';
 import { LayoutMethodControls, NoCoordinatesNote } from './LayoutMethodControls';
-import { geoInputsFor, resolveGeoSelection } from './geoInputs';
+import { geoInputsFor, needsGeoChoice } from './geoInputs';
 import { GraphSearch } from './GraphSearch';
 import { getNumberFormat } from './intl';
 import { StatusMessage } from './ui/StatusMessage';
@@ -30,6 +30,7 @@ import { Chip } from './ui/Chip';
 import {
   graphViewStore,
   layoutController,
+  mapViewStore,
   selectedGraphEdges,
   selectionStore,
   uiStore,
@@ -309,13 +310,11 @@ export function GraphView() {
     const current = graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW;
     const savedIds = new Set(current.positions.map((p) => p.id));
     const allSaved = graph.nodes().every((id) => savedIds.has(toNodeId(id)));
-    // 【なぜ】地理座標は緯度・経度の両方が選ばれるまで計算しない（それまでの配置を上書きしない）。
-    const geoSelection =
-      current.layout === 'geo' && dataset !== null
-        ? resolveGeoSelection(dataset, current.geoAttrs)
-        : null;
+    // 【なぜ】座標の出どころは地図と共通（`view.geoSource`。D-46）。どのノードにも座標が取り出せない間
+    //   （出どころが `geo` なのに `geo` を持つノードが無い）は計算せず、前の配置を上書きしない。
+    const geoSourceNow = resolveGeoSource(mapViewStore.getState().geoSource, current);
     const waitingForGeo =
-      geoSelection !== null && (geoSelection.lat === undefined || geoSelection.lon === undefined);
+      current.layout === 'geo' && dataset !== null && needsGeoChoice(dataset, geoSourceNow);
     if (waitingForGeo) handledIteration.current = iteration;
     if (waitingForGeo || (allSaved && iteration === handledIteration.current)) {
       queueMicrotask(() => {
@@ -344,7 +343,7 @@ export function GraphView() {
         kind === 'layered'
           ? { columnOrder: current.columnOrder ?? [] }
           : kind === 'geo' && dataset !== null
-            ? { geo: geoInputsFor(dataset, graph, current.geoAttrs) }
+            ? { geo: geoInputsFor(dataset, graph, geoSourceNow) }
             : {};
       const outcome = await layoutController.run({
         job: {
@@ -503,6 +502,9 @@ export function GraphView() {
     if (!hasFigure || element === null || typeof ResizeObserver === 'undefined') return;
     // 【なぜ】枠の大きさ（窓の大きさ、下の段の高さ、左右のパネルの開閉）を測り、viewBox と全体表示に使う。
     const observer = new ResizeObserver(() => {
+      // 【なぜ】「グラフ｜地図」の切り替えで隠れると枠の大きさは 0 になる。0 を測った値として採ると、
+      //   戻ったときに viewBox が一瞬 1×1 になり、倍率や全体表示の計算が乱れる。隠れている間は前の値を保つ（D-48）。
+      if (element.clientWidth === 0 && element.clientHeight === 0) return;
       const width = Math.max(1, Math.round(element.clientWidth));
       const height = Math.max(1, Math.round(element.clientHeight));
       canvasRef.current = { width, height };

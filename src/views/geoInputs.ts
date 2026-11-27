@@ -1,5 +1,7 @@
-import { extractGeoInputs, type GeoInput } from '../core/layout';
+import type { GeoInput } from '../core/layout';
 import type { RelataGraph } from '../core/graph';
+import { geoSourceTypes, nodeGeo } from '../core/geo';
+import type { GeoSource } from '../core/geo';
 import type { AttributeDef, Dataset } from '../core/model';
 import type { GraphViewSettings } from '../core/project';
 
@@ -59,20 +61,53 @@ export function resolveGeoSelection(
 }
 
 /**
- * 表示中のノードの、地理座標の入力を作る（FR-VG-02）。緯度・経度の両方が選ばれていなければ全ノードが座標なし。
+ * 地理座標の配置の画面（緯度・経度の選択欄）に出す、選択中の属性の組。
+ *
+ * 【なぜ】座標の出どころ（`view.geoSource`）が地図と共通の設定で、選択欄はその `attrs` を編集する。
+ * 出どころが明示されていれば、それが優先する（`attrs` ならその組、`geo` なら「選んでいない」）。
+ * 無ければ、旧版の `view.graph.geoAttrs`（片方だけの選択も保てる）を見る（D-46）。
+ *
+ * @param geoSource - 保存された出どころ（無ければ undefined）
+ * @param geoAttrs - `view.graph.geoAttrs`
+ * @returns 選択欄に出す緯度・経度のキー
+ */
+export function effectiveGeoAttrs(
+  geoSource: GeoSource | undefined,
+  geoAttrs: GraphViewSettings['geoAttrs'],
+): GraphViewSettings['geoAttrs'] {
+  if (geoSource === undefined) return geoAttrs;
+  return geoSource.kind === 'attrs' ? { lat: geoSource.lat, lon: geoSource.lon } : undefined;
+}
+
+/**
+ * 出どころが 1 つの座標も取り出せない状態か（地理座標の配置を計算せず、選ぶよう促す状態）。
+ *
+ * 【なぜ】出どころが `geo`（既定）で、どの型のノードにも `geo` が無いデータ（座標を属性の列として持つデータ）は、
+ * 属性の組を選ぶまで配置できない。この間は配置を計算せず、前の配置を上書きしない。
+ *
+ * @param dataset - 元のデータ
+ * @param source - 座標の出どころ
+ * @returns 選ぶ必要があるなら true
+ */
+export function needsGeoChoice(dataset: Dataset, source: GeoSource): boolean {
+  return source.kind === 'geo' && geoSourceTypes(dataset, source).size === 0;
+}
+
+/**
+ * 表示中のノードの、地理座標の入力を作る（FR-VG-02）。座標は地図と同じ出どころ・同じ関数（core の `nodeGeo`）で取り出す。
+ * 座標の取り出せないノードは `point: null`（座標なしの列に置く）。
  *
  * @param dataset - 元のデータ
  * @param graph - 表示中のグラフ（射影・絞り込み後）
- * @param geoAttrs - 緯度・経度の属性のキー
+ * @param source - 座標の出どころ
  * @returns ノードごとの入力
  */
-export function geoInputsFor(
-  dataset: Dataset,
-  graph: RelataGraph,
-  geoAttrs: GraphViewSettings['geoAttrs'],
-): GeoInput[] {
-  const shown = dataset.nodes.filter((n) => graph.hasNode(n.id));
-  const { lat, lon } = resolveGeoSelection(dataset, geoAttrs);
-  if (lat === undefined || lon === undefined) return shown.map((n) => ({ id: n.id, point: null }));
-  return extractGeoInputs(shown, lat, lon);
+export function geoInputsFor(dataset: Dataset, graph: RelataGraph, source: GeoSource): GeoInput[] {
+  const coverage = geoSourceTypes(dataset, source);
+  return dataset.nodes
+    .filter((n) => graph.hasNode(n.id))
+    .map((n) => {
+      const r = nodeGeo(n, source, coverage);
+      return { id: n.id, point: r.kind === 'point' ? { lat: r.lat, lon: r.lon } : null };
+    });
 }

@@ -6,6 +6,7 @@ import {
   dataStore,
   displayStore,
   filterStore,
+  mapViewStore,
   selectionStore,
   timelineStore,
   timeStore,
@@ -16,6 +17,7 @@ import type {
   DataState,
   DisplayState,
   FilterStoreState,
+  MapViewState,
   SelectionState,
   TimelineViewState,
   TimeStoreState,
@@ -96,6 +98,16 @@ export function useProjectNotice<T>(selector: (s: ProjectNoticeState) => T): T {
  */
 export function useWorkspaceView<T>(selector: (s: WorkspaceViewState) => T): T {
   return useStore(workspaceStore, selector);
+}
+
+/**
+ * mapViewStore（地図の設定と座標の出どころ）の一部を購読する。
+ *
+ * @param selector - 取り出す値を選ぶ関数
+ * @returns 選んだ値
+ */
+export function useMapView<T>(selector: (s: MapViewState) => T): T {
+  return useStore(mapViewStore, selector);
 }
 
 /**

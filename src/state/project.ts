@@ -7,6 +7,8 @@ import { selectFilterState } from './filterStore';
 import type { ProjectView, ProjectParts } from '../core/project';
 import type { GraphViewState } from './graphViewStore';
 import type { WorkspaceViewState } from './workspaceStore';
+import type { MapViewState } from './mapViewStore';
+import { geoSourceToSave, isDefaultMapView } from './mapViewStore';
 import type { TimelineViewState } from './timelineStore';
 import { isDefaultTimeline } from './timelineStore';
 import { DEFAULT_TABLE_VIEW, DEFAULT_WORKSPACE } from '../core/project';
@@ -43,6 +45,8 @@ export interface ViewTargets {
   readonly timeline?: StoreApi<TimelineViewState>;
   /** 時間の再生の設定（FR-TM-02）。再生中かどうかは保存しない。 */
   readonly time?: StoreApi<TimeStoreState>;
+  /** 地図の設定と座標の出どころ（D-46、D-59）。渡したときだけ保存・復元の対象にする。 */
+  readonly map?: StoreApi<MapViewState>;
 }
 
 /**
@@ -65,6 +69,11 @@ export function takeSnapshot(
   const ws = targets.workspace?.getState();
   const timeline = targets.timeline?.getState().timeline;
   const time = targets.time === undefined ? undefined : selectTimeSettings(targets.time.getState());
+  const mapState = targets.map?.getState();
+  const geoSource =
+    mapState === undefined
+      ? undefined
+      : geoSourceToSave(mapState.geoSource, graphView ?? undefined);
   return {
     dataset,
     importSettings,
@@ -83,6 +92,9 @@ export function takeSnapshot(
       ...(timeline === undefined || isDefaultTimeline(timeline) ? {} : { timeline }),
       // 【なぜ】再生中かどうかは保存しない（開いた直後に動き出さないため）。既定と同じなら書かない。
       ...(time === undefined || isDefaultTimeSettings(time) ? {} : { time }),
+      // 【なぜ】地図の設定と座標の出どころも、既定と同じなら書かない（D-59。任意の項目）。
+      ...(mapState === undefined || isDefaultMapView(mapState.map) ? {} : { map: mapState.map }),
+      ...(geoSource === undefined ? {} : { geoSource }),
     },
   };
 }
@@ -118,4 +130,9 @@ export function applySnapshot(
     .setCalendar(snapshot.view.display?.calendar ?? DEFAULT_CALENDAR_DISPLAY);
   targets.timeline?.getState().reset(snapshot.view.timeline);
   targets.time?.getState().reset(snapshot.view.time);
+  // 【なぜ】項目が無いファイル（版 2 以前）は既定に戻す（前のプロジェクトの背景や表示範囲を残さない）。
+  targets.map?.getState().reset({
+    ...(snapshot.view.map === undefined ? {} : { map: snapshot.view.map }),
+    ...(snapshot.view.geoSource === undefined ? {} : { geoSource: snapshot.view.geoSource }),
+  });
 }

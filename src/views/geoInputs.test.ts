@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Dataset } from '../core/model';
-import { toNodeTypeId } from '../core/model';
-import { geoCandidates } from './geoInputs';
+import { toNodeId, toNodeTypeId } from '../core/model';
+import { DEFAULT_FILTER_STATE, toFilterId } from '../core/filter';
+import type { FilterState } from '../core/filter';
+import { DEFAULT_GRAPH_OPTIONS } from '../core/graph';
+import { getNetwork } from '../state';
+import { effectiveGeoAttrs, geoCandidates, geoInputsFor, needsGeoChoice } from './geoInputs';
 
 const person = toNodeTypeId('person');
 const city = toNodeTypeId('city');
@@ -24,5 +28,88 @@ describe('FR-VG-02: 地理座標の候補の属性', () => {
     };
     // 数値の属性を先に並べ、日付とエッジの属性は除く。
     expect(geoCandidates(dataset).map((a) => a.key)).toEqual(['lat', 'name']);
+  });
+});
+
+describe('FR-VG-02・D-46: 地理座標の入力は core の nodeGeo を通す', () => {
+  const text = (v: string) => ({ kind: 'value' as const, value: v });
+  const dataset: Dataset = {
+    graphMode: 'directed',
+    nodeTypes: [],
+    nodes: [
+      {
+        id: toNodeId('a'),
+        type: person,
+        label: 'a',
+        attrs: {},
+        geo: { kind: 'point', lat: 33.3, lon: 44.4 },
+      },
+      {
+        id: toNodeId('b'),
+        type: person,
+        label: 'b',
+        attrs: {},
+        geo: { kind: 'missing', reason: 'unrecorded' },
+      },
+      {
+        id: toNodeId('c'),
+        type: person,
+        label: 'c',
+        attrs: { Lat: text('37.9'), Lon: text('-4.8') },
+      },
+      { id: toNodeId('d'), type: person, label: 'd', attrs: { Lat: text('不明'), Lon: text('1') } },
+    ],
+    edges: [],
+    schema: [],
+    meta: { title: 't' },
+  };
+  const show: FilterState = { ...DEFAULT_FILTER_STATE, showIsolated: true };
+  const graph = getNetwork(dataset, show, DEFAULT_GRAPH_OPTIONS).graph;
+
+  it('FR-VG-02: 出どころが geo なら、読み込みで入れた GraphNode.geo を使う（座標が無いノードは null）', () => {
+    const r = geoInputsFor(dataset, graph, { kind: 'geo' });
+    expect(r.map((i) => [i.id, i.point])).toEqual([
+      ['a', { lat: 33.3, lon: 44.4 }],
+      ['b', null],
+      ['c', null],
+      ['d', null],
+    ]);
+  });
+
+  it('FR-VG-02: 出どころが属性の組なら、数として読める値だけを使う（不明などは座標なし）', () => {
+    const r = geoInputsFor(dataset, graph, { kind: 'attrs', lat: 'Lat', lon: 'Lon' });
+    expect(r.map((i) => [i.id, i.point])).toEqual([
+      ['a', null],
+      ['b', null],
+      ['c', { lat: 37.9, lon: -4.8 }],
+      ['d', null],
+    ]);
+  });
+
+  it('FR-VG-02: 表示中でないノードは入力に含めない', () => {
+    const only: FilterState = {
+      ...show,
+      filters: [{ id: toFilterId('f'), kind: 'nodeSet', include: [toNodeId('a')] }],
+    };
+    const small = getNetwork(dataset, only, DEFAULT_GRAPH_OPTIONS).graph;
+    const r = geoInputsFor(dataset, small, { kind: 'geo' });
+    expect(r.map((i) => i.id)).toEqual(['a']);
+  });
+
+  it('FR-VG-02: どの型にも geo が無いなら選ぶ必要がある。属性の組を選べば不要', () => {
+    const none: Dataset = { ...dataset, nodes: dataset.nodes.slice(2) };
+    expect(needsGeoChoice(none, { kind: 'geo' })).toBe(true);
+    expect(needsGeoChoice(dataset, { kind: 'geo' })).toBe(false);
+    expect(needsGeoChoice(none, { kind: 'attrs', lat: 'Lat', lon: 'Lon' })).toBe(false);
+  });
+
+  it('D-46: 出どころが明示されていれば、旧版の geoAttrs より優先して選択欄に出す', () => {
+    const attrs = { lat: 'Lat', lon: 'Lon' };
+    expect(effectiveGeoAttrs(undefined, attrs)).toEqual(attrs);
+    expect(effectiveGeoAttrs({ kind: 'geo' }, attrs)).toBeUndefined();
+    expect(effectiveGeoAttrs({ kind: 'attrs', lat: 'A', lon: 'B' }, attrs)).toEqual({
+      lat: 'A',
+      lon: 'B',
+    });
   });
 });

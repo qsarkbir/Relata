@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { countNoCoordinates, resolveColumnOrder } from '../core/layout';
-import { geoCandidates, geoInputsFor, resolveGeoSelection } from './geoInputs';
+import { useStore } from 'zustand';
+import {
+  effectiveGeoAttrs,
+  geoCandidates,
+  geoInputsFor,
+  needsGeoChoice,
+  resolveGeoSelection,
+} from './geoInputs';
+import { mapViewStore } from '../state';
+import { resolveGeoSource } from '../core/project';
 import type { Dataset } from '../core/model';
 import type { RelataGraph } from '../core/graph';
 import type { GraphViewSettings } from '../core/project';
@@ -24,14 +33,14 @@ interface NoteProps {
  */
 export function NoCoordinatesNote({ dataset, graph, view }: NoteProps) {
   const t = useT();
-  const selection = resolveGeoSelection(dataset, view.geoAttrs);
-  const ready = selection.lat !== undefined && selection.lon !== undefined;
+  // 【なぜ】座標の出どころは地図と共通の設定（`view.geoSource`。D-46）。無ければ旧版の `geoAttrs` を読み替える。
+  const geoSource = useStore(mapViewStore, (s) => s.geoSource);
+  const source = useMemo(() => resolveGeoSource(geoSource, view), [geoSource, view]);
+  const ready = !needsGeoChoice(dataset, source);
   const count = useMemo(
     () =>
-      view.layout === 'geo' && ready
-        ? countNoCoordinates(geoInputsFor(dataset, graph, view.geoAttrs))
-        : 0,
-    [dataset, graph, view.layout, view.geoAttrs, ready],
+      view.layout === 'geo' && ready ? countNoCoordinates(geoInputsFor(dataset, graph, source)) : 0,
+    [dataset, graph, view.layout, source, ready],
   );
   if (view.layout !== 'geo' || graph.order === 0) return null;
   return (
@@ -55,6 +64,7 @@ interface ControlsProps extends NoteProps {
  */
 export function LayoutMethodControls({ dataset, graph, view, onChange }: ControlsProps) {
   const t = useT();
+  const geoSource = useStore(mapViewStore, (s) => s.geoSource);
   const list = useRef<HTMLOListElement>(null);
   // 【なぜ】↑↓で端まで動かすとそのボタンが無効になり、フォーカスが失われる。動かした列の、
   // 押せる側のボタンへフォーカスを戻すため、動かした直後の再描画の後に移す。
@@ -123,7 +133,7 @@ export function LayoutMethodControls({ dataset, graph, view, onChange }: Control
   }
   if (view.layout === 'geo') {
     const candidates = geoCandidates(dataset);
-    const selection = resolveGeoSelection(dataset, view.geoAttrs);
+    const selection = resolveGeoSelection(dataset, effectiveGeoAttrs(geoSource, view.geoAttrs));
     const select = (which: 'lat' | 'lon') => {
       const label = t(which === 'lat' ? 'graph.geo.lat' : 'graph.geo.lon');
       return (
@@ -142,6 +152,15 @@ export function LayoutMethodControls({ dataset, graph, view, onChange }: Control
               };
               // 【なぜ】両方とも未選択に戻したら、空のオブジェクトではなく項目ごと消す（保存の形と揃える）。
               //       JSON に書き出すとき、値が undefined の項目は省かれる。
+              // 【なぜ】両方そろったら、地図と共通の出どころ（`view.geoSource`）に書く。片方だけの間は出どころを
+              //   決めず（undefined）、旧版と同じく `geoAttrs` に残す。
+              mapViewStore
+                .getState()
+                .setGeoSource(
+                  lat !== undefined && lat !== '' && lon !== undefined && lon !== ''
+                    ? { kind: 'attrs', lat, lon }
+                    : undefined,
+                );
               onChange({ geoAttrs: Object.keys(next).length === 0 ? undefined : next });
             }}
           >

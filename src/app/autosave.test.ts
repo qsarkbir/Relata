@@ -7,6 +7,7 @@ import {
   createDataStore,
   createDisplayStore,
   createFilterStore,
+  createMapViewStore,
   createTimeStore,
   createUiStore,
   selectFilterState,
@@ -385,6 +386,50 @@ describe('autosave', () => {
       await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
       expect(mem.saves).toBe(before + 1);
       expect(mem.value).not.toContain('"time":{"at"');
+    });
+  });
+
+  describe('地図の設定（D-52、NFR-02）', () => {
+    function withMap() {
+      const mem = memory();
+      const data = createDataStore();
+      const filter = createFilterStore();
+      bindFilterToData(filter, data);
+      const map = createMapViewStore();
+      const auto = createAutosave({
+        targets: { data, filter, notice: createProjectNoticeStore(), map },
+        storage: mem,
+        now: () => '2026-11-19T00:00:00.000Z',
+        onProblem: vi.fn(),
+        ui: createUiStore(),
+      });
+      auto.start();
+      return { mem, data, map };
+    }
+
+    it('NFR-02: タイルの URL の鍵は自動保存に残らず、除いた項目名だけが残る', async () => {
+      const { mem, data, map } = withMap();
+      data.getState().setDataset(sampleDataset());
+      map.getState().patchMap({ background: 'custom' });
+      map.getState().patchCustomTiles({
+        url: 'https://tiles.example.test/{z}/{x}/{y}.png?access_token=SECRET123&style=old',
+      });
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      expect(mem.value).not.toBeNull();
+      expect(mem.value).not.toContain('SECRET123');
+      expect(mem.value).toContain('style=old');
+      expect(mem.value).toContain('"removedParams":["access_token"]');
+    });
+
+    it('FR-MP-01: 表示範囲を動かすと自動保存が予約され、復元で戻る', async () => {
+      const { mem, data, map } = withMap();
+      data.getState().setDataset(sampleDataset());
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      const before = mem.saves;
+      map.getState().setViewport({ lon: 44, lat: 33, zoom: 5 });
+      await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
+      expect(mem.saves).toBe(before + 1);
+      expect(mem.value).toContain('"viewport":{"lon":44,"lat":33,"zoom":5}');
     });
   });
 });

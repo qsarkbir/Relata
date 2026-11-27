@@ -939,4 +939,81 @@ export const en = {
     'This time filter has neither a start nor an end. Please check it.',
   'filter.time.bound.from': '{range} onward',
   'filter.time.bound.to': 'up to {range}',
+  'main.views': 'Main view',
+  'main.view.graph': 'Graph',
+  'main.view.map': 'Map',
+  'map.title': 'Map',
+  'map.toolbar': 'Map controls',
+  'map.zoomIn': 'Zoom the map in',
+  'map.zoomOut': 'Zoom the map out',
+  'map.fit': 'Show everything',
+  'map.fit.disabled': 'No node has coordinates, so the map cannot fit the data.',
+  'map.settings': 'Display settings',
+  'map.loading': 'Loading the map…',
+  'map.unavailable': 'The map cannot be drawn in this environment',
+  'map.unavailable.webgl2':
+    'Drawing the map needs WebGL2, which this browser does not provide. Update the browser, or use the graph view.',
+  'map.unavailable.initFailed': 'The map could not be initialized. Reload the page.',
+  'map.unavailable.loadFailed': 'The map component could not be loaded. Reload the page.',
+  'map.reportError': 'Report a map error',
+  'map.drawer': 'Map display settings',
+  'map.drawer.title': 'Map-only settings',
+  'map.settingsScope': 'These settings affect the map only. The graph view does not change.',
+  'map.background': 'Background map',
+  'map.background.osm': 'OpenStreetMap (standard map)',
+  'map.background.simple': 'Simple background (land only; no external requests)',
+  'map.background.custom': 'My own map tiles (XYZ URL)',
+  'map.background.simpleNote':
+    'A plain land-only background. The Natural Earth (public domain) land data is loaded from this site.',
+  'map.tileUrl': 'Tile URL',
+  'map.tileUrl.hint':
+    'Example: https://example.org/tiles/{z}/{x}/{y}.png (start with https and include {z}, {x} and {y})',
+  'map.tileAttribution': 'Attribution text',
+  'map.tileAttribution.hint':
+    'Write the source of the map, for example an old map. If empty, the host name of the URL is shown.',
+  'map.tileProblem.empty': 'Enter a tile URL. Until then only the sea colour is drawn.',
+  'map.tileProblem.not-https':
+    'This URL cannot be used. Only URLs starting with https are accepted.',
+  'map.tileProblem.missing-placeholder':
+    'This URL cannot be used. Include all of {z}, {x} and {y}.',
+  'map.tileProblem.subdomain-placeholder':
+    'This URL cannot be used. {s} is not supported. Use a URL without {s}.',
+  'map.tileProblem.invalid':
+    'This URL cannot be used. Check that it has a host name and no spaces, user name or password.',
+  'map.tileKeysRemoved':
+    'When the project was saved, key-like parameters ({names}) were removed from the URL. Enter the key again.',
+  'map.tileTerms': 'When you use your own tiles, follow the terms of the provider of those tiles.',
+  'map.privacy.title': 'About network requests',
+  'map.privacy.body':
+    'With OpenStreetMap or your own map tiles as the background, the visible area and zoom level are sent to the tile server. Your data (nodes, attributes, files) is never sent. Choose "Simple background" to avoid any request.',
+  'map.geo.title': 'Coordinate source',
+  'map.geo.note':
+    'This setting is shared with the "Geographic" layout of the graph, which uses the same source (recompute the layout with "Re-layout").',
+  'map.geo.kind': 'Source',
+  'map.geo.kind.geo': 'Latitude and longitude chosen at import (geo)',
+  'map.geo.kind.attrs': 'A pair of attributes (choose the latitude and longitude columns)',
+  'map.geo.pending': 'It takes effect once both latitude and longitude are chosen.',
+  'map.unplaced.summary': 'Nodes not on the map: {count}',
+  'map.unplaced.region': 'Nodes that are not on the map',
+  'map.unplaced.reason.no-column': 'Nodes of a type with no coordinate column ({count})',
+  'map.unplaced.reason.missing': 'Coordinate value is missing ({count})',
+  'map.unplaced.reason.invalid': 'Coordinate is not a valid value ({count})',
+  'map.unplaced.reason.out-of-range': 'Coordinate is out of range ({count})',
+  'map.unplaced.edges':
+    '{count} of the {total} edges shown cannot be drawn because an end node is not on the map',
+  'map.unplaced.pick': 'Select "{name}"',
+  'map.unplaced.none': 'Every node shown is on the map.',
+  'map.noCoordinates.title': 'No node has coordinates',
+  'map.noCoordinates.body':
+    'Choose a coordinate source. Under "Display settings", "Coordinate source", you can pick the latitude and longitude columns.',
+  'map.noNodes': 'No nodes are shown. Check the filters.',
+  'project.tileKeysStripped':
+    'The saved file does not contain the key-like parameters ({names}) of the map tile URL. Whoever opens the file has to enter the key again.',
+  'project.tileUrlDropped':
+    'The map tile URL was not in a usable form, so it is not included in the saved file.',
+  'about.mapPrivacy':
+    'Opening the map tab makes requests to external tile servers (such as OpenStreetMap, whichever you choose) to fetch background tiles. The visible area and zoom level are sent to the server. Your data is never sent. Choose "Simple background" to avoid any external request.',
+  'about.mapSources':
+    'Background map sources: © OpenStreetMap contributors (ODbL), Natural Earth (public domain).',
+  'map.unplaced.more': '{count} more (only the first ones are listed)',
 } satisfies Record<MessageKey, string>;

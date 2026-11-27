@@ -1,0 +1,136 @@
+/* 地図の画面（T3-03）。見た目の刷新はフェーズ 3 の後（phase3-plan §1.2）。今は表示できればよい。 */
+.map-canvas {
+  position: relative;
+  /* 地図の部品は、大きさの決まった枠を要る。枠の高さは .graph-canvas の flex で確定する。 */
+  min-block-size: 240px;
+  touch-action: auto;
+}
+/* 【なぜ】MapLibre は枠の要素に maplibregl-map（position: relative）を足す。同じ詳しさでは負けるので、
+   クラスを重ねて絶対配置を保ち、地図を .map-canvas の全面に広げる。 */
+.map-canvas > .map-engine.map-engine {
+  position: absolute;
+  inset: 0;
+}
+.map-overlay {
+  position: absolute;
+  z-index: 2;
+  box-sizing: border-box;
+  max-inline-size: calc(100% - var(--rl-space-4));
+  padding: var(--rl-space-2);
+  background: var(--rl-surface);
+  border: var(--rl-border-width) solid var(--rl-border);
+  border-radius: var(--rl-radius);
+  box-shadow: var(--rl-shadow);
+  font-size: var(--rl-font-md);
+  line-height: var(--rl-leading);
+}
+.map-overlay p {
+  margin: 0;
+}
+.map-overlay-center {
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+.map-overlay-top {
+  inset-block-start: var(--rl-space-2);
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  inline-size: 28rem;
+}
+.map-overlay-key {
+  inset-block-start: var(--rl-space-2);
+  inset-inline-end: var(--rl-space-2);
+  inline-size: 20rem;
+}
+/* 左下の「地図に載らないノード」。右下は帰属表示（地図の部品が出す）なので、重ならない。 */
+.map-unplaced {
+  position: absolute;
+  z-index: 2;
+  inset-block-end: var(--rl-space-2);
+  inset-inline-start: var(--rl-space-2);
+  box-sizing: border-box;
+  max-inline-size: min(22rem, calc(100% - 12rem));
+  background: var(--rl-surface);
+  border: var(--rl-border-width) solid var(--rl-border);
+  border-radius: var(--rl-radius);
+  box-shadow: var(--rl-shadow);
+  font-size: var(--rl-font-md);
+}
+.map-unplaced-toggle {
+  inline-size: 100%;
+  text-align: start;
+}
+.map-unplaced-body {
+  max-block-size: 16rem;
+  overflow: auto;
+  padding: var(--rl-space-2);
+}
+.map-unplaced-body[hidden] {
+  display: none;
+}
+.map-unplaced-body h4 {
+  margin: var(--rl-space-2) 0 var(--rl-space-1);
+  font-size: var(--rl-font-sm);
+  color: var(--rl-text-muted);
+}
+.map-unplaced-body ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rl-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* 選択中の行は、色だけでなく枠の太さでも示す。 */
+.map-unplaced-body button[aria-pressed='true'] {
+  border-width: 2px;
+  border-color: var(--rl-accent);
+  background: var(--rl-selected);
+}
+.map-radio {
+  display: flex;
+  align-items: center;
+  gap: var(--rl-space-2);
+  margin: var(--rl-space-1) 0;
+}
+.map-background,
+.map-geo-source {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.map-geo-source legend {
+  padding: 0;
+  font-weight: 600;
+}
+.map-tile-problem {
+  margin: var(--rl-space-1) 0;
+  padding: var(--rl-space-1) var(--rl-space-2);
+  border: var(--rl-border-width) solid var(--rl-border);
+  border-inline-start-width: 4px;
+}
+.map-custom-tiles input {
+  inline-size: 100%;
+  box-sizing: border-box;
+  min-block-size: var(--rl-control-size);
+}
+.map-privacy-title {
+  margin-block: var(--rl-space-2) var(--rl-space-1);
+}
+/* 引き出しは地図の上に重ねるときも、帰属表示より前に出る。 */
+.map-view .graph-drawer {
+  z-index: 4;
+}
+
+/* 「グラフ｜地図」の 2 つのビューの入れ物（D-48）。隠れているほうは描いたまま display: none。 */
+.main-view {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  /* 【なぜ】min-block-size は auto のまま。0 にすると、中身（図の下限 240 px）より小さく縮み、図が下の段に重なる。 */
+}
+.main-view[hidden] {
+  display: none;
+}

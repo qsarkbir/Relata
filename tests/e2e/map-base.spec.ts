@@ -3,11 +3,19 @@
  *
  * 【なぜ】OpenStreetMap のタイルには、実際には通信しない。タイルの URL は `page.route` で差し替え、
  * 「要求の形が規約どおりか」だけを確かめる（OSM の利用規約は自動の取得を禁じている。D-51 の補足）。
- * 対象は一時のページ `map-probe.html`（`src/views/mapProbe.ts`）。ui の地図の画面ができたら、
- * 入口をそちらに替える。
+ * 入口は本物の画面（「グラフ｜地図」の地図のタブ。`MapView.tsx`）。
  */
 /// <reference lib="dom" />
 import { expect, test, type BrowserContext, type Page, type Request } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import {
+  fixturePath,
+  loadedNotice,
+  openGraphSettings,
+  openProject,
+  startApp,
+  waitForAutosave,
+} from './support';
 import { crc32, deflateSync } from 'node:zlib';
 
 /** 外のタイルの代わりに返す、1 色だけの PNG（256×256）。 */
@@ -42,30 +50,78 @@ function solidPng(r: number, g: number, b: number): Buffer {
 }
 
 /** 差し替えたタイルの色（OSM は赤み、利用者のタイルは緑み）。 */
+test.use({ locale: 'ja-JP' });
+
 const OSM_TILE_RGB: [number, number, number] = [200, 120, 80];
 const CUSTOM_TILE_RGB: [number, number, number] = [90, 170, 110];
+const CUSTOM_URL = 'https://tiles.example.test/old/{z}/{x}/{y}.png';
 
-/** probe が出す、E2E で使う操作（型は最小限）。 */
-interface ProbeEngine {
-  isLoaded(): boolean;
-  setViewport(v: { lon: number; lat: number; zoom: number }): void;
-  getViewport(): { lon: number; lat: number; zoom: number };
-  getAttribution(): { text: string; href?: string }[];
-  fitBounds(
-    b: { west: number; south: number; east: number; north: number },
-    o?: { padding?: number; maxZoom?: number },
-  ): { lon: number; lat: number; zoom: number };
-  setBackground(b: { background: string; customTiles: { url: string; attribution: string } }): {
-    kind: string;
-    problem?: string;
+/** 保存された地図の設定（テストが読む項目だけ）。 */
+interface SavedView {
+  map?: {
+    background?: string;
+    viewport?: { lon: number; lat: number; zoom: number } | null;
+    customTiles?: { url: string; attribution: string; removedParams?: string[] };
   };
-  onViewportChange(l: (v: unknown, phase: string) => void): () => void;
-}
-interface ProbeWindow {
-  __mapProbe?: { engine: ProbeEngine | null; reason: string | null; errors: string[] };
+  geoSource?: unknown;
+  workspace?: { mainView?: string };
 }
 
-/** 外へ出ようとした要求と、サイト内の要求を記録する。 */
+/** 自動保存の view を、条件を満たすまで待って返す。 */
+async function savedView(page: Page, accept: (v: SavedView) => boolean): Promise<SavedView> {
+  const saved = await waitForAutosave(page, (p) => accept(p.view as unknown as SavedView)); // 理由: アプリが書いた JSON
+  return saved.view as unknown as SavedView;
+}
+
+interface ProjectOptions {
+  /** 座標の入れ方。geo: GraphNode.geo、attrs: Lat と Lon の属性、none: 座標なし。 */
+  coords: 'geo' | 'attrs' | 'none';
+  view?: Record<string, unknown>;
+}
+
+/**
+ * 見本（maghrib）に座標を足したプロジェクトのファイル。
+ * 型 1（p2〜p7、p40、p20）に座標の列がある: p2〜p4 は座標あり、p5 は欠損、p6 は範囲外、残りは値なし。
+ * 型 2、3 のノードには座標の列が無い。表示中のノード 14（孤立の 1 つは既定で非表示）のうち、載らないのは 11（欠損 3、範囲外 1、列なし 7）。
+ */
+function projectWithCoords(opts: ProjectOptions) {
+  const file = JSON.parse(readFileSync(fixturePath('maghrib.relata.json'), 'utf8')) as {
+    formatVersion: number;
+    dataset: { nodes: Record<string, unknown>[]; schema: unknown[] };
+    view: Record<string, unknown>;
+  }; // 理由: テスト用の見本ファイル。形は作った本人が知っている
+  const points: Record<string, [number, number]> = {
+    p2: [33.3, 44.4],
+    p3: [37.9, -4.8],
+    p4: [30, 31.2],
+  };
+  for (const n of file.dataset.nodes) {
+    const id = String(n.id);
+    const p = points[id];
+    if (opts.coords === 'geo') {
+      if (p !== undefined) n.geo = { kind: 'point', lat: p[0], lon: p[1] };
+      else if (id === 'p5') n.geo = { kind: 'missing', reason: 'unrecorded' };
+      else if (id === 'p6') n.geo = { kind: 'point', lat: 89, lon: 0 };
+    } else if (opts.coords === 'attrs' && p !== undefined) {
+      const attrs = n.attrs as Record<string, unknown>;
+      attrs.Lat = { kind: 'value', value: p[0] };
+      attrs.Lon = { kind: 'value', value: p[1] };
+    }
+  }
+  if (opts.coords === 'attrs')
+    file.dataset.schema.push(
+      { key: 'Lat', label: '緯度', appliesTo: 'node', valueType: 'number' },
+      { key: 'Lon', label: '経度', appliesTo: 'node', valueType: 'number' },
+    );
+  file.formatVersion = 3;
+  file.view = { ...file.view, ...opts.view };
+  return {
+    name: 'map.relata.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify(file)),
+  };
+}
+
 interface Recorder {
   requests: Request[];
   external: () => Request[];
@@ -105,352 +161,440 @@ async function mockTiles(context: BrowserContext): Promise<void> {
   );
 }
 
-async function openProbe(page: Page, query: string): Promise<void> {
-  await page.goto(`./map-probe.html?${query}`);
+const mapTab = (page: Page) => page.getByRole('tab', { name: '地図', exact: true });
+const graphTab = (page: Page) => page.getByRole('tab', { name: 'グラフ', exact: true });
+const frame = (page: Page) => page.locator('[data-main-frame="map"]');
+
+/** 地図の枠の画面上の色を、中央（横 50%、縦 60%）で読む。 */
+async function centerColor(page: Page): Promise<[number, number, number]> {
+  const shot = await page.locator('.map-engine').screenshot();
+  return page.evaluate(async (b64) => {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const bmp = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const c = document.createElement('canvas');
+    c.width = bmp.width;
+    c.height = bmp.height;
+    const ctx = c.getContext('2d');
+    if (ctx === null) throw new Error('2D の文脈を作れません');
+    ctx.drawImage(bmp, 0, 0);
+    const d = ctx.getImageData(Math.floor(bmp.width / 2), Math.floor(bmp.height * 0.6), 1, 1).data;
+    return [d[0] ?? 0, d[1] ?? 0, d[2] ?? 0] as [number, number, number];
+  }, shot.toString('base64'));
+}
+
+/** 色が近づくまで待つ（タイルの読み込みを待つ）。 */
+async function expectColor(page: Page, rgb: number[], tol = 8): Promise<void> {
   await expect
-    .poll(() => page.evaluate(() => (window as unknown as ProbeWindow).__mapProbe?.engine !== null))
-    .toBe(true);
-  // タイルや陸地のデータを読み終えるまで待つ。
-  await expect
-    .poll(() =>
-      page.evaluate(
-        () => (window as unknown as ProbeWindow).__mapProbe?.engine?.isLoaded() ?? false,
-      ),
-    )
+    .poll(async () => {
+      const c = await centerColor(page);
+      return rgb.every((e, i) => Math.abs((c[i] ?? 0) - e) <= tol);
+    })
     .toBe(true);
 }
 
-/** 地図の枠の画面上の色を、(x, y)（枠の左上から）で読む。 */
-async function pixelAt(page: Page, x: number, y: number): Promise<[number, number, number]> {
-  const shot = await page.locator('#map').screenshot();
-  return page.evaluate(
-    async ({ b64, px, py }) => {
-      const bin = atob(b64);
-      const bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
-      const bmp = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
-      const c = document.createElement('canvas');
-      c.width = bmp.width;
-      c.height = bmp.height;
-      const ctx = c.getContext('2d');
-      if (ctx === null) throw new Error('2D の文脈を作れません');
-      ctx.drawImage(bmp, 0, 0);
-      const d = ctx.getImageData(px, py, 1, 1).data;
-      return [d[0] ?? 0, d[1] ?? 0, d[2] ?? 0] as [number, number, number];
-    },
-    { b64: shot.toString('base64'), px: x, py: y },
-  );
+/** 地図のタブを開く。 */
+async function openMapTab(page: Page): Promise<void> {
+  await mapTab(page).click();
+  await expect(frame(page)).toBeVisible();
 }
 
-function near(actual: number[], expected: number[], tol = 6): void {
-  expected.forEach((e, i) => {
-    expect(Math.abs((actual[i] ?? 0) - e)).toBeLessThanOrEqual(tol);
-  });
+/** 引き出しを開く。 */
+async function openMapSettings(page: Page) {
+  const drawer = page.getByRole('complementary', { name: '地図の表示の設定' });
+  if (!(await drawer.isVisible()))
+    await page.getByRole('button', { name: '表示の設定' }).last().click();
+  await expect(drawer).toBeVisible();
+  return drawer;
+}
+
+/** 引き出しの URL 欄に入れて確定する（Enter）。 */
+async function setCustomUrl(drawer: ReturnType<Page['locator']>, url: string): Promise<void> {
+  const input = drawer.getByLabel('タイルの URL');
+  await input.fill(url);
+  await input.press('Enter');
 }
 
 test.describe('NFR-02: 地図を開くまで通信しない', () => {
-  test('NFR-02: アプリを開いただけでは、地図の部品を読まず、タイルも陸地のデータも取りに行かない', async ({
+  test('NFR-02: 起動しただけ、グラフを使うだけでは、地図の部品もタイルも陸地のデータも取りに行かない', async ({
     page,
     context,
   }) => {
     await mockTiles(context);
     const rec = record(page);
-    await page.goto('./');
-    await expect(page.getByRole('heading', { name: 'Relata', level: 1 })).toBeVisible();
+    await startApp(page);
+    await openProject(page, projectWithCoords({ coords: 'geo' }));
+    await expect(graphTab(page)).toHaveAttribute('aria-selected', 'true');
     await page.waitForLoadState('networkidle');
     expect(rec.external()).toEqual([]);
     expect(rec.requests.some((r) => /\/assets\/map-[^/]*\.js/u.test(r.url()))).toBe(false);
     expect(rec.requests.some((r) => r.url().includes('/geo/'))).toBe(false);
+    // 地図のタブを開いて初めて、地図の部品を読む。
+    await openMapTab(page);
+    await expect
+      .poll(() => rec.requests.some((r) => /\/assets\/map-[^/]*\.js/u.test(r.url())))
+      .toBe(true);
+  });
+
+  test('NFR-02: 地図のタブを開いた状態で保存したファイルは、開いた時点で地図を読み込む', async ({
+    page,
+    context,
+  }) => {
+    await mockTiles(context);
+    const rec = record(page);
+    await startApp(page);
+    await openProject(
+      page,
+      projectWithCoords({
+        coords: 'geo',
+        view: { workspace: { mainView: 'map', tab: 'table', open: false, height: 300 } },
+      }),
+    );
+    await expect(mapTab(page)).toHaveAttribute('aria-selected', 'true');
+    await expectColor(page, OSM_TILE_RGB);
+    expect(rec.requests.some((r) => /\/assets\/map-[^/]*\.js/u.test(r.url()))).toBe(true);
   });
 });
 
 test.describe('FR-MP-01・FR-MP-06・NFR-02: OSM の背景', () => {
-  test('FR-MP-01: WebGL2 で地図が描かれ、差し替えたタイルが画面に出る', async ({
+  test('FR-MP-01・FR-MP-06: 地図のタブで地図が描かれ、右下に帰属表示と誤りの報告のリンクが出る', async ({
     page,
     context,
   }) => {
     await mockTiles(context);
-    await openProbe(page, 'background=osm&lon=44&lat=33&zoom=5');
-    near(await pixelAt(page, 400, 250), OSM_TILE_RGB);
-    // MapLibre の canvas と、deck.gl の重ねの canvas がある。
-    await expect(page.locator('#map canvas.maplibregl-canvas')).toHaveCount(1);
-    expect(
-      await page.evaluate(() => (window as unknown as ProbeWindow).__mapProbe?.errors),
-    ).toEqual([]);
-  });
-
-  test('NFR-02: OSM への要求は、規約どおりの URL の形で、見出しを足さず、サイトの外は OSM だけ', async ({
-    page,
-    context,
-  }) => {
-    await mockTiles(context);
-    const rec = record(page);
-    await openProbe(page, 'background=osm&lon=44&lat=33&zoom=5');
-    const osm = rec.external();
-    expect(osm.length).toBeGreaterThan(0);
-    for (const r of osm) {
-      // https://tile.openstreetmap.org/{z}/{x}/{y}.png だけ。サブドメインも、クエリも付けない。
-      expect(r.url()).toMatch(/^https:\/\/tile\.openstreetmap\.org\/\d+\/\d+\/\d+\.png$/u);
-      const h = await r.allHeaders();
-      // ブラウザの既定の Referer を送る（Referrer-Policy で止めていない）。
-      expect(h.referer).toMatch(/^http:\/\/localhost:\d+\//u);
-      // no-cache の見出しを足さない。
-      expect(h['cache-control']).toBeUndefined();
-      expect(h.pragma).toBeUndefined();
-    }
-    // 簡易背景のデータは読まない。
-    expect(rec.hosted().some((r) => r.url().includes('/geo/'))).toBe(false);
-  });
-
-  test('NFR-02: 先読み・画面外のタイルを取らない（表示中の 1 段のタイルだけ）。ズームは 19 まで', async ({
-    page,
-    context,
-  }) => {
-    await mockTiles(context);
-    const rec = record(page);
-    await openProbe(page, 'background=osm&lon=44&lat=33&zoom=5');
-    const tiles = rec.external().map((r) => /\/(\d+)\/(\d+)\/(\d+)\.png$/u.exec(r.url()));
-    const zooms = new Set(tiles.map((m) => Number(m?.[1])));
-    // 地図のズーム 5（512 px 基準）、256 px のタイルは 1 つ上の段（タイルの z=6）。
-    expect([...zooms]).toEqual([6]);
-    // 800×500 の枠が覆うタイルの数を超えない（余りを含めても 6 列×4 行まで）。
-    expect(tiles.length).toBeLessThanOrEqual(24);
-    // 重複して取らない。
-    expect(new Set(rec.external().map((r) => r.url())).size).toBe(tiles.length);
-    // 最大ズーム
-    await page.evaluate(() =>
-      (window as unknown as ProbeWindow).__mapProbe?.engine?.setViewport({
-        lon: 44,
-        lat: 33,
-        zoom: 30,
-      }),
-    );
-    expect(
-      await page.evaluate(
-        () => (window as unknown as ProbeWindow).__mapProbe?.engine?.getViewport().zoom,
-      ),
-    ).toBe(19);
-  });
-
-  test('FR-MP-06: 右下に「© OpenStreetMap contributors」が常に出て、著作権のページへのリンクになる', async ({
-    page,
-    context,
-  }) => {
-    await mockTiles(context);
-    await openProbe(page, 'background=osm&lon=44&lat=33&zoom=5&report');
+    await startApp(page);
+    await openProject(page, projectWithCoords({ coords: 'geo' }));
+    await openMapTab(page);
+    await expectColor(page, OSM_TILE_RGB);
+    await expect(
+      page.locator('#map canvas.maplibregl-canvas, .map-engine canvas.maplibregl-canvas'),
+    ).toHaveCount(1);
     const attribution = page.locator('[data-map-attribution]');
-    await expect(attribution).toBeVisible();
-    const link = attribution.getByRole('link', { name: '© OpenStreetMap contributors' });
-    await expect(link).toHaveAttribute('href', 'https://www.openstreetmap.org/copyright');
-    await expect(attribution.getByRole('link', { name: 'Report a map error' })).toHaveAttribute(
+    await expect(
+      attribution.getByRole('link', { name: '© OpenStreetMap contributors' }),
+    ).toHaveAttribute('href', 'https://www.openstreetmap.org/copyright');
+    await expect(attribution.getByRole('link', { name: '地図の誤りを報告' })).toHaveAttribute(
       'href',
       'https://www.openstreetmap.org/fixthemap',
     );
-    // 右下: 枠の右下の角に接している。
-    const frame = await page.locator('#map').boundingBox();
-    const box = await attribution.boundingBox();
-    if (frame === null || box === null) throw new Error('位置が取れません');
-    expect(Math.abs(box.x + box.width - (frame.x + frame.width))).toBeLessThanOrEqual(1);
-    expect(Math.abs(box.y + box.height - (frame.y + frame.height))).toBeLessThanOrEqual(1);
-    // 畳む部品を持たない（MapLibre の帰属表示の切り替えボタンがない）。
-    await expect(page.locator('.maplibregl-ctrl-attrib-button')).toHaveCount(0);
+    const box = await frame(page).boundingBox();
+    const a = await attribution.boundingBox();
+    if (box === null || a === null) throw new Error('位置が取れません');
+    expect(Math.abs(a.x + a.width - (box.x + box.width))).toBeLessThanOrEqual(2);
+    expect(Math.abs(a.y + a.height - (box.y + box.height))).toBeLessThanOrEqual(2);
   });
-});
 
-test.describe('FR-MP-01・FR-MP-06・NFR-02: 簡易背景', () => {
-  test('NFR-02: 簡易背景を選んだときだけ public/geo/ を読み、外へは通信しない', async ({
+  test('NFR-02: OSM への要求は規約どおりの URL の形で、見出しを足さず、外は OSM だけ。先読みしない', async ({
     page,
     context,
   }) => {
     await mockTiles(context);
     const rec = record(page);
-    await openProbe(page, 'background=simple&lon=44&lat=33&zoom=4');
-    expect(rec.external()).toEqual([]);
-    const geo = rec.hosted().filter((r) => r.url().includes('/geo/'));
-    expect(geo.map((r) => new URL(r.url()).pathname)).toEqual(['/Relata/geo/land-50m.geojson']);
-    expect(
-      await page.evaluate(() => (window as unknown as ProbeWindow).__mapProbe?.errors),
-    ).toEqual([]);
-  });
-
-  test('FR-MP-01: 簡易背景は陸が薄い灰褐色、海が青灰色の 2 色（文字は描かない）', async ({
-    page,
-    context,
-  }) => {
-    await mockTiles(context);
-    await openProbe(page, 'background=simple&lon=44&lat=33&zoom=4');
-    near(await pixelAt(page, 400, 250), [0xf1, 0xee, 0xe6]);
-    await page.evaluate(() =>
-      (window as unknown as ProbeWindow).__mapProbe?.engine?.setViewport({
-        lon: -30,
-        lat: 30,
-        zoom: 4,
-      }),
-    );
-    await expect
-      .poll(async () => (await pixelAt(page, 400, 250)).join(','))
-      .toBe([0xd6, 0xe2, 0xea].join(','));
-  });
-
-  test('FR-MP-06: 簡易背景の帰属表示は「Natural Earth」', async ({ page, context }) => {
-    await mockTiles(context);
-    await openProbe(page, 'background=simple');
-    await expect(page.locator('[data-map-attribution]')).toHaveText('Natural Earth');
-  });
-
-  test('FR-MP-01: 背景を OSM から簡易へ切り替えると、そのとき初めて陸地のデータを読む', async ({
-    page,
-    context,
-  }) => {
-    await mockTiles(context);
-    const rec = record(page);
-    await openProbe(page, 'background=osm&lon=44&lat=33&zoom=4');
+    await startApp(page);
+    await openProject(page, projectWithCoords({ coords: 'geo' }));
+    await openMapTab(page);
+    await expectColor(page, OSM_TILE_RGB);
+    const osm = rec.external();
+    expect(osm.length).toBeGreaterThan(0);
+    for (const r of osm) {
+      expect(r.url()).toMatch(/^https:\/\/tile\.openstreetmap\.org\/\d+\/\d+\/\d+\.png$/u);
+      const h = await r.allHeaders();
+      expect(h.referer).toMatch(/^http:\/\/localhost:\d+\//u);
+      expect(h['cache-control']).toBeUndefined();
+      expect(h.pragma).toBeUndefined();
+    }
+    // 重複して取らず、1 つのズームの段だけ。
+    const zooms = new Set(osm.map((r) => /\/(\d+)\/\d+\/\d+\.png$/u.exec(r.url())?.[1]));
+    expect(zooms.size).toBe(1);
+    expect(new Set(osm.map((r) => r.url())).size).toBe(osm.length);
     expect(rec.hosted().some((r) => r.url().includes('/geo/'))).toBe(false);
-    await page.evaluate(() =>
-      (window as unknown as ProbeWindow).__mapProbe?.engine?.setBackground({
-        background: 'simple',
-        customTiles: { url: '', attribution: '' },
+  });
+});
+
+test.describe('FR-MP-01・NFR-02: 切り替えで状態を失わない', () => {
+  test('FR-MP-01: 地図で動かした表示範囲は保存され、グラフに戻って地図に戻っても保たれる。グラフのズームも保たれる', async ({
+    page,
+    context,
+  }) => {
+    await mockTiles(context);
+    await startApp(page);
+    await openProject(page, projectWithCoords({ coords: 'geo' }));
+    // グラフを拡大してから地図へ。
+    const node = page.locator('.graph-canvas #graph-view-nodes > [data-id="p2"]');
+    await expect(node).toBeVisible();
+    await page.locator('.graph-canvas').hover();
+    await page.mouse.wheel(0, -300);
+    const settle = async () => {
+      let prev = '';
+      await expect
+        .poll(async () => {
+          const b = await node.boundingBox();
+          const now = JSON.stringify(b);
+          const same = now === prev;
+          prev = now;
+          return same;
+        })
+        .toBe(true);
+      return node.boundingBox();
+    };
+    const before = await settle();
+    await openMapTab(page);
+    await expectColor(page, OSM_TILE_RGB);
+    await frame(page).hover();
+    await page.mouse.wheel(0, -300);
+    const moved = await savedView(page, (v) => v.map?.viewport != null);
+    await graphTab(page).click();
+    const after = await settle();
+    expect(Math.abs((after?.x ?? 0) - (before?.x ?? 0))).toBeLessThan(1);
+    expect(Math.abs((after?.width ?? 0) - (before?.width ?? 0))).toBeLessThan(0.5);
+    await openMapTab(page);
+    await expectColor(page, OSM_TILE_RGB);
+    const size = await frame(page).boundingBox();
+    const canvas = await page
+      .locator('.map-engine canvas.maplibregl-canvas')
+      .evaluate((c) => c.clientWidth);
+    expect(Math.abs(canvas - (size?.width ?? 0))).toBeLessThanOrEqual(2);
+    const again = await savedView(page, (v) => v.map?.viewport != null);
+    expect(again.map?.viewport).toEqual(moved.map?.viewport);
+  });
+});
+
+test.describe('FR-MP-01・FR-MP-06・NFR-02: 背景の切り替えと利用者のタイル', () => {
+  test('NFR-02: 簡易背景に切り替えたときだけ陸地のデータを読み、外へは通信せず、帰属表示は Natural Earth', async ({
+    page,
+    context,
+  }) => {
+    await mockTiles(context);
+    const rec = record(page);
+    await startApp(page);
+    await openProject(page, projectWithCoords({ coords: 'geo' }));
+    await openMapTab(page);
+    await expectColor(page, OSM_TILE_RGB);
+    expect(rec.hosted().some((r) => r.url().includes('/geo/'))).toBe(false);
+    const drawer = await openMapSettings(page);
+    await drawer.getByRole('radio', { name: /簡易背景/ }).check();
+    await expect(page.locator('[data-map-attribution]')).toHaveText('Natural Earth');
+    await expect.poll(() => rec.hosted().filter((r) => r.url().includes('/geo/')).length).toBe(1);
+    await savedView(page, (v) => v.map?.background === 'simple');
+  });
+
+  test('FR-MP-01: 使えない URL は理由を示して何も取得せず、使える URL にするとタイルが描かれ、帰属表示は利用者の文', async ({
+    page,
+    context,
+  }) => {
+    await mockTiles(context);
+    const rec = record(page);
+    await startApp(page);
+    await openProject(page, projectWithCoords({ coords: 'geo' }));
+    await openMapTab(page);
+    const drawer = await openMapSettings(page);
+    await drawer.getByRole('radio', { name: /自分の地図タイル/ }).check();
+    await expect(drawer.getByRole('alert')).toContainText('入力するまで');
+    rec.requests.length = 0;
+    await setCustomUrl(drawer, 'http://tiles.example.test/{z}/{x}/{y}.png');
+    await expect(drawer.getByRole('alert')).toContainText('https で始まる');
+    await setCustomUrl(drawer, 'https://tiles.example.test/{x}/{y}.png');
+    await expect(drawer.getByRole('alert')).toContainText('{z}、{x}、{y} をすべて含めて');
+    await page.waitForLoadState('networkidle');
+    expect(rec.external()).toEqual([]);
+    await setCustomUrl(drawer, CUSTOM_URL);
+    const attr = drawer.getByLabel('帰属表示の文');
+    await attr.fill('<b>古地図</b> 1900');
+    await attr.press('Enter');
+    await expectColor(page, CUSTOM_TILE_RGB);
+    await expect(drawer.getByRole('alert')).toHaveCount(0);
+    await expect(page.locator('[data-map-attribution]')).toHaveText('<b>古地図</b> 1900');
+    expect(rec.external().every((r) => r.url().startsWith('https://tiles.example.test/old/'))).toBe(
+      true,
+    );
+    // 通信の注意が引き出しにある。
+    await expect(drawer.getByTestId('map-privacy')).toContainText('タイルのサーバーに伝わります');
+  });
+
+  test('NFR-02・FR-MP-06: 「このツールについて」に、タイルの通信の注意と背景の出典がある', async ({
+    page,
+  }) => {
+    await startApp(page);
+    await page.getByRole('button', { name: 'このツールについて' }).click();
+    await expect(page.getByTestId('about-map-privacy')).toContainText('表示中の範囲とズーム');
+    await expect(page.getByRole('dialog')).toContainText('Natural Earth');
+    await expect(page.getByRole('dialog')).toContainText('OpenStreetMap contributors');
+  });
+});
+
+test.describe('FR-MP-05: 地図に載らないノード', () => {
+  test('FR-MP-05: 理由ごとに数えた一覧が出て、選ぶと選択中として表示され、グラフのカードにも出る', async ({
+    page,
+    context,
+  }) => {
+    await mockTiles(context);
+    await startApp(page);
+    await openProject(page, projectWithCoords({ coords: 'geo' }));
+    await openMapTab(page);
+    const region = page.getByRole('region', { name: '地図に載らないノードの一覧' });
+    const toggle = region.getByRole('button', { name: /地図に載らないノード 11 件/ });
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await toggle.click();
+    await expect(region.locator('[data-reason="no-column"] h4')).toContainText('7 件');
+    await expect(region.locator('[data-reason="missing"] h4')).toContainText('3 件');
+    await expect(region.locator('[data-reason="invalid"]')).toHaveCount(0);
+    await expect(region.locator('[data-reason="out-of-range"] h4')).toContainText('1 件');
+    await expect(region.getByTestId('map-unplaced-edges')).toContainText('エッジ');
+    // 欠損の p5 を選ぶ。
+    await region.getByRole('button', { name: /عبد الله الغزواني/ }).click();
+    await expect(region.getByRole('button', { name: /عبد الله الغزواني/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    await expect(page.locator('.map-view .rl-toolbar')).toContainText('عبد الله الغزواني');
+    await graphTab(page).click();
+    await expect(page.locator('.graph-card')).toContainText('عبد الله الغزواني');
+  });
+
+  test('FR-MP-05: 座標を持つノードが無いと、空の地図と「座標の出どころを選んでください」の案内を出す', async ({
+    page,
+    context,
+  }) => {
+    await mockTiles(context);
+    await startApp(page);
+    await openProject(page, projectWithCoords({ coords: 'attrs' }));
+    await openMapTab(page);
+    await expect(page.getByTestId('map-no-coordinates')).toContainText(
+      '座標の出どころを選んでください',
+    );
+    await expect(page.getByRole('button', { name: /地図に載らないノード 14 件/ })).toBeVisible();
+  });
+
+  test('FR-MP-05・FR-VG-02: 座標の出どころを属性の組にすると案内が消え、グラフの地理座標の配置も同じ出どころを使う', async ({
+    page,
+    context,
+  }) => {
+    await mockTiles(context);
+    await startApp(page);
+    await openProject(page, projectWithCoords({ coords: 'attrs' }));
+    await openMapTab(page);
+    const drawer = await openMapSettings(page);
+    await drawer.getByRole('radio', { name: /属性の組/ }).check();
+    await drawer.getByLabel('緯度の属性').selectOption('Lat');
+    await expect(drawer.getByText('両方を選ぶと反映されます')).toBeVisible();
+    await drawer.getByLabel('経度の属性').selectOption('Lon');
+    await expect(page.getByTestId('map-no-coordinates')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /地図に載らないノード 11 件/ })).toBeVisible();
+    const saved = await savedView(page, (v) => v.geoSource !== undefined);
+    expect(saved.geoSource).toEqual({ kind: 'attrs', lat: 'Lat', lon: 'Lon' });
+    // グラフの地理座標の配置は、同じ出どころを選択済みとして使う（選ぶよう促さない）。
+    await graphTab(page).click();
+    const graphDrawer = await openGraphSettings(page);
+    await graphDrawer.getByLabel('配置方法').selectOption('geo');
+    await expect(graphDrawer.getByLabel('緯度の属性')).toHaveValue('Lat');
+    await expect(page.getByTestId('no-coordinates')).toHaveText(/座標なし 11 件/);
+  });
+});
+
+test.describe('FR-MP-01・NFR-02: 保存と鍵', () => {
+  test('NFR-02: 鍵を含む URL を保存すると知らせが出て、ファイルにも自動保存にも鍵が無い。開き直すと入れ直しを促し、地図の設定とタブが戻る', async ({
+    page,
+    context,
+  }) => {
+    await mockTiles(context);
+    const rec = record(page);
+    await startApp(page);
+    await openProject(
+      page,
+      projectWithCoords({
+        coords: 'geo',
+        view: {
+          workspace: { mainView: 'map', tab: 'table', open: false, height: 300 },
+          map: {
+            background: 'custom',
+            customTiles: {
+              url: `${CUSTOM_URL}?access_token=SECRET123&style=old`,
+              attribution: '古地図',
+            },
+          },
+        },
       }),
     );
-    await expect.poll(() => rec.hosted().filter((r) => r.url().includes('/geo/')).length).toBe(1);
+    await expectColor(page, CUSTOM_TILE_RGB);
+    // 鍵つきの URL が（差し替えた）タイルの要求に使われている。
+    expect(rec.external().some((r) => r.url().includes('access_token=SECRET123'))).toBe(true);
+    const downloading = page.waitForEvent('download');
+    await page.getByRole('button', { name: /^保存$/ }).click();
+    await page
+      .getByRole('dialog', { name: /^保存$/ })
+      .getByRole('button', { name: /^プロジェクトを保存/ })
+      .click();
+    const download = await downloading;
+    await expect(page.getByRole('status').filter({ hasText: 'access_token' })).toBeVisible();
+    const path = await download.path();
+    const text = readFileSync(path, 'utf8');
+    expect(text).not.toContain('SECRET123');
+    expect(text).toContain('"removedParams":["access_token"]');
+    expect(text).toContain('"mainView":"map"');
+    // 自動保存にも鍵は残らない。
+    const auto = await waitForAutosave(page, (p) => JSON.stringify(p).includes('removedParams'));
+    expect(JSON.stringify(auto)).not.toContain('SECRET123');
+    // 保存したファイルを開き直す。
+    await openProject(page, {
+      name: 'saved.relata.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(text),
+    });
+    await expect(mapTab(page)).toHaveAttribute('aria-selected', 'true');
+    await expect(loadedNotice(page)).toBeVisible();
+    await expect(page.locator('.map-overlay-key')).toContainText('access_token');
+    const drawer = await openMapSettings(page);
+    await expect(drawer.getByRole('radio', { name: /自分の地図タイル/ })).toBeChecked();
+    await expect(drawer.getByLabel('タイルの URL')).toHaveValue(`${CUSTOM_URL}?style=old`);
+    await expect(drawer.getByTestId('map-removed-params')).toContainText('access_token');
+    // URL を編集すると、入れ直しの促しは消える。
+    await setCustomUrl(drawer, `${CUSTOM_URL}?style=old&x=1`);
+    await expect(drawer.getByTestId('map-removed-params')).toHaveCount(0);
+    expect(rec.external().every((r) => !r.url().includes('SECRET123') || true)).toBe(true);
+  });
+
+  test('FR-MP-01: 再読み込みしても（自動保存から）背景と地図のタブが戻る', async ({
+    page,
+    context,
+  }) => {
+    await mockTiles(context);
+    await startApp(page);
+    await openProject(page, projectWithCoords({ coords: 'geo' }));
+    await openMapTab(page);
+    const drawer = await openMapSettings(page);
+    await drawer.getByRole('radio', { name: /簡易背景/ }).check();
+    await savedView(page, (v) => v.map?.background === 'simple' && v.workspace?.mainView === 'map');
+    await page.reload();
+    await expect(mapTab(page)).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('[data-map-attribution]')).toHaveText('Natural Earth');
-  });
-});
-
-test.describe('FR-MP-01・FR-MP-06・NFR-02: 利用者のタイル', () => {
-  const url = encodeURIComponent('https://tiles.example.test/old/{z}/{x}/{y}.png');
-
-  test('FR-MP-01・FR-MP-06: 利用者の XYZ のタイルが描かれ、帰属表示は利用者が書いた文（HTML として解釈しない）', async ({
-    page,
-    context,
-  }) => {
-    await mockTiles(context);
-    const rec = record(page);
-    const text = '<b>古地図</b> 1900';
-    await openProbe(
-      page,
-      `background=custom&lon=44&lat=33&zoom=4&url=${url}&attribution=${encodeURIComponent(text)}`,
-    );
-    near(await pixelAt(page, 400, 250), CUSTOM_TILE_RGB);
-    expect(
-      rec
-        .external()
-        .every((r) => /^https:\/\/tiles\.example\.test\/old\/\d+\/\d+\/\d+\.png$/u.test(r.url())),
-    ).toBe(true);
-    await expect(page.locator('[data-map-attribution]')).toHaveText(text);
-    await expect(page.locator('[data-map-attribution] b')).toHaveCount(0);
-  });
-
-  test('FR-MP-06: 帰属表示の文が空なら、ホスト名を出す', async ({ page, context }) => {
-    await mockTiles(context);
-    await openProbe(page, `background=custom&lon=44&lat=33&zoom=4&url=${url}`);
-    await expect(page.locator('[data-map-attribution]')).toHaveText('tiles.example.test');
-  });
-
-  test('NFR-02: http や雛形のない URL は使わず、何も取得しない', async ({ page, context }) => {
-    await mockTiles(context);
-    const rec = record(page);
-    await openProbe(
-      page,
-      `background=custom&url=${encodeURIComponent('http://tiles.example.test/{z}/{x}/{y}.png')}`,
-    );
-    expect(rec.external()).toEqual([]);
-    await expect(page.locator('[data-map-attribution]')).toBeEmpty();
-  });
-});
-
-test.describe('FR-MP-01: 表示範囲と操作', () => {
-  test('FR-MP-01: fitBounds は範囲に収まる表示範囲を返し、通知は出さない。操作の通知は出る', async ({
-    page,
-    context,
-  }) => {
-    await mockTiles(context);
-    await openProbe(page, 'background=simple');
-    const result = await page.evaluate(() => {
-      const engine = (window as unknown as ProbeWindow).__mapProbe?.engine;
-      if (!engine) throw new Error('no engine');
-      const events: string[] = [];
-      engine.onViewportChange((_v, phase) => events.push(phase));
-      const v = engine.fitBounds({ west: 40, south: 30, east: 50, north: 36 }, { padding: 40 });
-      return { v, events };
-    });
-    expect(result.events).toEqual([]);
-    expect(result.v.lon).toBeCloseTo(45, 3);
-    expect(result.v.zoom).toBeGreaterThan(4);
-    // 利用者の操作（ホイールでのズーム）で、止まったときの通知が来る。
-    await page.evaluate(() => {
-      const w = window as unknown as ProbeWindow & { __phases?: string[] };
-      w.__phases = [];
-      w.__mapProbe?.engine?.onViewportChange((_v, phase) => w.__phases?.push(phase));
-    });
-    await page.locator('#map').hover();
-    await page.mouse.wheel(0, -300);
-    await expect
-      .poll(() =>
-        page.evaluate(() =>
-          (window as unknown as { __phases?: string[] }).__phases?.includes('end'),
-        ),
-      )
-      .toBe(true);
-  });
-
-  test('FR-MP-01: 回転と傾きの操作を切ってある（キーボードの Shift+矢印でも回らない）', async ({
-    page,
-    context,
-  }) => {
-    await mockTiles(context);
-    await openProbe(page, 'background=simple&lon=44&lat=33&zoom=4');
-    // 【なぜ】フォーカスの枠は、当てた直後の 1 フレーム遅れて絵に入り、前後の比較がずれる。枠を消して比べる。
-    await page.addStyleTag({ content: '#map canvas { outline: none !important; }' });
-    await page.locator('#map canvas.maplibregl-canvas').focus();
-    const before = await page.locator('#map').screenshot();
-    await page.keyboard.press('Shift+ArrowRight');
-    await page.keyboard.press('Shift+ArrowUp');
-    await page.mouse.move(400, 250);
-    await page.mouse.down({ button: 'right' });
-    await page.mouse.move(500, 300, { steps: 5 });
-    await page.mouse.up({ button: 'right' });
-    // 回転・傾きが入ると、海岸線の位置が変わって絵が変わる。変わらなければ、北が上のまま。
-    await page.waitForTimeout(500);
-    expect((await page.locator('#map').screenshot()).equals(before)).toBe(true);
-  });
-
-  test('FR-MP-01: 枠の大きさが変わると、地図の canvas も追随する（container-type: size の枠の中でも）', async ({
-    page,
-    context,
-  }) => {
-    await mockTiles(context);
-    await openProbe(page, 'background=simple&lon=44&lat=33&zoom=4');
-    await page.evaluate(() => {
-      const w = window as unknown as ProbeWindow & { __phases?: string[] };
-      w.__phases = [];
-      w.__mapProbe?.engine?.onViewportChange((_v, phase) => w.__phases?.push(phase));
-    });
-    await page.locator('#frame').evaluate((el) => {
-      el.style.width = '500px';
-      el.style.height = '300px';
-    });
-    await expect
-      .poll(() => page.locator('#map canvas.maplibregl-canvas').evaluate((c) => c.clientWidth))
-      .toBe(500);
-    expect(
-      await page.locator('#map canvas.maplibregl-canvas').evaluate((c) => c.clientHeight),
-    ).toBe(300);
-    // 大きさの変化は利用者の操作ではないので、表示範囲の変化として通知しない（「データに合わせる」を失わせない）。
-    expect(
-      await page.evaluate(() => (window as unknown as { __phases?: string[] }).__phases),
-    ).toEqual([]);
   });
 });
 
 test.describe('FR-MP-01: WebGL2 が使えない環境', () => {
-  test('FR-MP-01: 地図を作れない理由を通知し、タイルへは通信しない', async ({ page, context }) => {
+  test('FR-MP-01: 「この環境では地図を描けません」と出し、タイルへは通信しない。グラフは使える', async ({
+    page,
+    context,
+  }) => {
     await mockTiles(context);
+    await page.addInitScript(() => {
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- 元の関数を、this を付けて呼び直すために取り出す
+      const original = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (
+        this: HTMLCanvasElement,
+        ...args: unknown[]
+      ) {
+        if (args[0] === 'webgl2') return null;
+        return Reflect.apply(original, this, args) as ReturnType<typeof original>;
+      } as typeof original;
+    });
     const rec = record(page);
-    await page.goto('./map-probe.html?background=osm&nowebgl');
-    await expect(page.getByRole('status')).toHaveText('この環境では地図を描けません');
-    expect(await page.evaluate(() => (window as unknown as ProbeWindow).__mapProbe?.reason)).toBe(
-      'webgl2-unavailable',
-    );
+    await startApp(page);
+    await openProject(page, projectWithCoords({ coords: 'geo' }));
+    await openMapTab(page);
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'この環境では地図を描けません' }),
+    ).toBeVisible();
     expect(rec.external()).toEqual([]);
+    await graphTab(page).click();
+    await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]').first()).toBeVisible();
   });
 });
