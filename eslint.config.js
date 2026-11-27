@@ -374,8 +374,8 @@ export default defineConfig(
           zones: [
             ...zones(
               './src/state',
-              [views, app, render, map, io],
-              'src/state/ は views、app、render、map、io を import しません。依存は上位の層から下へ向かう一方向です。core、i18n、workers の *.client.ts には依存してよい（設計書 §4.1、D-26）。',
+              [views, app, map, io],
+              'src/state/ は views、app、map、io を import しません。依存は上位の層から下へ向かう一方向です。core、i18n、workers の *.client.ts には依存してよい。render は型だけ import してよい（下の @typescript-eslint/no-restricted-imports。設計書 §4.1、D-26）。',
             ),
             // 【なぜ】workers は、Worker の中身（*.worker.ts）だけを止める。*.client.ts は
             // 画面なしで呼べる窓口なので、state から使ってよい。from は glob で書く。
@@ -384,6 +384,22 @@ export default defineConfig(
               from: './src/workers/**/*.worker.ts',
               message:
                 'src/state/ は *.worker.ts を import しません。Worker は workers/*.client.ts の窓口を通して使います（設計書 §4.1、D-26）。',
+            },
+          ],
+        },
+      ],
+      // 【なぜ】state は render の「型」だけ読んでよい（例: 束ねる計算の入力の型）。値は止める。
+      // `import-x/no-restricted-paths` は型を区別できないので、型を許す `allowTypeImports` のある
+      // この規則で render を止める（統括役の決定。設計書 §4.1 の例外）。
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/render', '**/render/**'],
+              allowTypeImports: true,
+              message:
+                'src/state/ は render の値を import しません。型だけ `import type` で読めます（設計書 §4.1 の例外）。',
             },
           ],
         },

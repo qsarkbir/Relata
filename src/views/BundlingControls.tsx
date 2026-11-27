@@ -1,7 +1,9 @@
 /** グラフの「束ねる」の操作: 状態の文言（進行、取り消し、確認）と、設定の節（FR-VG-13、14）。 */
 import { BUNDLING_VIEW_STYLES } from '../core/project';
 import type { BundlingViewSettings, BundlingViewStyle } from '../core/project';
-import { BUNDLING_EDGE_WARNING_LIMIT, bundlingController } from '../state';
+import { BUNDLING_EDGE_WARNING_LIMIT } from '../render/bundling/settings';
+import { assertNever } from '../core/util/assertNever';
+import { bundlingController } from '../state';
 import type { BundlingView } from '../state';
 import { useT, useUi } from './hooks';
 import { getNumberFormat } from './intl';
@@ -21,6 +23,7 @@ interface StatusProps {
  * @param props - 計算の状態と、有効か
  * @returns 状態の表示。無効のときは null
  */
+// 【TS】switch の `case 'running':` のように、判別共用体（`phase` で形が決まる型）を分岐で絞り込む。
 export function BundlingStatus({ view, enabled }: StatusProps) {
   const t = useT();
   const locale = useUi((s) => s.locale);
@@ -103,10 +106,9 @@ export function BundlingStatus({ view, enabled }: StatusProps) {
           {t('graph.bundle.status.error', { reason: view.error ?? '' })}
         </p>
       );
-    default: {
-      const never: never = view.phase;
-      return never;
-    }
+    default:
+      // 【TS】`assertNever` は、`phase` の全ての場合を上で処理したことを型で確かめる。段階を足して分岐を書き忘れると、型エラーになる。
+      return assertNever(view.phase, 'BundlingPhase');
   }
 }
 
@@ -171,6 +173,7 @@ export function BundlingControls({ settings, view, onChange }: ControlsProps) {
         {t('graph.bundle.rebundle')}
       </button>
       {stale && <p className="rl-status">{t('graph.bundle.stale')}</p>}
+      <p className="rl-section-note">{t('graph.bundle.directionNote')}</p>
       <BundlingStatus view={view} enabled={settings.enabled} />
     </div>
   );

@@ -5,6 +5,7 @@ import { DEFAULT_ENCODING } from '../core/encode';
 import { toNodeId, toNodeTypeId, type Dataset } from '../core/model';
 import { DEFAULT_EDGE_COLOR, DEFAULT_EDGE_OPACITY, buildScene } from '../render';
 import type { Scene } from '../render';
+import type { BundleGraph } from '../render/bundling';
 import { buildFigureLegend, clipText, CREDIT_MAX_CHARS } from './figureLegend';
 import type { FigureLegendInput } from './figureLegend';
 import type { EncodingLegends } from './graphEncoding';
@@ -199,23 +200,46 @@ describe('FR-VG-14: 書き出す凡例の束の太さの見本', () => {
     minWidth: 1,
     widthOf: (w: number) => Math.max(1, 14 * Math.sqrt(w / 16)),
   };
+  // 【なぜ】`as unknown as` は型の検査を回避する二段の変換。見本の太さは `widthScale.maxWeight`（正）から決まり、
+  //   束の区間のまとめの中身は読まれないので、空の見本で足りる。
+  const fakeBundleGraph = {} as unknown as BundleGraph;
   const bands = (style: 'bands' | 'overlay'): Scene => ({
     ...buildScene(graph(true), positions, {}, {}),
     bundle: { style, color: '#336699', opacity: 0.6, ribbons: [], widthScale: scale },
   });
   it('FR-VG-14: 帯の図では、図と同じ太さ・色の見本を 3 つ足す', () => {
-    const spec = buildFigureLegend(input({ scene: bands('bands'), bundleScale: scale }));
+    const spec = buildFigureLegend(input({ scene: bands('bands'), bundleGraph: fakeBundleGraph }));
     const items = spec?.items.filter((i) => i.label.startsWith('legend.bundleWeight')) ?? [];
     expect(items.map((i) => i.lineWidth)).toEqual([14, 7, 3.5]);
     expect(items.every((i) => i.fill === '#336699' && i.opacity === 0.6)).toBe(true);
     expect(labels(spec)).toContain('legend.bundleWidth');
   });
+  it('FR-VG-14: 帯の図では「エッジの太さ」に「束ねていないエッジ」と断る。束ねていないエッジが無ければ節を出さない', () => {
+    const widthLegend = {
+      ...noLegends,
+      width: { ticks: [{ value: 1, size: 2 }], missingCount: 0 },
+    } as unknown as EncodingLegends;
+    const withUnbundled = buildFigureLegend(
+      input({ scene: bands('bands'), legends: widthLegend, bundleGraph: fakeBundleGraph }),
+    );
+    expect(labels(withUnbundled)).toContain('legend.edgeWidthUnbundled');
+    expect(labels(withUnbundled)).not.toContain('legend.edgeWidth');
+    const onlyBundled: Scene = { ...bands('bands'), edges: [] };
+    const none = buildFigureLegend(
+      input({ scene: onlyBundled, legends: widthLegend, bundleGraph: fakeBundleGraph }),
+    );
+    expect(labels(none)).not.toContain('legend.edgeWidthUnbundled');
+    // 重ね描きは今のまま
+    expect(
+      labels(buildFigureLegend(input({ scene: bands('overlay'), legends: widthLegend }))),
+    ).toContain('legend.edgeWidth');
+  });
   it('FR-VG-14: 束ねていない図、重ね描きの図では足さない', () => {
-    expect(labels(buildFigureLegend(input({ bundleScale: scale })))).not.toContain(
+    expect(labels(buildFigureLegend(input({ bundleGraph: fakeBundleGraph })))).not.toContain(
       'legend.bundleWidth',
     );
     expect(
-      labels(buildFigureLegend(input({ scene: bands('overlay'), bundleScale: scale }))),
+      labels(buildFigureLegend(input({ scene: bands('overlay'), bundleGraph: fakeBundleGraph }))),
     ).not.toContain('legend.bundleWidth');
   });
 });

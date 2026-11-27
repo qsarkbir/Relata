@@ -7,7 +7,14 @@
 /// <reference lib="dom" />
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
-import { openGraphSection, openProject, saveProjectFile, saveSvgFile, startApp } from './support';
+import {
+  fixturePath,
+  openGraphSection,
+  openProject,
+  saveProjectFile,
+  saveSvgFile,
+  startApp,
+} from './support';
 
 test.use({ locale: 'ja-JP' });
 
@@ -163,5 +170,53 @@ test.describe('FR-VG-13/14: グラフ図の edge bundling', () => {
     const saved = JSON.parse(text) as { view: { graph?: Record<string, unknown> } };
     expect(saved.view.graph).toBeDefined();
     expect(saved.view.graph).not.toHaveProperty('bundling');
+  });
+
+  test('FR-VG-13: 表示中のエッジが 5,000 本を超えると確認が出て、「取り消す」で計算せずに中止の文言が出る', async ({
+    page,
+  }) => {
+    await countBundlingWorkers(page);
+    await startApp(page);
+    // 5,001 本のエッジを持つプロジェクトを、見本のファイルから作る。
+    // 【なぜ】グラフは同じ向きの同じ組を 1 本にまとめるので、異なる組を 5,001 通り作る（120 ノード）。
+    const base = JSON.parse(readFileSync(fixturePath('maghrib.relata.json'), 'utf8')) as {
+      dataset: { nodes: unknown[]; edges: unknown[] };
+    };
+    const count = 120;
+    base.dataset.nodes = Array.from({ length: count }, (_, i) => ({
+      id: 'n' + String(i),
+      type: 'type-1',
+      label: 'N' + String(i),
+      attrs: {},
+    }));
+    const edges: unknown[] = [];
+    for (let a = 0; a < count && edges.length < 5001; a++)
+      for (let b = 0; b < count && edges.length < 5001; b++)
+        if (a !== b)
+          edges.push({
+            id: 'e' + String(edges.length),
+            source: 'n' + String(a),
+            target: 'n' + String(b),
+            directed: true,
+            weight: 1,
+            attrs: {},
+          });
+    base.dataset.edges = edges;
+    await openProject(page, {
+      name: 'big.relata.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(base), 'utf8'),
+    });
+    await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]').first()).toBeVisible();
+    await toggle(page).check();
+    const confirm = page.getByRole('alert').filter({ hasText: /5,001/ });
+    await expect(confirm).toContainText('5,000');
+    expect(await workerStarts(page)).toBe(0);
+    await confirm.getByRole('button', { name: '取り消す', exact: true }).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: '束ねるのを中止しました' }),
+    ).toBeVisible();
+    expect(await workerStarts(page)).toBe(0);
+    await expect(bands(page)).toHaveCount(0);
   });
 });

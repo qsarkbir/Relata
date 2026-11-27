@@ -2,12 +2,8 @@ import { describe, expect, it } from 'vitest';
 import Graph from 'graphology';
 import type { RelataGraph } from '../core/graph';
 import { toNodeId, toNodeTypeId } from '../core/model';
-import type {
-  BundleEdge,
-  BundleGraph,
-  BundlingClient,
-  BundlingJob,
-} from '../workers/bundling.client';
+import type { BundleEdge, BundleGraph } from '../render/bundling';
+import type { BundlingClient, BundlingJob } from '../workers/bundling.client';
 import {
   bundleEdgesOf,
   createBundlingController,
@@ -25,7 +21,8 @@ function edges(n: number): BundleEdge[] {
     weight: 1,
   }));
 }
-const fakeGraph = { bundleCount: 0 } as unknown as BundleGraph; // 【なぜ】中身は見ない。controller は運ぶだけ。
+// 【なぜ】`as unknown as` は、型の検査を回避する二段の変換。controller は束の区間のまとめの中身を見ず運ぶだけなので、空の見本で足りる。
+const fakeGraph = { bundleCount: 0 } as unknown as BundleGraph;
 
 /**
  * 応答を手で返す偽の client。
@@ -83,6 +80,7 @@ function request(over: Partial<BundlingRequest> & { count?: number } = {}): Bund
     layoutBusy: false,
     sources: ['g', 'p'],
     strength: 0.85,
+    limit: 5000,
     build: () => list,
     ...over,
   };
@@ -162,9 +160,27 @@ describe('FR-VG-13: 束ねる controller（D-55、D-17）', () => {
     });
     controller.rebundle();
     expect(controller.getSnapshot().phase).toBe('running');
+    // 版が同じなのに中止された（Worker が止められた）ときは、中止として見せる。running のまま止めない。
     waiting[1]?.reject(new DOMException('中止', 'AbortError'));
     await flush();
-    expect(controller.getSnapshot().phase).toBe('running');
+    expect(controller.getSnapshot().phase).toBe('cancelled');
+  });
+
+  it('FR-VG-13: 結果に、作ったときの入力の素（sources）を持たせる（画面が今の入力と比べる）', async () => {
+    const { controller, waiting, fire } = setup();
+    const sources = ['g', 'p'];
+    controller.sync(request({ sources }));
+    fire();
+    waiting[0]?.resolve(done);
+    await flush();
+    expect(controller.getSnapshot().result?.sources).toBe(sources);
+  });
+
+  it('FR-VG-13: 確認の境目は request.limit で決まる（state は定数を持たない）', () => {
+    const { controller, fire } = setup();
+    controller.sync(request({ count: 11, limit: 10 }));
+    fire();
+    expect(controller.getSnapshot().phase).toBe('confirm');
   });
 
   it('FR-VG-13: 5,000 本を超えると確認で止まり、「始める」で計算する（5,000 本ちょうどは確認しない）', () => {

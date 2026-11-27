@@ -2,17 +2,15 @@
 // 【TS】`import type` は型だけを読み込み、実行時には消える。worker のファイルを client に実行時に混ぜない。
 import { wrap } from 'comlink';
 import type {
-  BundleEdge,
   BundleGraph,
-  BundledPath,
   BundlingInfo,
   BundlingProgress,
   BundlingResult,
 } from '../render/bundling';
 import type { BundlingJob, BundlingStepResult, BundlingWorkerApi } from './bundling.worker';
 
-// 【なぜ】state は render を import できない（設計書 §4.1）。型は client を通して渡す。
-export type { BundleEdge, BundleGraph, BundledPath, BundlingJob };
+// 【なぜ】state は render の型を直接 `import type` で読める（設計書 §4.1 の例外）ので、render の型は再 export しない。
+export type { BundlingJob };
 /** `run` の結果。`job.buildGraph` が true のときだけ `graph` を持つ。 */
 export interface BundlingRunResult extends BundlingResult {
   readonly graph?: BundleGraph;
@@ -149,5 +147,3 @@ export function createBundlingClient(
 }
 /** アプリ全体の窓口。 */
 export const bundlingClient: BundlingClient = createBundlingClient();
-// 【なぜ】5,000 本の警告の境目は算法側の定数と同じものを使う（state は render を直接 import できない）。
-export { BUNDLING_EDGE_WARNING_LIMIT, exceedsBundlingLimit } from '../render/bundling/settings';

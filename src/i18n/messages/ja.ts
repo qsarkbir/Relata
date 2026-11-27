@@ -64,8 +64,10 @@ export const ja = {
   'graph.geo.notFound':
     '保存された緯度・経度の属性が、今のデータに見つかりません。選び直してください。',
   'graph.bundle.toggle': '束ねる',
+  'graph.bundle.directionNote':
+    '束ねた経路の向きは、先細りで示すのがおすすめです（濃淡を選んでいても、帯は先細りで描きます）。矢印を選ぶと、経路の終端に付きます。',
   'graph.bundle.toggleHint':
-    'ツールバーの「束ねる」をオンにすると、エッジを束ねて図の見通しをよくします。座標が変わるたびに計算し直します。',
+    'ツールバーの「束ねる」をオンにすると、エッジを束ねて図の見通しをよくします。フィルタや配置が変わると計算し直します（強さの変更は「束ね直す」で反映します）。',
   'graph.section.bundling': '束ねる（edge bundling）',
   'graph.bundle.strength': '束ねる強さ',
   'graph.bundle.style': '描き方',
@@ -84,6 +86,7 @@ export const ja = {
     '表示中のエッジが {count} 本で、{limit} 本を超えています。束ねるのに時間がかかります。始めますか。',
   'graph.bundle.stale': '強さを変えました。「束ね直す」で反映します。',
   'graph.bundleTask': 'エッジを束ねる計算中',
+  'legend.edgeWidthUnbundled': 'エッジの太さ（重み。束ねていないエッジ）',
   'legend.bundleWidth': '束の太さ（通るエッジの重みの合計）',
   'legend.bundleWeight': '重み {w}',
   'graph.relayout': '再配置する',

@@ -249,7 +249,39 @@ const cases = [
       'src/io/__lint_probe__e.ts': ['export const e = 1;'],
       'src/workers/__lint_probe__f.worker.ts': ['export const f = 1;'],
     },
-    expect: { 'no-restricted-imports': 6, 'import-x/no-restricted-paths': 6 },
+    expect: {
+      'no-restricted-imports': 6,
+      'import-x/no-restricted-paths': 5,
+      '@typescript-eslint/no-restricted-imports': 1,
+    },
+  },
+  {
+    name: 'state は render の値を import できない',
+    lint: 'src/state/__lint_probe__.ts',
+    files: {
+      'src/state/__lint_probe__.ts': [
+        "import { c } from '../render/__lint_probe__c';",
+        "import { d } from '../render/bundling/__lint_probe__d';",
+        'export const x = [c, d];',
+      ],
+      'src/render/__lint_probe__c.ts': ['export const c = 1;'],
+      'src/render/bundling/__lint_probe__d.ts': ['export const d = 1;'],
+    },
+    expect: { '@typescript-eslint/no-restricted-imports': 2 },
+  },
+  {
+    name: 'state は render の型を import type で読める',
+    lint: 'src/state/__lint_probe__.ts',
+    files: {
+      'src/state/__lint_probe__.ts': [
+        "import type { C } from '../render/__lint_probe__c';",
+        "import type { D } from '../render/bundling/__lint_probe__d';",
+        'export type X = [C, D];',
+      ],
+      'src/render/__lint_probe__c.ts': ['export type C = number;'],
+      'src/render/bundling/__lint_probe__d.ts': ['export type D = number;'],
+    },
+    expect: { '@typescript-eslint/no-restricted-imports': 0, 'import-x/no-restricted-paths': 0 },
   },
   {
     name: 'state は zustand/vanilla、i18n、core、workers の *.client.ts を import できる',

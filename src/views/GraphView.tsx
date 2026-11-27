@@ -12,15 +12,7 @@ import type { NodeId } from '../core/model';
 import { toNodeId } from '../core/model';
 import { findMissingElements } from '../core/missing';
 import { matchIncludes, LOOSE_MATCH } from '../core/text';
-import {
-  buildScene,
-  fitZoomFor,
-  markOutOfTime,
-  renderSvg,
-  resolveBundleWidthScale,
-  MAX_ZOOM,
-  MIN_ZOOM,
-} from '../render';
+import { buildScene, fitZoomFor, markOutOfTime, renderSvg, MAX_ZOOM, MIN_ZOOM } from '../render';
 import type { SceneBundling } from '../render';
 import { createSvgExport } from '../io/export';
 import { setFigureSource } from './figureExport';
@@ -70,6 +62,25 @@ const RESCALE_DELAY = 120;
  * 帯のシーン作成は 5,000 本（1 本約 33 点）で約 210 ms（renderer の測定）。1 本あたり約 3 要素分になる。
  */
 const BUNDLE_POINTS_PER_UNIT = 16;
+
+/**
+ * 2 つの座標の表が、全ノードで x・y とも同じか。
+ * @param a - 座標の表
+ * @param b - 座標の表
+ * @returns 同じなら true
+ */
+function sameCoordinates(
+  a: ReadonlyMap<NodeId, { readonly x: number; readonly y: number }>,
+  b: ReadonlyMap<NodeId, { readonly x: number; readonly y: number }>,
+): boolean {
+  if (a === b) return true;
+  if (a.size !== b.size) return false;
+  for (const [id, p] of b) {
+    const q = a.get(id);
+    if (q?.x !== p.x || q.y !== p.y) return false;
+  }
+  return true;
+}
 
 /**
  * 図の中の点 (x, y) を動かさずに、拡大率を factor 倍にする。
@@ -206,23 +217,42 @@ export function GraphView() {
   const [settledZoom, setSettledZoom] = useState(view.viewport.zoom);
   // 束ねた図: 結果と設定。計算し直す時機は state の bundlingController が決める（D-55）。
   const bundlingSettings = view.bundling ?? DEFAULT_BUNDLING_VIEW;
+  // 【なぜ】束ねる計算の入力は座標（x・y）だけ。固定・解除（`fixed` の切り替え）で配列が作り直されても、
+  //   座標が同じなら前の Map を使い回し、「座標が変わった」と見なして束ね直さない。
+  const [bundleCoords, setBundleCoords] = useState(positions);
+  if (!sameCoordinates(bundleCoords, positions))
+    // 【なぜ】描画の途中での state の更新は、React が許す「前の値との差から導く」書き方（すぐ描き直される）。
+    setBundleCoords(positions);
+  // 【なぜ】ノードをドラッグしている間は座標が動き続けるので、束ねる計算を始めない（離したら始める）。
+  const [dragging, setDragging] = useState(false);
   const bundlingView = useBundling({
     graph,
-    positions,
-    layoutBusy: busy,
+    positions: bundleCoords,
+    layoutBusy: busy || dragging,
     settings: bundlingSettings,
   });
+  // 【なぜ】入力が変わった直後の 1 回の描画で、古い経路を新しい座標に重ねない。結果を作ったときの入力と
+  //   今の入力が同じときだけ使う（controller は effect で入力の変化を知るため、描画が 1 回先に走る）。
+  const bundleResult =
+    bundlingView.result !== null &&
+    bundlingView.result.sources[0] === graph &&
+    bundlingView.result.sources[1] === bundleCoords
+      ? bundlingView.result
+      : null;
+  const edgeWidthScale = view.encoding.edgeWidth.scale;
   // 【なぜ】計算中・中止・失敗・無効のときは bundled を渡さない（束ねない図を描いたまま。図を消さない）。
   const bundled = useMemo<SceneBundling | undefined>(
     () =>
-      bundlingSettings.enabled && bundlingView.result !== null
+      bundlingSettings.enabled && bundleResult !== null
         ? {
-            paths: bundlingView.result.paths,
-            graph: bundlingView.result.graph,
+            paths: bundleResult.paths,
+            graph: bundleResult.graph,
             style: bundlingSettings.style,
+            // 【なぜ】束の太さにも、エッジの太さと同じ利用者のスケール（FR-VG-04）を効かせる。
+            scale: edgeWidthScale,
           }
         : undefined,
-    [bundlingSettings.enabled, bundlingSettings.style, bundlingView.result],
+    [bundlingSettings.enabled, bundlingSettings.style, bundleResult, edgeWidthScale],
   );
   const bundledPoints = useMemo(
     () => bundled?.paths.reduce((sum, p) => sum + p.points.length / 2, 0) ?? 0,
@@ -257,6 +287,8 @@ export function GraphView() {
         directedStyle: view.direction,
         measureText,
         zoom,
+        // 【なぜ】束ねた図では、選んだエッジを帯の上に細い線で強調する（帯はエッジごとに色を変えられない）。
+        ...(bundled === undefined ? {} : { selectedEdgeKeys: selectedEdgeSet }),
         // 【TS】条件付きスプレッド: `...(条件 ? {} : { 項目 })` は、値がある時だけ項目を足す。
         //   値が無いとき、項目そのものを作らず、既定の扱いを buildScene 側に任せるため。
         ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
@@ -265,6 +297,7 @@ export function GraphView() {
       }),
     [
       bundled,
+      selectedEdgeSet,
       encoding,
       view.labels,
       view.largeLabelCount,
@@ -485,9 +518,13 @@ export function GraphView() {
           settings: view.encoding,
           encoding,
           legends: encodingWithLegends.legends,
-          directedStyle: view.direction,
+          // 【なぜ】帯の図は、濃淡を選んでいても先細りで描く（renderer の規則）。凡例を図と合わせる。
+          directedStyle:
+            bundled?.style !== 'overlay' && bundled !== undefined && view.direction === 'gradient'
+              ? 'taper'
+              : view.direction,
           scene: plain.scene,
-          ...(bundled === undefined ? {} : { bundleScale: resolveBundleWidthScale(bundled) }),
+          ...(bundled === undefined ? {} : { bundleGraph: bundled.graph }),
           legend: request.legend,
           ...(request.credit
             ? {
@@ -914,6 +951,7 @@ export function GraphView() {
                   const dy = p.y - start.y;
                   start.moved ||= Math.abs(dx) + Math.abs(dy) > 2;
                   if (!start.moved) return;
+                  if (start.id !== undefined) setDragging(true);
                   if (start.id === undefined)
                     patch({
                       viewport: {
@@ -954,6 +992,7 @@ export function GraphView() {
                   }
                   const start = drag.current;
                   drag.current = null;
+                  setDragging(false);
                   if (start !== null && !start.moved) {
                     if (start.edgeKey !== undefined && graph.hasEdge(start.edgeKey)) {
                       // 選ぶのは元のエッジ ID。表の選択と同じ ID で持つ（D-40）。
@@ -973,6 +1012,7 @@ export function GraphView() {
                 onPointerCancel={() => {
                   range.cancel();
                   drag.current = null;
+                  setDragging(false);
                   resumeLayout();
                 }}
               >

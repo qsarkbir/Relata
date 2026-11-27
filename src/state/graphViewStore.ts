@@ -50,15 +50,6 @@ export function selectGraphOptions(state: GraphViewState) {
 }
 
 /**
- * 束ねる設定（無ければ既定。無効）。
- * @param state - グラフ表示ストア
- * @returns 有効か、強さ、描き方
- */
-export function selectBundlingView(state: GraphViewState): BundlingViewSettings {
-  return (state.view ?? DEFAULT_GRAPH_VIEW).bundling ?? DEFAULT_BUNDLING_VIEW;
-}
-
-/**
  * 束ねる設定が既定と同じか。
  * @param b - 束ねる設定
  * @returns 既定と同じなら true（保存しない）

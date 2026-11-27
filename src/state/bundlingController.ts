@@ -13,18 +13,15 @@
  * - 表示中のエッジが 5,000 本を超えるときは、始める前に `confirm` の状態で止まり、利用者の確認を待つ。
  */
 import type { RelataGraph } from '../core/graph';
+import { toNodeId } from '../core/model';
 import type { NodeId } from '../core/model';
-import {
-  BUNDLING_EDGE_WARNING_LIMIT,
-  bundlingClient,
-  exceedsBundlingLimit,
-  type BundleEdge,
-  type BundleGraph,
-  type BundledPath,
-  type BundlingClient,
-} from '../workers/bundling.client';
+// 【なぜ】state は render の「型」だけ読んでよい（値は不可。ESLint が止める。設計書 §4.1 の例外）。
+// 【TS】`import type` は型だけの取り込みで、実行時には消える。
+import type { BundleEdge, BundleGraph, BundledPath } from '../render/bundling';
+import { createBundlingClient, type BundlingClient } from '../workers/bundling.client';
 
 /** 計算の段階。`idle` は何もしていない（無効、または配置の計算中）、`waiting` は入力が落ち着くのを待っている。 */
+// 【TS】文字列リテラルの共用体。`'idle' | 'waiting' | …` のどれかだけを許し、打ち間違いを型エラーにする。
 export type BundlingPhase =
   'idle' | 'waiting' | 'confirm' | 'running' | 'ready' | 'cancelled' | 'error';
 
@@ -36,6 +33,11 @@ export interface BundlingOutcome {
   readonly graph: BundleGraph;
   /** この結果を作ったときの強さ。いまの設定と違えば「束ね直す」を促す。 */
   readonly strength: number;
+  /**
+   * この結果を作ったときの入力の素（`BundlingRequest.sources`）。
+   * 【なぜ】入力が変わった直後の 1 回の描画で、古い経路を新しい座標に重ねないよう、画面が今の入力と比べて使う。
+   */
+  readonly sources: readonly unknown[];
 }
 
 /** 保存しない計算の状態。 */
@@ -64,6 +66,11 @@ export interface BundlingRequest {
   readonly sources: readonly unknown[];
   /** 束ねる強さ（0〜1）。入力の素に含めない（変えても自動では計算しない）。 */
   readonly strength: number;
+  /**
+   * 確認を求めるエッジ数の境目。これを超える本数のときは `confirm` で止まる（D-55。既定の 5,000）。
+   * 【なぜ】定数は render 側にあり、state は render の値を読めない。値を知っている views が渡す。
+   */
+  readonly limit: number;
   /** 束ねる対象のエッジを作る。重いので、実際に始めるときにだけ呼ぶ。 */
   readonly build: () => readonly BundleEdge[];
 }
@@ -87,9 +94,6 @@ export interface BundlingController {
   cancel(): void;
 }
 
-/** 警告の境目（5,000 本）。算法側の定数をそのまま見せる。 */
-export { BUNDLING_EDGE_WARNING_LIMIT };
-
 /** 入力が落ち着くのを待つ時間（ミリ秒）。ドラッグで座標が動き続ける間は始めない。 */
 export const BUNDLING_SETTLE_DELAY = 300;
 
@@ -107,12 +111,13 @@ const IDLE: BundlingView = { phase: 'idle', progress: 0, edgeCount: 0, result: n
  */
 export function bundleEdgesOf(
   graph: RelataGraph,
+  // 【TS】`ReadonlyMap<K, V>` は読み取り専用の Map（`get` はあるが `set` はない）。
   positions: ReadonlyMap<NodeId, { readonly x: number; readonly y: number }>,
 ): BundleEdge[] {
   const edges: BundleEdge[] = [];
   graph.forEachEdge((key, attrs, source, target) => {
-    const a = positions.get(source as NodeId);
-    const b = positions.get(target as NodeId);
+    const a = positions.get(toNodeId(source));
+    const b = positions.get(toNodeId(target));
     if (a === undefined || b === undefined) return;
     edges.push({
       id: key,
@@ -127,6 +132,7 @@ export function bundleEdgesOf(
   return edges;
 }
 
+// 【TS】`readonly unknown[]` は「中身を変えられず、要素の型を問わない配列」。`unknown` は何でも入るが、使う前に絞り込みが要る。ここは `Object.is` で比べるだけなので絞り込まない。
 function sameSources(a: readonly unknown[], b: readonly unknown[]): boolean {
   return a.length === b.length && a.every((x, i) => Object.is(x, b[i]));
 }
@@ -147,6 +153,7 @@ export function createBundlingController(
   let cancelTimer: (() => void) | null = null;
   let latest: BundlingRequest | null = null;
   let lastSources: readonly unknown[] | null = null;
+  // 【TS】`Set<() => void>` は「引数も戻り値も無い関数」の集合。購読者（変化を知りたい側）を重複なく持つ。
   const listeners = new Set<() => void>();
   const publish = (next: BundlingView): void => {
     view = next;
@@ -161,6 +168,8 @@ export function createBundlingController(
   const run = (request: BundlingRequest, edges: readonly BundleEdge[]): void => {
     const token = revision;
     publish({ phase: 'running', progress: 0, edgeCount: edges.length, result: null, error: null });
+    // 【TS】`void (async () => { … })()` は、その場で非同期関数を呼び、Promise を待たずに捨てる書き方。
+    //   `void` は「結果を意図して捨てる」印。中の失敗は try/catch で拾うので、未処理の拒否は起きない。
     void (async () => {
       try {
         const done = await client.run(
@@ -176,13 +185,22 @@ export function createBundlingController(
           phase: 'ready',
           progress: 1,
           edgeCount: edges.length,
-          result: { paths: done.paths, graph: done.graph, strength: request.strength },
+          result: {
+            paths: done.paths,
+            graph: done.graph,
+            strength: request.strength,
+            sources: request.sources,
+          },
           error: null,
         });
       } catch (failure: unknown) {
         // 【なぜ】中止による AbortError は失敗として見せない。版が進んでいれば、どの失敗も古い。
         if (token !== revision) return;
-        if (failure instanceof DOMException && failure.name === 'AbortError') return;
+        // 版が同じなのに中止された（Worker が他の理由で止められた）ときは、中止として見せる。
+        if (failure instanceof DOMException && failure.name === 'AbortError') {
+          publish({ ...IDLE, phase: 'cancelled' });
+          return;
+        }
         publish({
           phase: 'error',
           progress: 0,
@@ -199,7 +217,7 @@ export function createBundlingController(
       publish(IDLE);
       return;
     }
-    if (!confirmed && exceedsBundlingLimit(edges.length)) {
+    if (!confirmed && edges.length > request.limit) {
       publish({ ...IDLE, phase: 'confirm', edgeCount: edges.length });
       return;
     }
@@ -254,12 +272,33 @@ export function createBundlingController(
   };
 }
 
-/** アプリ全体で共有する束ねる計算の窓口。`setTimeout` は Node でも使えるタイマーで、DOM の API ではない。 */
-export const bundlingController: BundlingController = createBundlingController(bundlingClient, {
+/** 本物のタイマーの時計。`setTimeout` は Node でも使えるタイマーで、DOM の API ではない。 */
+export const timerScheduler: BundlingScheduler = {
+  /**
+   * 一定時間の後に callback を呼ぶ。
+   * @param callback - 呼ぶ関数
+   * @param milliseconds - 待つ時間
+   * @returns 待ちを取り消す関数
+   */
   delay: (callback, milliseconds) => {
     const timer = setTimeout(callback, milliseconds);
     return () => {
       clearTimeout(timer);
     };
   },
-});
+};
+
+/**
+ * Worker を新しく持つ controller を作る。
+ *
+ * 【なぜ】Worker の client は 1 つの計算しか持てない（新しい依頼が前の計算を止める）。
+ * グラフ図と地図（T3-04）で別の controller を作るときは、controller ごとに client を分ける。
+ *
+ * @returns 専用の client を持つ controller
+ */
+export function createWorkerBundlingController(): BundlingController {
+  return createBundlingController(createBundlingClient(), timerScheduler);
+}
+
+/** グラフ図の束ねる計算の窓口（アプリ全体で 1 つ）。 */
+export const bundlingController: BundlingController = createWorkerBundlingController();

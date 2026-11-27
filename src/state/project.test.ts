@@ -7,7 +7,8 @@ import { bindFilterToData, createFilterStore, selectFilterState } from './filter
 import { createDisplayStore } from './displayStore';
 import { bindTimelineToData, createTimelineStore } from './timelineStore';
 import { DEFAULT_BUNDLING_VIEW, DEFAULT_GRAPH_VIEW } from '../core/project';
-import { createGraphViewStore, selectBundlingView } from './graphViewStore';
+import { createGraphViewStore } from './graphViewStore';
+import type { GraphViewState } from './graphViewStore';
 import { applySnapshot, takeSnapshot } from './project';
 
 const f: FilterDef = {
@@ -110,6 +111,16 @@ describe('state/project', () => {
   });
 });
 
+/**
+ * 束ねる設定を読む（項目が無ければ既定）。
+ *
+ * @param state - グラフ表示ストアの状態
+ * @returns 束ねる設定
+ */
+function bundlingOf(state: GraphViewState) {
+  return (state.view ?? DEFAULT_GRAPH_VIEW).bundling ?? DEFAULT_BUNDLING_VIEW;
+}
+
 describe('FR-VG-13: 束ねる設定の保存と復元', () => {
   it('FR-VG-13: 既定と同じ（無効、強さ 0.85、帯）なら view.graph.bundling を保存しない', () => {
     const { data, filter } = stores();
@@ -134,13 +145,13 @@ describe('FR-VG-13: 束ねる設定の保存と復元', () => {
     const graph2 = createGraphViewStore();
     if (snap === null) throw new Error('snapshot');
     applySnapshot(snap, data2, filter2, { graph: graph2 });
-    expect(selectBundlingView(graph2.getState())).toEqual(bundling);
+    expect(bundlingOf(graph2.getState())).toEqual(bundling);
   });
 
   it('FR-VG-13: 項目が無いときは既定（無効）として読む', () => {
     const graph = createGraphViewStore();
-    expect(selectBundlingView(graph.getState())).toEqual(DEFAULT_BUNDLING_VIEW);
+    expect(bundlingOf(graph.getState())).toEqual(DEFAULT_BUNDLING_VIEW);
     graph.getState().setView(DEFAULT_GRAPH_VIEW);
-    expect(selectBundlingView(graph.getState())).toEqual(DEFAULT_BUNDLING_VIEW);
+    expect(bundlingOf(graph.getState())).toEqual(DEFAULT_BUNDLING_VIEW);
   });
 });

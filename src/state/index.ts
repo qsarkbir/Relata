@@ -25,7 +25,6 @@ export {
   graphViewStore,
   bindGraphViewToData,
   isDefaultBundlingView,
-  selectBundlingView,
   selectGraphOptions,
 } from './graphViewStore';
 export type { GraphViewState } from './graphViewStore';
@@ -37,11 +36,12 @@ export type {
   MetricsView,
 } from './metricsController';
 export {
-  BUNDLING_EDGE_WARNING_LIMIT,
   BUNDLING_SETTLE_DELAY,
   bundleEdgesOf,
   bundlingController,
   createBundlingController,
+  createWorkerBundlingController,
+  timerScheduler,
 } from './bundlingController';
 export type {
   BundlingController,

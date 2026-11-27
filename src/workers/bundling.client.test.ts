@@ -101,6 +101,7 @@ describe('FR-VG-13: 束ねる Worker の client', () => {
     expect(workers.handles[0]?.terminated).toBe(1);
   });
   it('FR-VG-13: 最後の段階が graph を持つなら、結果に添えて返す（Worker 内で作った束の区間のまとめ）', async () => {
+    // 【なぜ】`as unknown as` は型の検査を回避する二段の変換。client は束の区間のまとめの中身を見ず運ぶだけなので、空の見本で足りる。
     const graph = { bundleCount: 0 } as unknown as BundleGraph;
     const workers = fakeWorkers();
     const client = createBundlingClient(workers.spawn);

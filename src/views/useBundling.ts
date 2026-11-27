@@ -7,6 +7,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import type { RelataGraph } from '../core/graph';
 import type { BundlingViewSettings } from '../core/project';
+import { BUNDLING_EDGE_WARNING_LIMIT } from '../render/bundling/settings';
 import type { NodeId } from '../core/model';
 import { bundleEdgesOf, bundlingController, uiStore } from '../state';
 import type { BundlingView } from '../state';
@@ -14,6 +15,7 @@ import type { BundlingView } from '../state';
 /** {@link useBundling} の入力。 */
 export interface UseBundlingInput {
   readonly graph: RelataGraph | null;
+  // 【TS】`ReadonlyMap<K, V>` は読み取り専用の Map（`get` はあるが `set` はない）。
   readonly positions: ReadonlyMap<NodeId, { readonly x: number; readonly y: number }>;
   /** 配置の計算中か。 */
   readonly layoutBusy: boolean;
@@ -28,6 +30,8 @@ export interface UseBundlingInput {
  */
 export function useBundling(input: UseBundlingInput): BundlingView {
   const { graph, positions, layoutBusy, settings } = input;
+  // 【TS】`useSyncExternalStore(購読, 現在の値)` は、React の外にある状態（controller）を安全に読むフック。
+  //   `getSnapshot` は変化がなければ同じ参照を返す約束で、controller は状態を新しい値に置き換えるときだけ参照を変える。
   const view = useSyncExternalStore(bundlingController.subscribe, bundlingController.getSnapshot);
   useEffect(() => {
     // 【なぜ】入力の素はグラフと座標だけ。ズーム・パン・再生・描き方・強さは含めない（計算し直さない操作）。
@@ -36,6 +40,7 @@ export function useBundling(input: UseBundlingInput): BundlingView {
       layoutBusy,
       sources: [graph, positions],
       strength: settings.strength,
+      limit: BUNDLING_EDGE_WARNING_LIMIT,
       build: () => (graph === null ? [] : bundleEdgesOf(graph, positions)),
     });
   }, [graph, positions, layoutBusy, settings.enabled, settings.strength]);
@@ -47,6 +52,7 @@ export function useBundling(input: UseBundlingInput): BundlingView {
         layoutBusy: false,
         sources: [],
         strength: 0,
+        limit: BUNDLING_EDGE_WARNING_LIMIT,
         build: () => [],
       });
     },

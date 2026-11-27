@@ -67,8 +67,10 @@ export const en = {
   'graph.geo.notFound':
     'The saved latitude or longitude attribute was not found in the current data. Please choose again.',
   'graph.bundle.toggle': 'Bundle edges',
+  'graph.bundle.directionNote':
+    'Tapering is recommended for showing the direction of bundled paths (bands are drawn tapered even if gradient is selected). Arrows are placed at the end of each path.',
   'graph.bundle.toggleHint':
-    'Turn on "Bundle edges" in the toolbar to bundle edges and make the figure easier to read. It is recomputed whenever the coordinates change.',
+    'Turn on "Bundle edges" in the toolbar to bundle edges and make the figure easier to read. It is recomputed when filters or the layout change (a strength change is applied with "Bundle again").',
   'graph.section.bundling': 'Edge bundling',
   'graph.bundle.strength': 'Bundling strength',
   'graph.bundle.style': 'Drawing style',
@@ -87,6 +89,7 @@ export const en = {
     'There are {count} visible edges, more than {limit}. Bundling may take a long time. Start?',
   'graph.bundle.stale': 'The strength was changed. Press "Bundle again" to apply it.',
   'graph.bundleTask': 'Bundling edges',
+  'legend.edgeWidthUnbundled': 'Edge width (weight; unbundled edges only)',
   'legend.bundleWidth': 'Bundle width (sum of edge weights)',
   'legend.bundleWeight': 'Weight {w}',
   'graph.relayout': 'Recompute layout',
