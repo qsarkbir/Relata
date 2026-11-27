@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 3.14（2026-11-27） |
+| 版 | 3.15（2026-11-27） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -159,8 +159,8 @@
 
 - **`src/core/` は何にも依存しない。** DOM、React、ブラウザ API、`Date` を使わない。JSX も書かない（`.tsx` を置かない）。
 - **`src/render/` は React に依存しない。** 画面からも書き出し処理からも呼べるようにする。JSX も書かない。`core` と `i18n`（書き出しのラベル用）だけに依存し、`state`、`views`、`app`、`map`、`io`、`workers` を import しない。
-- **`src/state/` は画面に依存しない純粋なストア。** `core`、`workers/*.client.ts`、`i18n` の型と定数に依存してよい（D-26）。`*.worker.ts` を直接 import しない。DOM や `requestAnimationFrame` を使う処理（時間の再生の駆動など）は `app` か `views` に置き、state には更新の関数（`tick(dt)` など）だけを置く（§9.2）。views は Worker の client を直接呼ばず、state を通す。
-- **`src/map/` は `core` と `render`（`arrows/`、`bundling/` の型）に依存してよい。** `state`、`io`、`workers` は import しない。ストアの値と更新の関数は views から props で受け取る（§9.2）。DOM と WebGL は使ってよい。この規則の ESLint での検査は T3-03 で足す（D-52）。
+- **`src/state/` は画面に依存しない純粋なストア。** `core`、`workers/*.client.ts`、`i18n` の型と定数に依存してよい（D-26）。**例外（T3-02 のレビュー）**: `render/bundling` の型だけは `import type` で読んでよい（束ねた経路と束の区間のまとめの型。値の import は ESLint で止める。境目の本数などの値は views から渡す）。束ねる controller が Worker の結果の型を持つため。client から render の型・値を再 export して規則をすり抜けることはしない。`*.worker.ts` を直接 import しない。DOM や `requestAnimationFrame` を使う処理（時間の再生の駆動など）は `app` か `views` に置き、state には更新の関数（`tick(dt)` など）だけを置く（§9.2）。views は Worker の client を直接呼ばず、state を通す。
+- **`src/map/` は `core` と `render`（`arrows/`、`bundling/` の型）に依存してよい。** `state`、`views`、`app`、`io`、`workers`、`i18n`、React、Zustand は import しない（文言は views から `texts` で受け取る）。JSX と、map の中の動的 `import()` も使わない。ストアの値と更新の関数は views から props で受け取る（§9.2）。DOM と WebGL は使ってよい。maplibre-gl、@deck.gl、d3-geo は map の中だけで import する。views と app は map を動的 `import()` で読み、静的には型だけを import する（地図を初めて開いたときだけ読み込むため。D-50）。ESLint で検査する（T3-03、D-52）。
 - **`src/io/` と `src/workers/` は画面に依存しない。** React、Zustand、`state`、`views`、`app` を import しない。`io/export` の図の部分は `render` を使う。`workers/bundling.worker.ts` は `render/bundling/` の算法を使う（§16.1 の分担による例外ではなく、上の図の「下向き」の依存として許す）。
 - **`src/i18n/` は React と画面とブラウザに依存しない。** `render` から使われるため（D-15）。React、Zustand、地図のライブラリ、`state`、`views`、`app`、`render`、`map`、`io`、`workers` を import せず、`navigator` などのブラウザのグローバルと `Date` を使わず、JSX を書かない。`core` には依存してよい。言語の判定に要る値（`navigator.languages` など）は呼ぶ側が渡す。
 - これらの規則は ESLint で機械的に検査する（パスを解決して判定する `import-x/no-restricted-paths`、パッケージ名の `no-restricted-imports`、ブラウザのグローバルの `no-restricted-globals`、JSX と動的 import の `no-restricted-syntax`）。検査が効いていることは `tests/lint/check-boundaries.mjs` で確かめる。
@@ -554,7 +554,7 @@ interface SceneEdge { id: string; path: PathCommand[]; width: number | TaperedWi
   5. **無向のエッジ**: 自分の始点 → 終点の向きを持つものとして、(i) 同じ向きの有向の束、(ii) 逆向きの有向の束、(iii) 無向だけの束、(iv) 新しい無向の束、の順に選ぶ（同じ段では代表点が近い順）。向きがエッジの中で一定なので、1 本の無向エッジが往路と復路の車線を行き来しない（T3-02a のレビューの必須）。無向が入った有向の束は有向のまま（車線は有向の扱い）。無向だけの束は `opposites` を持たない。
   6. **W**: 通るエッジの重みの合計。同じエッジが同じ束に複数の区間で入っても 1 回だけ数える。欠損・負・非有限の重みは 0 として数え、件数を返す。重みの ID が重なれば最初を使い、件数を返す。自己ループ、長さ 0 の区間は束に入れず（−1）、描画は自分の重みの幅で描く。
   7. **再生**: 束の区間とエッジの対応を前もって作り、`weightsFor(graph, 見えるエッジ)` で W を出し直す（BundleGraph は作り直さない。D-56）。
-  8. **描画**（T3-02b。`src/render/scene/bundled.ts`）: 帯はエッジごとのリボンで、不透明で塗り、層全体に 1 回だけ不透明度を掛ける（SVG は `<g opacity>`、PDF は透過グループ）。同じ束を通るリボンが重なっても濃くならない。幅は既定で平方根のスケール、目盛りの最大は全期間の W の最大。逆向きの束は、両方の W が正で小さい方が大きい方の 0.2 倍以上のときだけ、進行方向の右へ「半幅 + 間隔/2」px ずらす（往路だけの大きな帯に小さな逆向きが重なるときはずらさない）。有向は先細り（既定）か終端の矢印。帯のシーンの作成は 5,000 本で約 0.2 秒なので、ズームの途中では作り直さず、止まってから作る。
+  8. **描画**（T3-02b。`src/render/scene/bundled.ts`）: 帯の幅は利用者が選んだエッジの太さのスケール（FR-VG-04。既定は平方根）を W に当て、最小 1 px・最大 14 px（エッジの割り当ての幅 0.5〜2.5 px より太い。束であることを見せるため）。簡易版（重ね描き）は、束ねないときと同じエッジごとの割り当ての幅で描く（凡例の「エッジの太さ」と一致させるため。T3-02 のレビュー）。帯の図の凡例には帯の太さの見本を出し、「エッジの太さ」は束ねていないエッジの分として断る。帯はエッジごとのリボンで、不透明で塗り、層全体に 1 回だけ不透明度を掛ける（SVG は `<g opacity>`、PDF は透過グループ）。同じ束を通るリボンが重なっても濃くならない。幅は既定で平方根のスケール、目盛りの最大は全期間の W の最大。逆向きの束は、両方の W が正で小さい方が大きい方の 0.2 倍以上のときだけ、進行方向の右へ「半幅 + 間隔/2」px ずらす（往路だけの大きな帯に小さな逆向きが重なるときはずらさない）。有向は先細り（既定）か終端の矢印。帯のシーンの作成は 5,000 本で約 0.2 秒なので、ズームの途中では作り直さず、止まってから作る。
 - **計算量**: 素朴に作ると、エッジ数の 2 乗に比例する。格子で近いエッジ同士だけ互換度を計算する（上の 4）。エッジが 5,000 本を超えたら警告する。
 - **実行**: Worker で行う。レイアウトが変わったら計算し直す。束ねる強さ、反復回数、ε を画面で調整できるようにする。
 - **地図**: 同じ算法を、地図に投影した後の座標で使う（§9）。

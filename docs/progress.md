@@ -222,8 +222,8 @@
 | T3-01b | 座標の出どころ、`geo` のフィルタ、版 3 と移行、`view.geoSource`・`view.map`・`view.graph.bundling` の型 | core-model、io | — | FR-MP-04（型）、FR-MP-05（理由）、FR-PJ-03、NFR-02 | ✅ | 2026-11-27 | D-46、D-52、D-58、D-59 とその補足（設計書 3.11）。`src/core/geo/`。座標を持つ型はデータで判定し、持たない型は範囲フィルタで通す（レビューで、空欄の座標が欠損と読まれ 2 表で人物が全員除かれることを再現して直した）。タイルの URL の検査、鍵の除去（断片、署名つき URL）と `removedParams`。公開サンプルは版 2 のまま（v0.3 の公開で作り直す）。画面への接続は T3-03（`takeSnapshot` に `map`・`geoSource`、保存メニューの通知、URL の編集で `removedParams` を消す、自動保存に鍵が無いテスト）と T3-06。統合後の typecheck・lint・format・単体 1,382 件・build・E2E 218 件成功 |
 | T3-02 | 束の太さ（区間のまとめ、帯と簡易版）とグラフ図での bundling | graph-algo、renderer、ui | T3-01、T3-01b | FR-VG-13、14 | 🔄 | | D-55 |
 | T3-03 | 地図の基本（ESLint の規則、依存と動的 import、背景地図と帰属表示、グラフ｜地図の切り替え、地図に載らないノード、`view.map`） | map-geo、ui、qa-tester | T3-00、T3-01b | FR-MP-01、05、06、NFR-02 | 🔄 | | D-48、D-50〜D-52、D-60。OSM のタイルの利用規約は確認済み（D-51 の補足）。ESLint の規則を足すとき、`src/render/**` にも `Date`・`Math.random` の禁止を足す（T3-01 のレビュー） |
-| T3-04 | 地図上のノードとエッジ（地図のシーン、向きの表し方、ラベルの SVG の層、選択の連動、束ねた経路） | map-geo、renderer | T3-02、T3-03 | FR-MP-02、FR-VG-13、14、FR-TB-02、NFR-09 | ⬜ | | D-53〜D-55 |
-| T3-05 | 地図の時間アニメーション（徐々に現れるエッジ、粒子、累積の次数） | map-geo、ui | T3-04 | FR-MP-03、FR-TM-03、NFR-05 | ⬜ | | D-56 |
+| T3-04 | 地図上のノードとエッジ（地図のシーン、向きの表し方、ラベルの SVG の層、選択の連動、束ねた経路） | map-geo、renderer | T3-02、T3-03 | FR-MP-02、FR-VG-13、14、FR-TB-02、NFR-09 | ⬜ | | D-53〜D-55。T3-02 からの申し送り: 地図の束ねるは controller ごとに `createBundlingClient()` で client を分ける。束ねるの設定に反復回数と ε の欄を足す（`BundlingViewSettings` に任意の項目として。T3-02 では後回し）。T3-03 のレビューから: `MapboxOverlay` に `loadOptions: { worker: false }`（loaders.gl が外部から Worker を取る予備の経路を断つ） |
+| T3-05 | 地図の時間アニメーション（徐々に現れるエッジ、粒子、累積の次数） | map-geo、ui | T3-04 | FR-MP-03、FR-TM-03、NFR-05 | ⬜ | | D-56。グラフ図の再生中の帯は、今は全期間の W のまま時刻の外のリボンを薄くするだけ。地図と同じく `weightsFor` で太さを出し直すかを T3-05 で決める |
 | T3-06 | 地図上の範囲選択と `geo` のフィルタ | map-geo、ui | T3-04 | FR-MP-04 | ⬜ | | D-58、filter-audit #11 |
 | T3-06b | 地図の書き出し（PNG、SVG） | map-geo、renderer、ui | T3-04 | FR-OUT-06 | ⬜ | | D-60 |
 | T3-09 | 時点ごとの指標 | graph-algo、ui | T3-05 | FR-MT-07 | ⬜ | | D-57 |
