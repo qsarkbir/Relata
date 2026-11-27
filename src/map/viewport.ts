@@ -5,6 +5,8 @@
  * 【なぜ】OSM の「ズーム 19」（256 px のタイルの番号）とは 1 つずれる（同じ見え方が MapLibre では 1 小さい）。
  * 保存する `MapViewport.zoom` は、deck.gl の描画と同じ値でそろえたほうが、ノードの座標変換で混乱しない。
  */
+// 【TS】`type GeoBBox` のように、波括弧の中で名前の前に `type` を付けると、その名前だけが型の import になる
+//       （実行時には消える）。値の `MAX_GEO_LAT` と、同じ import の 1 行にまとめて書ける。
 import { MAX_GEO_LAT, MAX_GEO_LON, type GeoBBox } from '../core/geo';
 import type { MapViewport } from '../core/project/mapView';
 import { MAP_MAX_ZOOM, MAP_MIN_ZOOM, type ZoomRange } from './background';
@@ -12,9 +14,15 @@ import { MAP_MAX_ZOOM, MAP_MIN_ZOOM, type ZoomRange } from './background';
 /** ズーム 0 のときの世界の幅（px）。 */
 export const WORLD_SIZE_AT_ZOOM_0 = 512;
 
-/** MapLibre に渡すカメラ（中心の [経度, 緯度] とズーム）。 */
+/**
+ * MapLibre に渡すカメラ（中心の [経度, 緯度] とズーム）。
+ *
+ * 【TS】`[number, number]` は「タプル型」。長さ 2 の配列で、要素ごとに型が決まっている
+ * （`number[]` と違い、要素が足りない・多い書き方をコンパイルが止める）。
+ * 他の型は `readonly`（書き換え不可）にしているが、ここだけは MapLibre の型（`LngLatLike`）が
+ * 読み取り専用でない組を求めるので、`readonly` を付けない。
+ */
 export interface MapCamera {
-  // 【なぜ】MapLibre の型（LngLatLike）は読み取り専用でない組を求めるので、readonly にしない。
   center: [number, number];
   zoom: number;
 }
@@ -87,19 +95,27 @@ export function sameViewport(a: MapViewport, b: MapViewport, epsilon = 1e-7): bo
 }
 
 // 緯度から、メルカトルの y（0〜1。北が 0）。
+// 出典: Web メルカトル（EPSG:3857）の球面メルカトルの式 y = ln(tan(π/4 + φ/2))（φ は緯度）。
+//       Snyder, J. P. (1987) "Map Projections: A Working Manual", USGS Professional Paper 1395, §7（式 7-7）。
+//       これを世界の高さが 1 になるように 2π で割り、北を 0 に向けている。計算量 O(1)。
 function mercatorY(lat: number): number {
   const clamped = Math.min(MAX_GEO_LAT, Math.max(-MAX_GEO_LAT, lat));
   const rad = (clamped * Math.PI) / 180;
   return 0.5 - Math.log(Math.tan(Math.PI / 4 + rad / 2)) / (2 * Math.PI);
 }
 
-// メルカトルの y から緯度。
+// メルカトルの y から緯度（上の式の逆。φ = atan(sinh(y'))。Snyder 1987 の式 7-4 に相当）。
 function latitudeOfY(y: number): number {
   const n = Math.PI - 2 * Math.PI * y;
   return (180 / Math.PI) * Math.atan(Math.sinh(n));
 }
 
-/** 範囲に合わせるときの設定。 */
+/**
+ * 範囲に合わせるときの設定。
+ *
+ * 【TS】`?` を付けた項目は「省略できる」。使うときの型は `number | undefined` になるので、
+ * `options.padding ?? 40` のように、省略されたときの値を決めて使う。
+ */
 export interface FitOptions {
   /** 地図の枠の幅（px）。 */
   readonly width: number;

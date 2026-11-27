@@ -33,13 +33,23 @@ describe('FR-MP-01: 背景の解決', () => {
       kind: 'custom-empty',
       problem: 'not-https',
     });
-    expect(resolveBackground(custom('https://t.example/{z}/{x}.png')).problem).toBe(
-      'missing-placeholder',
-    );
-    expect(resolveBackground(custom('https://{s}.t.example/{z}/{x}/{y}.png')).problem).toBe(
-      'subdomain-placeholder',
-    );
+    expect(resolveBackground(custom('https://t.example/{z}/{x}.png'))).toEqual({
+      kind: 'custom-empty',
+      problem: 'missing-placeholder',
+    });
+    expect(resolveBackground(custom('https://{s}.t.example/{z}/{x}/{y}.png'))).toEqual({
+      kind: 'custom-empty',
+      problem: 'subdomain-placeholder',
+    });
     expect(resolveBackground(custom(''))).toEqual({ kind: 'custom-empty', problem: 'empty' });
+  });
+
+  it('NFR-02: 使えない利用者のタイルは tileUrl を持たず、OSM の URL に落ちない', () => {
+    const r = resolveBackground(custom('http://t.example/{z}/{x}/{y}.png'));
+    expect('tileUrl' in r).toBe(false);
+    expect(
+      JSON.stringify(buildStyle(custom('http://t.example/{z}/{x}/{y}.png'), { landUrl })),
+    ).not.toContain('openstreetmap');
   });
 
   it('FR-MP-01: ズームの範囲は 0〜19（OSM の最大ズーム）', () => {

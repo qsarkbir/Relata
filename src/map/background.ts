@@ -54,25 +54,25 @@ export interface AttributionPart {
  */
 export type MapAttribution = readonly AttributionPart[];
 
-/** 背景が描くもの（スタイルの作り方）。 */
-export type BackgroundKind =
+/**
+ * 背景の解決結果。
+ *
+ * 【TS】`kind` の値で分かれる判別共用体。`osm` と `custom` の枝にだけ `tileUrl` があり、必須。
+ * 使えない利用者のタイル（`custom-empty`）には `tileUrl` が無いので、「利用者のタイルが黙って OSM に
+ * 落ちる」書き方（`tileUrl ?? OSM_TILE_URL`）を型が許さない（NFR-02。意図しない外部への通信を防ぐ）。
+ */
+export type ResolvedBackground =
   /** OpenStreetMap のラスタータイル。 */
-  | 'osm'
+  | { readonly kind: 'osm'; readonly tileUrl: string }
   /** 同梱の陸地の GeoJSON。 */
-  | 'simple'
-  /** 利用者の XYZ のタイル。 */
-  | 'custom'
-  /** 利用者のタイルの URL が空、または使えない。海の色だけを描く。 */
-  | 'custom-empty';
+  | { readonly kind: 'simple' }
+  /** 利用者の XYZ のタイル（検査を通った URL）。 */
+  | { readonly kind: 'custom'; readonly tileUrl: string }
+  /** 利用者のタイルの URL が空、または使えない。海の色だけを描く。`empty` はまだ入力していない。 */
+  | { readonly kind: 'custom-empty'; readonly problem: TileUrlProblem | 'empty' };
 
-/** 背景の解決結果。 */
-export interface ResolvedBackground {
-  readonly kind: BackgroundKind;
-  /** 使えない理由。使えるなら undefined。`empty` はまだ入力していない。 */
-  readonly problem?: TileUrlProblem | 'empty';
-  /** 取得先のタイルの URL の雛形（`osm`、`custom`）。 */
-  readonly tileUrl?: string;
-}
+/** 背景が描くもの（スタイルの作り方）。 */
+export type BackgroundKind = ResolvedBackground['kind'];
 
 /** ズームの範囲（MapLibre と deck.gl で共通の、世界が 512 px となるズーム）。 */
 export interface ZoomRange {
@@ -176,13 +176,13 @@ export function attributionFor(
     case 'custom': {
       const written = setting.customTiles.attribution.trim();
       // 【なぜ】書いていなければホスト名を出す。タイルの出どころを、見る人が必ず確かめられるようにする（D-51）。
-      const text = written !== '' ? written : hostOfTileUrl(resolved.tileUrl ?? '');
+      const text = written !== '' ? written : hostOfTileUrl(resolved.tileUrl);
       return text === '' ? [] : [{ text }];
     }
     case 'custom-empty':
       return [];
     default:
-      return assertNeverKind(resolved.kind);
+      return assertNeverKind(resolved);
   }
 }
 
@@ -224,7 +224,7 @@ export function buildStyle(setting: BackgroundSetting, options: StyleOptions): S
           tiles: {
             type: 'raster',
             // 【なぜ】雛形をそのまま 1 本だけ渡す。OSM の規約はサブドメインの使い分けを禁じている（D-51）。
-            tiles: [resolved.tileUrl ?? OSM_TILE_URL],
+            tiles: [resolved.tileUrl],
             tileSize: 256,
             minzoom: 0,
             maxzoom: MAP_MAX_ZOOM,
@@ -251,6 +251,6 @@ export function buildStyle(setting: BackgroundSetting, options: StyleOptions): S
     case 'custom-empty':
       return { ...base, sources: {} };
     default:
-      return assertNeverKind(resolved.kind);
+      return assertNeverKind(resolved);
   }
 }

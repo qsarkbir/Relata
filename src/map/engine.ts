@@ -11,14 +11,18 @@
  * 不具合の切り分けが難しい。別の canvas なら互いの描画に干渉せず、地図を平面で使う（D-54）本機能では
  * 層の前後の入れ替えも要らない。PNG の書き出し（T3-06b）は、2 枚の canvas を重ねて描き直す。
  */
+// 【TS】`import type { … }` は型だけの import。実行時には消えるので、deck.gl の本体を余計に読み込まない
+//       （`verbatimModuleSyntax` が、型だけの import に `type` を付けることを求める）。
 import { Map as MapLibreMap, setWorkerUrl } from 'maplibre-gl';
+// 【TS】`?url` は Vite の機能で、ファイルの中身ではなく、出力した後の URL（文字列）を受け取る import。
+//       型は `vite/client` が `string` として宣言している。
 // 【なぜ】MapLibre 6 の Worker は、既定では「自分の隣の maplibre-gl-worker.mjs」を探す。Vite がまとめた後は
 //   隣に無く 404 になるので、`?url` でファイルを出力に含めて、その場所を教える（外部への通信ではなく同じサイトの中）。
 //   Worker の本体は他のファイルを import しない 1 つのファイルなので、`?url` で足りる。
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapboxOverlay } from '@deck.gl/mapbox';
-import type { LayersList } from '@deck.gl/core';
+import { Layer, type LayersList } from '@deck.gl/core';
 import type { GeoBBox } from '../core/geo';
 import type { MapViewport } from '../core/project/mapView';
 import {
@@ -44,9 +48,12 @@ import './map.css';
 // 絶対 URL にして渡す（基準の違う場所から読まれても迷わないように）。モジュールを読んだときに 1 回だけ。
 setWorkerUrl(new URL(workerUrl, document.baseURI).href);
 
+// 【TS】`import.meta.env.BASE_URL` も Vite が埋め込む値（`vite.config.ts` の `base`。型は `vite/client`）。
+
 /** 簡易背景の GeoJSON の、サイト内の場所（`public/geo/`。D-51）。 */
 const LAND_PATH = 'geo/land-50m.geojson';
 
+// 【TS】文字列リテラルの共用体型。理由の綴りを間違えるとコンパイルエラーになる。
 /** 地図を作れなかった理由。 */
 export type MapUnavailableReason =
   /** この環境で WebGL2 が使えない（MapLibre 6 は WebGL2 が必須）。 */
@@ -79,6 +86,12 @@ export interface MapEngineOptions {
    * データに合わせる計算は、座標を知っている呼ぶ側が `fitBounds` で行う。
    */
   readonly viewport?: MapViewport | null;
+  /**
+   * `viewport` が null のときの、最初に収める緯度経度の範囲（データの座標の範囲）。省略すれば世界全体。
+   * 【なぜ】作ってから `fitBounds` で動かすと、最初の表示（世界全体）のタイルを 1 段ぶん余計に取りに行く
+   * （OSM への無駄な要求になる。D-51）。最初から正しい範囲で作れば、取るのは表示する段だけで済む。
+   */
+  readonly initialBounds?: GeoBBox;
   /** 実行中の問題の通知（タイルや簡易背景のデータの取得の失敗）。 */
   readonly onError?: (error: MapEngineError) => void;
   /** 簡易背景のデータの URL を差し替える（既定は `public/geo/land-50m.geojson`）。 */
@@ -146,7 +159,13 @@ export interface MapEngine {
   destroy(): void;
 }
 
-/** `createMapEngine` の結果。 */
+/**
+ * `createMapEngine` の結果。
+ *
+ * 【TS】`ok` の値で分かれる「判別共用体」。`if (r.ok)` の枝では `r.engine` が、else の枝では
+ * `r.reason` が読める。成功のときに理由を、失敗のときに操作を読む誤りを、型が防ぐ。
+ * 各項目の `readonly` は、作った後に書き換えられない印（呼ぶ側が結果を壊さないように）。
+ */
 export type MapEngineResult =
   | { readonly ok: true; readonly engine: MapEngine }
   | { readonly ok: false; readonly reason: MapUnavailableReason };
@@ -163,6 +182,43 @@ function hasWebGL2(): boolean {
   // 【なぜ】確かめるだけに使った文脈をすぐ手放す（ブラウザが同時に持てる文脈の数には上限がある）。
   gl.getExtension('WEBGL_lose_context')?.loseContext();
   return true;
+}
+
+// 層の `loadOptions` に足す、Worker を使わない設定。同じ物を使い回す（層の props の比較で、毎回変わった
+// と見なされて再計算されないように）。
+const NO_WORKER: { readonly worker: false } = { worker: false };
+
+/**
+ * 層の一覧の、すべての層に「loaders.gl の Worker を使わない」設定を足す。
+ *
+ * 【なぜ】deck.gl の読み込みの部品（loaders.gl）は、Worker を使う読み込みの形式で、Worker の本体を
+ * `https://unpkg.com/@loaders.gl` から取る予備の経路を持つ（地図のチャンクに含まれている）。
+ * 外部への通信を地図のタイルだけに保つ（NFR-02）ため、`loadOptions.worker: false` でその経路を断つ。
+ * `MapboxOverlay` 自体には `loadOptions` を渡せない（層ごとの設定）ので、層を渡すときにここで足す。
+ * ノードとエッジの層（点、線、多角形）は画像や外部の形式を読まないので、実際には使われない保険である。
+ *
+ * @param list - 層の一覧（入れ子、`null`、`false` を含みうる）
+ * @returns 設定を足した層の一覧
+ */
+function withoutLoaderWorkers(list: LayersList): LayersList {
+  const out: LayersList = [];
+  for (const item of list) {
+    if (Array.isArray(item)) {
+      // 【TS】`Array.isArray` は `any[]` に絞るので、入れ子の層の一覧として受け直す。
+      const nested: LayersList = item;
+      out.push(withoutLoaderWorkers(nested));
+    } else if (item instanceof Layer) {
+      // 【TS】`props.loadOptions` は deck.gl の型が `any`。`unknown` で受け、オブジェクトのときだけ広げる。
+      const own: unknown = item.props.loadOptions;
+      const loadOptions =
+        typeof own === 'object' && own !== null ? { ...own, worker: false } : NO_WORKER;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- deck.gl の clone は any を返す。層を複製しているだけで、Layer として受ける
+      const cloned: Layer = item.clone({ loadOptions });
+      out.push(cloned);
+    }
+    // 【なぜ】`null`、`undefined`、`false`（「層なし」の印）は、描くものが無いので捨てる。
+  }
+  return out;
 }
 
 /**
@@ -230,7 +286,8 @@ export function createMapEngine(
   let styleKey = '';
   const range = MAP_ZOOM_RANGE;
   const initial = clampViewport(
-    options.viewport ?? fitViewport(WORLD_BBOX, sizeOf(container)),
+    options.viewport ??
+      fitViewport(options.initialBounds ?? WORLD_BBOX, { ...sizeOf(container), range }),
     range,
   );
 
@@ -261,7 +318,8 @@ export function createMapEngine(
       // 帰属表示は自前の要素で出す。MapLibre のロゴと部品は使わない。
       attributionControl: false,
       maplibreLogo: false,
-      // 【なぜ】期限切れのタイルを自動で取り直さない（OSM の規約に沿い、不要な再取得をしない。D-51）。
+      // 【なぜ】表示中のタイルを、期限が切れたからと裏で取り直さない（不要な再取得を増やさない。D-51）。
+      //   取り直すときは、ブラウザの HTTP キャッシュが条件つきの要求で確かめる（こちらは見出しを足さない）。
       refreshExpiredTiles: false,
       // ズーム中、まだ届いていない遠い段のタイルの取得は取り消す（既定どおり。明示して、変えないようにする）。
       cancelPendingTileRequestsWhileZooming: true,
@@ -302,19 +360,27 @@ export function createMapEngine(
     emit('end');
   });
 
+  // 【なぜ】タイルは 1 枚ごとに失敗を出す（404 なら画面のタイル数だけ）。同じ背景の同じ種類の失敗は
+  //   最初の 1 回だけ伝える（画面の知らせが洪水にならないように）。背景を変えたら数え直す。
+  const reported = new Set<MapEngineError['kind']>();
   map.on('error', (e) => {
     if (options.onError === undefined) return;
     const cause: unknown = e.error;
     const message = cause instanceof Error ? cause.message : 'unknown error';
-    const sourceId = (e as { sourceId?: unknown }).sourceId;
-    // 【TS】MapLibre の error イベントの型は、取得元を明示しない。`sourceId` を型ガードで読んで分類する。
+    // 【TS】`'sourceId' in e` は「型ガード」。イベントの型は取得元を持つとは限らないので、
+    //       持っているかを実行時に確かめ、true の枝で `e.sourceId` を読めるようにする（`as` を使わない）。
+    const sourceId: unknown = 'sourceId' in e ? e.sourceId : undefined;
     const kind = sourceId === 'tiles' ? 'tile' : sourceId === 'land' ? 'land' : 'other';
+    if (reported.has(kind)) return;
+    reported.add(kind);
     options.onError({ kind, message });
   });
 
-  // 枠の大きさの変化に追随する。【なぜ】MapLibre 自身は window の resize しか見ない。
+  // 枠の大きさの変化に追随する。
   // 【なぜ】大きさの変化で MapLibre が出す move の通知は、利用者の操作ではないので伝えない。
   //   伝えると、呼ぶ側が「表示範囲を利用者が決めた」と受け取り、「データに合わせる」（null）を失う。
+  //   MapLibre 6 の `trackResize` は枠の大きさも見るが、その resize が出す move は止められないので、
+  //   自前の ResizeObserver に任せる。
   const resizeSilently = (): void => {
     const was = silent;
     silent = true;
@@ -338,6 +404,7 @@ export function createMapEngine(
       // 【なぜ】同じスタイルなら入れ替えない（再取得と一瞬の白抜けを避ける）。
       if (key !== styleKey) {
         styleKey = key;
+        reported.clear();
         map.setStyle(style, { diff: false });
       }
       attribution = showAttribution();
@@ -376,7 +443,7 @@ export function createMapEngine(
     zoomOut: () => void map.zoomOut(),
     resize: resizeSilently,
     setLayers(layers) {
-      overlay.setProps({ layers });
+      overlay.setProps({ layers: withoutLoaderWorkers(layers) });
     },
     isLoaded: () => map.loaded(),
     destroy() {
@@ -384,10 +451,18 @@ export function createMapEngine(
       destroyed = true;
       observer.disconnect();
       listeners.clear();
+      // 【なぜ】canvas は壊す前に取っておく。壊した後は取れず、WebGL の文脈（ブラウザが同時に持てる数に
+      //   上限がある）を、ガベージコレクションまで手放せないため。地図を開閉し直すたびに文脈が溜まると、
+      //   古い文脈から失われていく。
+      const canvases = [map.getCanvas(), overlay.getCanvas()];
       map.removeControl(overlay);
       overlay.finalize();
       map.remove();
       attributionEl.remove();
+      for (const canvas of canvases) {
+        // 同じ canvas に同じ種類を求めると、作ってある文脈がそのまま返る。
+        canvas?.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();
+      }
     },
   };
   return { ok: true, engine };
