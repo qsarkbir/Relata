@@ -2,7 +2,7 @@
  * シーンから SVG の文字列を作る（FR-OUT-01、設計書 §8.1、D-31）。DOM は作らない。
  *
  * 構造（Illustrator や Inkscape で編集しやすいよう、浅くする）:
- * `<svg>` > `<g id="edges">`、`<g id="nodes">`、`<g id="labels">`、`<g id="legend">`（この順）。
+ * `<svg>` > （束ねた帯があれば `<g id="bundles">`、再生で薄いものは `<g id="bundles-faded">`）、`<g id="edges">`、`<g id="nodes">`、`<g id="labels">`、`<g id="legend">`（この順）。
  * 各 `<g>` の直下に、図形が 1 つずつ並ぶ。
  */
 import { assertNever } from '../../core/util/assertNever';
@@ -12,6 +12,7 @@ import { FADED_OPACITY } from '../scene/timeFade';
 import type {
   PathCommand,
   Scene,
+  SceneBundle,
   SceneEdge,
   SceneLabel,
   SceneLegendItem,
@@ -106,7 +107,8 @@ function edgeSvg(e: SceneEdge, index: number, prefix: string): string {
     '" data-id="' +
     escapeXml(e.id) +
     '"' +
-    (e.faded === true ? ' data-out-of-time="true"' : '');
+    (e.faded === true ? ' data-out-of-time="true"' : '') +
+    (e.role === undefined ? '' : ' data-bundle-role="' + e.role + '"');
   // 【なぜ】値の欠損（重み）と指定した属性の欠損は、破線の間隔を変えて見分けられるようにする。
   const dash = e.attrMissing === true ? '9 4' : '4 3';
   if (e.ribbon !== undefined)
@@ -185,6 +187,45 @@ function edgeSvg(e: SceneEdge, index: number, prefix: string): string {
         opacity +
         '"/>';
   return defs + shaft + head;
+}
+// 束ねた帯の層（FR-VG-13、14）。リボンは不透明で塗り、層の `<g>` に 1 回だけ不透明度を掛ける。
+// 【なぜ】同じ束を通るエッジのリボンは重なる。リボンごとに半透明にすると重なりが濃くなり、
+// 束の太さが濃さで歪む。再生の時刻の外のリボンは、別の `<g>`（`bundles-faded`）にまとめて薄くする。
+function bundleSvg(b: SceneBundle, prefix: string): string[] {
+  const color = safeColor(b.color, '#999999');
+  const layer = (id: string, opacity: number, faded: boolean): string[] => {
+    const items: string[] = [];
+    for (const [i, r] of b.ribbons.entries()) {
+      if ((r.faded === true) !== faded) continue;
+      const key = prefix + 'bundle-' + String(i);
+      const pts = (ps: readonly { readonly x: number; readonly y: number }[]) =>
+        ps.map((q) => num(q.x) + ',' + num(q.y)).join(' ');
+      items.push(
+        '<polygon id="' +
+          key +
+          '" data-id="' +
+          escapeXml(r.edgeId) +
+          '" points="' +
+          pts(r.polygon) +
+          '"' +
+          (faded ? ' data-out-of-time="true"' : '') +
+          '/>',
+      );
+      if (r.head !== undefined)
+        items.push('<polygon id="' + key + '-head" points="' + pts(r.head) + '"/>');
+    }
+    return items.length === 0
+      ? []
+      : [
+          `<g id="${prefix}${id}" fill="${color}" opacity="${num(Math.min(1, Math.max(0, opacity)))}">`,
+          ...items,
+          '</g>',
+        ];
+  };
+  return [
+    ...layer('bundles-faded', b.opacity * FADED_OPACITY, true),
+    ...layer('bundles', b.opacity, false),
+  ];
 }
 // 凡例の見本の SVG。ノードの図形、線、矢じり付きの線のいずれか（文字だけの行は何も出さない）。
 //
@@ -287,6 +328,7 @@ export function renderSvg(scene: Scene, options: RenderSvgOptions = {}): string 
     out.push(
       `<rect id="${p}background" width="${w}" height="${h}" fill="${safeColor(options.background, '#ffffff')}"/>`,
     );
+  if (scene.bundle !== undefined) out.push(...bundleSvg(scene.bundle, p));
   out.push(`<g id="${p}edges">`, ...scene.edges.map((e, i) => edgeSvg(e, i, p)), '</g>');
   out.push(`<g id="${p}nodes">`, ...scene.nodes.map((n, i) => nodeSvg(n, i, p)), '</g>');
   out.push(

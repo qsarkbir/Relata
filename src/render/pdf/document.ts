@@ -72,7 +72,7 @@ export async function buildPdf(
       const data = deflate === undefined ? raw : await deflate(raw);
       const box = f.bbox.map((v) => fmtNumber(v)).join(' ');
       return [
-        `<< /Type /XObject /Subtype /Form /BBox [${box}] /Length ${String(data.length)}${deflate === undefined ? '' : ' /Filter /FlateDecode'} >>\nstream\n`,
+        `<< /Type /XObject /Subtype /Form /BBox [${box}]${f.group === true ? ' /Group << /S /Transparency /CS /DeviceRGB /I true >>' : ''} /Length ${String(data.length)}${deflate === undefined ? '' : ' /Filter /FlateDecode'} >>\nstream\n`,
         data,
         '\nendstream',
       ];

@@ -30,6 +30,17 @@ export function markOutOfTime(
     ...scene,
     nodes: scene.nodes.map((n) => (nodes.has(n.id) ? { ...n, faded: true } : n)),
     edges: scene.edges.map((e) => (edges.has(e.id) ? { ...e, faded: true } : e)),
+    // 【なぜ】束ねた帯（FR-VG-13）も、エッジのキーで薄くする。薄いリボンは、別の層にまとめて描かれる。
+    ...(scene.bundle === undefined
+      ? {}
+      : {
+          bundle: {
+            ...scene.bundle,
+            ribbons: scene.bundle.ribbons.map((r) =>
+              edges.has(r.edgeId) ? { ...r, faded: true } : r,
+            ),
+          },
+        }),
     // 【なぜ】ラベルも、ノードと一緒に薄くする。凡例の文字（nodeId が null）は薄くしない。
     labels: scene.labels.map((l) =>
       l.nodeId !== null && nodes.has(l.nodeId) ? { ...l, faded: true } : l,
