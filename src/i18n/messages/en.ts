@@ -339,6 +339,13 @@ export const en = {
   'filter.issues': 'Needs attention',
   'filter.issue.unknown-attr': 'This attribute is not in the data.',
   'filter.summary.nodeSet': 'Selected nodes ({count})',
+  'filter.summary.geo': 'Latitude {south} to {north}°, longitude {west} to {east}°{across}',
+  'filter.summary.geoAcross': ' (crosses 180°)',
+  'filter.issue.attr-not-number':
+    'This attribute cannot be read as a coordinate (it is a date or a boolean).',
+  'filter.summary.geoTypes': '{types} filtered by area ({range})',
+  'filter.issue.geo-no-coordinates':
+    'No node has coordinates in the data, so nothing is filtered. Check the coordinate source.',
   'filter.certainty': 'Certainty',
   'filter.certainty.certain': 'Certain',
   'filter.certainty.probable': 'Probable',

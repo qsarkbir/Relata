@@ -288,18 +288,22 @@ test('FR-VG-11: ホイールで拡大してもページはスクロールしな�
   expect(await page.evaluate(() => window.scrollY)).toBe(before);
 });
 
-test('FR-VG-11: 図の枠の高さを変えると描画範囲が追従し、表示の設定を開閉できる', async ({
+test('FR-VG-11: 窓の高さが変わると図の描画範囲が追従し、表示の設定を開閉できる', async ({
   page,
 }) => {
   await startApp(page);
   await openProject(page, 'maghrib.relata.json');
   const figure = page.getByRole('img', { name: 'ネットワーク図' });
   await expect(page.locator('.graph-canvas #graph-view-nodes > [data-id]')).toHaveCount(14);
-  // 利用者が右下のつまみで高さを変えた状態を、スタイルの変更で作る。
-  await page.locator('.graph-canvas').evaluate((element) => {
-    if (element instanceof HTMLElement) element.style.height = '640px';
-  });
-  await expect(figure).toHaveAttribute('viewBox', /^0 0 \d+ 64\d$/u);
+  // 【なぜ】D-49: 図の高さは窓の高さで決まる（右下のつまみは外した）。窓を高くすると枠が伸び、viewBox が追従する。
+  const before = await figure.getAttribute('viewBox');
+  await page.setViewportSize({ width: 1280, height: 1300 });
+  await expect(figure).not.toHaveAttribute('viewBox', before ?? '');
+  const frameHeight = await page.locator('.graph-canvas').evaluate((el) => el.clientHeight);
+  await expect(figure).toHaveAttribute(
+    'viewBox',
+    new RegExp(`^0 0 \\d+ ${String(Math.round(frameHeight))}$`, 'u'),
+  );
   // 表示の設定は既定で閉じ、開閉しても図は見えたまま（ツールバーの操作も残る）。
   const toggle = page.getByRole('button', { name: '表示の設定', exact: true });
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');

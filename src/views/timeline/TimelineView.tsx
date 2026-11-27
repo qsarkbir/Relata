@@ -472,69 +472,84 @@ export function TimelineView() {
 
   return (
     <div className="timeline-view">
-      <div className="timeline-controls">
-        <Field label={t('timeline.target')}>
-          <select
-            value={target}
-            onChange={(e) => {
-              patch({ target: e.currentTarget.value === 'edge' ? 'edge' : 'node' });
-            }}
-          >
-            <option value="node">{t('filter.target.node')}</option>
-            <option value="edge">{t('filter.target.edge')}</option>
-          </select>
-        </Field>
-        {source !== undefined && (
-          <Field label={t('timeline.source')}>
+      {/* 【なぜ】操作の部分を 1 つの入れ物にまとめる。下の段が、この高さ＋棒グラフ 120 px を下限にする（D-49）。 */}
+      <div className="timeline-head">
+        <div className="timeline-controls">
+          <Field label={t('timeline.target')}>
             <select
-              dir="auto"
-              value={sourceValue}
+              value={target}
               onChange={(e) => {
-                setSource(e.currentTarget.value);
+                patch({ target: e.currentTarget.value === 'edge' ? 'edge' : 'node' });
               }}
             >
-              {options.map((o) => (
-                <option key={sourceToValue(o)} value={sourceToValue(o)}>
-                  {sourceLabel(o)}
+              <option value="node">{t('filter.target.node')}</option>
+              <option value="edge">{t('filter.target.edge')}</option>
+            </select>
+          </Field>
+          {source !== undefined && (
+            <Field label={t('timeline.source')}>
+              <select
+                dir="auto"
+                value={sourceValue}
+                onChange={(e) => {
+                  setSource(e.currentTarget.value);
+                }}
+              >
+                {options.map((o) => (
+                  <option key={sourceToValue(o)} value={sourceToValue(o)}>
+                    {sourceLabel(o)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          )}
+          <Field label={t('timeline.width')}>
+            <select
+              value={String(width)}
+              onChange={(e) => {
+                const w = TIME_BIN_WIDTHS.find((x) => String(x) === e.currentTarget.value);
+                if (w !== undefined) patch({ width: w });
+              }}
+            >
+              {TIME_BIN_WIDTHS.map((w) => (
+                <option key={w} value={String(w)}>
+                  {t('timeline.width.option', { n: String(w) })}
                 </option>
               ))}
             </select>
           </Field>
-        )}
-        <Field label={t('timeline.width')}>
-          <select
-            value={String(width)}
-            onChange={(e) => {
-              const w = TIME_BIN_WIDTHS.find((x) => String(x) === e.currentTarget.value);
-              if (w !== undefined) patch({ width: w });
-            }}
-          >
-            {TIME_BIN_WIDTHS.map((w) => (
-              <option key={w} value={String(w)}>
-                {t('timeline.width.option', { n: String(w) })}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <InfoTip topic={t('timeline.info.topic')}>
-          <p>{t('timeline.chartHint')}</p>
-          <p>{t('timeline.countNote')}</p>
-          <p>{t('timeline.info.binCalendar')}</p>
-          <p>{t('timeline.noDate.hint')}</p>
-          <p>{t('timeline.inconsistent.hint')}</p>
-        </InfoTip>
-        {active !== undefined && (
-          <button
-            type="button"
-            onClick={() => {
-              remove(active.id);
-            }}
-          >
-            {t('timeline.clearRange')}
-          </button>
-        )}
+          <InfoTip topic={t('timeline.info.topic')}>
+            <p>{t('timeline.chartHint')}</p>
+            <p>{t('timeline.countNote')}</p>
+            <p>{t('timeline.info.binCalendar')}</p>
+            <p>{t('timeline.noDate.hint')}</p>
+            <p>{t('timeline.inconsistent.hint')}</p>
+          </InfoTip>
+          {active !== undefined && (
+            <button
+              type="button"
+              onClick={() => {
+                remove(active.id);
+              }}
+            >
+              {t('timeline.clearRange')}
+            </button>
+          )}
+        </div>
+        <TimeControls />
+        {/* 【なぜ】状態（選んだ範囲と案内）と指している区切りの件数は、図の上の 1 行にまとめる。下の段が低くても
+          見えるようにするため（D-49。図の下の欄は、低いと隠れる）。 */}
+        {/* 見える文は常に更新する。読み上げ用の文は、ドラッグ中は更新せず、離したとき（確定時）だけ更新する。 */}
+        <div className="timeline-readout">
+          <p className="timeline-status" aria-hidden="true" dir="auto">
+            <bdi>{status}</bdi>
+          </p>
+          {/* 指している区切りの内容（棒の吹き出しの代わり）。行の高さを保ち、出し入れで下の要素が動かないようにする。 */}
+          <p className="timeline-hover hint" aria-hidden="true" dir="auto">
+            {hoverText !== null && <bdi>{hoverText}</bdi>}
+          </p>
+        </div>
       </div>
-      <TimeControls />
       {message !== null && <p className="hint">{message}</p>}
       <div className="timeline-main">
         {/* 【なぜ】`role="application"`: 矢印キーなどをスクリーンリーダーの閲覧モードに奪われず、この部品に届ける。 */}
@@ -641,50 +656,51 @@ export function TimelineView() {
           </aside>
         )}
       </div>
-      <p className="hint" id={hintId}>
-        {t('timeline.chartHintShort')}
-      </p>
-      {/* 見える文は常に更新する。読み上げ用の文は、ドラッグ中は更新せず、離したとき（確定時）だけ更新する。 */}
-      <p className="timeline-status" aria-hidden="true" dir="auto">
-        <bdi>{status}</bdi>
-      </p>
-      {/* 指している区切りの内容（棒の吹き出しの代わり）。行の高さを保ち、出し入れで下の要素が動かないようにする。 */}
-      <p className="timeline-hover hint" aria-hidden="true" dir="auto">
-        {hoverText !== null && <bdi>{hoverText}</bdi>}
-      </p>
-      <p className="visually-hidden" role="status" aria-live="polite" dir="auto">
-        <bdi>{announced}</bdi>
-      </p>
-      <div className="timeline-legend hint" hidden={n === 0}>
-        <span>
-          <svg width="14" height="10" aria-hidden="true">
-            <rect className="tl-bar-contained" width="14" height="10" />
-          </svg>{' '}
-          {t('timeline.legend.contained')}
-        </span>
-        <span>
-          <svg width="14" height="10" aria-hidden="true">
-            <rect className="tl-bar-spanning" width="14" height="10" fill={`url(#${patternId})`} />
-          </svg>{' '}
-          {t('timeline.legend.spanning')}
-        </span>
-        <span>
-          <svg width="14" height="10" aria-hidden="true">
-            <rect className="tl-total" x="0.5" y="0.5" width="13" height="9" />
-          </svg>{' '}
-          {t('timeline.legend.excluded')}
-        </span>
-        <span>
-          {t(
-            calendar === 'hijri'
-              ? 'timeline.calendarNote.hijri'
-              : 'timeline.calendarNote.gregorian',
-          )}
-        </span>
+      {/* 【なぜ】図の下の補足（操作の説明、状態、凡例）は 1 つの欄にまとめる。段が低いときは、図を優先し、
+          この欄の中でスクロールする（D-49）。 */}
+      <div className="timeline-foot">
+        <p className="hint" id={hintId}>
+          {t('timeline.chartHintShort')}
+        </p>
+        <p className="visually-hidden" role="status" aria-live="polite" dir="auto">
+          <bdi>{announced}</bdi>
+        </p>
+        <div className="timeline-legend hint" hidden={n === 0}>
+          <span>
+            <svg width="14" height="10" aria-hidden="true">
+              <rect className="tl-bar-contained" width="14" height="10" />
+            </svg>{' '}
+            {t('timeline.legend.contained')}
+          </span>
+          <span>
+            <svg width="14" height="10" aria-hidden="true">
+              <rect
+                className="tl-bar-spanning"
+                width="14"
+                height="10"
+                fill={`url(#${patternId})`}
+              />
+            </svg>{' '}
+            {t('timeline.legend.spanning')}
+          </span>
+          <span>
+            <svg width="14" height="10" aria-hidden="true">
+              <rect className="tl-total" x="0.5" y="0.5" width="13" height="9" />
+            </svg>{' '}
+            {t('timeline.legend.excluded')}
+          </span>
+          <span>
+            {t(
+              calendar === 'hijri'
+                ? 'timeline.calendarNote.hijri'
+                : 'timeline.calendarNote.gregorian',
+            )}
+          </span>
+        </div>
+        {active !== undefined && source !== undefined && !activeSameSource && (
+          <p className="hint">{t('timeline.appliedOther')}</p>
+        )}
       </div>
-      {active !== undefined && source !== undefined && !activeSameSource && (
-        <p className="hint">{t('timeline.appliedOther')}</p>
-      )}
     </div>
   );
 }

@@ -1,6 +1,9 @@
+/**
+ * グラフ画面の保存可能な設定（FR-PJ-01、FR-VG-09/11、NFR-08）。
+ */
 import { DEFAULT_ENCODING, parseEncodingSettings, type EncodingSettings } from '../encode';
 import { DEFAULT_GRAPH_OPTIONS, parseGraphOptions, type GraphOptions } from '../graph';
-/** グラフ画面の保存可能な設定（FR-PJ-01、FR-VG-09/11、NFR-08）。 */
+import { parseBundlingView, type BundlingViewSettings } from './bundlingView';
 import { DEFAULT_MISSING_DISPLAY, parseMissingDisplay, type MissingDisplay } from '../missing';
 import type { LayoutKind, LayoutPosition } from '../layout';
 import type { ParseResult } from '../model';
@@ -17,6 +20,8 @@ export interface GraphViewSettings {
   readonly columnOrder?: readonly string[];
   /** 地理座標の配置の緯度・経度の属性のキー。任意（D-24）。無ければ未選択（FR-VG-02）。 */
   readonly geoAttrs?: { readonly lat?: string; readonly lon?: string };
+  /** グラフ図の edge bundling の設定。任意（D-24、D-59）。無ければ既定（`DEFAULT_BUNDLING_VIEW`。無効）。 */
+  readonly bundling?: BundlingViewSettings;
   readonly labels: 'all' | 'selected' | 'large';
   readonly largeLabelCount: number;
   readonly direction: 'arrow' | 'taper' | 'gradient';
@@ -108,6 +113,10 @@ export function parseGraphView(x: unknown): ParseResult<GraphViewSettings> {
           ...(typeof rawGeo.lat === 'string' ? { lat: rawGeo.lat } : {}),
           ...(typeof rawGeo.lon === 'string' ? { lon: rawGeo.lon } : {}),
         };
+  // 【なぜ】bundling は見た目の任意の設定なので、壊れていても図ごと拒まず、無いものとして扱う（D-24）。
+  const bundlingParsed =
+    get('bundling') === undefined ? undefined : parseBundlingView(get('bundling'));
+  const bundling = bundlingParsed?.ok === true ? bundlingParsed.value : undefined;
   const rawPositions = value('positions', []);
   if (!Array.isArray(rawPositions)) return fail('positions');
   const positions: LayoutPosition[] = [];
@@ -159,6 +168,7 @@ export function parseGraphView(x: unknown): ParseResult<GraphViewSettings> {
       ...(rawOrder === undefined ? {} : { columnOrder: (rawOrder as string[]).slice() }), // 理由: 上で全要素が文字列だと検査済み
       // 【なぜ】片方だけ選んだ状態も保存できる。選んでいない側は項目ごと省き、両方なければ geoAttrs ごと省く。
       ...(geoAttrs === undefined || Object.keys(geoAttrs).length === 0 ? {} : { geoAttrs }),
+      ...(bundling === undefined ? {} : { bundling }),
       viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
       missingDisplay: missingDisplay.value,
     },

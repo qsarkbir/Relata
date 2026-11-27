@@ -8,6 +8,7 @@
  * テキストの照合キーは、1 つのフィルタにつき検索語の分を 1 回だけ作り、
  * 要素ごとには文字列の照合キーを作る（文字列の長さに比例）。
  */
+import { bboxContains, geoSourceTypes, isReversedBBox, nodeGeo } from '../geo';
 import { assertNever } from '../util/assertNever';
 import {
   dateValues,
@@ -18,6 +19,7 @@ import {
   type Certainty,
   type Dataset,
   type EdgeId,
+  type GeoValue,
   type NodeId,
   type NodeTypeId,
   type TimeValue,
@@ -50,7 +52,7 @@ export interface FilterResult {
   readonly edgeIds: ReadonlySet<EdgeId>;
   /**
    * フィルタごとの「欠損のために除いた件数」（FR-FL-06）。
-   * 数値の範囲と時間の範囲のフィルタ（欠損を除外する設定のもの）だけが 0 より大きくなる。
+   * 数値の範囲、時間の範囲、地理範囲のフィルタ（欠損を除外する設定のもの）だけが 0 より大きくなる。
    * 他のフィルタが除いたかどうかとは無関係に、対象の全要素で数える（D-21 (7)）。
    * 状態に含まれるすべてのフィルタに項目がある（欠損に関係しないフィルタは 0）。
    */
@@ -74,6 +76,8 @@ export interface Subject {
   readonly time: TimeValue | undefined;
   /** ノードの型（エッジは undefined）。 */
   readonly typeId: NodeTypeId | undefined;
+  /** ノードの `geo`（`geo` のフィルタが、出どころが `geo` のときに見る。エッジは undefined）。 */
+  readonly geo: GeoValue | undefined;
 }
 
 // 【TS】文字列リテラルの共用体型（'pass' | 'fail' | …）は、書ける値を列挙に限る。
@@ -125,9 +129,10 @@ function matchOptionsOf(matching: 'loose' | 'strict'): MatchOptions {
  * フィルタごとに 1 回だけ行うため。
  *
  * @param def - フィルタの定義
+ * @param dataset - データセット（`geo` のフィルタが、座標の出どころを持つ型の集合を作るのに使う）
  * @returns 対象と判定の関数
  */
-function compile(def: FilterDef): Compiled {
+function compile(def: FilterDef, dataset: Dataset): Compiled {
   // 【TS】`def.kind` で分岐すると、各 case の中では def がその種類の型に絞り込まれる
   //       （category なら include、range なら min/max が使える）。網羅できていなければ
   //       末尾の assertNever がコンパイルエラーにする。
@@ -254,6 +259,32 @@ function compile(def: FilterDef): Compiled {
         test: (s) => verdict(wanted.has(certaintyKeyOf(s.certainty))),
       };
     }
+    case 'geo': {
+      const pass = new Set<string>(def.passTypes ?? []);
+      // 【なぜ】座標の出どころを持つ型の集合は、フィルタごとに 1 回だけ作る（ノードごとには作らない。O(N)）。
+      const coverage = geoSourceTypes(dataset, def.source);
+      // 【なぜ】逆転した範囲（south > north）は何も通さない（range、time と同じ。D-21 (6)）。
+      //   座標なしのノードだけは missing の指定に従う。
+      const reversed = isReversedBBox(def.bbox);
+      return {
+        id: def.id,
+        target: 'node',
+        test: (s) => {
+          // 仲介の型は、座標を見ずに通す（nodeSet と同じ。D-41）。欠損の件数にも数えない。
+          if (s.typeId !== undefined && pass.has(s.typeId)) return 'pass';
+          // 【なぜ】座標の出どころを持たない型（人物と地名のネットワークでの人物など）は通す。D-21 (2) の
+          //   「キーを持たない要素は通す」と同じ。欠損として除くと、地名だけに座標がある 2 部グラフで
+          //   人物が全員消え、両端の規則でエッジが 0 本になる。欠損の件数にも数えない。
+          if (s.typeId === undefined || !coverage.has(s.typeId)) return 'pass';
+          // 座標の取り出しは、地図・配置と同じ関数（D-46）。型の中の座標なし（欠損、読めない、範囲外）は
+          // 理由を問わず missing の指定に従う。
+          const r = nodeGeo({ type: s.typeId, geo: s.geo, attrs: s.attrs }, def.source, coverage);
+          if (r.kind === 'none') return missingVerdict(def.missing);
+          if (reversed) return 'fail';
+          return verdict(bboxContains(def.bbox, r.lat, r.lon));
+        },
+      };
+    }
     default:
       return assertNever(def, 'FilterDef');
   }
@@ -329,6 +360,7 @@ function buildSubjects(dataset: Dataset): Subjects {
       attrs: n.attrs,
       time: n.time,
       typeId: n.type,
+      geo: n.geo,
     })),
     edges: dataset.edges.map((e) => ({
       nodeId: undefined,
@@ -337,6 +369,7 @@ function buildSubjects(dataset: Dataset): Subjects {
       attrs: e.attrs,
       time: e.time,
       typeId: undefined,
+      geo: undefined,
     })),
   };
 }
@@ -368,7 +401,7 @@ export function computeVisible(
   filters: readonly FilterDef[],
 ): Visible {
   const subjects = buildSubjects(dataset);
-  const compiled = filters.map(compile);
+  const compiled = filters.map((f) => compile(f, dataset));
   const nodeTests = compiled.filter((c) => c.target === 'node');
   const edgeTests = compiled.filter((c) => c.target === 'edge');
 
@@ -421,7 +454,7 @@ export function passingFlags(
   filters: readonly FilterDef[],
   target: Target,
 ): boolean[] {
-  const tests = filters.map(compile).filter((c) => c.target === target);
+  const tests = filters.map((f) => compile(f, dataset)).filter((c) => c.target === target);
   const subjects = buildSubjects(dataset);
   const targets = target === 'node' ? subjects.nodes : subjects.edges;
   return targets.map((s) => tests.every((c) => c.test(s) === 'pass'));
@@ -434,7 +467,7 @@ export function passingFlags(
  * 2. エッジ用フィルタを全エッジに当てはめ、候補エッジ集合 E' を作る。
  * 3. E' のうち `edgeRule` を満たすものを、表示エッジ集合 E とする。
  * 4. `showIsolated` が false なら、E に現れないノードを除く。
- * 5. 範囲と時間のフィルタについて、欠損で除いた件数を数える（他のフィルタは 0）。
+ * 5. 範囲、時間、地理範囲のフィルタについて、欠損で除いた件数を数える（他のフィルタは 0）。
  *
  * 入力は書き換えない。属性のキーを持たない型のノードは、カテゴリ・範囲のフィルタを通る
  * （k-partite。D-21 (2)）。出どころが `attr` の時間フィルタも、キーを持たない要素を通す（D-35）。
@@ -447,11 +480,11 @@ export function applyFilters(dataset: Dataset, state: FilterState): FilterResult
   const { nodeIds, edgeIds, compiled, subjects } = computeVisible(dataset, state, state.filters);
 
   // 手順 5: 欠損で除いた件数。他のフィルタの結果とは無関係に、対象の全要素で数える（D-21 (7)）。
-  // 【なぜ】欠損の扱いを持つのは range と time だけなので、他の種類は評価せず 0 を入れる。
+  // 【なぜ】欠損の扱いを持つのは range、time、geo だけなので、他の種類は評価せず 0 を入れる。
   const missingExcluded = new Map<FilterId, number>();
   state.filters.forEach((def, i) => {
     const c = compiled[i];
-    if (c === undefined || (def.kind !== 'range' && def.kind !== 'time')) {
+    if (c === undefined || (def.kind !== 'range' && def.kind !== 'time' && def.kind !== 'geo')) {
       missingExcluded.set(def.id, 0);
       return;
     }

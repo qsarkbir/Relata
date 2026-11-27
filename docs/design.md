@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 3.8（2026-11-24） |
+| 版 | 3.13（2026-11-27） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -75,7 +75,30 @@
 | D-43 | PDF のフォント（R-22。利用者の確認 2026-11-23）: Noto Sans JP と Noto Naskh Arabic（SIL OFL 1.1）をこのサイトから配信し、PDF の書き出しのときだけ読み込む（外部へ通信しない。NFR-02）。使った文字だけに絞って埋め込む。初回に数 MB を読み込むことを画面に示し、フォントとライセンスを「このツールについて」に載せる。T2-08 の補足: アラビア文字の連結を確実に出すため、文字は整形した字形の輪郭として描き、フォントは埋め込まない（「使った文字だけ埋め込む」は不要になった。代わりに PDF の文字は検索できない。§11.2） | 日本語とアラビア文字を正しく出すため。普段の起動を重くしないため |
 | D-44 | ビューの配置の保存（R-23）: 下の段（開いているタブ、開閉、高さ）を `view.workspace`、表の設定（ノード／エッジ、並べ替え、表示する列）を `view.table`、年表の設定（日付の出どころ、区切り）を `view.timeline`、時間の状態（再生中かどうかを除く）を `view.time` に、いずれも任意の項目として保存する。左右のパネルの開閉は今のまま保存しない。**補足（T2-07a）**: データを置き換えたときは `view.table`（列のキーがデータに依存するため）だけを既定に戻し、下の段の開閉と高さは保つ。表の行の組み立ては今は `src/state/tableModel.ts`（DOM に依存しない純粋な関数）に置く（後で core に移す課題） | FR-PJ-01 の「ビューの配置」を満たすため。既存の挙動を変えないため |
 | D-45 | 表示する暦（R-24、FR-TM-09）: 全ビューに共通の表示設定として `view.display.calendar`（`gregorian`／`hijri`／`both`）に保存する。年表の目盛り、表、適用中のフィルタの説明、選択の欄に効く。内部の値（JDN）は変えない。JDN を暦の表記にする関数は `core/time` に置く | 暦の表示をビューごとに食い違わせないため |
+| D-46 | 座標の出どころ（R-25。[フェーズ 3 方針](phase3-plan.md)。利用者の承認 2026-11-27）: 出どころを `{ kind: 'geo' }`（`GraphNode.geo`。既定）か `{ kind: 'attrs'; lat; lon }`（属性の組）から選ぶ。`view.geoSource` に保存し、グラフの地理座標の配置と地図で同じ設定・同じ core の関数を使う。既存の `view.graph.geoAttrs` は `attrs` として読み替える（任意の項目の読み替えなので版を上げない） | T2-03 の配置は属性の組しか見ず、読み込みで `GraphNode.geo` に入れた座標（公開サンプル）を使えなかったため |
+| D-47 | エッジごとの地点（R-26）: フェーズ 3 はノードの座標だけで描く。移動を表すときは場所を別の型のノードとして読む。エッジの発信地・受信地（`sourceGeo`／`targetGeo`）はフェーズ 4 の候補（要件 FR-EX-08） | 範囲を広げずに地図を先に動かすため。データモデルの変更は各フェーズの最初にまとめる規則（§16.3）のため |
+| D-48 | 地図の置き場所（R-27）: 中央の主な領域に「グラフ｜地図」の切り替え（`role="tablist"`）を置き、`view.workspace.mainView` に保存する。切り替えても両方の部品は描いたまま隠し、viewport と計算結果を保つ。分割表示は UI 刷新の課題 | 下の段（年表・表・欠損）と左右のパネルを、両方のビューで共通に使うため |
+| D-49 | 画面の高さ（R-28）: アプリを窓の高さに収め、左右のパネルは中だけでスクロールさせる。中央は図と下の段で高さを分け合い、図 240 px、下の段 120 px を下限にする（T3-00） | 地図には大きさの決まった枠が要るため。ページが窓より高くなり、年表が約 90 px しか残らなかったため |
+| D-50 | 地図の依存（R-29）: maplibre-gl 6.19 系（BSD-3-Clause）、@deck.gl/core・layers・mapbox 9.4 系（MIT）、d3-geo 3.1 系（ISC）。@deck.gl/geo-layers は入れず、粒子は ScatterplotLayer の位置を時刻から補間して描く（§9.3 を変更）。地図の部分は動的 import で、地図を初めて開いたときだけ読み込む。d3-geo は書き出しのときだけ。増えた容量は完了報告に書く | geo-layers は TripsLayer のために使わない依存（h3、3D タイルなど）を多く引き込むため。普段の起動を重くしないため |
+| D-51 | 背景地図と外部通信（R-30、NFR-02）: 地図のタブを開くまでタイルを取りに行かない。既定は OpenStreetMap のラスタータイルで、帰属表示「© OpenStreetMap contributors」（著作権のページへのリンク）を右下に常に出す。簡易背景として Natural Earth の陸地（1:50m、パブリックドメイン）を `public/geo/` に置き、使うときだけこのサイトから読む。利用者の XYZ の URL は `https:` だけで `{z}`・`{x}`・`{y}` を必須にし、帰属表示の文を利用者が書く（空ならホスト名）。MapLibre の文字の層（glyphs）は使わない。タイルの要求で表示範囲がサーバーに伝わることを画面と「このツールについて」に書く。E2E は OSM に通信しない。OSM の利用規約は T3-03 の前に確かめる | 外部への通信を地図のタイルだけに保つため。古地図のタイルの出典を利用者が示せるようにするため |
+| D-52 | `src/map/` の規則とタイルの鍵（R-11）: `src/map/` は state、views、app、io、workers を import しない（ESLint で検査。T3-03 で qa-tester が足す）。DOM と WebGL は使ってよい。`Date` と `Math.random` は使わない。タイルの URL は `view.map` に保存するが、クエリの鍵らしい項目（`key`、`apikey`、`api_key`、`access_token`、`token` など。名前の大小を問わない）は保存の前に除き、開いたときに入れ直しを促す。鍵は自動保存と `localStorage` にも残さない | 共有したプロジェクトファイルから利用者の鍵が漏れないようにするため |
+| D-53 | 地図のラベル（R-31、NFR-09）: deck.gl の TextLayer は使わず、地図の上に重ねた SVG の層でブラウザに文字を描かせる。重なりの解消は `render/labels` の算法を地図の画面座標で使う | TextLayer はアラビア文字の連結と左右の向きの処理をしないため |
+| D-54 | 地図のシーン（R-32）: 地図のノード、エッジの経路、矢じり、ラベル、凡例を Web メルカトルの平面座標の「地図のシーン」として作り、画面（deck.gl）と SVG の書き出し（d3-geo の同じ投影）で同じものを描く。地図は平面とし、傾き・回転を使わない（ArcLayer は使わない）。弧は平面の 2 次曲線で、往復・縁での切断・矢じりは `render/edges` の幾何を使う。ノードとエッジの大きさは画面の px で保ち、縁での切断と矢じりはズームが止まってから作り直す（§8.1 のズームの規則と同じ） | 画面と書き出した図を一致させる §8.1 の原則を地図でも守るため |
+| D-55 | edge bundling（R-33、FR-VG-13、14）: グラフ図と地図の両方で使え、設定はビューごと（`view.graph.bundling`、`view.map.bundling`）。Worker で、グラフはレイアウトの座標、地図はメルカトルの平面座標に対して計算する。計算し直すのはフィルタ、構築、配置、座標の出どころが変わったときと「束ね直す」を押したときだけで、ズーム・パン・再生では計算しない。逆向きのエッジは別の車線に分ける（**補足（T3-01 のレビュー）**: 算法は逆向きの組も 1 本の中心線に束ね、車線は描画で画面の px でずらす。§8.4）。束ねる強さの既定は 0.85。描き方は束の太さの帯（既定）と半透明の重ね描き（簡易版）。束ねた経路の向きは先細りを勧め、矢印は経路の終端に付ける。5,000 本を超えるときは警告し、始めるかを確かめる。版番号と中止は `src/state/bundlingController.ts`（D-17 の補足と同じ形） | 計算が重いので、軽い表示の変更で計算し直さないため |
+| D-56 | 地図の時間アニメーション（R-34、FR-MP-03）: `view.time` と `usePlaybackClock` を共有する。エッジは日付の最も早い日に現れ始め、最も遅い日に完全に現れる（移動窓では窓から外れると薄れる）。粒子はエッジの日付の幅の間、送り手から受け手へ動き、日付のないエッジと無向のエッジには出さない。ノードは時刻までに現れた表示中のエッジによる累積の次数で大きくし、目盛りは全期間の最大にそろえる。累積の次数は年表の区切りごとに前もって数える。束ねた経路は、区間と通るエッジの対応を前もって作り、現れているエッジの重みで太さを出し直す | 時点で目盛りが変わると比べられないため。再生のたびに重い計算をしないため（D-38） |
+| D-57 | 時点ごとの指標（R-35。利用者の着想 2026-11-24）: 要件 FR-MT-07（Should、フェーズ 3）として足し、フェーズ 3 の最後のタスク T3-09 で行う。年表の区切りごとの部分グラフで Worker が前もって計算し、再生では値を引くだけにする。幅のある年代、日付のないエッジ、その時点にいないノード（欠損）、小さなグラフでの値の不安定さの注意は T3-09 の開始時に決める | 再生と組み合わせて媒介中心性などの変化を見たいという利用者の要望のため |
+| D-58 | 地図の範囲選択のフィルタ（R-36、FR-MP-04、filter-audit #11）: 地図で Shift ＋ ドラッグの矩形で選択し、「この範囲で絞り込む」で新しい種類のフィルタ `geo`（`{ kind: 'geo'; bbox: { west; south; east; north }; missing }`。ノード専用）を足す。座標は D-46 の出どころから取り、座標のないノードは `missing` の指定に従う（既定は除き、除いた件数を示す）。経度 180° をまたぐ範囲（west > east）を扱う。射影の適用中は `nodeSet` と同じく仲介の型を通す（`passTypes`） | 適用中の一覧で範囲として読め、座標の出どころを変えても意味が保たれるため |
+| D-59 | プロジェクトファイルの版 3（R-37。利用者の確認 2026-11-27）: `geo` のフィルタの追加で `formatVersion` を 3 に上げる（版 2 → 3 の移行は中身を変えない）。`view.geoSource`、`view.workspace.mainView`、`view.map`、`view.graph.bundling` は任意の項目。フェーズ 3 の間は版 3 を開発中とし、v0.3 の公開で確定する。v0.2 のアプリは版 3 のファイルを「新しい版」として開かない | D-24 の規則（判別共用体に要素を足すときは版を上げる）のため |
+| D-60 | 地図の書き出しと座標のないノード（R-38、FR-OUT-06、FR-MP-05）: 「書き出し」のダイアログに「地図」を足す。PNG は地図の Canvas を 1・2・4 倍で描き直し、タイルと帰属表示を画像に含める。SVG は d3-geo で簡易背景、ノード、エッジ、ラベル、凡例、出典表記を描き、タイルは含めない（その旨を示す）。地図の PDF はフェーズ 4 の候補。座標のないノードは地図の左下に「地図に載らないノード N 件」の一覧を出し、理由（座標の列が無い、欠損、範囲外）ごとに数える。片端が座標なしのエッジの件数も示す | 書き出した画像にもタイルの帰属表示が要るため。座標のないノードを黙って落とさないため |
 
+- **D-51 補足（OSM のタイル利用規約の確認。2026-11-27）**: [Tile Usage Policy](https://operations.osmfoundation.org/policies/tiles/) を読んだ。人が操作して今の表示範囲のタイルだけを取る普通の使い方は許されており、Relata の既定にしてよい。守ること: (1) URL は `https://tile.openstreetmap.org/{z}/{x}/{y}.png` そのもの（http やほかのサブドメインは使わない）。(2) 帰属表示「© OpenStreetMap contributors」を地図の上（ふつうは右下）に見えるように出し、操作部品の下や切り替えの奥に隠さない。(3) ブラウザの既定の User-Agent と Referer を使い、Referer を送らなくする `Referrer-Policy`（`no-referrer` の meta など）を付けない。`Cache-Control: no-cache` などを送らない（ブラウザと MapLibre の既定のままでよい）。(4) 先読み・一括取得・オフライン保存を作らない（「この範囲を保存」のような機能、見ていない範囲や複数のズームの取得は禁止）。E2E や自動の操作で OSM のタイルを取らない（headless のボットによる取得も禁止の例に挙がっている）。(5) 推奨: タイルの URL を差し替えられる（`custom` で満たす）、「地図の誤りを報告」（https://www.openstreetmap.org/fixthemap）へのリンク、連絡先の公開。(6) OSMF は利用の集計（どのサイトが使っているかを含む）を公開する。画面と「このツールについて」の通信の注意に、表示範囲がタイルのサーバーに伝わることと合わせて書く。**T3-06b への申し送り**: 背景が OSM のときに PNG を 2・4 倍で書き出すと、見ている範囲を一段・二段細かいズームで取り直すことになり、先読みに近い。OSM のときはタイルを取り直さず、今のズームのタイルを拡大して描く（または倍率を 1 に限る）。利用者の XYZ のタイルでは、その提供元の条件に従うよう画面で促す。
+- **D-49 補足（T3-00。2026-11-27）**: `.app` を `100dvh`（未対応の環境は `100vh`）に固定し、左右のパネルと中央の列（`.region-main`）はそれぞれ中でスクロールする。下の段の実効の高さは min(保存した高さ, 中央の列の 40%)（`.region-main` を `container-type: size` にして `40cqb`。比は `BOTTOM_MAX_RATIO`）で、保存する値は窓の大きさで書き換えない（D-44）。ドラッグの開始値、キー操作の基準、`aria-valuenow`/`min`/`max` は実効の高さと実際に動かせる範囲。下の段の下限は中身で決める（年表は操作の部分を測った高さ＋棒グラフ 120 px、表は見出しと 3 行〔15rem〕、欠損 120 px）。閉じた段は見出しだけ。図の下限 240 px。年表の変わらない説明は ⓘ に入れ、状態の文（再生できない理由、選んだ範囲に限ること）と、区切りの件数・選択中の範囲は棒グラフの上に出す。ヘッダと読み込みの知らせは 1 行（知らせの欄は最大 40dvh で中スクロール）。図の枠には `data-main-frame`（T3-03 の地図の枠にも付ける）。`container-type: size` により `.region-main` が中の `position: fixed` の基準と重なり順の文脈になる（地図のポップアップで注意）。1280×900 でサンプルを開くと、図は約 250〜310 px（知らせ・タブによる）。720 px 以下では図 240 px と年表を同時には置けず、中央の列の中でスクロールする。
+- **D-46・D-52・D-58・D-59 補足（T3-01b。2026-11-27）**:
+  - 座標の取り出しは `src/core/geo/`（`source.ts`、`bbox.ts`、`tileUrl.ts`）に置く。`nodeGeo(node, source, coverage?)` は座標か、座標なしの理由を返す。理由は 4 つ: `no-column`（その型のノードには座標が 1 つも無い）、`missing`（値が無い。io の読み込みは空欄・読めない値・範囲外を区別せず `geo` を付けないので、出どころが `geo` ならこれになる）、`invalid`（数として読めない、複数値など。属性の組のとき）、`out-of-range`（緯度 ±85.0511 を超える、経度 ±180 を超える）。属性の組の読み方は `extractGeoInputs`（T2-03）と同じ規則で、同じ結果になることをテストで確かめている（配置を `nodeGeo` に寄せるのは T3-03 以降）。`view.geoSource` が無く `view.graph.geoAttrs` の緯度・経度が両方あれば `attrs` として読み替える（`resolveGeoSource`）。
+  - **「座標を持つ型」はデータで判定する**（`geoSourceTypes`。schema は見ない。絞り込み前の全データで作る）: 出どころが `geo` なら点を 1 つでも持つノードがいる型、`attrs` なら緯度か経度の属性に欠損でない値（読めない値・範囲外を含む）を 1 つでも持つノードがいる型。対象外の型のノードは、欠損の値を持っていても `no-column`。空欄の座標は欠損（`unrecorded`）として読まれるので、型の定義や欠損の有無で判定すると、2 表で地名にだけ座標を書いたとき人物が全員除かれるため（レビューで再現）。
+  - **`geo` のフィルタは `source` を持つ**（`applyFilters(dataset, filterState)` が引数だけで決まるように。時間フィルタの `source` と同じ）。判定の順: `passTypes` の型は通す → 座標を持たない型は通す（D-21 (2) の「キーを持たない」と同じ。欠損の件数にも数えない）→ 対象の型の座標なしは `missing` の指定に従う（D-21 (3) の「数でない値は合わない」と違い、読めない値・範囲外も欠損と同じ扱い。FR-MP-05 の「地図に載らない」とそろえるため）→ 逆転した範囲（south > north）は何も通さない → 範囲は両端を含み、west > east は 180° をまたぐ範囲。座標を持つ型が 1 つも無いときは `checkFilterState` が `geo-no-coordinates` を返す。適用中の一覧には対象の型を示す（緯度か経度に値が 1 つ紛れただけで型全体が対象になるため）。
+  - **タイルの URL**（`checkTileUrl`、`stripTileKeys`）: `https:`、`{z}{x}{y}` が必須、ホストあり、空白・制御文字・userinfo なし。`{s}` は `subdomain-placeholder` として拒む（MapLibre が展開しないため）。鍵とみなす項目名は、大小と `_`・`-` を無視して末尾が `key`、`token`、`secret`、`signature`、`credential`、`password`、`passwd` のもの、および `sig`、`app_code`（`%` を復号し、前後の空白と末尾の `[]` を除いて判定）。`&` と `;` を区切りとし、残す項目は元の区切りでつなぐ。断片（`#` 以降）は保存しない。保存（`serializeProjectWithReport`。`serializeProject` もこれを通るので自動保存も同じ）で鍵を除き、`checkTileUrl` を通らない URL は空にする。除いた項目名は `customTiles.removedParams`（名前だけ。`=` の無い項目は固定の印 `(valueless)`。20 件・100 字まで）に保存し、開いた人に入れ直しを促す。URL が空なら保存しない。URL を編集したら一覧を消すのは画面の役目。
+  - **版 3**: `migrateV2ToV3` は版を上げるだけ。公開サンプルは版 2 のまま置き（移行で開ける）、v0.3 の公開時に版 3 で作り直す。`view.map` の読めない項目は既定に戻し、`unknown-field` の警告にする（壊れた `view.graph.bundling` も）。保存用の束ねる設定は `BundlingViewSettings`（`enabled`、`strength`〔既定 0.85〕、`style`〔`bands`／`overlay`〕）。`view.workspace.mainView` はメモリ上の型では必須、ファイルでは任意（無ければ `graph`）。
 - **D-35・D-41・D-42 補足（T2-05b、年表）**:
   - 区切りの算出は `src/core/time/bins.ts` の独立した関数（`TIME_BIN_WIDTHS`、`binCalendarOf`、`binStartYear`、`binDayRange`、`binsDayRange`）。区切りは**選んだ暦の年の整数倍**に合わせる（西暦なら 1500〜1509 年、ヒジュラ暦なら 900〜909 AH。100 年区切りは世紀ではなく 1500〜1599 年）。JDN を一定の日数で割らない（閏年や暦の長さの違いで年の境界がずれるため）。`both` は西暦で区切る（`inputCalendarOf` と同じ）。暦の換算は `getCalendar` 経由で、ユリウス暦などが `CalendarId` に加わっても変わらない。
   - 集計は `src/core/filter/timeline.ts` の `aggregateTimeline(dataset, target, ids, source, calendar, width)`。**日付の幅**は、`span` なら「開始の最も早い日から終了の最も遅い日まで」（終了が無い、または欠損なら開始の幅だけ。終わりを推測しない。ただし時間フィルタは終了が欠損の期間の終わりを +∞ とみなすので、開始より後の範囲で絞り込むとその要素は残る。年表の数え方と意図して違う。終了が開始より前の不整合な期間は、時間フィルタと同じくどの範囲とも重ならないものとして区切りに数えず、`inconsistent` として年代なしとは別に示す）、`attr` なら日付の値ごとの幅。要素は**幅と重なるすべての区切りに 1 回ずつ**数える（時間フィルタの「重なる」と同じ。区切りを選んで絞り込むと、時間フィルタが「重なる」のときに限り、数えた要素が残る。「収まる」でははみ出す要素が除かれる）。そのため棒の高さの合計は要素数と一致しない（画面の説明に書く）。日付の幅がすべて 1 つの区切りに収まる要素は `contained`、それ以外（幅が区切りをまたぐ）は斜線で示し、幅のある年代（FR-TM-04）を色だけに頼らず読めるようにする。
@@ -103,7 +126,7 @@
 | 状態管理 | Zustand | 小さく、型付けが簡単 |
 | グラフの構造と算法 | graphology（＋ graphology-metrics、-communities-louvain、-layout-forceatlas2） | 有向・無向・混在と属性を扱え、型付きで、Worker でも動く |
 | グラフ描画 | 自作のシーン層 ＋ SVG（必要なら Canvas を追加） | 矢印、bundling、SVG 出力を自由に制御するため（§8.1） |
-| 地図 | MapLibre GL JS ＋ deck.gl | オープンソースで、時間アニメーション（TripsLayer）が得意 |
+| 地図 | MapLibre GL JS ＋ deck.gl（core、layers、mapbox。geo-layers は使わない。D-50） | オープンソースで、WebGL で多数の点と線を速く描ける。地図の部分は初めて開いたときだけ読み込む |
 | 地図の SVG 出力 | d3-geo | WebGL の画面はそのまま SVG にできないため |
 | Worker との通信 | Comlink | Worker の関数を普通の非同期関数として呼べる |
 | 表データの読み込み | CSV/TSV は `src/io/table/text.ts` の引用規則の解析。Excel は SheetJS CE 0.20.3（Apache-2.0、公式 tgz）。文字コードは標準の `TextDecoder` | CSV/TSV はレコードを保持して警告を出す。Excel はシリアル日付と起点を取得できる公開 API が必要（D-34） |
@@ -137,7 +160,7 @@
 - **`src/core/` は何にも依存しない。** DOM、React、ブラウザ API、`Date` を使わない。JSX も書かない（`.tsx` を置かない）。
 - **`src/render/` は React に依存しない。** 画面からも書き出し処理からも呼べるようにする。JSX も書かない。`core` と `i18n`（書き出しのラベル用）だけに依存し、`state`、`views`、`app`、`map`、`io`、`workers` を import しない。
 - **`src/state/` は画面に依存しない純粋なストア。** `core`、`workers/*.client.ts`、`i18n` の型と定数に依存してよい（D-26）。`*.worker.ts` を直接 import しない。DOM や `requestAnimationFrame` を使う処理（時間の再生の駆動など）は `app` か `views` に置き、state には更新の関数（`tick(dt)` など）だけを置く（§9.2）。views は Worker の client を直接呼ばず、state を通す。
-- **`src/map/` は `core` と `render`（`arrows/`、`bundling/` の型）に依存してよい。** `state`、`io`、`workers` は import しない。ストアの値と更新の関数は views から props で受け取る（§9.2）。この規則の ESLint での検査は、地図の作業を始める前に足す（進行表の R-11）。
+- **`src/map/` は `core` と `render`（`arrows/`、`bundling/` の型）に依存してよい。** `state`、`io`、`workers` は import しない。ストアの値と更新の関数は views から props で受け取る（§9.2）。DOM と WebGL は使ってよい。この規則の ESLint での検査は T3-03 で足す（D-52）。
 - **`src/io/` と `src/workers/` は画面に依存しない。** React、Zustand、`state`、`views`、`app` を import しない。`io/export` の図の部分は `render` を使う。`workers/bundling.worker.ts` は `render/bundling/` の算法を使う（§16.1 の分担による例外ではなく、上の図の「下向き」の依存として許す）。
 - **`src/i18n/` は React と画面とブラウザに依存しない。** `render` から使われるため（D-15）。React、Zustand、地図のライブラリ、`state`、`views`、`app`、`render`、`map`、`io`、`workers` を import せず、`navigator` などのブラウザのグローバルと `Date` を使わず、JSX を書かない。`core` には依存してよい。言語の判定に要る値（`navigator.languages` など）は呼ぶ側が渡す。
 - これらの規則は ESLint で機械的に検査する（パスを解決して判定する `import-x/no-restricted-paths`、パッケージ名の `no-restricted-imports`、ブラウザのグローバルの `no-restricted-globals`、JSX と動的 import の `no-restricted-syntax`）。検査が効いていることは `tests/lint/check-boundaries.mjs` で確かめる。
@@ -371,13 +394,16 @@ export type FilterDef =
   | { id: FilterId; kind: 'time';     target: Target; source: TimeSource; from?: DayNumber; to?: DayNumber; match: 'overlaps' | 'within'; missing: MissingPolicy }  // source は D-35。無い端は開いた端（D-35 の補足）
   | { id: FilterId; kind: 'text';     target: Target; query: string; matching: 'loose' | 'strict' }  // D-21
   | { id: FilterId; kind: 'nodeType'; include: NodeTypeId[] }
-  | { id: FilterId; kind: 'nodeSet'; include: NodeId[] }                                   // D-41
-  | { id: FilterId; kind: 'certainty'; target: Target; include: CertaintyKey[] };           // D-37
+  | { id: FilterId; kind: 'nodeSet'; include: NodeId[]; passTypes?: NodeTypeId[] }        // D-41
+  | { id: FilterId; kind: 'certainty'; target: Target; include: CertaintyKey[] }            // D-37
+  | { id: FilterId; kind: 'geo'; source: GeoSource; bbox: GeoBBox; missing: MissingPolicy; passTypes?: NodeTypeId[] };  // D-58。ノード専用
 
 export type Target = 'node' | 'edge';
 export type MissingPolicy = 'include' | 'exclude';
 export type TimeSource = { kind: 'span' } | { kind: 'attr'; attr: string };  // D-35
 export type CertaintyKey = Certainty | 'unspecified';                         // D-37
+export type GeoSource = { kind: 'geo' } | { kind: 'attrs'; lat: string; lon: string };  // D-46
+export type GeoBBox = { west: number; south: number; east: number; north: number };    // west > east は経度 180° をまたぐ
 /** ファセットの項目。値そのものか、理由つきの欠損（FR-FL-06） */
 export type CategoryKey = { kind: 'value'; value: string } | { kind: 'missing'; reason: MissingReason };
 
@@ -505,14 +531,22 @@ interface SceneEdge { id: string; path: PathCommand[]; width: number | TaperedWi
   1. 各エッジを等間隔の点に分割する。
   2. 互いに似たエッジ（角度、長さ、位置、可視性の互換度が高いもの）の対応する点どうしを、ばねのように引き寄せる。
   3. 分割を細かくしながら、2 を繰り返す。
-- **向きの扱い**: Divided Edge Bundling（Selassie, Heller & Heer, InfoVis 2011, "Divided Edge Bundling for Directional Network Data"）の考え方を取り入れる。逆向きのエッジどうしは互いに押し離し、別々の車線に束ねる。これで有向の描き分けと両立する。
+- **向きの扱い**（T3-01 で変更。D-55 の補足）: 算法は向きを使わず、逆向きに並ぶエッジも点の対応を反転して 1 本の中心線に束ねる。逆向きのエッジを別の車線に分けるのは描画（T3-02）で、画面の px で進行方向の右へずらす（FR-VG-13 の「逆向きは別の束」は T3-02 で満たす）。Divided Edge Bundling（Selassie, Heller & Heer, InfoVis 2011）のように車線の間隔をデータの座標で持つと、帯の太さを画面の px で保ちズームで束ね直さない規則（§8.1、D-54、D-55）と食い違い、縮小で帯が重なり拡大で離れすぎるため。
+- **T3-01 の実装と原論文からの違い**（`src/render/bundling/`、`src/workers/bundling.*`）:
+  1. **凸結合で動かす**: 原論文の「力の合計 × ステップ幅 S」は近傍が多いときや距離が小さいときに目標を飛び越えて振動した。各点を、ばねの目標（両隣の中点）と互換エッジの対応点の重みつき平均へ、割合 `stepSize` だけ動かす。引力の重みは 互換度 /（距離 + ε）、ε = 0.02（座標は内部で中心 0・平均の長さ 1 に正規化）。凸結合なので飛び越えず、座標の尺度と近傍の数に依らず安定する。端点は入力の値をそのまま書き戻す。
+  2. **分割は中点の挿入**: 段階 c の分割数は 2^(c+1)。弧の長さで等間隔に置き直さず、隣り合う点の中点を挿入する（今の形が保たれる）。段階ごとにステップ幅は 1/2、反復回数は 2/3 にする。
+  3. **ばねの強さは定数**: 原論文の kP = K/|P| にせず、重み 0.5 + 400(1 − strength)（重みつき平均では、ばねと引力の重みの比だけが意味を持つため。400 は 20 本の平行なエッジでの実験で決めた）。`strength`（0〜1）は大きいほど束ねる（原論文の K と逆向き）。
+  4. **近傍の探索**: 長さの階級ごとの格子（`Cs ≥ t` から二分法で出した長さの比の上限を階級の幅にし、互換な組は同じか隣の階級だけに入る。1 マスの幅は階級の最長 L で L(1 − t)/t、3×3 のマスを見る）と、エッジごとの上位 `maxNeighbors` 件の固定長の表（互換度の降順、同点は番号の昇順。互換な組の一覧は作らない。メモリは O(E · maxNeighbors)）。上限で切った近傍は対称でない。最悪（ほぼ同じ長さのエッジが狭い範囲に集まる）は O(E²) の比較。
+  5. **既定値**: strength 0.85、cycles 5、iterations 50、stepSize 0.4、compatibilityThreshold 0.6、maxNeighbors 60。座標の絶対値は 1e9 以下（超えれば RangeError）。長さは `Math.hypot` でなく平方根で求める（hypot は処理系で値が違いうるため。NFR-08）。ID の昇順で処理し、同じ入力なら同じ結果。自己ループと長さ 0 は束ねない。
+  6. **Worker**: `start(job)`、段階ごとの `step()`（結果は最後の段階だけ）。client は `run(job, onProgress?)` と `cancel()`。版番号と古い結果の破棄は state の `bundlingController`（T3-02）。
+  7. **実測**（Node、1 スレッド）: 一様に散らした 1,000 本で約 0.2 秒、5,000 本で約 3〜4 秒、都に集まる形の 5,000 本で約 5〜8 秒（互換な組 約 1,200 万、メモリ 約 200 MB）。
 - **束の太さ**（FR-VG-14）:
   1. bundling の後、近くにある同じ向きの区間を、同じ束の区間としてまとめる（区間の中点を格子に振り分け、距離 ε 以内のものをまとめる）。
   2. 区間ごとに、通るエッジの重みの合計 W を求める。
   3. 太さ = スケール関数(W)。既定は平方根（D-08）。
   4. 区間ごとの太さで、なめらかにつないだ帯として描く。
   - 2 つめの方式として、各エッジを「スケール関数(各エッジの重み)」の太さで半透明に重ね描きする簡易版も用意する。速いが、束の太さは正確に重みを表さない。
-- **計算量**: 素朴に作ると、エッジ数の 2 乗に比例する。エッジの中点を格子に振り分け、近い格子のエッジ同士だけ互換度を計算する。エッジが 5,000 本を超えたら警告する。
+- **計算量**: 素朴に作ると、エッジ数の 2 乗に比例する。格子で近いエッジ同士だけ互換度を計算する（上の 4）。エッジが 5,000 本を超えたら警告する。
 - **実行**: Worker で行う。レイアウトが変わったら計算し直す。束ねる強さ、反復回数、ε を画面で調整できるようにする。
 - **地図**: 同じ算法を、地図に投影した後の座標で使う（§9）。
 
@@ -556,7 +590,7 @@ interface SceneEdge { id: string; path: PathCommand[]; width: number | TaperedWi
 ### 9.1 地図（FR-MP-01〜06）
 - **背景地図**: MapLibre GL で描く。既定は OpenStreetMap のラスタータイル。利用者は XYZ 形式の URL を指定できる。ネットに頼らない背景として、Natural Earth の海岸線（低解像度）をアプリに同梱する。
 - **束ねた経路**: bundling は重いので Worker で行う。map は投影した座標を props の関数で返し、state が bundling の client を呼び、結果の経路を map が props で受け取る（map は workers を import しない）。
-- **重ね合わせ**: deck.gl で描く。ノードは ScatterplotLayer、エッジは ArcLayer（弧）または PathLayer（直線、束ねた経路）で描く。有向の表し方は、§8.3 と同じ幾何計算（`src/render/arrows/`）を地図の座標で使う。
+- **重ね合わせ**: deck.gl で描く。ノードは ScatterplotLayer、エッジは PathLayer（直線、平面の弧、束ねた経路。ArcLayer は使わない。D-54）、矢じりは SolidPolygonLayer で描く。ラベルは SVG の層（D-53）。有向の表し方は、§8.3 と同じ幾何計算（`src/render/arrows/`）を地図の座標で使う。
 - **範囲選択**（FR-MP-04）: 選んだ範囲を `FilterDef` に変換して、views から props で受け取った関数（`onAddFilter` など）に渡す。地図の中でデータを直接絞り込まない。
 - **座標のないノード**（FR-MP-05）: 件数と一覧をパネルに出す。
 - **帰属表示**（FR-MP-06）: 地図の右下に常に出す。
@@ -586,8 +620,8 @@ interface TimeState extends TimeSettings { playing: boolean }
 
 ### 9.3 アニメーションの表現（FR-MP-03）
 - エッジは、時刻に達すると現れる。移動窓では、窓から外れると薄れて消える。
-- 粒子が送り手から受け手へ動く。TripsLayer を使う。
-- ノードは、その時点までの累積の次数に応じて大きくなる。
+- 粒子が送り手から受け手へ動く。ScatterplotLayer の位置を時刻から補間して描く（TripsLayer は使わない。D-50）。
+- ノードは、その時点までの累積の次数に応じて大きくなる。 目盛りは全期間の最大にそろえる（D-56）。
 
 ### 9.4 地図の書き出し（FR-OUT-06）
 - PNG: 地図の Canvas を、倍率を上げて描き直して保存する。

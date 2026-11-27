@@ -8,6 +8,12 @@
   /* 段が低いときは、年表の中でスクロールする（棒グラフを潰さない）。 */
   overflow: auto;
 }
+.timeline-head {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  gap: var(--rl-space-2);
+}
 .timeline-controls {
   display: flex;
   flex-wrap: wrap;
@@ -17,8 +23,15 @@
 .timeline-main {
   display: flex;
   gap: var(--rl-space-3);
-  flex: 1;
+  /* 【なぜ】D-49: 棒グラフを優先する。下限 120 px を割らず、余りがあれば伸びる。 */
+  flex: 1 0 120px;
   min-block-size: 120px;
+}
+/* 図の下の補足。段が低いときは、図を縮めずに、この欄の中でスクロールする。 */
+.timeline-foot {
+  flex: 0 1 auto;
+  min-block-size: 0;
+  overflow-y: auto;
 }
 .timeline-chart {
   position: relative;
@@ -52,10 +65,16 @@
 .timeline-nodate p {
   margin: 0 0 var(--rl-space-1);
 }
+.timeline-readout {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--rl-space-3);
+  min-block-size: 1.5em;
+}
 .timeline-status,
 .timeline-hover {
   margin: 0;
-  min-block-size: 1.5em;
   font-size: var(--rl-font-sm);
 }
 .timeline-legend {
@@ -149,7 +168,6 @@
   min-inline-size: 0;
 }
 .time-state {
-  margin: 0;
   font-size: var(--rl-font-sm);
 }
 /* カーソルは実線と三角の頭で示す（色だけに頼らない）。窓は帯と両端の線。 */

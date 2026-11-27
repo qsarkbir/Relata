@@ -241,8 +241,13 @@ test.describe('時間の再生', () => {
     page,
   }) => {
     await loadSample(page);
-    await expect(controls(page)).toContainText('再生は表示だけを変えます');
-    await expect(controls(page)).toContainText('年表で範囲を選びます');
+    // 【なぜ】D-49: 説明は操作の行を増やさないよう、(i) のダイアログの先頭に置いた。
+    await controls(page)
+      .getByRole('button', { name: /時間の再生について/ })
+      .click();
+    const note = page.getByTestId('time-note-info');
+    await expect(note).toContainText('再生は表示だけを変えます');
+    await expect(note).toContainText('年表で範囲を選びます');
   });
 
   test('FR-TM-02: キーボードだけで、つまみ（矢印キー）と再生の操作ができる', async ({ page }) => {
@@ -383,7 +388,12 @@ test.describe('時間の再生: 年表の範囲に限る', () => {
     await loadSample(page);
     await dragRange(page, 0.4, 0.6);
     const { left, right } = await bandEdges(page);
-    await expect(controls(page)).toContainText('選んだ範囲');
+    // 【なぜ】D-49: 範囲の説明は (i) のダイアログの先頭にある。
+    await controls(page)
+      .getByRole('button', { name: /時間の再生について/ })
+      .click();
+    await expect(page.getByTestId('time-note')).toContainText('選んだ範囲');
+    await page.keyboard.press('Escape');
     const next = controls(page).getByRole('button', { name: '次のコマ' });
     // 先頭へ: 範囲の中の最初の区切り。
     await next.click();

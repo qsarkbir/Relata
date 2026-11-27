@@ -1,13 +1,18 @@
 import {
+  parseGeoSource,
   parseGraphView,
+  parseMapViewDetailed,
+  parseRemovedParams,
   parseTableView,
   parseTimeline,
   parseTimeSettings,
   parseWorkspace,
   type DisplaySettings,
+  type MapViewSettings,
   type ProjectWarning,
 } from '../../core/project';
 import { DEFAULT_CALENDAR_DISPLAY, isCalendarDisplay } from '../../core/time';
+import { checkTileUrl, stripTileKeys } from '../../core/geo';
 /**
  * プロジェクトファイルの保存と読み込み（FR-PJ-01、FR-IN-08、D-24、設計書 §11.3）。
  *
@@ -104,17 +109,81 @@ export function migrateV1ToV2(old: unknown): unknown {
   return next;
 }
 
+/**
+ * 版 2 → 3 の移行（D-59、FR-PJ-03）。中身は変えず、`formatVersion` だけを上げる。
+ *
+ * 版 3 は `geo` のフィルタの種類を足した版で、版 2 のファイルはその種類を含まない。
+ * `view.geoSource`、`view.map`、`view.workspace.mainView`、`view.graph.bundling` は任意の項目なので、
+ * 無ければ既定で補われる（D-24）。そのため、変換するものは無い。
+ *
+ * @param old - 版 2 のファイル（`parseProject` が、オブジェクトであることは確かめてある）
+ * @returns 版 3 のファイル
+ */
+export function migrateV2ToV3(old: unknown): unknown {
+  // 【なぜ】オブジェクトでない入力は、例外にせずそのまま返す（後段の検査が「移行の結果が不正」と拒む）。
+  if (!isPlainObject(old)) return old;
+  return { ...old, formatVersion: 3 };
+}
+
 /** 版の移行の一覧。キー n は「版 n → n+1」。版が上がるたびに足す。 */
-export const MIGRATIONS: Migrations = { 1: migrateV1ToV2 };
+export const MIGRATIONS: Migrations = { 1: migrateV1ToV2, 2: migrateV2ToV3 };
+
+/** 保存の結果。JSON 文字列と、保存の前に除いたタイルの URL の鍵らしい項目名。 */
+export interface SerializedProject {
+  readonly text: string;
+  /**
+   * `view.map.customTiles.url` のクエリから除いた項目名（無ければ空）。画面で「鍵は保存していません。
+   * 開いたときに入れ直してください」と示すのに使う（D-52、NFR-02）。
+   */
+  readonly strippedKeys: readonly string[];
+  /**
+   * 使えない URL（`https:` でない、雛形が無い、資格情報を含むなど）だったので、保存で空にしたか。
+   * 【なぜ】`user:pass@` のような資格情報は、鍵の項目名では見分けられないため、URL ごと残さない（D-52）。
+   */
+  readonly tileUrlDropped: boolean;
+}
 
 /**
- * プロジェクトを JSON 文字列にする。
+ * プロジェクトを JSON 文字列にし、保存の前に除いた鍵の項目名も返す。
+ *
+ * 【なぜ】タイルの URL の鍵（`key`、`access_token` など）は、共有したファイルから漏れないよう、
+ * ファイルにも自動保存にも残さない（D-52、NFR-02）。除いたことを利用者に示せるよう、項目名を返す。
  *
  * @param parts - 保存する中身
  * @param savedAt - 保存日時（ISO 8601）。呼ぶ側が渡す（`Date` を使わず、関数を純粋に保つため）
- * @returns JSON 文字列
+ * @returns JSON 文字列と、除いた項目名
  */
-export function serializeProject(parts: ProjectParts, savedAt: string): string {
+export function serializeProjectWithReport(
+  parts: ProjectParts,
+  savedAt: string,
+): SerializedProject {
+  // 入力の `parts` は書き換えず、鍵を除いた地図の設定を新しく作る。
+  let map = parts.view.map;
+  let strippedKeys: readonly string[] = [];
+  let tileUrlDropped = false;
+  if (map !== undefined) {
+    const tiles = map.customTiles;
+    const stripped = stripTileKeys(tiles.url);
+    strippedKeys = stripped.removed;
+    // 【なぜ】鍵を除いた後も、保存してよい URL か検査する（https、雛形、資格情報なし）。通らなければ空にする。
+    //   空の URL は「まだ入力していない」状態なので、そのまま保存する。
+    const checked = stripped.url === '' || checkTileUrl(stripped.url).ok;
+    tileUrlDropped = !checked;
+    const url = checked ? stripped.url : '';
+    // 除いた項目名だけを残す（値は残さない。読み込みと同じ上限 20 件・100 字をかける）。
+    //   今回除いたものがあればそれに置き換える。無ければ、読み込んだ一覧をそのまま残す（URL を編集したら
+    //   消すのは画面の役目）。URL が空なら保存しない。
+    const removedParams =
+      url === ''
+        ? undefined
+        : parseRemovedParams(stripped.removed.length > 0 ? stripped.removed : tiles.removedParams);
+    // 【なぜ】前の `removedParams` は引き継がず、上で決めた値だけを入れる。
+    const tilesRest = { url: tiles.url, attribution: tiles.attribution };
+    map = {
+      ...map,
+      customTiles: { ...tilesRest, url, ...(removedParams === undefined ? {} : { removedParams }) },
+    };
+  }
   const file: ProjectFile = {
     app: 'Relata',
     formatVersion: CURRENT_FORMAT_VERSION,
@@ -132,9 +201,23 @@ export function serializeProject(parts: ProjectParts, savedAt: string): string {
       ...(parts.view.display === undefined ? {} : { display: parts.view.display }),
       ...(parts.view.timeline === undefined ? {} : { timeline: parts.view.timeline }),
       ...(parts.view.time === undefined ? {} : { time: parts.view.time }),
+      ...(parts.view.geoSource === undefined ? {} : { geoSource: parts.view.geoSource }),
+      ...(map === undefined ? {} : { map }),
     },
   };
-  return JSON.stringify(file);
+  return { text: JSON.stringify(file), strippedKeys, tileUrlDropped };
+}
+
+/**
+ * プロジェクトを JSON 文字列にする。タイルの URL の鍵は除く（D-52）。除いた項目名が要るときは
+ * `serializeProjectWithReport` を使う。
+ *
+ * @param parts - 保存する中身
+ * @param savedAt - 保存日時（ISO 8601）。呼ぶ側が渡す（`Date` を使わず、関数を純粋に保つため）
+ * @returns JSON 文字列
+ */
+export function serializeProject(parts: ProjectParts, savedAt: string): string {
+  return serializeProjectWithReport(parts, savedAt).text;
 }
 
 // 自分自身の項目だけを読む（継承した項目は読まない）。
@@ -424,12 +507,22 @@ export function parseProject(
         },
       };
   }
+  // 壊れた bundling は、parseGraphView が落とす（図ごとは拒まない）。落としたことを警告にする（D-24）。
+  if (
+    isPlainObject(graphRaw) &&
+    get(graphRaw, 'bundling') !== undefined &&
+    graph?.bundling === undefined
+  )
+    positionWarnings.push({
+      source: 'project',
+      issue: { kind: 'unknown-field', path: 'view.graph.bundling' },
+    });
   // 表ビューと下の段（D-44）。任意の項目で、読めない中身は既定で補う（parseTableView、parseWorkspace）。
   // 【なぜ】graph と違い、オブジェクトでない値（`null` など）も失敗にしない。表示の好みの 1 つのために、
   //   データを含むファイル全体を開けなくしない。落としたことは警告で返す。
   const viewWarnings: ProjectWarning[] = [];
   const optionalView = <T>(
-    key: 'table' | 'workspace' | 'timeline' | 'time',
+    key: 'table' | 'workspace' | 'timeline' | 'time' | 'geoSource',
     parse: (x: unknown) => ParseResult<T>,
   ) => {
     const raw = viewRaw === undefined ? undefined : get(viewRaw, key);
@@ -446,6 +539,23 @@ export function parseProject(
   const workspace = optionalView('workspace', parseWorkspace);
   const timeline = optionalView('timeline', parseTimeline);
   const time = optionalView('time', parseTimeSettings);
+  const geoSource = optionalView('geoSource', parseGeoSource);
+  // 地図の設定は、既定に戻した項目も警告にする（D-24。例: 使えないタイルの URL を空にした）。
+  const mapRaw = viewRaw === undefined ? undefined : get(viewRaw, 'map');
+  let map: MapViewSettings | undefined;
+  if (mapRaw !== undefined) {
+    const parsedMap = parseMapViewDetailed(mapRaw);
+    if (parsedMap.ok) {
+      map = parsedMap.value.value;
+      for (const path of parsedMap.value.reset)
+        viewWarnings.push({
+          source: 'project',
+          issue: { kind: 'unknown-field', path: `view.map.${path}` },
+        });
+    } else {
+      viewWarnings.push({ source: 'project', issue: { kind: 'unknown-field', path: 'view.map' } });
+    }
+  }
   // 表示設定（R-24）。無ければ持たない（読む側が既定の西暦にする）。
   const displayRaw = viewRaw === undefined ? undefined : get(viewRaw, 'display');
   let display: DisplaySettings | undefined;
@@ -481,6 +591,7 @@ export function parseProject(
             'positions',
             'columnOrder',
             'geoAttrs',
+            'bundling',
             'labels',
             'largeLabelCount',
             'direction',
@@ -516,6 +627,8 @@ export function parseProject(
         ...(display === undefined ? {} : { display }),
         ...(timeline === undefined ? {} : { timeline }),
         ...(time === undefined ? {} : { time }),
+        ...(geoSource === undefined ? {} : { geoSource }),
+        ...(map === undefined ? {} : { map }),
       },
     },
     warnings,
