@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { serializeProject } from '../io/project';
+import { serializeProjectWithReport } from '../io/project';
 import {
   takeSnapshot,
   dataStore,
@@ -10,12 +10,14 @@ import {
   displayStore,
   timelineStore,
   timeStore,
+  mapViewStore,
 } from '../state';
 import { useData, useT, useUi } from './hooks';
 import { ModalDialog } from './ModalDialog';
 import { ConfirmOpenDialog } from './ConfirmOpenDialog';
 import { downloadText, projectFileName } from './projectFile';
 import { openProjectFile } from './projectLoad';
+import { projectNoticeStore } from './projectNotice';
 
 /** ProjectMenu の props。 */
 export interface ProjectMenuProps {
@@ -49,14 +51,17 @@ export function ProjectMenu({ onClearAutosave }: ProjectMenuProps) {
       display: displayStore,
       timeline: timelineStore,
       time: timeStore,
+      map: mapViewStore,
     });
     if (snapshot === null) return;
     // 【なぜ】日時は呼ぶ側（ここ）で作って渡す。io は Date を使わない（CLAUDE.md）。
     const savedAt = new Date().toISOString();
-    downloadText(
-      projectFileName(snapshot.dataset.meta.title, savedAt),
-      serializeProject(snapshot, savedAt),
-    );
+    // 【なぜ】タイルの URL の鍵は保存しない（D-52）。除いたら、ファイルを渡した先で入れ直しが要ることを知らせる。
+    const saved = serializeProjectWithReport(snapshot, savedAt);
+    downloadText(projectFileName(snapshot.dataset.meta.title, savedAt), saved.text);
+    if (saved.strippedKeys.length > 0)
+      projectNoticeStore.getState().show({ kind: 'tile-keys-stripped', names: saved.strippedKeys });
+    else if (saved.tileUrlDropped) projectNoticeStore.getState().show({ kind: 'tile-url-dropped' });
   };
 
   return (

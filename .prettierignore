@@ -8,3 +8,6 @@ package-lock.json
 docs/
 CLAUDE.md
 .claude/
+
+# 【なぜ】陸地のデータ（Natural Earth を変換した 1 行の GeoJSON）は生成物なので、整形しない。
+public/geo/land-50m.geojson

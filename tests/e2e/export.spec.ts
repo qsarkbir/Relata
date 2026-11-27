@@ -1,4 +1,4 @@
-import { expect, test, type Download, type Page } from '@playwright/test';
+import { expect, test, type Download, type Page } from './fixtures';
 import { readFileSync } from 'node:fs';
 import { exportFigureAs, openExportDialog, openProject, saveButton, startApp } from './support';
 

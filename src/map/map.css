@@ -1,0 +1,38 @@
+/*
+ * 地図の部品の見た目（帰属表示）。MapLibre 自身の CSS（maplibre-gl.css）は engine.ts が読み込む。
+ *
+ * 【なぜ】帰属表示は MapLibre の AttributionControl ではなく、自前の要素にする。
+ * 畳む・消す操作を持たせず、右下に常に見える形にするため（FR-MP-06、OSM の利用規約。D-51）。
+ * 色は固定（地図の上に載るので、画面のテーマに依らず読めるようにする）。
+ */
+.relata-map-attribution {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  /* deck.gl の canvas と MapLibre の部品より上に置く。 */
+  z-index: 10;
+  max-width: 80%;
+  padding: 2px 6px;
+  font:
+    12px/1.4 system-ui,
+    sans-serif;
+  color: #333;
+  background: rgb(255 255 255 / 80%);
+  /* 右から左へ書く文字の出典（利用者が書く）でも崩れないよう、向きは文字に任せる。 */
+  unicode-bidi: plaintext;
+  overflow-wrap: anywhere;
+}
+
+.relata-map-attribution a {
+  color: #0b5394;
+  text-decoration: none;
+}
+
+.relata-map-attribution a:hover,
+.relata-map-attribution a:focus-visible {
+  text-decoration: underline;
+}
+
+.relata-map-attribution:empty {
+  display: none;
+}

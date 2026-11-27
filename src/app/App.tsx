@@ -1,4 +1,4 @@
-import { GraphView } from '../views/GraphView';
+import { MainViews } from '../views/MainViews';
 import { BottomPanel } from '../views/BottomPanel';
 import { ConditionsBar } from '../views/ConditionsBar';
 import { AboutDialog } from '../views/AboutDialog';
@@ -99,7 +99,7 @@ export function App() {
           data-bottom={bottomOpen ? 'open' : 'closed'}
         >
           <ConditionsBar />
-          <GraphView />
+          <MainViews />
           {dataset === null ? (
             <div className="empty">
               <h2>{t('app.empty.title')}</h2>

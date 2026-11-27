@@ -14,6 +14,11 @@ interface TabsProps<Id extends string> {
   readonly label: string;
   /** 要素の ID の接頭辞。タブとパネルを `aria-controls` と `aria-labelledby` で結ぶ。 */
   readonly idPrefix: string;
+  /**
+   * パネルの要素の ID の接頭辞（省略すると `idPrefix`）。同じ組のタブを複数の場所に出すとき、タブの ID は
+   * 場所ごとに分け（ID は 1 つのページで重ならない）、パネルは 1 つの接頭辞に結ぶために使う。
+   */
+  readonly panelIdPrefix?: string;
   readonly tabs: readonly TabItem<Id>[];
   readonly selected: Id;
   readonly onSelect: (id: Id) => void;
@@ -33,6 +38,7 @@ interface TabsProps<Id extends string> {
 export function Tabs<Id extends string>({
   label,
   idPrefix,
+  panelIdPrefix,
   tabs,
   selected,
   onSelect,
@@ -68,7 +74,7 @@ export function Tabs<Id extends string>({
             role="tab"
             id={tabElementId(idPrefix, tab.id)}
             aria-selected={active}
-            aria-controls={tabPanelElementId(idPrefix, tab.id)}
+            aria-controls={tabPanelElementId(panelIdPrefix ?? idPrefix, tab.id)}
             tabIndex={active ? 0 : -1}
             className="rl-tab"
             onClick={() => {

@@ -6,7 +6,7 @@
  * p3 は緯度が文字列「不明」、p4 は緯度が範囲外（95）。組織には座標の属性が無い。
  * したがって地理座標の配置では、座標なしは p3、p4、o1、o2 の 4 件。
  */
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { openGraphSettings, openProject, startApp, waitForAutosave } from './support';
 
 test.use({ locale: 'ja-JP' });

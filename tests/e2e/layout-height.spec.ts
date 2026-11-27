@@ -3,7 +3,7 @@
  *
  * 見本は「サンプルを読み込む」のデータ（public/samples/maghrib.relata.json。219 ノード、年表に年代がある）。座標は使わず、要素の大きさとスクロールの量だけを調べる。
  */
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { loadedNotice, startApp } from './support';
 
 test.use({ locale: 'ja-JP' });
@@ -42,7 +42,8 @@ test('FR-UI-02: D-49 900 px の窓で、年表の棒グラフは見え、図は 
   await loadedNotice(page).getByRole('button', { name: '閉じる' }).click();
   await expect
     .poll(async () => (await page.locator('[data-main-frame]').boundingBox())?.height ?? 0)
-    .toBeGreaterThanOrEqual(290);
+    // 【なぜ】中央の「グラフ｜地図」のタブの行（約 36 px。D-48）の分だけ、以前の 290 px より低い。知らせの分だけ高くなることを確かめる。
+    .toBeGreaterThan((canvas?.height ?? 0) + 10);
   await expect(page.locator('.timeline-chart')).toBeInViewport({ ratio: 0.9 });
 });
 
@@ -111,6 +112,12 @@ test('FR-UI-02: D-49 End で広げても中央の列の 40% に丸められ、�
     .toBeLessThanOrEqual(3);
   await bar.focus();
   await page.keyboard.press('End');
+  // 【なぜ】aria-valuenow は、段の高さが変わったあとに ResizeObserver 経由で（非同期に）更新される。キーを
+  // 押してすぐ読むと、広げる前の値（既定の高さ。上限との差 82 px）を読むことがあり、負荷が高いと落ちていた。
+  // 値が上限に届くまで待ってから読む。
+  await expect
+    .poll(async () => Math.abs(Number(await bar.getAttribute('aria-valuenow')) - (await limit())))
+    .toBeLessThanOrEqual(3);
   const now = Number(await bar.getAttribute('aria-valuenow'));
   expect(now).toBeLessThan(800);
   // 値は「中央の列の内側の高さ × 0.4」に一致する（図が 240 px を保てる余裕は、この窓では十分にある）。

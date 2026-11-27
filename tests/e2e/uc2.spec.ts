@@ -12,7 +12,7 @@
  * - 所属 8 本: o1 に p1,p2,p3、o2 に p2,p3,p4、o3 に p4,p5。p2 と p3 だけが 2 つの組織を共有する。
  * 射影（人物 ← 組織）すると、ノード 5（Solo は孤立で除く）、エッジ 6 になる。
  */
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import {
   buildToggle,
   counts,

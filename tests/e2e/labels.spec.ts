@@ -1,5 +1,5 @@
 import Graph from 'graphology';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import type { RelataGraph } from '../../src/core/graph';
 import { toNodeId, toNodeTypeId } from '../../src/core/model';
 import { buildScene } from '../../src/render/scene';

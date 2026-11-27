@@ -1,6 +1,6 @@
 /** 書簡の取込から論文用出力と再読込まで、実際の画面とWorkerを通す（UC-1）。 */
-import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures';
+import type { Page } from './fixtures';
 import { readFileSync } from 'node:fs';
 import {
   counts,

@@ -59,6 +59,14 @@ export { createBuildOptions, buildOptions } from './buildOptions';
 export type { BuildHistoryState, BuildOptionsController } from './buildOptions';
 export { getNetwork, selectedGraphEdges } from './networkView';
 export type { Network, ProjectionStatus } from './networkView';
+export {
+  bindMapViewToData,
+  createMapViewStore,
+  geoSourceToSave,
+  isDefaultMapView,
+  mapViewStore,
+} from './mapViewStore';
+export type { MapViewState } from './mapViewStore';
 export { bindWorkspaceToData, createWorkspaceStore, workspaceStore } from './workspaceStore';
 export type { WorkspaceViewState } from './workspaceStore';
 export {
@@ -98,3 +106,5 @@ export {
   timeStore,
 } from './timeStore';
 export type { TimeStoreState } from './timeStore';
+export { placeNodes, UNPLACED_REASONS } from './mapPlacement';
+export type { MapPlacement, PlacedNode, UnplacedNode } from './mapPlacement';

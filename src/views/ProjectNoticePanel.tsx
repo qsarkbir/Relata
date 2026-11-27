@@ -15,6 +15,8 @@ function isAlert(n: Notice): boolean {
   switch (n.kind) {
     case 'autosave-cleared':
     case 'other-tab':
+    case 'tile-keys-stripped':
+    case 'tile-url-dropped':
       return false;
     case 'failed':
     case 'read-error':
@@ -89,6 +91,10 @@ export function ProjectNotice() {
         return t('project.autosave.cleared');
       case 'other-tab':
         return t('project.otherTab');
+      case 'tile-keys-stripped':
+        return tRich(t, 'project.tileKeysStripped', {}, { names: n.names.join(', ') });
+      case 'tile-url-dropped':
+        return t('project.tileUrlDropped');
       default:
         return assertNever(n);
     }

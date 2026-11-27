@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { startApp, counts, loadedNotice, openProject, exportButton } from './support';
 test.use({ locale: 'ja-JP' });
 
