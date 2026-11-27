@@ -5,6 +5,12 @@
   border-radius: var(--rl-radius);
   background: var(--rl-surface);
   min-inline-size: 0;
+  /* 【なぜ】D-49: 段の高さは body の block-size（保存した高さと中央の列の割合の小さいほう）で決まる。 */
+  display: flex;
+  flex-direction: column;
+  /* 図を優先する（D-49）。段は自分の高さで置き、縮めない。縮める側は、図の枠（graph-view）と中央の列のスクロール。 */
+  flex: 0 0 auto;
+  overflow: hidden;
 }
 .bottom-resizer {
   block-size: 10px;
@@ -39,17 +45,15 @@
   gap: var(--rl-space-2);
   padding: var(--rl-space-2);
   box-sizing: border-box;
-  min-block-size: 0;
+  /* 高さは style の block-size: min(保存した高さ, 中央の列の 40%)（D-49。保存する値は窓で変えない）。
+     下限は中身で決める（開いている段にだけ効く。閉じた段は hidden で、見出しの高さだけになる）。 */
+  flex: 0 0 auto;
+  min-block-size: 120px;
 }
+/* 下限は中身で決まる。年表と表の下限は BottomPanel が style で与える（年表は操作の部分の高さを測る）。 */
 /* display を指定した要素では、hidden 属性が効かなくなるため。 */
 .bottom-body[hidden] {
   display: none;
-}
-/* 下の段を開いている間は、図を少し低くして、段が画面の外へ押し出されないようにする。 */
-.region-main[data-bottom='open'] .graph-canvas {
-  height: 45vh;
-  /* 利用者が図のつまみで高さを変えた後でも、段の見出しが画面の外へ押し出されないよう上限を置く。 */
-  max-height: max(240px, calc(100vh - 20rem));
 }
 
 /* ---- 表ビュー ---- */

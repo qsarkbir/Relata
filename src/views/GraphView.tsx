@@ -501,7 +501,7 @@ export function GraphView() {
   useEffect(() => {
     const element = frame.current;
     if (!hasFigure || element === null || typeof ResizeObserver === 'undefined') return;
-    // 【なぜ】枠の大きさ（利用者のつまみ操作、窓の幅の変化）を測り、viewBox と全体表示に使う。
+    // 【なぜ】枠の大きさ（窓の大きさ、下の段の高さ、左右のパネルの開閉）を測り、viewBox と全体表示に使う。
     const observer = new ResizeObserver(() => {
       const width = Math.max(1, Math.round(element.clientWidth));
       const height = Math.max(1, Math.round(element.clientHeight));
@@ -653,7 +653,9 @@ export function GraphView() {
   const selectedVisible = selectedId !== undefined && graph.hasNode(selectedId);
   return (
     <section className="graph-view" aria-labelledby="graph-title">
-      <h2 id="graph-title">{t('graph.title')}</h2>
+      <h2 id="graph-title" className="visually-hidden">
+        {t('graph.title')}
+      </h2>
       <Toolbar label={t('graph.toolbar')}>
         <GraphSearch
           query={query}
@@ -774,7 +776,7 @@ export function GraphView() {
       <div className="graph-body" data-drawer={drawerOpen ? 'open' : 'closed'}>
         <div className="graph-main">
           <div className="graph-stage">
-            <div className="graph-canvas" ref={frame}>
+            <div className="graph-canvas" data-main-frame="graph" ref={frame}>
               <svg
                 ref={svg}
                 viewBox={`0 0 ${String(canvas.width)} ${String(canvas.height)}`}

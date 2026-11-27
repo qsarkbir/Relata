@@ -119,6 +119,8 @@ test.describe('日本語の画面', () => {
   test('FR-UI-02: 高さは矢印キーと Home / End、ドラッグで変えられ、範囲に収まる', async ({
     page,
   }) => {
+    // 【なぜ】D-49: 段の高さは「図が 240 px を下回らない」範囲に丸められる。800 px まで広げられるよう窓を高くする。
+    await page.setViewportSize({ width: 1280, height: 1700 });
     await openProject(page, 'maghrib.relata.json');
     await openBottom(page);
     const bar = page.getByRole('separator', { name: '下の段の高さ' });
@@ -130,9 +132,14 @@ test.describe('日本語の画面', () => {
     await page.keyboard.press('ArrowDown');
     await expect(bar).toHaveAttribute('aria-valuenow', String(start - 24));
     await page.keyboard.press('Home');
-    await expect(bar).toHaveAttribute('aria-valuenow', '120');
+    // 【なぜ】D-49: 表は「ツールバー、見出し、3 行ほど」が見える高さ（15rem = 240 px）を下限にする。
+    await expect(bar).toHaveAttribute('aria-valuenow', '240');
     await page.keyboard.press('End');
-    await expect(bar).toHaveAttribute('aria-valuenow', '800');
+    // 【なぜ】D-49: 広げられるのは中央の列の 40% まで（1700 px の窓で約 636 px）。800 には届かない。
+    await expect
+      .poll(async () => Number(await bar.getAttribute('aria-valuenow')))
+      .toBeGreaterThan(500);
+    expect(Number(await bar.getAttribute('aria-valuenow'))).toBeLessThanOrEqual(800);
     await page.keyboard.press('Home');
     const box = await bar.boundingBox();
     if (box === null) throw new Error('separator has no box');
@@ -140,10 +147,10 @@ test.describe('日本語の画面', () => {
     await page.mouse.down();
     await page.mouse.move(box.x + box.width / 2, box.y - 96, { steps: 4 });
     await page.mouse.up();
-    // 96px 上へ動かすと、その分だけ高くなる（開始位置の端数の差を許す）。
+    // 240 px から 96px 上へ動かすと、その分だけ高くなる（開始位置の端数の差を許す）。
     const dragged = Number(await bar.getAttribute('aria-valuenow'));
-    expect(dragged).toBeGreaterThanOrEqual(212);
-    expect(dragged).toBeLessThanOrEqual(224);
+    expect(dragged).toBeGreaterThanOrEqual(330);
+    expect(dragged).toBeLessThanOrEqual(342);
     const body = page.getByRole('tabpanel', { name: '表', exact: true });
     expect((await body.boundingBox())?.height).toBeCloseTo(dragged, 0);
   });
@@ -328,18 +335,19 @@ test.describe('日本語の画面', () => {
     await expect(workspace(page)).not.toContainText('絞り込みに合うノードがありません');
   });
 
-  test('FR-UI-02: 下の段を開いた後で図の高さを大きくしても、段の見出しは画面の外へ出ない', async ({
+  test('FR-UI-02: 下の段を最大まで高くしても、段の見出しは画面の外へ出ず、図は 240 px を下回らない（D-49）', async ({
     page,
   }) => {
     await openProject(page, 'maghrib.relata.json');
     await openBottom(page);
-    await page.locator('.graph-canvas').evaluate((el) => {
-      (el as HTMLElement).style.height = '2000px'; // 理由: 利用者がつまみで高さを変えた状態を再現する
-    });
+    await page.getByRole('separator', { name: /高さ/ }).focus();
+    await page.keyboard.press('End');
     const bar = page.getByRole('tab', { name: '表', exact: true });
     const box = await bar.boundingBox();
     expect(box).not.toBeNull();
     expect((box?.y ?? 9999) + (box?.height ?? 0)).toBeLessThanOrEqual(800);
+    const canvas = await page.locator('.graph-canvas').boundingBox();
+    expect(canvas?.height ?? 0).toBeGreaterThanOrEqual(239.5);
   });
 
   test('FR-UI-02: 保存して開き直すと、表の設定と下の段が戻る（ファイルと自動保存）', async ({
@@ -347,6 +355,8 @@ test.describe('日本語の画面', () => {
     browser,
     baseURL,
   }) => {
+    // 【なぜ】D-49: 高さを広げる操作は、図が 240 px を下回らない範囲に丸められる。広げる余地のある窓にする。
+    await page.setViewportSize({ width: 1280, height: 1100 });
     await openProject(page, 'maghrib.relata.json');
     await openBottom(page);
     await workspace(page).getByRole('button', { name: 'エッジ表' }).click();
@@ -376,7 +386,7 @@ test.describe('日本語の画面', () => {
     const context = await browser.newContext({ baseURL: baseURL ?? '', locale: 'ja-JP' });
     try {
       const page2 = await context.newPage();
-      await page2.setViewportSize({ width: 1280, height: 800 });
+      await page2.setViewportSize({ width: 1280, height: 800 }); // 低い窓で開き直す（D-49）
       await startApp(page2);
       await openProject(page2, {
         name: download.suggestedFilename(),
@@ -389,10 +399,13 @@ test.describe('日本語の画面', () => {
         'true',
       );
       await expect(table(page2).locator('th[aria-sort="descending"]')).toContainText('重み');
-      await expect(page2.getByRole('separator', { name: '下の段の高さ' })).toHaveAttribute(
-        'aria-valuenow',
-        '348',
-      );
+      // 【なぜ】D-49: 低い窓で開き直しても、保存した高さ（348）は書き換えない。表示は窓で丸められる。
+      const body2 = page2.getByRole('tabpanel', { name: '表', exact: true });
+      await expect(body2).toHaveAttribute('style', /348px/);
+      const bar2 = page2.getByRole('separator', { name: '下の段の高さ' });
+      // 窓を広げると、保存した高さが効く。
+      await page2.setViewportSize({ width: 1280, height: 1100 });
+      await expect(bar2).toHaveAttribute('aria-valuenow', '348');
     } finally {
       await context.close();
     }
