@@ -42,7 +42,9 @@ export function App() {
     <div className="app">
       <header className="app-header">
         <h1>{t('app.title')}</h1>
-        <p className="tagline">{t('app.tagline')}</p>
+        <p className="tagline" title={t('app.tagline')}>
+          {t('app.tagline')}
+        </p>
         <div className="header-actions">
           <ImportWizard />
           <ProjectMenu
@@ -92,6 +94,7 @@ export function App() {
         </SidePanel>
         <main
           className="region-main"
+          data-bottom-column
           aria-label={t('app.region.main')}
           data-bottom={bottomOpen ? 'open' : 'closed'}
         >

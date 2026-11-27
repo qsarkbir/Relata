@@ -2,10 +2,12 @@
   border: 1px solid #777;
   overflow: hidden;
   touch-action: none;
-  /* 【なぜ】右下のつまみで高さを変えられるようにする。幅は列の幅に合わせる。 */
-  resize: vertical;
-  height: 70vh;
-  min-height: 240px;
+  /* 【なぜ】D-49: 図の高さは、中央の列で下の段と分け合った残り（flex: 1）。利用者のつまみ
+     （resize）は、flex で決まる高さとぶつかるので外した。高さは下の段の分割バーで変える。
+     地図（T3-03）も同じ「高さの確定した枠」に入れる。 */
+  flex: 1 0 240px;
+  min-block-size: 240px;
+  box-sizing: border-box;
 }
 .graph-canvas svg {
   display: block;
@@ -30,6 +32,13 @@
    開閉すると、中央の列の幅が変わるため（コンテナクエリ）。 */
 .graph-view {
   container-type: inline-size;
+  /* 【なぜ】中央の列の残りの高さを使い、図の枠に確定した高さを渡す（D-49）。
+     コンテナクエリの container-type は inline-size だけなので、高さには影響しない。 */
+  display: flex;
+  flex-direction: column;
+  /* 【なぜ】flex-basis は 0 ではなく auto（中身の高さ）にする。0 にすると、中身の最小の高さ
+     （図の下限 240 px）が親から見えず、図が下の段に重なった。 */
+  flex: 1 1 auto;
 }
 .graph-view h2 {
   margin-block: 0 var(--rl-space-2);
@@ -48,15 +57,21 @@
 .graph-body {
   position: relative;
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
+  flex: 1 1 auto;
   gap: var(--rl-space-3);
 }
 .graph-main {
+  display: flex;
+  flex-direction: column;
   flex: 1 1 0;
   min-inline-size: 0;
 }
 .graph-stage {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
 }
 .graph-search {
   position: relative;

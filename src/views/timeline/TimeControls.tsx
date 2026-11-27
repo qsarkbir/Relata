@@ -164,30 +164,31 @@ export function TimeControls() {
         <button type="button" disabled={at === null} onClick={store.clear}>
           {t('time.clear')}
         </button>
-        <InfoTip topic={t('time.info.topic')}>
-          <p>{t('time.note')}</p>
-          <p>{t('time.note.range')}</p>
-        </InfoTip>
-      </div>
-      {/* 【なぜ】見える 1 行に、時刻と「表示だけを変える」旨を置く（R-17）。詳しい説明は (i) の中。
-          行を 1 つに抑えるのは、下の段の低い高さでも年表の棒グラフが見えるようにするため。 */}
-      <p className="time-state" dir="auto">
-        <strong data-testid="time-state">
+        {/* 【なぜ】時刻の文字は操作と同じ行に置く（行を増やさない。D-49）。「再生は表示だけを変える」
+            という変わらない説明は (i) の先頭に置く。 */}
+        <strong className="time-state" data-testid="time-state" dir="auto">
           <bdi>{text === '' ? t('time.none') : text}</bdi>
-        </strong>{' '}
-        <span className="hint" data-testid="time-note">
-          {axis === null
-            ? t('time.noAxis')
-            : restricted
-              ? t('time.noteRestricted', {
+        </strong>
+        {/* 【なぜ】状態を表す文（再生できない理由、再生が選んだ範囲に限られること）は、時刻の横に短く残す
+            （D-38、R-17: 画面にこの違いを書く）。変わらない説明だけを (i) に入れる。 */}
+        {(axis === null || restricted) && (
+          <span className="hint time-note" data-testid="time-note">
+            {axis === null
+              ? t('time.noAxis')
+              : t('time.noteRestricted', {
                   range: renderingsText(
                     t,
                     describeDayRange({ earliest: axis.min, latest: axis.max }, display, 'year'),
                   ),
-                })
-              : t('time.noteShort')}
-        </span>
-      </p>
+                })}
+          </span>
+        )}
+        <InfoTip topic={t('time.info.topic')}>
+          <p data-testid="time-note-info">{t('time.noteShort')}</p>
+          <p>{t('time.note')}</p>
+          <p>{t('time.note.range')}</p>
+        </InfoTip>
+      </div>
     </div>
   );
 }

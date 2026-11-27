@@ -10,12 +10,24 @@ body {
 .app {
   display: flex;
   flex-direction: column;
-  min-block-size: 100vh;
+  /* 【なぜ】D-49: アプリ全体を窓の高さに収め、ページ全体のスクロールを無くす。左右のパネルと中央は
+     それぞれの中でスクロールする。 */
+  /* dvh に対応しない環境では、次の行が無効になり、この行の 100vh が使われる。 */
+  block-size: 100vh;
+  block-size: 100dvh;
+  /* 【なぜ】position: relative は、中のスクロール領域から出た absolute の要素（visually-hidden の通知など）の
+     基準をここにして、ページの高さを押し上げないため（overflow: hidden で切られる）。 */
+  position: relative;
+  /* 窓が極端に低いときの退避: 固定した高さの中で、中央（region-main）と左右のパネルがそれぞれ
+     スクロールするので、操作は隠れない（ページ全体のスクロールは使わない）。 */
+  overflow: hidden;
 }
 .app-header {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
+  /* 【なぜ】D-49: 1280 px 幅で 1 行に収める。タグラインは余った幅の分だけ出す（省略記号）。
+     操作のボタンは自分で折り返す（英語など、幅が足りないとき）。 */
+  flex-wrap: nowrap;
+  align-items: center;
   gap: 0.5rem 1rem;
   padding-block: 0.5rem;
   padding-inline: 1rem;
@@ -25,9 +37,18 @@ body {
   margin: 0;
   font-size: 1.25rem;
 }
+.app-header h1 {
+  flex: none;
+}
 .tagline {
   margin: 0;
   color: #444;
+  /* 縮む割合を大きくして、足りない幅は、先にタグラインが引き受ける（操作のボタンを折り返さない）。 */
+  flex: 0 100 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 .header-actions {
   display: flex;
@@ -35,6 +56,9 @@ body {
   flex-wrap: wrap;
   gap: 0.5rem 0.75rem;
   margin-inline-start: auto;
+  /* 縮む割合はほぼ 0: タグラインが 0 まで縮んでも足りないときだけ、折り返す。 */
+  flex: 0 0.001 auto;
+  justify-content: flex-end;
 }
 .locale-switch {
   display: flex;
@@ -60,7 +84,11 @@ button {
   --filters-column: minmax(12rem, 18rem);
   --metrics-column: minmax(12rem, 18rem);
   grid-template-columns: var(--filters-column) minmax(0, 1fr) var(--metrics-column);
-  flex: 1;
+  /* 【なぜ】行も minmax(0, 1fr) にする。既定の行の最小の高さは中身の高さなので、左のパネルが長いと
+     ページ全体が窓より高くなっていた（D-49）。 */
+  grid-template-rows: minmax(0, 1fr);
+  flex: 1 1 0;
+  min-block-size: 0;
 }
 /* 畳んだパネルは、開くボタンだけの細い列にする。 */
 .app-body[data-filters='collapsed'] {
@@ -89,15 +117,35 @@ button {
 .region-filters {
   border-inline-end: 1px solid #ccc;
   padding: 1rem;
+  /* D-49: 長い絞り込みの一覧は、パネルの中だけでスクロールする（フィルタパネルの節にも overflow-y がある）。 */
+  overflow-y: auto;
+  min-block-size: 0;
 }
 .region-metrics {
   border-inline-start: 1px solid #ccc;
   padding: 1rem;
+  /* 【なぜ】D-49: 長くなる指標の一覧は、パネルの中だけでスクロールする。 */
+  overflow-y: auto;
+  min-block-size: 0;
 }
+/* 【なぜ】中央は、適用中の条件の行、図、下の段で高さを分け合う（D-49）。図は残りを全部もらい
+   （flex: 1）、下の段は自分の高さを持つ。min-block-size: 0 は、flex の子が中身より小さくなれる
+   ようにするため。窓が低くて下限（図 240 px、下の段は中身で決まる下限）を守れないときは、中央がスクロールする。 */
 .region-main {
-  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 1rem;
   min-inline-size: 0;
+  min-block-size: 0;
+  overflow-y: auto;
+  /* 【なぜ】下の段の高さを「中央の列の高さの 40%」（cqb）で決めるため、中央の列を寸法のコンテナにする。
+     高さは grid の行で決まり、中身で決まらないので size のコンテナにしてよい（D-49）。
+     【注意（T3-03）】container-type: size は layout containment も含む。この中の position: fixed の
+     要素の基準がこの列になり、重なり順（z-index）もこの列の中で閉じる。地図のポップアップなどを
+     列の外へ出したいときは、portal（body 直下）で描く。 */
+  container-type: size;
 }
+
 .placeholder {
   color: #555;
 }
@@ -159,9 +207,6 @@ button {
 }
 
 /* フィルタパネル（T1-18）。左右は論理プロパティ。 */
-.region-filters {
-  overflow-y: auto;
-}
 .filter-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -307,10 +352,26 @@ fieldset {
 }
 .project-notice {
   margin: 0;
-  padding-block: 0.5rem;
+  padding-block: 0.25rem;
   padding-inline: 1rem;
   border-block-end: 1px solid #888;
   background: #f4f4f4;
+  /* 【なぜ】題名と「閉じる」を 1 行に並べ、帯を薄くする（D-49）。 */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+}
+.project-notice > p {
+  margin: 0;
+  /* 【なぜ】基準の幅を 0 にして、長い題名（アラビア文字など）は折り返す。「閉じる」を同じ行に残す。 */
+  flex: 1 1 0;
+  min-inline-size: 0;
+}
+/* 警告の一覧などで知らせが長くなっても、窓の 40% までにして、その中でスクロールする。 */
+.project-notice-slot {
+  max-block-size: 40dvh;
+  overflow-y: auto;
 }
 .project-notice-failed,
 .project-notice-read-error {
@@ -318,6 +379,7 @@ fieldset {
   border-inline-start: 6px solid #a00;
 }
 .project-warnings {
+  flex-basis: 100%;
   max-block-size: 10rem;
   overflow-y: auto;
   margin-block: 0.25rem;
