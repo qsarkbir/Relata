@@ -35,9 +35,9 @@ export type FilterIssue =
   /** `nodeSet` のフィルタが、データセットに無いノード ID を含んでいる（D-41）。 */
   | { readonly kind: 'unknown-node-id'; readonly filterId: FilterId; readonly nodeId: string }
   /** `geo` のフィルタの座標の属性が、日付か真偽値の型で、座標にならない（D-46）。 */
+  | { readonly kind: 'attr-not-number'; readonly filterId: FilterId; readonly attr: string }
   /** `geo` のフィルタの出どころに、座標を持つノードが 1 つも無い（型の集合が空）。何も絞り込まない。 */
-  | { readonly kind: 'geo-no-coordinates'; readonly filterId: FilterId }
-  | { readonly kind: 'attr-not-number'; readonly filterId: FilterId; readonly attr: string };
+  | { readonly kind: 'geo-no-coordinates'; readonly filterId: FilterId };
 
 /**
  * FilterState がデータセットと整合しているかを検査する。
