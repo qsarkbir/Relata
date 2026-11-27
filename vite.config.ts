@@ -21,4 +21,6 @@ export default defineConfig({
   // 起動する（開発サーバーでも同じ）ので、build の出力も同じ形式に揃える。既定の 'iife' は、
   // Worker が複数になったとき共通部分を共有できず、各 Worker に同じコードが複製される（設計書 §7.3、D-17）。
   worker: { format: 'es' },
+  // 【なぜ】地図の部品の E2E 用の一時のページ（map-probe.html）も出力する。ui が正式な地図の画面を作ったら外す（T3-03）。
+  build: { rollupOptions: { input: { main: 'index.html', mapProbe: 'map-probe.html' } } },
 });
