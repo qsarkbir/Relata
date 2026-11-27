@@ -11,10 +11,11 @@ import type { RelataGraph } from '../core/graph';
 import { viridisColor } from '../core/encode';
 import { assertNever } from '../core/util/assertNever';
 import type { EncodingSettings, ScaleLegend } from '../core/encode';
-import { DEFAULT_EDGE_COLOR, DEFAULT_EDGE_OPACITY } from '../render';
+import { DEFAULT_EDGE_COLOR, DEFAULT_EDGE_OPACITY, bundleLegendItems } from '../render';
 import type {
   DirectedEdgeStyle,
   LegendItemSpec,
+  BundleWidthScale,
   LegendSpec,
   Scene,
   SceneEncoding,
@@ -49,6 +50,8 @@ export interface FigureLegendInput {
   readonly directedStyle: DirectedEdgeStyle;
   /** 凡例なしの図（欠損の破線の有無などを調べるための、凡例を付ける前のシーン）。 */
   readonly scene: Scene;
+  /** 束ねた図（帯）の太さの目盛り。渡すと、帯の太さの見本を凡例に足す（`scene.bundle` が帯のときだけ）。 */
+  readonly bundleScale?: BundleWidthScale;
   /** 凡例を入れるか。 */
   readonly legend: boolean;
   /** 出典表記を入れるなら、その内容。 */
@@ -219,6 +222,19 @@ export function buildFigureLegend(input: FigureLegendInput): LegendSpec | undefi
           mark: 'line',
           lineWidth: tick.size,
         });
+    }
+
+    // --- 束の太さ（FR-VG-14）。帯のときだけ。見本の太さと色は図の帯と同じ ---
+    if (input.bundleScale !== undefined && scene.bundle?.style === 'bands') {
+      const samples = bundleLegendItems(
+        input.bundleScale,
+        (w) => t('legend.bundleWeight', { w: f(w) }),
+        scene.bundle.color,
+      );
+      if (samples.length > 0) {
+        heading(t('legend.bundleWidth'));
+        items.push(...samples.map((i) => ({ ...i, opacity: scene.bundle?.opacity ?? 1 })));
+      }
     }
 
     // --- エッジの向き（D-07: 既定は矢印） ---

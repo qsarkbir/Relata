@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { BundlingInfo, BundlingResult } from '../render/bundling';
+import type { BundleGraph, BundlingInfo, BundlingResult } from '../render/bundling';
 import { createBundlingClient, type BundlingWorkerHandle } from './bundling.client';
 import type { BundlingJob, BundlingStepResult } from './bundling.worker';
 
@@ -99,6 +99,19 @@ describe('FR-VG-13: 束ねる Worker の client', () => {
     expect(progress).toEqual([1, 2]);
     expect(workers.handles[0]?.steps).toBe(2);
     expect(workers.handles[0]?.terminated).toBe(1);
+  });
+  it('FR-VG-13: 最後の段階が graph を持つなら、結果に添えて返す（Worker 内で作った束の区間のまとめ）', async () => {
+    const graph = { bundleCount: 0 } as unknown as BundleGraph;
+    const workers = fakeWorkers();
+    const client = createBundlingClient(workers.spawn);
+    const run = client.run({ ...job, buildGraph: true });
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 0);
+    });
+    workers.handles[0]?.stepResolvers.splice(0).forEach((resolve) => {
+      resolve({ cycle: 2, cycles: 2, done: true, result, graph });
+    });
+    await expect(run).resolves.toEqual({ ...result, graph });
   });
   it('FR-VG-13: 進み具合の関数が無くても動く', async () => {
     const workers = fakeWorkers();

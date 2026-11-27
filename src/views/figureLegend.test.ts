@@ -190,3 +190,32 @@ describe('FR-OUT-07: 書き出しの凡例の組み立て', () => {
     expect(clipText('t\u0323ab', 2)).toBe('t\u0323…');
   });
 });
+
+describe('FR-VG-14: 書き出す凡例の束の太さの見本', () => {
+  const scale = {
+    kind: 'sqrt' as const,
+    maxWeight: 16,
+    maxWidth: 14,
+    minWidth: 1,
+    widthOf: (w: number) => Math.max(1, 14 * Math.sqrt(w / 16)),
+  };
+  const bands = (style: 'bands' | 'overlay'): Scene => ({
+    ...buildScene(graph(true), positions, {}, {}),
+    bundle: { style, color: '#336699', opacity: 0.6, ribbons: [], widthScale: scale },
+  });
+  it('FR-VG-14: 帯の図では、図と同じ太さ・色の見本を 3 つ足す', () => {
+    const spec = buildFigureLegend(input({ scene: bands('bands'), bundleScale: scale }));
+    const items = spec?.items.filter((i) => i.label.startsWith('legend.bundleWeight')) ?? [];
+    expect(items.map((i) => i.lineWidth)).toEqual([14, 7, 3.5]);
+    expect(items.every((i) => i.fill === '#336699' && i.opacity === 0.6)).toBe(true);
+    expect(labels(spec)).toContain('legend.bundleWidth');
+  });
+  it('FR-VG-14: 束ねていない図、重ね描きの図では足さない', () => {
+    expect(labels(buildFigureLegend(input({ bundleScale: scale })))).not.toContain(
+      'legend.bundleWidth',
+    );
+    expect(
+      labels(buildFigureLegend(input({ scene: bands('overlay'), bundleScale: scale }))),
+    ).not.toContain('legend.bundleWidth');
+  });
+});

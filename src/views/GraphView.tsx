@@ -6,13 +6,22 @@ import { createGraphMeasure } from './graphMeasure';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { toSnapshot } from '../core/graph';
-import { DEFAULT_GRAPH_VIEW } from '../core/project';
+import { DEFAULT_BUNDLING_VIEW, DEFAULT_GRAPH_VIEW } from '../core/project';
 import type { GraphViewSettings } from '../core/project';
 import type { NodeId } from '../core/model';
 import { toNodeId } from '../core/model';
 import { findMissingElements } from '../core/missing';
 import { matchIncludes, LOOSE_MATCH } from '../core/text';
-import { buildScene, fitZoomFor, markOutOfTime, renderSvg, MAX_ZOOM, MIN_ZOOM } from '../render';
+import {
+  buildScene,
+  fitZoomFor,
+  markOutOfTime,
+  renderSvg,
+  resolveBundleWidthScale,
+  MAX_ZOOM,
+  MIN_ZOOM,
+} from '../render';
+import type { SceneBundling } from '../render';
 import { createSvgExport } from '../io/export';
 import { setFigureSource } from './figureExport';
 import { buildFigureLegend } from './figureLegend';
@@ -27,6 +36,8 @@ import { getNumberFormat } from './intl';
 import { StatusMessage } from './ui/StatusMessage';
 import { Toolbar, ToolbarGroup } from './ui/Toolbar';
 import { Chip } from './ui/Chip';
+import { BundlingControls, BundlingStatus } from './BundlingControls';
+import { useBundling } from './useBundling';
 import {
   graphViewStore,
   layoutController,
@@ -54,6 +65,11 @@ const DEFAULT_CANVAS = { width: 800, height: 500 } as const;
 const LIVE_SCENE_LIMIT = 3000;
 /** 重い図で、拡大の操作が止まってからシーンを作り直すまでの待ち（ミリ秒）。 */
 const RESCALE_DELAY = 120;
+/**
+ * 束ねた図のシーン作成の重さの見積もりで、折れ線の点 16 個を 1 要素（ノードかエッジ）と数える。
+ * 帯のシーン作成は 5,000 本（1 本約 33 点）で約 210 ms（renderer の測定）。1 本あたり約 3 要素分になる。
+ */
+const BUNDLE_POINTS_PER_UNIT = 16;
 
 /**
  * 図の中の点 (x, y) を動かさずに、拡大率を factor 倍にする。
@@ -188,7 +204,34 @@ export function GraphView() {
   //   倍率が変わるとシーンを作り直すので、重い図は、拡大の操作が止まってから作り直し、その間は
   //   今のシーンを引き伸ばして見せる（NFR-03）。軽い図は、操作のたびにそのまま作り直す。
   const [settledZoom, setSettledZoom] = useState(view.viewport.zoom);
-  const live = graph === null || graph.order + graph.size <= LIVE_SCENE_LIMIT;
+  // 束ねた図: 結果と設定。計算し直す時機は state の bundlingController が決める（D-55）。
+  const bundlingSettings = view.bundling ?? DEFAULT_BUNDLING_VIEW;
+  const bundlingView = useBundling({
+    graph,
+    positions,
+    layoutBusy: busy,
+    settings: bundlingSettings,
+  });
+  // 【なぜ】計算中・中止・失敗・無効のときは bundled を渡さない（束ねない図を描いたまま。図を消さない）。
+  const bundled = useMemo<SceneBundling | undefined>(
+    () =>
+      bundlingSettings.enabled && bundlingView.result !== null
+        ? {
+            paths: bundlingView.result.paths,
+            graph: bundlingView.result.graph,
+            style: bundlingSettings.style,
+          }
+        : undefined,
+    [bundlingSettings.enabled, bundlingSettings.style, bundlingView.result],
+  );
+  const bundledPoints = useMemo(
+    () => bundled?.paths.reduce((sum, p) => sum + p.points.length / 2, 0) ?? 0,
+    [bundled],
+  );
+  // 【なぜ】束ねた図は点が多いので、重い図と同じく、ズームが止まってからシーンを作り直す。
+  const live =
+    graph === null ||
+    graph.order + graph.size + bundledPoints / BUNDLE_POINTS_PER_UNIT <= LIVE_SCENE_LIMIT;
   const sceneZoom = live ? view.viewport.zoom : settledZoom;
   useEffect(() => {
     if (live || settledZoom === view.viewport.zoom) return;
@@ -218,8 +261,10 @@ export function GraphView() {
         //   値が無いとき、項目そのものを作らず、既定の扱いを buildScene 側に任せるため。
         ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
         ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
+        ...(bundled === undefined ? {} : { bundled }),
       }),
     [
+      bundled,
       encoding,
       view.labels,
       view.largeLabelCount,
@@ -420,6 +465,8 @@ export function GraphView() {
           measureText: request.measureText ?? measureText,
           ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
           ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
+          // 【なぜ】束ねた図は、SVG・PNG・PDF にも同じ帯で書き出す（画面と書き出しを食い違わせない）。
+          ...(bundled === undefined ? {} : { bundled }),
           // 【なぜ】画面で薄く表示している要素を、書き出しでも薄くする（画面と図を食い違わせない）。
           // 利用者が「書き出し」のダイアログで外したときと、何も薄くしていないときは付けない。
           ...(request.timeFade && (timeFade.nodes.size > 0 || timeFade.edges.size > 0)
@@ -440,6 +487,7 @@ export function GraphView() {
           legends: encodingWithLegends.legends,
           directedStyle: view.direction,
           scene: plain.scene,
+          ...(bundled === undefined ? {} : { bundleScale: resolveBundleWidthScale(bundled) }),
           legend: request.legend,
           ...(request.credit
             ? {
@@ -473,6 +521,7 @@ export function GraphView() {
     visibleSelected,
     measureText,
     missingMarks,
+    bundled,
     timeFade,
     t,
     nf,
@@ -720,6 +769,17 @@ export function GraphView() {
           </InfoTip>
         </ToolbarGroup>
         <ToolbarGroup>
+          <Field label={t('graph.bundle.toggle')} inline>
+            <input
+              type="checkbox"
+              checked={bundlingSettings.enabled}
+              onChange={(e) => {
+                patch({ bundling: { ...bundlingSettings, enabled: e.currentTarget.checked } });
+              }}
+            />
+          </Field>
+        </ToolbarGroup>
+        <ToolbarGroup>
           <IconButton
             icon="zoomIn"
             label={t('graph.zoomIn')}
@@ -760,6 +820,8 @@ export function GraphView() {
       </Toolbar>
       {network !== null && !buildPanelOpen && <ProjectionIssues status={network.projection} />}
       <NoCoordinatesNote dataset={dataset} graph={graph} view={view} />
+      {/* 【なぜ】引き出しが閉じている間も、計算中・確認・失敗が分かるよう、図の上に状態を出す（開いている間は引き出しの中）。 */}
+      {!drawerOpen && <BundlingStatus view={bundlingView} enabled={bundlingSettings.enabled} />}
       {graph.order === 0 && (
         <StatusMessage
           state={
@@ -822,7 +884,10 @@ export function GraphView() {
                   const position = id === undefined ? undefined : positions.get(toNodeId(id));
                   // 【なぜ】エッジも押して選べる。射影したエッジの根拠を見るため（FR-GR-04）。
                   const edgeKey =
-                    id === undefined && element?.closest('#graph-view-edges') != null
+                    id === undefined &&
+                    element?.closest(
+                      '#graph-view-edges, #graph-view-bundles, #graph-view-bundles-faded',
+                    ) != null
                       ? (element.getAttribute('data-id') ?? undefined)
                       : undefined;
                   drag.current = {
@@ -1173,6 +1238,15 @@ export function GraphView() {
                 <option value="gradient">{t('graph.gradient')}</option>
               </select>
             </Field>
+          </CollapsibleSection>
+          <CollapsibleSection title={t('graph.section.bundling')}>
+            <BundlingControls
+              settings={bundlingSettings}
+              view={bundlingView}
+              onChange={(next) => {
+                patch({ bundling: next });
+              }}
+            />
           </CollapsibleSection>
           <CollapsibleSection title={t('graph.section.missing')} note={t('missing.display.note')}>
             <MissingDisplayControls

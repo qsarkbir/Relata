@@ -5,7 +5,9 @@ import type { FilterStoreState } from './filterStore';
 import { selectFilterState } from './filterStore';
 
 import type { ProjectView, ProjectParts } from '../core/project';
+import type { GraphViewSettings } from '../core/project';
 import type { GraphViewState } from './graphViewStore';
+import { isDefaultBundlingView } from './graphViewStore';
 import type { WorkspaceViewState } from './workspaceStore';
 import type { TimelineViewState } from './timelineStore';
 import { isDefaultTimeline } from './timelineStore';
@@ -45,6 +47,17 @@ export interface ViewTargets {
   readonly time?: StoreApi<TimeStoreState>;
 }
 
+// 既定と同じ束ねる設定を落とす（項目ごと無くす）。
+function withoutDefaultBundling(view: GraphViewSettings): GraphViewSettings {
+  if (view.bundling === undefined || !isDefaultBundlingView(view.bundling)) return view;
+  // 【TS】分割代入の rest で `bundling` だけを除いた残りを作る（元のオブジェクトは変えない）。
+  // 【なぜ】項目を列挙して作り直すと、設定に項目が増えたとき書き漏らす。コピーしてから `bundling` だけを消す。
+  // 【TS】`-readonly [K in keyof T]` は、全項目の readonly を外した型（`delete` は任意の項目にだけ使える）。
+  const copy: { -readonly [K in keyof GraphViewSettings]: GraphViewSettings[K] } = { ...view };
+  delete copy.bundling;
+  return copy;
+}
+
 /**
  * ストアから保存する中身を取り出す。
  *
@@ -70,7 +83,8 @@ export function takeSnapshot(
     importSettings,
     view: {
       filter: VIEW_PROJECTORS.filter(f),
-      ...(graphView == null ? {} : { graph: graphView }),
+      // 【なぜ】束ねる設定が既定（無効）と同じなら書かない。任意の項目なので、無ければ既定が補われる（D-24）。
+      ...(graphView == null ? {} : { graph: withoutDefaultBundling(graphView) }),
       // 【なぜ】既定のままなら書かない。任意の項目なので、無ければ読み込みで既定が補われる（D-44）。
       ...(ws === undefined || ws.table === DEFAULT_TABLE_VIEW ? {} : { table: ws.table }),
       ...(ws === undefined || ws.workspace === DEFAULT_WORKSPACE

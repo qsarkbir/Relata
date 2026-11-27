@@ -1,7 +1,9 @@
 /** Edge bundling の計算をメインスレッドから分離する（FR-VG-13、D-55、D-17）。 */
 import { expose } from 'comlink';
 import {
+  buildBundleGraph,
   createBundlingSession,
+  type BundleGraph,
   type BundlingSession,
   type BundleEdge,
   type BundlingInfo,
@@ -14,14 +16,23 @@ import {
 export interface BundlingJob {
   readonly edges: readonly BundleEdge[];
   readonly settings?: Partial<BundlingSettings>;
+  /**
+   * true なら、束ねた後に `buildBundleGraph`（束の区間のまとめと重みの合計）も Worker の中で行い、
+   * 最後の step の `graph` に入れる。【なぜ】5,000 本で約 1 秒かかり、主スレッドで行うと画面が止まるため（T3-02）。
+   */
+  readonly buildGraph?: boolean;
 }
 /** step の戻り値。最後の段階だけ result を持つ（途中の折れ線は重いので送らない）。 */
 export interface BundlingStepResult extends BundlingProgress {
   readonly result: BundlingResult | null;
+  /** `job.buildGraph` が true のとき、最後の段階だけが持つ。 */
+  readonly graph?: BundleGraph;
 }
 
 // 【TS】`X | null` は「まだ無いとき null」を型で表す。使う前に null を除く確認が必須になる。
 let session: BundlingSession | null = null;
+let jobEdges: readonly BundleEdge[] = [];
+let wantGraph = false;
 const api = {
   /**
    * 新しい計算を始める。設定や入力が不正なら例外（client の run が reject される）。
@@ -30,6 +41,8 @@ const api = {
    */
   start(job: BundlingJob): BundlingInfo {
     session = createBundlingSession(job.edges, job.settings);
+    jobEdges = job.edges;
+    wantGraph = job.buildGraph === true;
     return session.info;
   },
   /**
@@ -39,7 +52,13 @@ const api = {
   step(): BundlingStepResult {
     if (session === null) throw new Error('束ねる計算を開始してください。');
     const progress = session.step();
-    return { ...progress, result: progress.done ? session.result() : null };
+    if (!progress.done) return { ...progress, result: null };
+    const result = session.result();
+    return {
+      ...progress,
+      result,
+      ...(wantGraph ? { graph: buildBundleGraph(result.paths, jobEdges) } : {}),
+    };
   },
 };
 // 【TS】`typeof api` は、値 api から型を取り出す。client が import type でこの型だけを読み、
