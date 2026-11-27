@@ -1,4 +1,15 @@
 import { describe, expect, it } from 'vitest';
+
+// 固定の種の擬似乱数（Mulberry32）。テストの配置を毎回同じにする。
+function mulberry32(seed: number): () => number {
+  let a = seed;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 import {
   bundleEdges,
   buildBundleGraph,
@@ -182,9 +193,141 @@ describe('buildBundleGraph', () => {
     expect(buildBundleGraph(paths, []).epsilon).toBeCloseTo(10, 9);
     expect(buildBundleGraph(paths, [], { epsilonRatio: 0.05 }).epsilon).toBeCloseTo(50, 9);
     expect(buildBundleGraph(paths, [], { epsilon: 3 }).epsilon).toBe(3);
-    expect(() => buildBundleGraph(paths, [], { epsilon: -1 })).toThrow(RangeError);
+  });
+
+  it('FR-VG-14: 範囲外の設定・不正な入力は RangeError', () => {
+    const paths = [line('a', 0, 0, 1000, 0)];
+    for (const epsilon of [-1, 0, NaN, Infinity]) {
+      expect(() => buildBundleGraph(paths, [], { epsilon })).toThrow(RangeError);
+    }
+    for (const epsilonRatio of [0, -0.1, NaN, Infinity]) {
+      expect(() => buildBundleGraph(paths, [], { epsilonRatio })).toThrow(RangeError);
+    }
+    for (const minCosine of [-0.1, 1.1, NaN]) {
+      expect(() => buildBundleGraph(paths, [], { minCosine })).toThrow(RangeError);
+    }
+    const odd: BundledPath = { id: 'o', points: [0, 0, 1, 1, 2], bundled: true, directed: false };
+    expect(() => buildBundleGraph([odd], [])).toThrow(RangeError);
+  });
+
+  it('FR-VG-14: paths の ID の重複は RangeError', () => {
     const dup = line('a', 0, 0, 10, 0);
     expect(() => buildBundleGraph([dup, dup], [])).toThrow(RangeError);
+  });
+
+  it('FR-VG-14: edges の ID の重複は最初のものを使い、余分な件数を返す', () => {
+    const paths = [line('a', 0, 0, 1000, 0)];
+    const g1 = buildBundleGraph(paths, [w('a', 2), w('a', 5)], ABS);
+    const g2 = buildBundleGraph(paths, [w('a', 5), w('a', 2)], ABS);
+    expect(g1.weight[0]).toBe(2);
+    expect(g2.weight[0]).toBe(5);
+    expect(g1.duplicateWeightCount).toBe(1);
+  });
+
+  it('FR-VG-14: ε が座標の幅に比べて極端に小さくても、座標が ±1e9 でも例外なく動く', () => {
+    const paths = [
+      line('a', 0, 0, 1000, 0),
+      line('b', 0, 0, 1e9, 0),
+      line('c', -1e9, -1e9, 1e9, 1e9),
+    ];
+    for (const epsilon of [1, 1e-6, 1e-12]) {
+      const g = buildBundleGraph(paths, [w('a', 1), w('b', 1), w('c', 1)], { epsilon });
+      expect(g.bundleCount).toBeGreaterThan(0);
+    }
+  });
+
+  it('FR-VG-14: 束ねた対象が無いとき、全区間が -1 で束は 0 個', () => {
+    const loop: BundledPath = { id: 'loop', points: [5, 5, 5, 5], bundled: false, directed: false };
+    const g = buildBundleGraph([loop], [w('loop', 1)]);
+    expect(g.bundleCount).toBe(0);
+    expect(Array.from(g.segmentBundle)).toEqual([-1]);
+    expect(g.epsilon).toBe(0);
+    expect(buildBundleGraph([], []).bundleCount).toBe(0);
+  });
+
+  it('FR-VG-14: minCosine で、60 度までの交差はまとまり、それを超えるとまとまらない', () => {
+    // 区間の中点が同じ位置で、角度だけが違う 2 本（点 2 つの折れ線）
+    const seg = (id: string, deg: number): BundledPath => {
+      const r = (deg * Math.PI) / 180;
+      const [cx, sx] = [Math.cos(r), Math.sin(r)];
+      return {
+        id,
+        points: [-100 * cx, -100 * sx, 100 * cx, 100 * sx],
+        bundled: true,
+        directed: true,
+      };
+    };
+    const count = (deg: number, minCosine: number): number =>
+      buildBundleGraph([seg('a', 0), seg('b', deg)], [], { epsilon: 5, minCosine }).bundleCount;
+    expect(count(50, 0.5)).toBe(1);
+    expect(count(70, 0.5)).toBe(2);
+    expect(count(70, 0)).toBe(1);
+  });
+
+  it('FR-VG-14: 細かい折れ線で、weightsFor の全表示は weight と一致する（同じ束の重複を除く）', () => {
+    const points: number[] = [];
+    for (let i = 0; i <= 8; i++) points.push(i, 0);
+    const g = buildBundleGraph(
+      [{ id: 'fine', points, bundled: true, directed: true }, line('other', 0, 1, 1000, 1, true)],
+      [w('fine', 3), w('other', 1)],
+      ABS,
+    );
+    expect(Array.from(weightsFor(g, ['fine', 'other']))).toEqual(Array.from(g.weight));
+    const only = weightsFor(g, ['fine']);
+    expect(Math.max(...only)).toBe(3);
+  });
+
+  it('FR-VG-13: 有向・無向が混ざった帯で、無向 1 本の区間はすべて同じ側の束に入り、有向の W は芯で揺れない', () => {
+    // 2 群（中心 (0,0) と (1000,0)、幅 100）の間の 60 本。往路・復路・無向を 1/3 ずつ。
+    const rng = mulberry32(3);
+    const edges: BundleEdge[] = [];
+    for (let i = 0; i < 60; i++) {
+      const kind = i % 3; // 0 = 往路、1 = 復路、2 = 無向（向きは往路）
+      const a = { x: (rng() - 0.5) * 100, y: (rng() - 0.5) * 100 };
+      const b = { x: 1000 + (rng() - 0.5) * 100, y: (rng() - 0.5) * 100 };
+      const [p, q] = kind === 1 ? [b, a] : [a, b];
+      edges.push({
+        id: `e${String(i).padStart(3, '0')}`,
+        x1: p.x,
+        y1: p.y,
+        x2: q.x,
+        y2: q.y,
+        directed: kind !== 2,
+        weight: 1,
+      });
+    }
+    const { paths } = bundleEdges(edges);
+    const g = buildBundleGraph(paths, edges);
+    // 無向のエッジごとに、芯（区間 6〜25。両端の扇の部分は束が分かれるので除く）の束の「有向の向き」（往路側か
+    // 復路側か）が 1 種類だけ
+    for (const e of edges.filter((x) => !x.directed)) {
+      const sides = new Set<string>();
+      for (const b of segmentBundlesOf(g, e.id).slice(6, 26)) {
+        if (b < 0) continue;
+        const ids = bundleEdgeIds(g, b).filter((id) => edges.find((x) => x.id === id)?.directed);
+        const forward = ids.filter((id) => Number(id.slice(1)) % 3 === 0).length;
+        const backward = ids.filter((id) => Number(id.slice(1)) % 3 === 1).length;
+        if (forward + backward > 0) sides.add(forward >= backward ? 'F' : 'R');
+      }
+      expect(sides.size).toBeLessThanOrEqual(1);
+    }
+    // 有向の往路 e000 の W は、芯（区間 8〜24 の中ほど）で大きく揺れない
+    const core = Array.from(segmentBundlesOf(g, 'e000'))
+      .slice(10, 22)
+      .map((b) => g.weight[b] ?? 0);
+    expect(Math.max(...core) - Math.min(...core)).toBeLessThanOrEqual(2);
+  });
+
+  it('FR-VG-13: 無向のエッジは、同じ向きの有向の束を優先し、無ければ逆向きの有向の束に入る', () => {
+    const paths = [
+      line('d', 0, 0, 1000, 0, true),
+      line('u1', 0, 1, 1000, 1, false), // 同じ向き
+      line('u2', 1000, 2, 0, 2, false), // 逆向きのみ（d しか有向が無い）
+    ];
+    const g = buildBundleGraph(paths, [w('d', 1), w('u1', 2), w('u2', 4)], ABS);
+    expect(g.bundleCount).toBe(4);
+    expect(Array.from(g.weight)).toEqual([7, 7, 7, 7]);
+    expect(Array.from(g.directed)).toEqual([1, 1, 1, 1]);
   });
 
   it('FR-VG-13: bundleEdges の結果を入力にしても、近い往復が別の束になる（結合）', () => {

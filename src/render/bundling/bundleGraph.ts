@@ -18,26 +18,42 @@
  * - 有向のエッジの区間は、進行方向が逆向き（内積が -minCosine 以下）の区間とはまとめない。逆向きの束は
  *   別の束になり、位置が重なるものを `opposites` で互いに指す。描画はこれを見て、進行方向の右へ px で
  *   ずらす（D-55 の補足）。ずらし幅はデータの座標で持たない（ズームで束ね直さない規則のため）。
- * - 無向のエッジは向きを問わず（内積の絶対値が minCosine 以上なら）1 つにまとめる。
- * - 有向と無向が重なるとき: 先に有向だけで束を作り、後から無向の区間を、近くて平行な最も近い束に加える
- *   （有向の束があればそこへ。逆向きの 2 つの束が候補なら、距離の近い方）。無向だけの束は
- *   `directed = 0` で、向きを持たないので opposites にも現れない。【なぜ】無向を先に作ると束の向きが
- *   不定になり、有向の区間が内積の符号で別の束に割れてしまうため。
+ * - 無向のエッジどうしは向きを問わず（内積の絶対値が minCosine 以上なら）1 つにまとめる。
+ * - 有向と無向が重なるとき: 先に有向だけで束を作り、後から無向の区間を加える。無向のエッジは
+ *   「自分の始点 → 終点の向き」を持つ有向のように車線を選ぶ。候補は距離 ε 以内の束で、優先の順は
+ *   (1) 同じ向き（内積 ≥ minCosine）の有向の束、(2) 逆向き（内積 ≤ -minCosine）の有向の束、
+ *   (3) 無向だけの束（|内積| ≥ minCosine）、(4) 新しい無向だけの束。同じ段の中では代表点が近い順（同じなら
+ *   束の番号の小さい順）。向きはエッジの中で一定なので、無向のエッジが往路と復路の車線を区間ごとに
+ *   行き来しない（T3-01 は逆向きの組も 1 本の中心線に束ねるので、往路と復路の束の代表点はほぼ同じ
+ *   位置にあり、「最も近い束」だと偶然で決まってしまうため）。無向が入った有向の束は `directed = 1`
+ *   のまま。無向だけの束は `directed = 0` で、向きを持たないので opposites にも現れない。
+ *   【なぜ】無向を先に作ると束の向きが不定になり、有向の区間が内積の符号で別の束に割れるため。
+ * - 【注意】束の分け方は先着順の代表点に固有で、ID の順に依る（ID の付け方を変えると、境目が変わりうる）。
+ *   扇の部分（束が分かれ、混ざる所）で、隣り合う区間の W は単調にならない。描画は束の W を
+ *   そのまま折れ線にせず、太さをなめらかにつなぐこと（renderer の役目）。
  * - 自己ループ・長さ 0 の区間・長さ 0 のエッジ（束ねられなかったもの）は、向きが定まらないので束に入れず、
  *   区間の束 id を -1 にする。重みの合計にも入らない（描画は -1 の区間を自分の重みの太さで描く）。
+ * - `points` の長さが奇数、または 4 未満（2 点未満）の折れ線は RangeError（BundledPath の約束に反するため）。
  * - 多重エッジ（ID が違い座標が同じ）は別のエッジで、同じ束に入り W に両方の重みが足される。
  * - 同じエッジが自分の隣り合う区間で同じ束に入ることがある（細かい折れ線）。そのときも、そのエッジの
  *   重みは束の W に 1 回だけ足す。
  * - 重み: 欠損（入力にない）・負・有限でない（NaN、±Infinity）は 0 として数え、件数を
  *   `invalidWeightCount` に返す。孤立ノードはエッジを持たないのでここには現れない。
+ *   `edges` に同じ ID が複数あるときは、最初のものを使い、2 つめ以降の数を `duplicateWeightCount` に返す
+ *   （後のものが勝つと、入力の順で結果が変わるため。NFR-08）。`paths` に同じ ID があるのは RangeError。
+ * - ε の大きさに制限はない（格子のマスは 2 段の Map で持つので、座標が ±1e9 でも ε が小さくても溢れない）。
+ *   ε ≤ 0 や有限でない値は RangeError。
  * - 決定的: エッジを ID の昇順（コード単位）で処理し、入力の順に依らない。乱数も Date も使わない（NFR-08）。
  * - DOM、Worker の型に触れない。結果は typed array、Map、文字列だけで、structured clone で送れる。
  *
  * 計算量: 区間の総数を S（= Σ(点の数 - 1)）、束の数を B とする。区間ごとに、ε の幅の格子の 3×3 マスに
- * ある代表点だけを比べるので、期待 O(S)（1 マスの代表点数に比例。ε が大きすぎ代表点が 1 マスに
- * 集中する最悪は O(S·B)）。逆向きの検出は 2ε の格子で O(B)。重みの合計は O(S)。
+ * ある代表点だけを比べるので、期待 O(S · 1 マスの代表点数)。同じマスの代表点は、向きが互換でないものを除けば
+ * ε 以上離れているので、その数はおおよそ向きの種類の数で、minCosine が 1 に近いほど多い。最悪（minCosine ≈ 1 で
+ * 向きがばらばらの区間が 1 か所に集まる）は O(S·B)。ε が極端に小さく区間のほぼ全部が別のマスに入るときは、
+ * 比べる相手がほぼ無く O(S)。逆向きの検出は 2ε の格子で同様に O(B · 1 マスの代表点数)。重みの合計は O(S)。
  * 部分集合の再計算 {@link weightsFor} は O(見えるエッジの区間数 + B)。
  */
+// 【TS】`import type` は型だけを読み込む。実行時のコードには残らないので、循環参照や余計な読み込みが起きない。
 import type { BundledPath, BundleEdge } from './settings';
 
 /** ε の既定: 束ねた対象の「入口と出口の距離」の平均に対する割合。 */
@@ -48,6 +64,8 @@ export const DEFAULT_EPSILON_RATIO = 0.01;
 export const DEFAULT_MIN_COSINE = 0.5;
 
 /** 束の区間のまとめ方の設定。 */
+// 【TS】項目名の後ろの `?` は「省略できる」。省略すると値は `undefined`（`options.epsilon ?? 既定` で補う）。
+//   `readonly` の項目は代入できない。渡した設定を後から書き換えないことを型で保証する。
 export interface BundleGraphOptions {
   /** ε（データの座標での距離）。指定すると `epsilonRatio` より優先する。0 より大きい有限の数。 */
   readonly epsilon?: number;
@@ -63,6 +81,9 @@ export interface BundleGraphOptions {
  * 【なぜ typed array か】5,000 本 × 32 区間 = 16 万の区間があり、オブジェクトにすると Worker からの
  * 送信（structured clone）とメモリが重い。使うときは下の関数（{@link segmentBundlesOf} など）を通す。
  */
+// 【TS】`ReadonlyMap<K, V>` は読み取り専用の Map（`get`・`has` はあるが `set` はない）。
+//   `Float64Array`・`Int32Array` などの typed array は、数だけを詰めた固定長の配列で、
+//   Worker への送信（structured clone）が速く、メモリも小さい。
 export interface BundleGraph {
   /** 実際に使った ε（データの座標）。 */
   readonly epsilon: number;
@@ -76,6 +97,8 @@ export interface BundleGraph {
   readonly edgeWeights: Float64Array;
   /** 重みが欠損・負・有限でなかったエッジの数（0 として数えた）。 */
   readonly invalidWeightCount: number;
+  /** `edges` に同じ ID が複数あった余分な件数（最初のものだけを使った）。 */
+  readonly duplicateWeightCount: number;
   /** エッジ e の区間は segmentBundle[segmentStart[e] .. segmentStart[e+1]) 。長さ edgeIds.length + 1。 */
   readonly segmentStart: Uint32Array;
   /** 区間ごとの束の番号（エッジ番号の順、区間 k の順）。束に入らない区間は -1。 */
@@ -94,6 +117,8 @@ export interface BundleGraph {
   readonly opposites: ReadonlyMap<number, readonly number[]>;
 }
 
+// 【TS】`noUncheckedIndexedAccess` が有効なので、配列の添字アクセスの型は `number | undefined` になる。
+//   以下の `?? 0` や `?? NaN` は、その undefined を取り除く（範囲内なので実際には起きない）。
 // 単位接線を求める。長さ 0 なら null。【なぜ】Math.hypot は処理系で値が違いうるので平方根を使う（NFR-08）。
 function unitTangent(
   points: readonly number[],
@@ -110,10 +135,29 @@ function compareId(a: { readonly id: string }, b: { readonly id: string }): numb
   return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 }
 
-// 格子のマス番号を 1 つの整数キーにする。±2^25 の範囲で、キーは 2^52 未満に収まる。
-const CELL_LIMIT = 2 ** 25;
-function cellKey(ix: number, iy: number): number {
-  return (ix + CELL_LIMIT) * 2 ** 26 + (iy + CELL_LIMIT);
+// 2 段の Map による疎な格子（x のマス → y のマス → 束の番号の一覧）。
+// 【なぜ】マス番号を 1 つの整数に詰めると、座標の幅 ÷ ε が大きいときに 2^53 を超えて溢れる。
+//   2 段にすれば、番号は各軸で数として正確に比べられる範囲（座標 ±1e9 を ε ≥ 1e-6 程度で割る）で
+//   使え、ε が極端に小さくても（溢れず）動く。空のマスは作らないので、メモリは使うマスの数に比例。
+// 【なぜ】隣のマスは「ix - 1 から ix + 1 まで ++」でなく、オフセットを足して作る。ix が 2^53 を超えると
+//   ix + 1 === ix になり、++ の形では無限ループになるため。
+class SparseGrid {
+  private readonly cells = new Map<number, Map<number, number[]>>();
+
+  get(ix: number, iy: number): readonly number[] | undefined {
+    return this.cells.get(ix)?.get(iy);
+  }
+
+  add(ix: number, iy: number, value: number): void {
+    let column = this.cells.get(ix);
+    if (column === undefined) {
+      column = new Map<number, number[]>();
+      this.cells.set(ix, column);
+    }
+    const list = column.get(iy);
+    if (list === undefined) column.set(iy, [value]);
+    else list.push(value);
+  }
 }
 
 /**
@@ -124,14 +168,17 @@ function cellKey(ix: number, iy: number): number {
  *   paths にあって edges にない ID の重みは欠損として 0
  * @param options - ε などの設定
  * @returns 束の区間のグラフ
- * @throws RangeError ID の重複、設定が範囲外、ε が小さすぎて格子の番号が溢れるとき
+ * @throws RangeError `paths` の ID の重複、`points` の長さが奇数か 4 未満、設定が範囲外のとき
  * @example
  * const { paths } = bundleEdges(edges);
  * const g = buildBundleGraph(paths, edges);
- * const w = g.weight[g.segmentBundle[g.segmentStart[0] ?? 0] ?? 0]; // 最初のエッジの区間 0 の束の W
+ * const b = g.segmentBundle[g.segmentStart[0] ?? 0] ?? -1; // 最初のエッジの区間 0 の束
+ * // 束 -1（束に入らない区間）では g.weight[-1] が undefined になるので、必ず確かめる。
+ * const w = b >= 0 ? (g.weight[b] ?? 0) : (g.edgeWeights[0] ?? 0); // -1 なら自分の重みで描く
  */
 export function buildBundleGraph(
   paths: readonly BundledPath[],
+  // 【TS】`Pick<T, 'a' | 'b'>` は型 T から項目 a、b だけを取り出した型。BundleEdge の配列もそのまま渡せる。
   edges: readonly Pick<BundleEdge, 'id' | 'weight'>[],
   options: BundleGraphOptions = {},
 ): BundleGraph {
@@ -163,9 +210,13 @@ export function buildBundleGraph(
     edgeIndex.set(id, i);
   });
 
-  // 2. 重みを整える。欠損・負・有限でないは 0。
+  // 2. 重みを整える。欠損・負・有限でないは 0。同じ ID が複数あれば最初のものを使う。
   const rawWeight = new Map<string, number>();
-  for (const e of edges) rawWeight.set(e.id, e.weight);
+  let duplicateWeightCount = 0;
+  for (const e of edges) {
+    if (rawWeight.has(e.id)) duplicateWeightCount++;
+    else rawWeight.set(e.id, e.weight);
+  }
   const edgeWeights = new Float64Array(edgeCount);
   let invalidWeightCount = 0;
   for (let i = 0; i < edgeCount; i++) {
@@ -177,7 +228,13 @@ export function buildBundleGraph(
   // 3. 区間の中点と単位接線を作る（区間は点の数 - 1 個）。
   const segmentStart = new Uint32Array(edgeCount + 1);
   for (let i = 0; i < edgeCount; i++) {
-    const n = (sorted[i]?.points.length ?? 0) / 2;
+    const len = sorted[i]?.points.length ?? 0;
+    if (len % 2 !== 0 || len < 4) {
+      throw new RangeError(
+        `エッジ ${edgeIds[i] ?? ''} の points の長さが不正です（${String(len)}）。`,
+      );
+    }
+    const n = len / 2;
     segmentStart[i + 1] = (segmentStart[i] ?? 0) + Math.max(0, n - 1);
   }
   const segTotal = segmentStart[edgeCount] ?? 0;
@@ -232,25 +289,24 @@ export function buildBundleGraph(
   const memberLists: number[][] = [];
 
   if (epsilon > 0 && segTotal > 0 && Number.isFinite(minX)) {
-    const span = Math.max(maxX - minX, maxY - minY);
-    if (span / epsilon >= CELL_LIMIT * 0.9) {
-      throw new RangeError('ε が座標の範囲に比べて小さすぎます（格子の番号が溢れます）。');
-    }
     const eps2 = epsilon * epsilon;
     const cellOf = (v: number, min: number): number => Math.floor((v - min) / epsilon);
-    const grid = new Map<number, number[]>(); // マス → 代表の束の番号
+    const grid = new SparseGrid(); // マス → 代表の束の番号
 
     // 区間 s を束に振り分ける。先着順の代表点クラスタリング。 1 区間あたり 3×3 マスの代表点を比べる。
-    // 有向の区間は有向の束だけに入る（先に有向を処理するので、この時点の束は全部有向）。
-    // 無向の区間は、有向・無向のどの束にも入れる。
+    // 有向の区間は同じ向きの有向の束だけに入る。無向の区間は上の規約の優先の順（同じ向きの有向 → 逆向きの有向
+    // → 無向だけ）で選ぶ。
     const assign = (s: number, edgeNo: number, isDirected: boolean): void => {
       const ix = cellOf(mx[s] ?? 0, minX);
       const iy = cellOf(my[s] ?? 0, minY);
       let best = -1;
+      let bestTier = Infinity;
       let bestD2 = Infinity;
-      for (let gx = ix - 1; gx <= ix + 1; gx++) {
-        for (let gy = iy - 1; gy <= iy + 1; gy++) {
-          const cell = grid.get(cellKey(gx, gy));
+      for (let dx3 = -1; dx3 <= 1; dx3++) {
+        const gx = ix + dx3;
+        for (let dy3 = -1; dy3 <= 1; dy3++) {
+          const gy = iy + dy3;
+          const cell = grid.get(gx, gy);
           if (cell === undefined) continue;
           for (const b of cell) {
             const l = leaderSeg[b] ?? 0;
@@ -259,11 +315,23 @@ export function buildBundleGraph(
             const d2 = dx * dx + dy * dy;
             if (d2 > eps2) continue;
             const dot = (tx[l] ?? 0) * (tx[s] ?? 0) + (ty[l] ?? 0) * (ty[s] ?? 0);
-            // 有向: 同じ向き（内積 ≥ minCosine）だけ。無向: 向きを問わない（|内積| ≥ minCosine）。
-            const ok = isDirected ? dot >= minCosine : Math.abs(dot) >= minCosine;
-            if (!ok) continue;
-            if (d2 < bestD2 || (d2 === bestD2 && b < best)) {
+            // 段: 0 = 同じ向きの有向の束、1 = 逆向きの有向の束（無向の区間だけ）、2 = 無向だけの束（同上）。
+            // 有向の区間は段 0 だけ。無向の区間は、自分の向き（始点 → 終点）で有向の束を選ぶ。
+            let tier: number;
+            if (leaderDirected[b] === 1) {
+              if (dot >= minCosine) tier = 0;
+              else if (!isDirected && dot <= -minCosine) tier = 1;
+              else continue;
+            } else {
+              if (isDirected || Math.abs(dot) < minCosine) continue;
+              tier = 2;
+            }
+            if (
+              tier < bestTier ||
+              (tier === bestTier && (d2 < bestD2 || (d2 === bestD2 && b < best)))
+            ) {
               best = b;
+              bestTier = tier;
               bestD2 = d2;
             }
           }
@@ -274,20 +342,17 @@ export function buildBundleGraph(
         leaderSeg.push(s);
         leaderDirected.push(isDirected ? 1 : 0);
         memberLists.push([]);
-        const key = cellKey(ix, iy);
-        const cell = grid.get(key);
-        if (cell === undefined) grid.set(key, [best]);
-        else cell.push(best);
+        grid.add(ix, iy, best);
       }
       segmentBundle[s] = best;
       const list = memberLists[best];
       // 同じエッジが同じ束に何度入っても、メンバーには 1 回だけ（W に重みを 1 回だけ足すため）。
       if (list !== undefined && list[list.length - 1] !== edgeNo) list.push(edgeNo);
-      if (isDirected) leaderDirected[best] = 1;
     };
 
     // 5. 有向のエッジを先に、次に無向のエッジを振り分ける（上の規約）。ID の昇順なので決定的。
-    for (const pass of [true, false]) {
+    // 【TS】`as const` は配列を読み取り専用のタプル（要素が固定の配列）にする。
+    for (const pass of [true, false] as const) {
       for (let i = 0; i < edgeCount; i++) {
         if (sorted[i]?.directed !== pass) continue;
         const from = segmentStart[i] ?? 0;
@@ -336,6 +401,7 @@ export function buildBundleGraph(
     edgeIndex,
     edgeWeights,
     invalidWeightCount,
+    duplicateWeightCount,
     segmentStart,
     segmentBundle,
     bundleCount,
@@ -364,7 +430,7 @@ function findOpposites(
   if (!(epsilon > 0)) return result;
   const cell = 2 * epsilon;
   const r2 = cell * cell;
-  const grid = new Map<number, number[]>();
+  const grid = new SparseGrid();
   const coords: { ix: number; iy: number }[] = [];
   for (let b = 0; b < leaderSeg.length; b++) {
     if (leaderDirected[b] !== 1) {
@@ -375,18 +441,17 @@ function findOpposites(
     const ix = Math.floor(((mx[l] ?? 0) - minX) / cell);
     const iy = Math.floor(((my[l] ?? 0) - minY) / cell);
     coords.push({ ix, iy });
-    const key = cellKey(ix, iy);
-    const list = grid.get(key);
-    if (list === undefined) grid.set(key, [b]);
-    else list.push(b);
+    grid.add(ix, iy, b);
   }
   for (let b = 0; b < leaderSeg.length; b++) {
     if (leaderDirected[b] !== 1) continue;
     const l = leaderSeg[b] ?? 0;
     const { ix, iy } = coords[b] ?? { ix: 0, iy: 0 };
-    for (let gx = ix - 1; gx <= ix + 1; gx++) {
-      for (let gy = iy - 1; gy <= iy + 1; gy++) {
-        for (const c of grid.get(cellKey(gx, gy)) ?? []) {
+    for (let dx3 = -1; dx3 <= 1; dx3++) {
+      const gx = ix + dx3;
+      for (let dy3 = -1; dy3 <= 1; dy3++) {
+        const gy = iy + dy3;
+        for (const c of grid.get(gx, gy) ?? []) {
           if (c <= b) continue; // 組は b < c の側だけで調べ、両方向に登録する
           const m = leaderSeg[c] ?? 0;
           const dx = (mx[m] ?? 0) - (mx[l] ?? 0);
@@ -461,6 +526,7 @@ export function oppositesOf(graph: BundleGraph, bundle: number): readonly number
  * @example
  * const w = weightsFor(graph, new Set(['e1', 'e7']));
  */
+// 【TS】`Iterable<string>` は for…of で回せるもの（配列、Set など）なら何でも受ける。
 export function weightsFor(graph: BundleGraph, visibleEdgeIds: Iterable<string>): Float64Array {
   const w = new Float64Array(graph.bundleCount);
   const stamp = new Int32Array(graph.bundleCount).fill(-1); // 束ごとに「最後に足したエッジ番号」
