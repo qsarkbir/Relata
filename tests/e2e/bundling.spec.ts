@@ -5,7 +5,7 @@
  * Worker の起動回数（`new Worker` の記録）で確かめる。
  */
 /// <reference lib="dom" />
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { readFileSync } from 'node:fs';
 import {
   fixturePath,
