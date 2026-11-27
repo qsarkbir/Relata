@@ -58,6 +58,7 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
  * files: 置くファイル（パス中の `__lint_probe__` は pid 付きの名前に置き換える）
  * lint: 検査するファイル（files のうちの 1 つ）。lintAlso で追加の検査対象も書ける
  * 補助のファイル（他の層に置くもの）は、import が解決できるように実在させる。
+ * baseConfig: 設定ファイルより前に差し込む設定（「src/** の共通の設定」を再現するため）。
  */
 const cases = [
   {
@@ -454,6 +455,44 @@ const cases = [
     },
   },
   {
+    // 【なぜ】window や globalThis 経由の Date と Math.random は、書き方（ドット、ブラケット、
+    // テンプレート、?.）を変えてもすり抜けられない。Math.max など無関係な参照は止めない。
+    name: 'map と render は window や globalThis 経由の Date と Math.random を、ブラケット記法や ?. でも使えない',
+    lint: 'src/map/__lint_probe__.ts',
+    files: {
+      'src/map/__lint_probe__.ts': [
+        'export const a = [',
+        "  window['Math']['random'](),",
+        "  window.Math['random'](),",
+        "  globalThis['Math'].random(),",
+        '  globalThis?.Math?.random(),',
+        '  window?.Date,',
+        "  window?.['Date'],",
+        '  self[`Date`],',
+        '  window.Math.max(1, 2),',
+        '  window.name,',
+        '];',
+      ],
+      'src/render/__lint_probe__.ts': [
+        'export const a = [',
+        "  window['Math']['random'](),",
+        "  window.Math['random'](),",
+        "  globalThis['Math'].random(),",
+        '  globalThis?.Math?.random(),',
+        '  window?.Date,',
+        "  window?.['Date'],",
+        '  self[`Date`],',
+        '  window.Math.max(1, 2),',
+        '  window.name,',
+        '];',
+      ],
+    },
+    lintAlso: ['src/render/__lint_probe__.ts'],
+    // 1 ファイル 7 件（Math.max と window.name は止まらない）。map と render で 14。
+    // Math['random'] は no-restricted-properties にも掛からない（object が window.Math で、識別子 Math ではない）。
+    expect: { 'no-restricted-syntax': 14 },
+  },
+  {
     name: 'map で JSX、動的 import、型の位置の import を書けない',
     lint: 'src/map/__lint_probe__.tsx',
     files: {
@@ -562,7 +601,7 @@ const cases = [
   },
   {
     // 【なぜ】views と app は map を「型だけ」なら import でき、値の静的 import は止まる。動的 import() は map の
-    // 読み込みの正規の方法（D-50）なので止めない。
+    // 読み込みの正規の方法（D-50）なので止めない。パスを解決して判定する自前の規則（tests/lint/no-static-map-import.mjs）。
     name: 'views と app は map を値として静的に import できない（import type と動的 import() は書ける）',
     lint: 'src/views/__lint_probe__.ts',
     files: {
@@ -571,10 +610,14 @@ const cases = [
         "import * as ns from '../map/__lint_probe__f';",
         "import type { T } from '../map/__lint_probe__f';",
         "import { type U, g } from '../map/__lint_probe__f';",
+        "import { type W } from '../map/__lint_probe__f';",
+        "import '../map/__lint_probe__f';",
         "export { f as h } from '../map/__lint_probe__f';",
+        "export * from '../map/__lint_probe__f';",
+        "export type { T as T2 } from '../map/__lint_probe__f';",
         "export const load = () => import('../map/__lint_probe__f');",
         'export const x = [f, ns, g];',
-        'export type V = [T, U];',
+        'export type V = [T, U, W];',
       ],
       'src/app/__lint_probe__.ts': [
         "import { f } from '../map/__lint_probe__f';",
@@ -586,12 +629,60 @@ const cases = [
         'export const f = 1;',
         'export type T = number;',
         'export type U = number;',
+        'export type W = number;',
         'export const g = 1;',
       ],
     },
     lintAlso: ['src/app/__lint_probe__.ts'],
-    // views: 値の import 4（f、ns、g、再 export の f）。app: 値の import 1。
-    expect: { '@typescript-eslint/no-restricted-imports': 5 },
+    // views: import { f }、import * as ns、import { type U, g }、import { type W }（verbatimModuleSyntax では
+    // 副作用の import として残る）、import '...'、export { ... } from、export * from の 7 件。app: 1 件。
+    expect: { 'relata-local/no-static-map-import': 8 },
+  },
+  {
+    // 【なぜ】文字列のパターンでは、src/views/foo/map.ts を './map' で import しただけで誤って止まる。
+    // パスを解決するので、src/map/ の外の map.ts は止まらず、深い階層から本物の src/map/ を指す書き方は止まる。
+    name: 'views の map.ts を ./map で import しても止まらず、../../map で src/map を値で import すると止まる',
+    lint: 'src/views/foo/__lint_probe__.ts',
+    files: {
+      'src/views/foo/__lint_probe__.ts': [
+        "import { m } from './__lint_probe__map';",
+        "import { n } from '../__lint_probe__map';",
+        "import { p } from '../foo/__lint_probe__map';",
+        "import { f } from '../../map/__lint_probe__f';",
+        "import { g } from '../../views/../map/__lint_probe__f';",
+        "import type { T } from '../../map/__lint_probe__f';",
+        "export const load = () => import('../../map/__lint_probe__f');",
+        'export const x = [m, n, p, f, g];',
+        'export type V = T;',
+      ],
+      'src/views/foo/__lint_probe__map.ts': ['export const m = 1;', 'export const p = 1;'],
+      'src/views/__lint_probe__map.ts': ['export const n = 1;'],
+      'src/map/__lint_probe__f.ts': [
+        'export const f = 1;',
+        'export const g = 1;',
+        'export type T = number;',
+      ],
+    },
+    // 止まるのは、../../map と ../../views/../map の 2 件だけ。
+    expect: { 'relata-local/no-static-map-import': 2 },
+  },
+  {
+    // 【なぜ】views と app の基本の no-restricted-imports を 'off' にしていた頃は、「src/** の共通の設定」に
+    // 足した禁止が views と app でだけ黙って無効になった。baseConfig で共通の設定を再現し、効くことを確かめる。
+    name: 'src/** の共通の設定に置いた no-restricted-imports の禁止は、views と app でも効く',
+    lint: 'src/views/__lint_probe__.ts',
+    baseConfig: [
+      {
+        files: ['src/**/*.ts'],
+        rules: { 'no-restricted-imports': ['error', { paths: ['lodash'] }] },
+      },
+    ],
+    files: {
+      'src/views/__lint_probe__.ts': ["import { a } from 'lodash';", 'export const x = a;'],
+      'src/app/__lint_probe__.ts': ["import { a } from 'lodash';", 'export const x = a;'],
+    },
+    lintAlso: ['src/app/__lint_probe__.ts'],
+    expect: { 'no-restricted-imports': 2 },
   },
   {
     name: 'CLAUDE.md の規約: any、非 null アサーション、switch の網羅漏れ、理由なしの disable',
@@ -669,7 +760,10 @@ try {
       for (const [rel, lines] of Object.entries(c.files)) mine.push(writeProbe(rel, lines));
       // lintAlso: 同じ項目で、lint のほかに検査するファイル。件数は合算する。
       const targets = [c.lint, ...(c.lintAlso ?? [])].map((rel) => resolve(root, withPid(rel)));
-      const results = await eslint.lintFiles(targets);
+      // baseConfig のある項目だけ、専用の ESLint を作る（設定ファイルより「前」に置かれる共通の設定）。
+      const runner =
+        c.baseConfig === undefined ? eslint : new ESLint({ cwd: root, baseConfig: c.baseConfig });
+      const results = await runner.lintFiles(targets);
       const messages = results.flatMap((r) => r.messages);
       const counts = {};
       for (const m of messages) {

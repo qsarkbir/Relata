@@ -17,6 +17,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 import prettierConfig from 'eslint-config-prettier';
 import tseslint from 'typescript-eslint';
+import relataLocal from './tests/lint/no-static-map-import.mjs';
 
 // ---------------------------------------------------------------------------
 // 層の境界（設計書 §4.1）の定義
@@ -177,21 +178,37 @@ const randomRestriction = [
 // 【なぜ】`window.Date`、`globalThis.Date`、`globalThis.Math.random` は、識別子 `Date` や `Math.random`
 // の検査（no-restricted-globals、no-restricted-properties）をすり抜ける。window、globalThis、self を
 // 経由した参照を構文で止める。map と render だけに使う（core は window などを丸ごと禁止している）。
+// ドット記法（window.Date）、ブラケット記法（window['Date']）、テンプレート（window[`Date`]）のどれでも
+// 止める。オプショナルチェーン（window?.Date）は、ESTree では ChainExpression の中の
+// MemberExpression（optional が true）になるので、同じ MemberExpression の選択子で止まる。
 const globalObjects = '/^(window|globalThis|self)$/';
+/**
+ * `prefix` の MemberExpression が、名前 `name` の特性を指すという esquery の条件を作る。
+ *
+ * @param {string} prefix - 対象のメンバーへの経路（'' なら自分自身、'object.' なら object）
+ * @param {string} name - 特性の名前
+ * @returns {string} 属性の選択子（`:matches(...)` の形）
+ */
+function propIs(prefix, name) {
+  return (
+    `:matches([${prefix}computed=false][${prefix}property.name='${name}'], ` +
+    `[${prefix}computed=true][${prefix}property.value='${name}'], ` +
+    `[${prefix}computed=true][${prefix}property.quasis.0.value.cooked='${name}'])`
+  );
+}
 const globalAccessSyntax = [
   {
-    selector: `MemberExpression[object.name=${globalObjects}][property.name='Date']`,
+    selector: `MemberExpression[object.name=${globalObjects}]${propIs('', 'Date')}`,
     message:
-      'window.Date、globalThis.Date は使いません。日付は JDN の整数で持ちます（CLAUDE.md、設計書 §5.1）。',
+      "window.Date、globalThis.Date（window['Date'] や window?.Date も）は使いません。日付は JDN の整数で持ちます（CLAUDE.md、設計書 §5.1）。",
   },
   {
-    selector: `MemberExpression[object.name=${globalObjects}][property.value='Date']`,
-    message: "window['Date'] などは使いません。日付は JDN の整数で持ちます（設計書 §5.1）。",
-  },
-  {
-    selector: `MemberExpression[object.object.name=${globalObjects}][object.property.name='Math'][property.name='random']`,
+    // object が「グローバル.Math」のメンバーで、その特性が random
+    selector:
+      `MemberExpression[object.type='MemberExpression'][object.object.name=${globalObjects}]` +
+      `${propIs('object.', 'Math')}${propIs('', 'random')}`,
     message:
-      'window.Math.random、globalThis.Math.random は使いません。同じ入力は同じ結果になるようにします（NFR-08、D-52）。',
+      'window.Math.random、globalThis.Math.random（ブラケット記法や ?. も）は使いません。同じ入力は同じ結果になるようにします（NFR-08、D-52）。',
   },
 ];
 
@@ -211,30 +228,30 @@ function restrictPackages(names, reason) {
 }
 
 /**
- * views と app 用の、地図への import の禁止（パッケージ名と src/map/ の両方）。
+ * views と app 用の、地図の部品の禁止。パッケージ名だけを `@typescript-eslint/no-restricted-imports` に置く。
+ *
+ * 【なぜ】views と app では、基本の `no-restricted-imports` を設定しない（'off' にもしない）。
+ * 'off' にすると、将来 `src/**` の共通の設定へ禁止を足したとき、views と app でだけ黙って無効になる。
+ * そこで、基本の規則は空けておき、typescript-eslint 版を並べる（src/state と同じ形）。
+ * 同じ import を 2 つの規則が二重に報告しないよう、views と app では「パッケージ名の禁止」を
+ * typescript-eslint 版だけに置く。src/map/ への禁止は、パスを解決する自前の規則
+ * （relata-local/no-static-map-import）に置く。
+ *
+ * @returns @typescript-eslint/no-restricted-imports に渡すオプション
+ */
+function restrictMapPackages() {
+  return restrictPackages(mapPackages, mapPackagesReason);
+}
+
+/**
+ * views と app 用の、src/map/ への値の静的 import の禁止（自前の規則）。
  *
  * 【なぜ】views と app は src/map/ を「型だけ」import してよい（`import type`）が、値として静的に
  * import してはいけない。値の import は map のコードと maplibre-gl の CSS を本体に混ぜ、
  * 「地図を初めて開いたときだけ読み込む」（D-50、NFR-02）を壊す。動的 `import('../map')` は許す。
- * 型の例外（allowTypeImports）は typescript-eslint 版の規則だけにあるので、そちらを使う。
- *
- * @returns @typescript-eslint/no-restricted-imports に渡すオプション
+ * 自前の規則を選んだ理由は tests/lint/no-static-map-import.mjs の冒頭を参照。
  */
-function restrictMapImports() {
-  const base = restrictPackages(mapPackages, mapPackagesReason);
-  return {
-    paths: base.paths,
-    patterns: [
-      ...base.patterns,
-      {
-        group: ['**/map', '**/map/**'],
-        allowTypeImports: true,
-        message:
-          'src/map/ を値として静的に import しません。地図は動的 import() で初めて開いたときに読み込みます。型だけなら `import type` を使えます（設計書 §4.1、D-50）。',
-      },
-    ],
-  };
-}
+const mapImportRules = { 'relata-local/no-static-map-import': 'error' };
 
 // 層の依存の向きの禁止（設計書 §4.1 の図）。
 // 【なぜ】正規表現ではなく「パスを解決して」判定する（eslint-plugin-import-x の no-restricted-paths）。
@@ -549,10 +566,12 @@ export default defineConfig(
   // 版番号と古い結果の破棄を 1 か所にまとめ、画面ごとに作り直さないため（PR #31 のレビュー）。
   {
     files: ['src/views/**/*.{ts,tsx}'],
+    plugins: { 'relata-local': relataLocal },
     rules: {
       // 【なぜ】views も地図の部品を直接 import しない。src/map/ を動的 import で読み込む（D-50）。
-      'no-restricted-imports': 'off',
-      '@typescript-eslint/no-restricted-imports': ['error', restrictMapImports()],
+      // 基本の no-restricted-imports は触らない（'off' にしない）。理由は restrictMapPackages() を参照。
+      '@typescript-eslint/no-restricted-imports': ['error', restrictMapPackages()],
+      ...mapImportRules,
       'import-x/no-restricted-paths': [
         'error',
         {
@@ -598,9 +617,11 @@ export default defineConfig(
   },
   {
     files: ['src/app/**/*.{ts,tsx}'],
+    plugins: { 'relata-local': relataLocal },
     rules: {
-      'no-restricted-imports': 'off',
-      '@typescript-eslint/no-restricted-imports': ['error', restrictMapImports()],
+      // 基本の no-restricted-imports は触らない。理由は restrictMapPackages() を参照。
+      '@typescript-eslint/no-restricted-imports': ['error', restrictMapPackages()],
+      ...mapImportRules,
     },
   },
   // 【なぜ】Web Worker の中（*.worker.ts）には window も document も無い。上の src/ 全体の設定は
