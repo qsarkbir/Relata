@@ -316,3 +316,65 @@ test.describe('D-48: 「グラフ｜地図」のタブは各ビューのツー�
     await expect(mapTab(page)).toBeFocused();
   });
 });
+
+test.describe('FR-MP-06: 引き出しを開いても、地図の枠は窓の高さに収まり、帰属表示は窓の中にある', () => {
+  for (const size of [
+    { width: 1280, height: 900 },
+    { width: 1024, height: 768 },
+  ]) {
+    test(`FR-MP-06: ${String(size.width)}×${String(size.height)} のサンプルで、引き出しの開閉と一覧で帰属表示が窓の外に出ず、枠の高さが変わらない`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(size);
+      await startApp(page);
+      await page.getByRole('button', { name: 'サンプルを読み込む' }).click();
+      await expect(page.getByRole('region', { name: '適用中の条件' })).toContainText('/ 219');
+      await page.getByRole('button', { name: '閉じる' }).first().click();
+      await mapTab(page).click();
+      await expect(page.locator('[data-map-attribution]')).toBeVisible();
+      const measure = () =>
+        page.evaluate(() => {
+          const box = (el: Element | null) => {
+            const b = el?.getBoundingClientRect();
+            return b === undefined
+              ? null
+              : { top: b.top, bottom: b.bottom, left: b.left, right: b.right };
+          };
+          const tab = Array.from(document.querySelectorAll('[role="tab"]')).find(
+            (el) => el.textContent === '表' && (el as HTMLElement).offsetParent !== null,
+          );
+          return {
+            frame: box(document.querySelector('[data-main-frame="map"]')),
+            attr: box(document.querySelector('[data-map-attribution]')),
+            tab: box(tab ?? null),
+            w: window.innerWidth,
+            h: window.innerHeight,
+          };
+        });
+      const inside = (
+        b: { top: number; bottom: number; left: number; right: number } | null,
+        w: number,
+        h: number,
+      ) => b !== null && b.top >= 0 && b.bottom <= h && b.left >= 0 && b.right <= w;
+      const closed = await measure();
+      expect(inside(closed.attr, closed.w, closed.h)).toBe(true);
+      expect(inside(closed.tab, closed.w, closed.h)).toBe(true);
+      const drawer = await openMapSettings(page);
+      await drawer.getByRole('radio', { name: /簡易背景/ }).check();
+      for (const step of ['drawer', 'list'] as const) {
+        if (step === 'list') {
+          await page.getByRole('button', { name: /地図に載らないノード/ }).click();
+          await expect(page.locator('.map-unplaced-body')).toBeVisible();
+        }
+        const open = await measure();
+        expect(inside(open.attr, open.w, open.h)).toBe(true);
+        expect(inside(open.tab, open.w, open.h)).toBe(true);
+        expect(open.frame?.bottom).toBeCloseTo(closed.frame?.bottom ?? -1, 0);
+        expect((open.frame?.bottom ?? 0) - (open.frame?.top ?? 0)).toBeCloseTo(
+          (closed.frame?.bottom ?? 0) - (closed.frame?.top ?? 0),
+          0,
+        );
+      }
+    });
+  }
+});

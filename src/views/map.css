@@ -128,14 +128,34 @@
 }
 /* 【なぜ】地図のビューでは、右の引き出しを地図に重ねず、横に並べる（地図の枠を縮める。統括役の決定）。
    帰属表示（地図の部品が z-index 10 で出す）を UI の下に隠さない（OSM の利用規約。D-51 補足）ためと、
-   帰属表示が UI の部品（引き出しの末尾など）を覆わないため。グラフの引き出しは狭い幅で重なるが
-   （graph.css の @container）、地図ではその規則を打ち消し、幅が狭くても並べる。引き出しは枠の 45% までに収める。 */
+   帰属表示が UI の部品（引き出しの末尾など）を覆わないため。
+   【なぜ】引き出しは絶対配置にして、中身の高さを枠の高さに足さない。流れの中に置くと、中身が長いとき
+   （座標の出どころの部品など）に地図の枠が窓より高く伸び、帰属表示が窓の外へ切れる（off-screen は規約違反）。
+   高さは地図の枠（.graph-body の高さ）に収め、中身は引き出しの中だけでスクロールさせる。
+   幅は枠の 45% までで、開いている間は地図の側の右に同じ幅の余白を空ける。 */
+.map-view .graph-body {
+  --map-drawer-width: min(20rem, 45%);
+}
+.map-view .graph-drawer {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  flex: none;
+  inline-size: var(--map-drawer-width);
+  max-block-size: 100%;
+  min-block-size: 0;
+  overflow: auto;
+  box-shadow: none;
+  z-index: auto;
+}
+.map-view .graph-body[data-drawer='open'] .graph-main {
+  margin-inline-end: calc(min(20rem, 45%) + var(--rl-space-3));
+}
 @container (max-width: 46rem) {
   .map-view .graph-drawer {
-    position: static;
-    flex: 0 0 min(20rem, 45%);
-    inline-size: auto;
-    max-block-size: 85vh;
+    position: absolute;
+    inline-size: var(--map-drawer-width);
+    max-block-size: 100%;
     box-shadow: none;
     z-index: auto;
   }
