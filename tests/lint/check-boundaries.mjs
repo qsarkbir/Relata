@@ -56,7 +56,7 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
 /**
  * 1 つの検査項目。
  * files: 置くファイル（パス中の `__lint_probe__` は pid 付きの名前に置き換える）
- * lint: 検査するファイル（files のうちの 1 つ）
+ * lint: 検査するファイル（files のうちの 1 つ）。lintAlso で追加の検査対象も書ける
  * 補助のファイル（他の層に置くもの）は、import が解決できるように実在させる。
  */
 const cases = [
@@ -348,6 +348,145 @@ const cases = [
     expect: { 'import-x/no-restricted-paths': 2 },
   },
   {
+    // 【なぜ】D-52。src/map/ は state、views、app、io、workers を import せず、React と zustand にも依存しない。
+    name: 'map は state、views、app、io、workers、react、zustand を import できない（core、render、i18n は import できる）',
+    lint: 'src/map/__lint_probe__.ts',
+    files: {
+      'src/map/__lint_probe__.ts': [
+        "import { useState } from 'react';",
+        "import { create } from 'zustand';",
+        "import { a } from '../state/__lint_probe__a';",
+        "import { b } from '../views/__lint_probe__b';",
+        "import { d } from '../app/__lint_probe__d';",
+        "import { e } from '../io/__lint_probe__e';",
+        "import { g } from '../workers/__lint_probe__g';",
+        "import { c } from '../core/__lint_probe__c';",
+        "import { r } from '../render/__lint_probe__r';",
+        "import { i } from '../i18n/__lint_probe__i';",
+        'export const x = [useState, create, a, b, d, e, g, c, r, i];',
+      ],
+      'src/state/__lint_probe__a.ts': ['export const a = 1;'],
+      'src/views/__lint_probe__b.ts': ['export const b = 1;'],
+      'src/app/__lint_probe__d.ts': ['export const d = 1;'],
+      'src/io/__lint_probe__e.ts': ['export const e = 1;'],
+      'src/workers/__lint_probe__g.ts': ['export const g = 1;'],
+      'src/core/__lint_probe__c.ts': ['export const c = 1;'],
+      'src/render/__lint_probe__r.ts': ['export const r = 1;'],
+      'src/i18n/__lint_probe__i.ts': ['export const i = 1;'],
+    },
+    expect: { 'no-restricted-imports': 2, 'import-x/no-restricted-paths': 5 },
+  },
+  {
+    name: 'map は maplibre-gl、@deck.gl、d3-geo と DOM のグローバルを使える',
+    lint: 'src/map/__lint_probe__.ts',
+    files: {
+      'src/map/__lint_probe__.ts': [
+        "import maplibregl from 'maplibre-gl';",
+        "import { Deck } from '@deck.gl/core';",
+        "import { geoMercator } from 'd3-geo';",
+        'export const x = [maplibregl, Deck, geoMercator, document.title, window.name];',
+      ],
+    },
+    expect: {
+      'no-restricted-imports': 0,
+      'import-x/no-restricted-paths': 0,
+      'no-restricted-globals': 0,
+    },
+  },
+  {
+    name: 'map と render は Date と Math.random を使えない',
+    lint: 'src/map/__lint_probe__.ts',
+    files: {
+      'src/map/__lint_probe__.ts': [
+        'export const a = new Date();',
+        'export const b = Math.random();',
+      ],
+      'src/render/__lint_probe__.ts': [
+        'export const a = new Date();',
+        'export const b = Math.random();',
+      ],
+    },
+    lintAlso: ['src/render/__lint_probe__.ts'],
+    expect: { 'no-restricted-globals': 2, 'no-restricted-properties': 2 },
+  },
+  {
+    name: 'map で JSX、動的 import、型の位置の import を書けない',
+    lint: 'src/map/__lint_probe__.tsx',
+    files: {
+      'src/map/__lint_probe__.tsx': [
+        "export const a = import('react');",
+        "export type T = import('react').FC;",
+        'export const b = <div />;',
+      ],
+    },
+    expect: { 'no-restricted-syntax': 3 },
+  },
+  {
+    name: 'core、i18n、state、render、io、workers、views、app は地図の部品（maplibre-gl、deck.gl、d3-geo）を import できない',
+    lint: 'src/core/__lint_probe__.ts',
+    files: {
+      'src/core/__lint_probe__.ts': [
+        "import { geoMercator } from 'd3-geo';",
+        'export const a = geoMercator;',
+      ],
+      'src/i18n/__lint_probe__.ts': [
+        "import { geoMercator } from 'd3-geo';",
+        'export const a = geoMercator;',
+      ],
+      'src/state/__lint_probe__.ts': [
+        "import { geoMercator } from 'd3-geo';",
+        'export const a = geoMercator;',
+      ],
+      'src/render/__lint_probe__.ts': [
+        "import { geoMercator } from 'd3-geo';",
+        'export const a = geoMercator;',
+      ],
+      'src/io/__lint_probe__.ts': [
+        "import maplibregl from 'maplibre-gl';",
+        'export const a = maplibregl;',
+      ],
+      'src/workers/__lint_probe__.ts': [
+        "import { Deck } from '@deck.gl/core';",
+        'export const a = Deck;',
+      ],
+      'src/views/__lint_probe__.ts': [
+        "import { geoMercator } from 'd3-geo';",
+        'export const a = geoMercator;',
+      ],
+      'src/app/__lint_probe__.ts': [
+        "import maplibregl from 'maplibre-gl';",
+        'export const a = maplibregl;',
+      ],
+    },
+    lintAlso: [
+      'src/i18n/__lint_probe__.ts',
+      'src/state/__lint_probe__.ts',
+      'src/render/__lint_probe__.ts',
+      'src/io/__lint_probe__.ts',
+      'src/workers/__lint_probe__.ts',
+      'src/views/__lint_probe__.ts',
+      'src/app/__lint_probe__.ts',
+    ],
+    expect: { 'no-restricted-imports': 8 },
+  },
+  {
+    name: 'core、render、state、i18n、io、workers は map を import できない（map から他の層への逆向き）',
+    lint: 'src/io/__lint_probe__.ts',
+    files: {
+      'src/io/__lint_probe__.ts': [
+        "import { f } from '../map/__lint_probe__f';",
+        'export const a = f;',
+      ],
+      'src/workers/__lint_probe__.ts': [
+        "import { f } from '../map/__lint_probe__f';",
+        'export const a = f;',
+      ],
+      'src/map/__lint_probe__f.ts': ['export const f = 1;'],
+    },
+    lintAlso: ['src/workers/__lint_probe__.ts'],
+    expect: { 'import-x/no-restricted-paths': 2 },
+  },
+  {
     name: 'CLAUDE.md の規約: any、非 null アサーション、switch の網羅漏れ、理由なしの disable',
     lint: 'src/core/__lint_probe__.ts',
     files: {
@@ -421,8 +560,10 @@ try {
     const mine = [];
     try {
       for (const [rel, lines] of Object.entries(c.files)) mine.push(writeProbe(rel, lines));
-      const [result] = await eslint.lintFiles([resolve(root, withPid(c.lint))]);
-      const messages = result?.messages ?? [];
+      // lintAlso: 同じ項目で、lint のほかに検査するファイル。件数は合算する。
+      const targets = [c.lint, ...(c.lintAlso ?? [])].map((rel) => resolve(root, withPid(rel)));
+      const results = await eslint.lintFiles(targets);
+      const messages = results.flatMap((r) => r.messages);
       const counts = {};
       for (const m of messages) {
         if (m.ruleId) counts[m.ruleId] = (counts[m.ruleId] ?? 0) + 1;

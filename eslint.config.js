@@ -146,6 +146,24 @@ const noTsxFileSyntax = {
     'src/core/、src/render/、src/i18n/、src/state/ に .tsx ファイルは置きません。JSX を書くのは src/views/ と src/app/ だけです（設計書 §4.1）。',
 };
 
+// 【なぜ】地図の部品（maplibre-gl、deck.gl、d3-geo）は、地図を初めて開いたときだけ読み込む（D-50）。
+// どこかの層が静的に import すると、普段の起動にも含まれて重くなる。そこで、使ってよい層を
+// src/map/ だけにして、ほかの層からは名前で止める。d3-geo（SVG の書き出し）も、書き出しの図を
+// 描く map-geo の renderer が src/map/ の中に置くため、src/map/ に限る（D-50、D-54、D-60）。
+const mapPackages = ['maplibre-gl', 'deck.gl', '@deck.gl', 'd3-geo'];
+const mapPackagesReason =
+  '地図の部品（maplibre-gl、deck.gl、d3-geo）は src/map/ だけが使います。地図を初めて開いたときだけ読み込むためです（設計書 §4.1、D-50）。';
+
+// 【なぜ】Math.random は同じ入力で結果が変わり、地図の絵と書き出しが再現できなくなる（NFR-08）。
+const randomRestriction = [
+  {
+    object: 'Math',
+    property: 'random',
+    message:
+      'Math.random は使いません。同じ入力は同じ結果になるようにします（NFR-08、設計書 §4.1、D-52）。',
+  },
+];
+
 // 層ごとの「パッケージ名による」禁止。パスの解決が要らないので no-restricted-imports で書く。
 /**
  * パッケージ名の禁止リストから、no-restricted-imports のオプションを作る。
@@ -268,6 +286,7 @@ export default defineConfig(
     files: [
       'src/core/**/*.{ts,tsx}',
       'src/render/**/*.{ts,tsx}',
+      'src/map/**/*.{ts,tsx}',
       'src/io/**/*.{ts,tsx}',
       'src/workers/**/*.{ts,tsx}',
       'src/i18n/**/*.{ts,tsx}',
@@ -289,7 +308,7 @@ export default defineConfig(
       'no-restricted-imports': [
         'error',
         restrictPackages(
-          ['react', 'react-dom', 'zustand', 'maplibre-gl', 'deck.gl', '@deck.gl'],
+          ['react', 'react-dom', 'zustand', ...mapPackages],
           'src/core/ は UI・地図の部品に依存せず、純粋な TypeScript に保ちます（設計書 §4.1）。',
         ),
       ],
@@ -314,7 +333,7 @@ export default defineConfig(
       'no-restricted-imports': [
         'error',
         restrictPackages(
-          ['react', 'react-dom', 'zustand', 'maplibre-gl', 'deck.gl', '@deck.gl'],
+          ['react', 'react-dom', 'zustand', ...mapPackages],
           'src/i18n/ は render からも使われるため（D-15）、React・Zustand・地図の部品に依存しません（設計書 §4.1）。',
         ),
       ],
@@ -340,7 +359,7 @@ export default defineConfig(
         'error',
         {
           paths: [
-            ...['react', 'react-dom', 'maplibre-gl', 'deck.gl', '@deck.gl'].map((name) => ({
+            ...['react', 'react-dom', ...mapPackages].map((name) => ({
               name,
               message: `${name} には依存しません。src/state/ は React・地図の部品に依存せず、画面の外でも動く純粋な状態にします（設計書 §4.1、D-26）。`,
             })),
@@ -354,7 +373,7 @@ export default defineConfig(
           ],
           patterns: [
             {
-              group: ['react/*', 'react-dom/*', 'maplibre-gl/*', 'deck.gl/*', '@deck.gl/*'],
+              group: ['react/*', 'react-dom/*', ...mapPackages.map((name) => `${name}/*`)],
               message: 'src/state/ は React・地図の部品に依存しません（設計書 §4.1、D-26）。',
             },
             // 【なぜ】zustand/vanilla と zustand/middleware は React に依存しないので許す。
@@ -398,8 +417,8 @@ export default defineConfig(
       'no-restricted-imports': [
         'error',
         restrictPackages(
-          ['react', 'react-dom', 'zustand'],
-          'src/render/ は画面からも書き出し処理（画面なし）からも呼べるようにします（設計書 §4.1）。',
+          ['react', 'react-dom', 'zustand', ...mapPackages],
+          'src/render/ は画面からも書き出し処理（画面なし）からも呼べるようにします。地図の部品も使いません（設計書 §4.1、D-50）。',
         ),
       ],
       'import-x/no-restricted-paths': [
@@ -414,6 +433,43 @@ export default defineConfig(
         },
       ],
       'no-restricted-syntax': ['error', ...noImplicitDependencySyntax],
+      // 【なぜ】render は書き出しにも使われ、同じ入力は同じ絵になる必要がある（NFR-08）。T3-01 のレビューの申し送り。
+      'no-restricted-globals': ['error', dateRestriction],
+      'no-restricted-properties': ['error', ...randomRestriction],
+    },
+  },
+  // 【なぜ】src/map/ は「画面の部品の中身」で、ストアと React の部品は views の薄い部品（MapView.tsx）が持つ。
+  // 地図の部品は props で値と更新の関数を受け取るだけにして、ストアを読まない（phase3-plan §4）。
+  // こうすると、地図の中身を React とストアなしで単体テストでき、react と zustand への依存も入らない。
+  // DOM と WebGL、maplibre-gl、@deck.gl は使ってよいので、ブラウザのグローバルは禁止しない。
+  // core と render には依存してよいが、state、views、app、io、workers は import しない（D-52）。
+  {
+    files: ['src/map/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        restrictPackages(
+          ['react', 'react-dom', 'zustand'],
+          'src/map/ は画面の部品の中身です。ストアと React の部品は views の MapView.tsx が持ち、値と更新の関数は props で受け取ります（設計書 §4.1、D-52、phase3-plan §4）。',
+        ),
+      ],
+      'import-x/no-restricted-paths': [
+        'error',
+        {
+          basePath: import.meta.dirname,
+          zones: zones(
+            './src/map',
+            [state, views, app, io, workers],
+            'src/map/ は state、views、app、io、workers を import しません。ストアの値と更新の関数は views から props で受け取ります（設計書 §4.1、D-52）。core、render、i18n には依存してよい。',
+          ),
+        },
+      ],
+      'no-restricted-globals': ['error', dateRestriction],
+      'no-restricted-properties': ['error', ...randomRestriction],
+      // 【なぜ】JSX は react/jsx-runtime を暗黙に import するので、React の禁止をすり抜ける。
+      // 動的 import と型の位置の import('x') も、層の検査をすり抜けるので止める。
+      // 地図の部分全体は views が動的 import で読み込む（D-50）ので、map の中では静的 import で足りる。
+      'no-restricted-syntax': ['error', ...noImplicitDependencySyntax],
     },
   },
   // 【なぜ】views は Worker の client を直接呼ばず、state の controller を通す（設計書 §4.1、D-17）。
@@ -421,6 +477,8 @@ export default defineConfig(
   {
     files: ['src/views/**/*.{ts,tsx}'],
     rules: {
+      // 【なぜ】views も地図の部品を直接 import しない。src/map/ を動的 import で読み込む（D-50）。
+      'no-restricted-imports': ['error', restrictPackages(mapPackages, mapPackagesReason)],
       'import-x/no-restricted-paths': [
         'error',
         {
@@ -440,8 +498,8 @@ export default defineConfig(
       'no-restricted-imports': [
         'error',
         restrictPackages(
-          ['react', 'react-dom', 'zustand'],
-          'src/io/ と src/workers/ は画面の部品に依存しません。Worker の中では React も DOM も使えません（設計書 §4.1）。',
+          ['react', 'react-dom', 'zustand', ...mapPackages],
+          'src/io/ と src/workers/ は画面の部品・地図の部品に依存しません。Worker の中では React も DOM も使えません（設計書 §4.1）。',
         ),
       ],
       'import-x/no-restricted-paths': [
@@ -451,17 +509,23 @@ export default defineConfig(
           zones: [
             ...zones(
               './src/io',
-              [state, views, app],
-              'src/io/ は state、views、app を import しません。依存は上位の層から下へ向かう一方向です（設計書 §4.1）。',
+              [state, views, app, map],
+              'src/io/ は state、views、app、map を import しません。依存は上位の層から下へ向かう一方向です（設計書 §4.1）。',
             ),
             ...zones(
               './src/workers',
-              [state, views, app],
-              'src/workers/ は state、views、app を import しません。依存は上位の層から下へ向かう一方向です（設計書 §4.1）。',
+              [state, views, app, map],
+              'src/workers/ は state、views、app、map を import しません。依存は上位の層から下へ向かう一方向です（設計書 §4.1）。',
             ),
           ],
         },
       ],
+    },
+  },
+  {
+    files: ['src/app/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': ['error', restrictPackages(mapPackages, mapPackagesReason)],
     },
   },
   // 【なぜ】Web Worker の中（*.worker.ts）には window も document も無い。上の src/ 全体の設定は
