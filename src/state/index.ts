@@ -24,6 +24,7 @@ export {
   createGraphViewStore,
   graphViewStore,
   bindGraphViewToData,
+  isDefaultBundlingView,
   selectGraphOptions,
 } from './graphViewStore';
 export type { GraphViewState } from './graphViewStore';
@@ -34,6 +35,22 @@ export type {
   MetricsScheduler,
   MetricsView,
 } from './metricsController';
+export {
+  BUNDLING_SETTLE_DELAY,
+  bundleEdgesOf,
+  bundlingController,
+  createBundlingController,
+  createWorkerBundlingController,
+  timerScheduler,
+} from './bundlingController';
+export type {
+  BundlingController,
+  BundlingOutcome,
+  BundlingPhase,
+  BundlingRequest,
+  BundlingScheduler,
+  BundlingView,
+} from './bundlingController';
 export { createLayoutController, layoutController } from './layoutController';
 export type { LayoutController, LayoutOutcome, LayoutRequest } from './layoutController';
 export { bindSelectionToData, createSelectionStore, selectionStore } from './selectionStore';
@@ -42,6 +59,14 @@ export { createBuildOptions, buildOptions } from './buildOptions';
 export type { BuildHistoryState, BuildOptionsController } from './buildOptions';
 export { getNetwork, selectedGraphEdges } from './networkView';
 export type { Network, ProjectionStatus } from './networkView';
+export {
+  bindMapViewToData,
+  createMapViewStore,
+  geoSourceToSave,
+  isDefaultMapView,
+  mapViewStore,
+} from './mapViewStore';
+export type { MapViewState } from './mapViewStore';
 export { bindWorkspaceToData, createWorkspaceStore, workspaceStore } from './workspaceStore';
 export type { WorkspaceViewState } from './workspaceStore';
 export {
@@ -81,3 +106,5 @@ export {
   timeStore,
 } from './timeStore';
 export type { TimeStoreState } from './timeStore';
+export { placeNodes, UNPLACED_REASONS } from './mapPlacement';
+export type { MapPlacement, PlacedNode, UnplacedNode } from './mapPlacement';

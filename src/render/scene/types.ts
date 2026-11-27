@@ -5,7 +5,7 @@
  */
 import type { NodeId, NodeShape } from '../../core/model';
 import type { TextDirection } from '../text/direction';
-import type { EdgeGeometry } from '../edges/geometry';
+import type { EdgeGeometry, EdgePoint } from '../edges/geometry';
 
 /**
  * 経路の命令。T1-11 は `M` と `L`（直線）だけを使い、`Q`（2 次ベジェ）は T1-12 の往復エッジの弧のために持っておく。
@@ -72,6 +72,40 @@ export interface SceneEdge extends EdgeGeometry {
   readonly attrMissing?: boolean;
   /** 再生の時刻の外（D-38）。true なら薄く描く。 */
   readonly faded?: boolean;
+  /**
+   * 束ねた描画（FR-VG-13、14）のときの役割。`overlay` は簡易版の線、`highlight` は選んだノードのエッジの強調線、
+   * `missing` は欠損のエッジの破線（どちらも帯の上に引く）。通常のエッジは省略。
+   */
+  readonly role?: 'overlay' | 'highlight' | 'missing';
+}
+
+/** 帯（束ねた描き方 `bands`）の、エッジ 1 本分のリボン。不透明で塗り、層全体に不透明度を掛ける。 */
+export interface SceneBundleRibbon {
+  /** グラフのエッジのキー。 */
+  readonly edgeId: string;
+  /** リボンの多角形（左側の列、右側の列の逆順）。 */
+  readonly polygon: readonly EdgePoint[];
+  /** 矢印のときの矢じり。 */
+  readonly head?: readonly EdgePoint[];
+  /** 再生の時刻の外（D-38）。薄い層に分けて描く。 */
+  readonly faded?: boolean;
+}
+
+/** 束ねた帯の層。`style` が `overlay` のときは `ribbons` は空で、線は `Scene.edges`（`role: 'overlay'`）にある。 */
+export interface SceneBundle {
+  readonly style: 'bands' | 'overlay';
+  /** 帯の色（`#rrggbb`）。 */
+  readonly color: string;
+  /** 帯の層全体の不透明度。 */
+  readonly opacity: number;
+  readonly ribbons: readonly SceneBundleRibbon[];
+  /** 太さの目盛り（凡例用）。幅 = maxWidth × スケール(W / maxWeight)、下限 minWidth。 */
+  readonly widthScale: {
+    readonly kind: 'linear' | 'sqrt' | 'log';
+    readonly maxWeight: number;
+    readonly maxWidth: number;
+    readonly minWidth: number;
+  };
 }
 
 /** ラベル 1 つ。座標は文字の基準点で、`anchor` が基準点と文字の位置関係を決める。 */
@@ -155,6 +189,8 @@ export interface Scene {
   readonly fontFamily: string;
   readonly nodes: readonly SceneNode[];
   readonly edges: readonly SceneEdge[];
+  /** 束ねた帯の層（FR-VG-13、14）。束ねないときは無い。エッジの前（下）に描く。 */
+  readonly bundle?: SceneBundle;
   readonly labels: readonly SceneLabel[];
   /** 重なりのために隠したラベルのノード ID。データを除外した意味ではない。 */
   readonly hiddenLabels?: readonly NodeId[];

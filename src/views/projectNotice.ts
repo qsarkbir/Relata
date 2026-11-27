@@ -44,7 +44,11 @@ export type ProjectNotice =
   /** 自動保存を消せなかった。 */
   | { readonly kind: 'autosave-clear-failed' }
   /** 同じアプリを別のタブでも開いている。 */
-  | { readonly kind: 'other-tab' };
+  | { readonly kind: 'other-tab' }
+  /** 保存するとき、地図のタイルの URL から鍵らしい項目を除いた（D-52）。項目名だけを持つ（値は持たない）。 */
+  | { readonly kind: 'tile-keys-stripped'; readonly names: readonly string[] }
+  /** 保存するとき、使えないタイルの URL を空にした（D-52）。 */
+  | { readonly kind: 'tile-url-dropped' };
 
 /** projectNotice の状態と操作。 */
 export interface ProjectNoticeState {

@@ -75,8 +75,11 @@
 }
 .graph-search {
   position: relative;
+  /* 【なぜ】「束ねる」の切り替えを足しても、ツールバーが 1 行に収まるよう、狭いときは検索欄を縮める（最大 14rem）。 */
+  flex: 1 1 8rem;
   inline-size: 14rem;
-  max-inline-size: 100%;
+  min-inline-size: 8rem;
+  max-inline-size: min(14rem, 100%);
 }
 .graph-search input {
   inline-size: 100%;

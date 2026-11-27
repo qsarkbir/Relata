@@ -56,8 +56,9 @@ for (const sig of ['SIGINT', 'SIGTERM']) {
 /**
  * 1 つの検査項目。
  * files: 置くファイル（パス中の `__lint_probe__` は pid 付きの名前に置き換える）
- * lint: 検査するファイル（files のうちの 1 つ）
+ * lint: 検査するファイル（files のうちの 1 つ）。lintAlso で追加の検査対象も書ける
  * 補助のファイル（他の層に置くもの）は、import が解決できるように実在させる。
+ * baseConfig: 設定ファイルより前に差し込む設定（「src/** の共通の設定」を再現するため）。
  */
 const cases = [
   {
@@ -249,7 +250,39 @@ const cases = [
       'src/io/__lint_probe__e.ts': ['export const e = 1;'],
       'src/workers/__lint_probe__f.worker.ts': ['export const f = 1;'],
     },
-    expect: { 'no-restricted-imports': 6, 'import-x/no-restricted-paths': 6 },
+    expect: {
+      'no-restricted-imports': 6,
+      'import-x/no-restricted-paths': 5,
+      '@typescript-eslint/no-restricted-imports': 1,
+    },
+  },
+  {
+    name: 'state は render の値を import できない',
+    lint: 'src/state/__lint_probe__.ts',
+    files: {
+      'src/state/__lint_probe__.ts': [
+        "import { c } from '../render/__lint_probe__c';",
+        "import { d } from '../render/bundling/__lint_probe__d';",
+        'export const x = [c, d];',
+      ],
+      'src/render/__lint_probe__c.ts': ['export const c = 1;'],
+      'src/render/bundling/__lint_probe__d.ts': ['export const d = 1;'],
+    },
+    expect: { '@typescript-eslint/no-restricted-imports': 2 },
+  },
+  {
+    name: 'state は render の型を import type で読める',
+    lint: 'src/state/__lint_probe__.ts',
+    files: {
+      'src/state/__lint_probe__.ts': [
+        "import type { C } from '../render/__lint_probe__c';",
+        "import type { D } from '../render/bundling/__lint_probe__d';",
+        'export type X = [C, D];',
+      ],
+      'src/render/__lint_probe__c.ts': ['export type C = number;'],
+      'src/render/bundling/__lint_probe__d.ts': ['export type D = number;'],
+    },
+    expect: { '@typescript-eslint/no-restricted-imports': 0, 'import-x/no-restricted-paths': 0 },
   },
   {
     name: 'state は zustand/vanilla、i18n、core、workers の *.client.ts を import できる',
@@ -348,6 +381,310 @@ const cases = [
     expect: { 'import-x/no-restricted-paths': 2 },
   },
   {
+    // 【なぜ】D-52。src/map/ は state、views、app、io、workers を import せず、React と zustand にも依存しない。
+    name: 'map は state、views、app、io、workers、i18n、react、zustand を import できない（core、render は import できる）',
+    lint: 'src/map/__lint_probe__.ts',
+    files: {
+      'src/map/__lint_probe__.ts': [
+        "import { useState } from 'react';",
+        "import { create } from 'zustand';",
+        "import { a } from '../state/__lint_probe__a';",
+        "import { b } from '../views/__lint_probe__b';",
+        "import { d } from '../app/__lint_probe__d';",
+        "import { e } from '../io/__lint_probe__e';",
+        "import { g } from '../workers/__lint_probe__g';",
+        "import { c } from '../core/__lint_probe__c';",
+        "import { r } from '../render/__lint_probe__r';",
+        "import { i } from '../i18n/__lint_probe__i';",
+        'export const x = [useState, create, a, b, d, e, g, c, r, i];',
+      ],
+      'src/state/__lint_probe__a.ts': ['export const a = 1;'],
+      'src/views/__lint_probe__b.ts': ['export const b = 1;'],
+      'src/app/__lint_probe__d.ts': ['export const d = 1;'],
+      'src/io/__lint_probe__e.ts': ['export const e = 1;'],
+      'src/workers/__lint_probe__g.ts': ['export const g = 1;'],
+      'src/core/__lint_probe__c.ts': ['export const c = 1;'],
+      'src/render/__lint_probe__r.ts': ['export const r = 1;'],
+      'src/i18n/__lint_probe__i.ts': ['export const i = 1;'],
+    },
+    // 【なぜ】文言（texts）は views から props で受け取る。map は i18n に依存しない（設計書 §4.1）。
+    expect: { 'no-restricted-imports': 2, 'import-x/no-restricted-paths': 6 },
+  },
+  {
+    name: 'map は maplibre-gl、@deck.gl、d3-geo と DOM のグローバルを使える',
+    lint: 'src/map/__lint_probe__.ts',
+    files: {
+      'src/map/__lint_probe__.ts': [
+        "import maplibregl from 'maplibre-gl';",
+        "import { Deck } from '@deck.gl/core';",
+        "import { geoMercator } from 'd3-geo';",
+        'export const x = [maplibregl, Deck, geoMercator, document.title, window.name];',
+      ],
+    },
+    expect: {
+      'no-restricted-imports': 0,
+      'import-x/no-restricted-paths': 0,
+      'no-restricted-globals': 0,
+    },
+  },
+  {
+    name: 'map と render は Date と Math.random を使えない',
+    lint: 'src/map/__lint_probe__.ts',
+    files: {
+      'src/map/__lint_probe__.ts': [
+        'export const a = new Date();',
+        'export const b = Math.random();',
+        // 【なぜ】window や globalThis 経由は、識別子の検査をすり抜けるので、構文で止める。
+        'export const c = [window.Date, globalThis.Date, window.Math.random(), globalThis.Math.random()];',
+        "export const d = [window['Date'], Math['random']()];",
+      ],
+      'src/render/__lint_probe__.ts': [
+        'export const a = new Date();',
+        'export const b = Math.random();',
+        'export const c = [window.Date, globalThis.Date, window.Math.random(), globalThis.Math.random()];',
+        "export const d = [window['Date'], Math['random']()];",
+      ],
+    },
+    lintAlso: ['src/render/__lint_probe__.ts'],
+    // map: window.Date、globalThis.Date、window.Math.random、globalThis.Math.random、window['Date'] の 5（Math['random'] は no-restricted-properties が止める）、
+    // render: 同じく 5。
+    expect: {
+      'no-restricted-globals': 2,
+      'no-restricted-properties': 4,
+      'no-restricted-syntax': 10,
+    },
+  },
+  {
+    // 【なぜ】window や globalThis 経由の Date と Math.random は、書き方（ドット、ブラケット、
+    // テンプレート、?.）を変えてもすり抜けられない。Math.max など無関係な参照は止めない。
+    name: 'map と render は window や globalThis 経由の Date と Math.random を、ブラケット記法や ?. でも使えない',
+    lint: 'src/map/__lint_probe__.ts',
+    files: {
+      'src/map/__lint_probe__.ts': [
+        'export const a = [',
+        "  window['Math']['random'](),",
+        "  window.Math['random'](),",
+        "  globalThis['Math'].random(),",
+        '  globalThis?.Math?.random(),',
+        '  window?.Date,',
+        "  window?.['Date'],",
+        '  self[`Date`],',
+        '  window.Math.max(1, 2),',
+        '  window.name,',
+        '];',
+      ],
+      'src/render/__lint_probe__.ts': [
+        'export const a = [',
+        "  window['Math']['random'](),",
+        "  window.Math['random'](),",
+        "  globalThis['Math'].random(),",
+        '  globalThis?.Math?.random(),',
+        '  window?.Date,',
+        "  window?.['Date'],",
+        '  self[`Date`],',
+        '  window.Math.max(1, 2),',
+        '  window.name,',
+        '];',
+      ],
+    },
+    lintAlso: ['src/render/__lint_probe__.ts'],
+    // 1 ファイル 7 件（Math.max と window.name は止まらない）。map と render で 14。
+    // Math['random'] は no-restricted-properties にも掛からない（object が window.Math で、識別子 Math ではない）。
+    expect: { 'no-restricted-syntax': 14 },
+  },
+  {
+    name: 'map で JSX、動的 import、型の位置の import を書けない',
+    lint: 'src/map/__lint_probe__.tsx',
+    files: {
+      'src/map/__lint_probe__.tsx': [
+        "export const a = import('react');",
+        "export type T = import('react').FC;",
+        'export const b = <div />;',
+      ],
+    },
+    expect: { 'no-restricted-syntax': 3 },
+  },
+  {
+    name: 'core、i18n、state、render、io、workers、views、app は地図の部品（maplibre-gl、deck.gl、d3-geo）を import できない',
+    lint: 'src/core/__lint_probe__.ts',
+    files: {
+      'src/core/__lint_probe__.ts': [
+        "import { geoMercator } from 'd3-geo';",
+        'export const a = geoMercator;',
+      ],
+      'src/i18n/__lint_probe__.ts': [
+        "import { geoMercator } from 'd3-geo';",
+        'export const a = geoMercator;',
+      ],
+      'src/state/__lint_probe__.ts': [
+        "import { geoMercator } from 'd3-geo';",
+        'export const a = geoMercator;',
+      ],
+      'src/render/__lint_probe__.ts': [
+        "import { geoMercator } from 'd3-geo';",
+        'export const a = geoMercator;',
+      ],
+      'src/io/__lint_probe__.ts': [
+        "import maplibregl from 'maplibre-gl';",
+        'export const a = maplibregl;',
+      ],
+      'src/workers/__lint_probe__.ts': [
+        "import { Deck } from '@deck.gl/core';",
+        'export const a = Deck;',
+      ],
+      'src/views/__lint_probe__.ts': [
+        "import { geoMercator } from 'd3-geo';",
+        'export const a = geoMercator;',
+      ],
+      'src/app/__lint_probe__.ts': [
+        "import maplibregl from 'maplibre-gl';",
+        'export const a = maplibregl;',
+      ],
+    },
+    lintAlso: [
+      'src/i18n/__lint_probe__.ts',
+      'src/state/__lint_probe__.ts',
+      'src/render/__lint_probe__.ts',
+      'src/io/__lint_probe__.ts',
+      'src/workers/__lint_probe__.ts',
+      'src/views/__lint_probe__.ts',
+      'src/app/__lint_probe__.ts',
+    ],
+    expect: { 'no-restricted-imports': 6, '@typescript-eslint/no-restricted-imports': 2 },
+  },
+  {
+    name: 'core、render、state、i18n、io、workers は map を import できない（map から他の層への逆向き）',
+    lint: 'src/core/__lint_probe__.ts',
+    files: {
+      ...Object.fromEntries(
+        ['core', 'render', 'state', 'i18n', 'io', 'workers'].map((layer) => [
+          `src/${layer}/__lint_probe__.ts`,
+          ["import { f } from '../map/__lint_probe__f';", 'export const a = f;'],
+        ]),
+      ),
+      'src/map/__lint_probe__f.ts': ['export const f = 1;'],
+    },
+    lintAlso: [
+      'src/render/__lint_probe__.ts',
+      'src/state/__lint_probe__.ts',
+      'src/i18n/__lint_probe__.ts',
+      'src/io/__lint_probe__.ts',
+      'src/workers/__lint_probe__.ts',
+    ],
+    expect: { 'import-x/no-restricted-paths': 6 },
+  },
+  {
+    // 【なぜ】deck.gl の内部の部品（luma.gl、math.gl、loaders.gl）を直接 import しても、本体に混ざる。
+    name: 'core、i18n、state、render、io、workers、views、app は @luma.gl、@math.gl、@loaders.gl を import できない',
+    lint: 'src/core/__lint_probe__.ts',
+    files: Object.fromEntries(
+      ['core', 'i18n', 'state', 'render', 'io', 'workers', 'views', 'app'].map((layer) => [
+        `src/${layer}/__lint_probe__.ts`,
+        [
+          "import { a } from '@luma.gl/core';",
+          "import { b } from '@math.gl/core';",
+          "import { c } from '@loaders.gl/core';",
+          'export const x = [a, b, c];',
+        ],
+      ]),
+    ),
+    lintAlso: [
+      'src/i18n/__lint_probe__.ts',
+      'src/state/__lint_probe__.ts',
+      'src/render/__lint_probe__.ts',
+      'src/io/__lint_probe__.ts',
+      'src/workers/__lint_probe__.ts',
+      'src/views/__lint_probe__.ts',
+      'src/app/__lint_probe__.ts',
+    ],
+    expect: { 'no-restricted-imports': 18, '@typescript-eslint/no-restricted-imports': 6 },
+  },
+  {
+    // 【なぜ】views と app は map を「型だけ」なら import でき、値の静的 import は止まる。動的 import() は map の
+    // 読み込みの正規の方法（D-50）なので止めない。パスを解決して判定する自前の規則（tests/lint/no-static-map-import.mjs）。
+    name: 'views と app は map を値として静的に import できない（import type と動的 import() は書ける）',
+    lint: 'src/views/__lint_probe__.ts',
+    files: {
+      'src/views/__lint_probe__.ts': [
+        "import { f } from '../map/__lint_probe__f';",
+        "import * as ns from '../map/__lint_probe__f';",
+        "import type { T } from '../map/__lint_probe__f';",
+        "import { type U, g } from '../map/__lint_probe__f';",
+        "import { type W } from '../map/__lint_probe__f';",
+        "import '../map/__lint_probe__f';",
+        "export { f as h } from '../map/__lint_probe__f';",
+        "export * from '../map/__lint_probe__f';",
+        "export type { T as T2 } from '../map/__lint_probe__f';",
+        "export const load = () => import('../map/__lint_probe__f');",
+        'export const x = [f, ns, g];',
+        'export type V = [T, U, W];',
+      ],
+      'src/app/__lint_probe__.ts': [
+        "import { f } from '../map/__lint_probe__f';",
+        "import type { T } from '../map/__lint_probe__f';",
+        "export const load = () => import('../map/__lint_probe__f');",
+        'export const x: T = f as unknown as T;',
+      ],
+      'src/map/__lint_probe__f.ts': [
+        'export const f = 1;',
+        'export type T = number;',
+        'export type U = number;',
+        'export type W = number;',
+        'export const g = 1;',
+      ],
+    },
+    lintAlso: ['src/app/__lint_probe__.ts'],
+    // views: import { f }、import * as ns、import { type U, g }、import { type W }（verbatimModuleSyntax では
+    // 副作用の import として残る）、import '...'、export { ... } from、export * from の 7 件。app: 1 件。
+    expect: { 'relata-local/no-static-map-import': 8 },
+  },
+  {
+    // 【なぜ】文字列のパターンでは、src/views/foo/map.ts を './map' で import しただけで誤って止まる。
+    // パスを解決するので、src/map/ の外の map.ts は止まらず、深い階層から本物の src/map/ を指す書き方は止まる。
+    name: 'views の map.ts を ./map で import しても止まらず、../../map で src/map を値で import すると止まる',
+    lint: 'src/views/foo/__lint_probe__.ts',
+    files: {
+      'src/views/foo/__lint_probe__.ts': [
+        "import { m } from './__lint_probe__map';",
+        "import { n } from '../__lint_probe__map';",
+        "import { p } from '../foo/__lint_probe__map';",
+        "import { f } from '../../map/__lint_probe__f';",
+        "import { g } from '../../views/../map/__lint_probe__f';",
+        "import type { T } from '../../map/__lint_probe__f';",
+        "export const load = () => import('../../map/__lint_probe__f');",
+        'export const x = [m, n, p, f, g];',
+        'export type V = T;',
+      ],
+      'src/views/foo/__lint_probe__map.ts': ['export const m = 1;', 'export const p = 1;'],
+      'src/views/__lint_probe__map.ts': ['export const n = 1;'],
+      'src/map/__lint_probe__f.ts': [
+        'export const f = 1;',
+        'export const g = 1;',
+        'export type T = number;',
+      ],
+    },
+    // 止まるのは、../../map と ../../views/../map の 2 件だけ。
+    expect: { 'relata-local/no-static-map-import': 2 },
+  },
+  {
+    // 【なぜ】views と app の基本の no-restricted-imports を 'off' にしていた頃は、「src/** の共通の設定」に
+    // 足した禁止が views と app でだけ黙って無効になった。baseConfig で共通の設定を再現し、効くことを確かめる。
+    name: 'src/** の共通の設定に置いた no-restricted-imports の禁止は、views と app でも効く',
+    lint: 'src/views/__lint_probe__.ts',
+    baseConfig: [
+      {
+        files: ['src/**/*.ts'],
+        rules: { 'no-restricted-imports': ['error', { paths: ['lodash'] }] },
+      },
+    ],
+    files: {
+      'src/views/__lint_probe__.ts': ["import { a } from 'lodash';", 'export const x = a;'],
+      'src/app/__lint_probe__.ts': ["import { a } from 'lodash';", 'export const x = a;'],
+    },
+    lintAlso: ['src/app/__lint_probe__.ts'],
+    expect: { 'no-restricted-imports': 2 },
+  },
+  {
     name: 'CLAUDE.md の規約: any、非 null アサーション、switch の網羅漏れ、理由なしの disable',
     lint: 'src/core/__lint_probe__.ts',
     files: {
@@ -421,8 +758,13 @@ try {
     const mine = [];
     try {
       for (const [rel, lines] of Object.entries(c.files)) mine.push(writeProbe(rel, lines));
-      const [result] = await eslint.lintFiles([resolve(root, withPid(c.lint))]);
-      const messages = result?.messages ?? [];
+      // lintAlso: 同じ項目で、lint のほかに検査するファイル。件数は合算する。
+      const targets = [c.lint, ...(c.lintAlso ?? [])].map((rel) => resolve(root, withPid(rel)));
+      // baseConfig のある項目だけ、専用の ESLint を作る（設定ファイルより「前」に置かれる共通の設定）。
+      const runner =
+        c.baseConfig === undefined ? eslint : new ESLint({ cwd: root, baseConfig: c.baseConfig });
+      const results = await runner.lintFiles(targets);
+      const messages = results.flatMap((r) => r.messages);
       const counts = {};
       for (const m of messages) {
         if (m.ruleId) counts[m.ruleId] = (counts[m.ruleId] ?? 0) + 1;

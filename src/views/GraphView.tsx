@@ -6,13 +6,14 @@ import { createGraphMeasure } from './graphMeasure';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import { toSnapshot } from '../core/graph';
-import { DEFAULT_GRAPH_VIEW } from '../core/project';
+import { DEFAULT_BUNDLING_VIEW, DEFAULT_GRAPH_VIEW, resolveGeoSource } from '../core/project';
 import type { GraphViewSettings } from '../core/project';
 import type { NodeId } from '../core/model';
 import { toNodeId } from '../core/model';
 import { findMissingElements } from '../core/missing';
 import { matchIncludes, LOOSE_MATCH } from '../core/text';
 import { buildScene, fitZoomFor, markOutOfTime, renderSvg, MAX_ZOOM, MIN_ZOOM } from '../render';
+import type { SceneBundling } from '../render';
 import { createSvgExport } from '../io/export';
 import { setFigureSource } from './figureExport';
 import { buildFigureLegend } from './figureLegend';
@@ -21,15 +22,19 @@ import { InfoTip } from './ui/InfoTip';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Field } from './ui/Field';
 import { LayoutMethodControls, NoCoordinatesNote } from './LayoutMethodControls';
-import { geoInputsFor, resolveGeoSelection } from './geoInputs';
+import { effectiveGeoAttrs, geoInputsFor, geoLayoutState } from './geoInputs';
 import { GraphSearch } from './GraphSearch';
+import { MainViewTabs } from './MainViewTabs';
 import { getNumberFormat } from './intl';
 import { StatusMessage } from './ui/StatusMessage';
 import { Toolbar, ToolbarGroup } from './ui/Toolbar';
 import { Chip } from './ui/Chip';
+import { BundlingControls, BundlingStatus } from './BundlingControls';
+import { useBundling } from './useBundling';
 import {
   graphViewStore,
   layoutController,
+  mapViewStore,
   selectedGraphEdges,
   selectionStore,
   uiStore,
@@ -54,6 +59,30 @@ const DEFAULT_CANVAS = { width: 800, height: 500 } as const;
 const LIVE_SCENE_LIMIT = 3000;
 /** 重い図で、拡大の操作が止まってからシーンを作り直すまでの待ち（ミリ秒）。 */
 const RESCALE_DELAY = 120;
+/**
+ * 束ねた図のシーン作成の重さの見積もりで、折れ線の点 16 個を 1 要素（ノードかエッジ）と数える。
+ * 帯のシーン作成は 5,000 本（1 本約 33 点）で約 210 ms（renderer の測定）。1 本あたり約 3 要素分になる。
+ */
+const BUNDLE_POINTS_PER_UNIT = 16;
+
+/**
+ * 2 つの座標の表が、全ノードで x・y とも同じか。
+ * @param a - 座標の表
+ * @param b - 座標の表
+ * @returns 同じなら true
+ */
+function sameCoordinates(
+  a: ReadonlyMap<NodeId, { readonly x: number; readonly y: number }>,
+  b: ReadonlyMap<NodeId, { readonly x: number; readonly y: number }>,
+): boolean {
+  if (a === b) return true;
+  if (a.size !== b.size) return false;
+  for (const [id, p] of b) {
+    const q = a.get(id);
+    if (q?.x !== p.x || q.y !== p.y) return false;
+  }
+  return true;
+}
 
 /**
  * 図の中の点 (x, y) を動かさずに、拡大率を factor 倍にする。
@@ -112,6 +141,20 @@ export function GraphView() {
   // 【なぜ】方式を変えたとき、再配置のとき、列の順や属性を変えたときは、計算の後に図を収め直す
   // （「全体を表示」と同じ）。位置が全く変わるので、前の拡大率のままだと図が画面の外に出ることがある。
   const refitAfterLayout = useRef(false);
+  // 【なぜ】座標の出どころは「計算し直す操作」（phase3-plan §4.1）。地図の設定で出どころが変わったときも、
+  // 地理座標の配置なら即時に計算し直す。読み替え後の出どころの内容（種類と属性名）で比べる。
+  const geoSourceStored = useStore(mapViewStore, (s) => s.geoSource);
+  const geoSourceKey = JSON.stringify(resolveGeoSource(geoSourceStored, view));
+  const seenGeoSourceKey = useRef(geoSourceKey);
+  useEffect(() => {
+    if (seenGeoSourceKey.current === geoSourceKey) return;
+    seenGeoSourceKey.current = geoSourceKey;
+    if (view.layout !== 'geo') return;
+    refitAfterLayout.current = true;
+    // 【なぜ】出どころは別のストア（地図と共通）の値。その変化に合わせて計算を始める同期なので、効果の中で状態を進める。
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- 外部の状態の変化に合わせて計算し直す
+    setIteration((v) => v + 1);
+  }, [geoSourceKey, view.layout]);
   const svg = useRef<SVGSVGElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const rangeRect = useRef<SVGRectElement>(null);
@@ -188,7 +231,53 @@ export function GraphView() {
   //   倍率が変わるとシーンを作り直すので、重い図は、拡大の操作が止まってから作り直し、その間は
   //   今のシーンを引き伸ばして見せる（NFR-03）。軽い図は、操作のたびにそのまま作り直す。
   const [settledZoom, setSettledZoom] = useState(view.viewport.zoom);
-  const live = graph === null || graph.order + graph.size <= LIVE_SCENE_LIMIT;
+  // 束ねた図: 結果と設定。計算し直す時機は state の bundlingController が決める（D-55）。
+  const bundlingSettings = view.bundling ?? DEFAULT_BUNDLING_VIEW;
+  // 【なぜ】束ねる計算の入力は座標（x・y）だけ。固定・解除（`fixed` の切り替え）で配列が作り直されても、
+  //   座標が同じなら前の Map を使い回し、「座標が変わった」と見なして束ね直さない。
+  const [bundleCoords, setBundleCoords] = useState(positions);
+  if (!sameCoordinates(bundleCoords, positions))
+    // 【なぜ】描画の途中での state の更新は、React が許す「前の値との差から導く」書き方（すぐ描き直される）。
+    setBundleCoords(positions);
+  // 【なぜ】ノードをドラッグしている間は座標が動き続けるので、束ねる計算を始めない（離したら始める）。
+  const [dragging, setDragging] = useState(false);
+  const bundlingView = useBundling({
+    graph,
+    positions: bundleCoords,
+    layoutBusy: busy || dragging,
+    settings: bundlingSettings,
+  });
+  // 【なぜ】入力が変わった直後の 1 回の描画で、古い経路を新しい座標に重ねない。結果を作ったときの入力と
+  //   今の入力が同じときだけ使う（controller は effect で入力の変化を知るため、描画が 1 回先に走る）。
+  const bundleResult =
+    bundlingView.result !== null &&
+    bundlingView.result.sources[0] === graph &&
+    bundlingView.result.sources[1] === bundleCoords
+      ? bundlingView.result
+      : null;
+  const edgeWidthScale = view.encoding.edgeWidth.scale;
+  // 【なぜ】計算中・中止・失敗・無効のときは bundled を渡さない（束ねない図を描いたまま。図を消さない）。
+  const bundled = useMemo<SceneBundling | undefined>(
+    () =>
+      bundlingSettings.enabled && bundleResult !== null
+        ? {
+            paths: bundleResult.paths,
+            graph: bundleResult.graph,
+            style: bundlingSettings.style,
+            // 【なぜ】束の太さにも、エッジの太さと同じ利用者のスケール（FR-VG-04）を効かせる。
+            scale: edgeWidthScale,
+          }
+        : undefined,
+    [bundlingSettings.enabled, bundlingSettings.style, bundleResult, edgeWidthScale],
+  );
+  const bundledPoints = useMemo(
+    () => bundled?.paths.reduce((sum, p) => sum + p.points.length / 2, 0) ?? 0,
+    [bundled],
+  );
+  // 【なぜ】束ねた図は点が多いので、重い図と同じく、ズームが止まってからシーンを作り直す。
+  const live =
+    graph === null ||
+    graph.order + graph.size + bundledPoints / BUNDLE_POINTS_PER_UNIT <= LIVE_SCENE_LIMIT;
   const sceneZoom = live ? view.viewport.zoom : settledZoom;
   useEffect(() => {
     if (live || settledZoom === view.viewport.zoom) return;
@@ -214,12 +303,17 @@ export function GraphView() {
         directedStyle: view.direction,
         measureText,
         zoom,
+        // 【なぜ】束ねた図では、選んだエッジを帯の上に細い線で強調する（帯はエッジごとに色を変えられない）。
+        ...(bundled === undefined ? {} : { selectedEdgeKeys: selectedEdgeSet }),
         // 【TS】条件付きスプレッド: `...(条件 ? {} : { 項目 })` は、値がある時だけ項目を足す。
         //   値が無いとき、項目そのものを作らず、既定の扱いを buildScene 側に任せるため。
         ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
         ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
+        ...(bundled === undefined ? {} : { bundled }),
       }),
     [
+      bundled,
+      selectedEdgeSet,
       encoding,
       view.labels,
       view.largeLabelCount,
@@ -309,13 +403,17 @@ export function GraphView() {
     const current = graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW;
     const savedIds = new Set(current.positions.map((p) => p.id));
     const allSaved = graph.nodes().every((id) => savedIds.has(toNodeId(id)));
-    // 【なぜ】地理座標は緯度・経度の両方が選ばれるまで計算しない（それまでの配置を上書きしない）。
-    const geoSelection =
-      current.layout === 'geo' && dataset !== null
-        ? resolveGeoSelection(dataset, current.geoAttrs)
-        : null;
+    // 【なぜ】座標の出どころは地図と共通（`view.geoSource`。D-46）。どのノードにも座標が取り出せない間
+    //   （出どころが `geo` なのに `geo` を持つノードが無い）は計算せず、前の配置を上書きしない。
+    const geoSourceNow = resolveGeoSource(mapViewStore.getState().geoSource, current);
     const waitingForGeo =
-      geoSelection !== null && (geoSelection.lat === undefined || geoSelection.lon === undefined);
+      current.layout === 'geo' &&
+      dataset !== null &&
+      geoLayoutState(
+        dataset,
+        geoSourceNow,
+        effectiveGeoAttrs(mapViewStore.getState().geoSource, current.geoAttrs),
+      ) !== 'ready';
     if (waitingForGeo) handledIteration.current = iteration;
     if (waitingForGeo || (allSaved && iteration === handledIteration.current)) {
       queueMicrotask(() => {
@@ -344,7 +442,7 @@ export function GraphView() {
         kind === 'layered'
           ? { columnOrder: current.columnOrder ?? [] }
           : kind === 'geo' && dataset !== null
-            ? { geo: geoInputsFor(dataset, graph, current.geoAttrs) }
+            ? { geo: geoInputsFor(dataset, graph, geoSourceNow) }
             : {};
       const outcome = await layoutController.run({
         job: {
@@ -420,6 +518,8 @@ export function GraphView() {
           measureText: request.measureText ?? measureText,
           ...(missingMarks.nodes === undefined ? {} : { missingNodes: missingMarks.nodes }),
           ...(missingMarks.edges === undefined ? {} : { missingEdges: missingMarks.edges }),
+          // 【なぜ】束ねた図は、SVG・PNG・PDF にも同じ帯で書き出す（画面と書き出しを食い違わせない）。
+          ...(bundled === undefined ? {} : { bundled }),
           // 【なぜ】画面で薄く表示している要素を、書き出しでも薄くする（画面と図を食い違わせない）。
           // 利用者が「書き出し」のダイアログで外したときと、何も薄くしていないときは付けない。
           ...(request.timeFade && (timeFade.nodes.size > 0 || timeFade.edges.size > 0)
@@ -438,8 +538,13 @@ export function GraphView() {
           settings: view.encoding,
           encoding,
           legends: encodingWithLegends.legends,
-          directedStyle: view.direction,
+          // 【なぜ】帯の図は、濃淡を選んでいても先細りで描く（renderer の規則）。凡例を図と合わせる。
+          directedStyle:
+            bundled?.style !== 'overlay' && bundled !== undefined && view.direction === 'gradient'
+              ? 'taper'
+              : view.direction,
           scene: plain.scene,
+          ...(bundled === undefined ? {} : { bundleGraph: bundled.graph }),
           legend: request.legend,
           ...(request.credit
             ? {
@@ -473,6 +578,7 @@ export function GraphView() {
     visibleSelected,
     measureText,
     missingMarks,
+    bundled,
     timeFade,
     t,
     nf,
@@ -503,6 +609,9 @@ export function GraphView() {
     if (!hasFigure || element === null || typeof ResizeObserver === 'undefined') return;
     // 【なぜ】枠の大きさ（窓の大きさ、下の段の高さ、左右のパネルの開閉）を測り、viewBox と全体表示に使う。
     const observer = new ResizeObserver(() => {
+      // 【なぜ】「グラフ｜地図」の切り替えで隠れると枠の大きさは 0 になる。0 を測った値として採ると、
+      //   戻ったときに viewBox が一瞬 1×1 になり、倍率や全体表示の計算が乱れる。隠れている間は前の値を保つ（D-48）。
+      if (element.clientWidth === 0 && element.clientHeight === 0) return;
       const width = Math.max(1, Math.round(element.clientWidth));
       const height = Math.max(1, Math.round(element.clientHeight));
       canvasRef.current = { width, height };
@@ -657,6 +766,7 @@ export function GraphView() {
         {t('graph.title')}
       </h2>
       <Toolbar label={t('graph.toolbar')}>
+        <MainViewTabs host="graph" />
         <GraphSearch
           query={query}
           onQuery={setQuery}
@@ -720,6 +830,17 @@ export function GraphView() {
           </InfoTip>
         </ToolbarGroup>
         <ToolbarGroup>
+          <Field label={t('graph.bundle.toggle')} inline>
+            <input
+              type="checkbox"
+              checked={bundlingSettings.enabled}
+              onChange={(e) => {
+                patch({ bundling: { ...bundlingSettings, enabled: e.currentTarget.checked } });
+              }}
+            />
+          </Field>
+        </ToolbarGroup>
+        <ToolbarGroup>
           <IconButton
             icon="zoomIn"
             label={t('graph.zoomIn')}
@@ -760,6 +881,8 @@ export function GraphView() {
       </Toolbar>
       {network !== null && !buildPanelOpen && <ProjectionIssues status={network.projection} />}
       <NoCoordinatesNote dataset={dataset} graph={graph} view={view} />
+      {/* 【なぜ】引き出しが閉じている間も、計算中・確認・失敗が分かるよう、図の上に状態を出す（開いている間は引き出しの中）。 */}
+      {!drawerOpen && <BundlingStatus view={bundlingView} enabled={bundlingSettings.enabled} />}
       {graph.order === 0 && (
         <StatusMessage
           state={
@@ -822,7 +945,10 @@ export function GraphView() {
                   const position = id === undefined ? undefined : positions.get(toNodeId(id));
                   // 【なぜ】エッジも押して選べる。射影したエッジの根拠を見るため（FR-GR-04）。
                   const edgeKey =
-                    id === undefined && element?.closest('#graph-view-edges') != null
+                    id === undefined &&
+                    element?.closest(
+                      '#graph-view-edges, #graph-view-bundles, #graph-view-bundles-faded',
+                    ) != null
                       ? (element.getAttribute('data-id') ?? undefined)
                       : undefined;
                   drag.current = {
@@ -849,6 +975,7 @@ export function GraphView() {
                   const dy = p.y - start.y;
                   start.moved ||= Math.abs(dx) + Math.abs(dy) > 2;
                   if (!start.moved) return;
+                  if (start.id !== undefined) setDragging(true);
                   if (start.id === undefined)
                     patch({
                       viewport: {
@@ -889,6 +1016,7 @@ export function GraphView() {
                   }
                   const start = drag.current;
                   drag.current = null;
+                  setDragging(false);
                   if (start !== null && !start.moved) {
                     if (start.edgeKey !== undefined && graph.hasEdge(start.edgeKey)) {
                       // 選ぶのは元のエッジ ID。表の選択と同じ ID で持つ（D-40）。
@@ -908,6 +1036,7 @@ export function GraphView() {
                 onPointerCancel={() => {
                   range.cancel();
                   drag.current = null;
+                  setDragging(false);
                   resumeLayout();
                 }}
               >
@@ -1173,6 +1302,15 @@ export function GraphView() {
                 <option value="gradient">{t('graph.gradient')}</option>
               </select>
             </Field>
+          </CollapsibleSection>
+          <CollapsibleSection title={t('graph.section.bundling')}>
+            <BundlingControls
+              settings={bundlingSettings}
+              view={bundlingView}
+              onChange={(next) => {
+                patch({ bundling: next });
+              }}
+            />
           </CollapsibleSection>
           <CollapsibleSection title={t('graph.section.missing')} note={t('missing.display.note')}>
             <MissingDisplayControls

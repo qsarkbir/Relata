@@ -5,7 +5,7 @@
  * 「Year (AH)」（ヒジュラ暦の年）で、要素の期間（time）は持たない。ノードは 219、エッジは 204。
  */
 import { readFileSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { appliedRegion, fixturePath, openProject, saveProjectFile, startApp } from './support';
 
 test.use({ locale: 'ja-JP' });

@@ -1,4 +1,5 @@
-import { DEFAULT_GRAPH_VIEW } from '../core/project';
+import { DEFAULT_BUNDLING_VIEW, DEFAULT_GRAPH_VIEW } from '../core/project';
+import type { BundlingViewSettings } from '../core/project';
 import { createStore } from 'zustand/vanilla';
 import type { StoreApi } from 'zustand/vanilla';
 import type { GraphViewSettings } from '../core/project/graphView';
@@ -46,4 +47,17 @@ bindGraphViewToData(graphViewStore, dataStore);
  */
 export function selectGraphOptions(state: GraphViewState) {
   return (state.view ?? DEFAULT_GRAPH_VIEW).graphOptions;
+}
+
+/**
+ * 束ねる設定が既定と同じか。
+ * @param b - 束ねる設定
+ * @returns 既定と同じなら true（保存しない）
+ */
+export function isDefaultBundlingView(b: BundlingViewSettings): boolean {
+  return (
+    b.enabled === DEFAULT_BUNDLING_VIEW.enabled &&
+    b.strength === DEFAULT_BUNDLING_VIEW.strength &&
+    b.style === DEFAULT_BUNDLING_VIEW.style
+  );
 }

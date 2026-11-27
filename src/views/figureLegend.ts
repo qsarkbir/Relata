@@ -11,7 +11,13 @@ import type { RelataGraph } from '../core/graph';
 import { viridisColor } from '../core/encode';
 import { assertNever } from '../core/util/assertNever';
 import type { EncodingSettings, ScaleLegend } from '../core/encode';
-import { DEFAULT_EDGE_COLOR, DEFAULT_EDGE_OPACITY } from '../render';
+import {
+  DEFAULT_EDGE_COLOR,
+  DEFAULT_EDGE_OPACITY,
+  bundleLegendItems,
+  resolveBundleWidthScale,
+} from '../render';
+import type { BundleGraph } from '../render/bundling';
 import type {
   DirectedEdgeStyle,
   LegendItemSpec,
@@ -49,6 +55,11 @@ export interface FigureLegendInput {
   readonly directedStyle: DirectedEdgeStyle;
   /** 凡例なしの図（欠損の破線の有無などを調べるための、凡例を付ける前のシーン）。 */
   readonly scene: Scene;
+  /**
+   * 束ねた図の束の区間のまとめ。渡すと、帯の太さの見本を凡例に足す（`scene.bundle` が帯のときだけ）。
+   * 見本の太さの目盛りは `scene.bundle.widthScale`（図を描いた目盛りそのもの）から作り、図とずらさない。
+   */
+  readonly bundleGraph?: BundleGraph;
   /** 凡例を入れるか。 */
   readonly legend: boolean;
   /** 出典表記を入れるなら、その内容。 */
@@ -209,8 +220,11 @@ export function buildFigureLegend(input: FigureLegendInput): LegendSpec | undefi
     }
 
     // --- エッジの太さ ---
-    if (legends.width !== null) {
-      heading(t('legend.edgeWidth'));
+    // 【なぜ】帯の図では、エッジの太さの割り当ては束ねていないエッジにだけ効く。1 本も無ければ節を出さない。
+    const bandsDrawn = scene.bundle?.style === 'bands';
+    const hasUnbundled = scene.edges.some((e) => e.role === undefined);
+    if (legends.width !== null && (!bandsDrawn || hasUnbundled)) {
+      heading(t(bandsDrawn ? 'legend.edgeWidthUnbundled' : 'legend.edgeWidth'));
       for (const tick of legends.width.ticks)
         items.push({
           label: tickLabel(tick.value, f),
@@ -219,6 +233,26 @@ export function buildFigureLegend(input: FigureLegendInput): LegendSpec | undefi
           mark: 'line',
           lineWidth: tick.size,
         });
+    }
+
+    // --- 束の太さ（FR-VG-14）。帯のときだけ。見本の太さと色は図の帯と同じ ---
+    if (input.bundleGraph !== undefined && scene.bundle?.style === 'bands') {
+      const ws = scene.bundle.widthScale;
+      const samples = bundleLegendItems(
+        resolveBundleWidthScale({
+          graph: input.bundleGraph,
+          scale: ws.kind,
+          maxWidth: ws.maxWidth,
+          minWidth: ws.minWidth,
+          maxWeight: ws.maxWeight,
+        }),
+        (w) => t('legend.bundleWeight', { w: f(w) }),
+        scene.bundle.color,
+      );
+      if (samples.length > 0) {
+        heading(t('legend.bundleWidth'));
+        items.push(...samples.map((i) => ({ ...i, opacity: scene.bundle?.opacity ?? 1 })));
+      }
     }
 
     // --- エッジの向き（D-07: 既定は矢印） ---

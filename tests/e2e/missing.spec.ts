@@ -5,7 +5,7 @@
  * 属性「地名」が欠損するのは p7、p40、p35b、anon の 4 つ。属性「年」（キーは Year）は p39、p20、p35b、anon の 4 つ（p20 は既定で除かれる）。
  */
 import { readFileSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { openGraphSection, openProject, readAutosave, startApp } from './support';
 
 test.use({ locale: 'ja-JP' });

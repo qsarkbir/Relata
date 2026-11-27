@@ -66,6 +66,8 @@ export function AboutDialog() {
         </pre>
       </details>
       <p>{t('about.privacy')}</p>
+      <p data-testid="about-map-privacy">{t('about.mapPrivacy')}</p>
+      <p>{t('about.mapSources')}</p>
       <h3>{t('about.libraries')}</h3>
       <table>
         <thead>

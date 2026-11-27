@@ -250,3 +250,40 @@ describe('FR-OUT-04: PDF の部品', () => {
     expect(svg).toContain(`${String(Math.round(((swatch?.y ?? 0) + half) * 1000) / 1000)} `);
   });
 });
+
+describe('FR-VG-13: 束ねた帯の PDF', () => {
+  it('帯の層は透過グループの図形になり、ページには層全体の不透明度 0.6 で 1 回だけ置く', async () => {
+    const base = buildScene(graph(), positions, {}, {});
+    const ribbon = {
+      edgeId: 'e',
+      polygon: [
+        { x: 10, y: 10 },
+        { x: 100, y: 10 },
+        { x: 100, y: 24 },
+        { x: 10, y: 24 },
+      ],
+    };
+    const scene = {
+      ...base,
+      bundle: {
+        style: 'bands' as const,
+        color: '#999999',
+        opacity: 0.6,
+        ribbons: [ribbon, { ...ribbon, edgeId: 'f' }],
+        widthScale: { kind: 'sqrt' as const, maxWeight: 1, maxWidth: 14, minWidth: 1 },
+      },
+    };
+    const c = renderPdfContent(scene, { outline: boxes });
+    const group = c.forms.find((f) => f.group === true);
+    expect(group?.bbox).toEqual([0, 0, scene.width, scene.height]);
+    // 2 つのリボンは、1 つのグループの中で不透明に塗る（グループの外では半透明にしない）。
+    expect(group?.stream.match(/\nf\n/g)).toHaveLength(2);
+    expect(group?.stream).not.toContain(' gs');
+    expect(c.graphicsStates).toContainEqual(expect.objectContaining({ fill: 0.6 }));
+    expect(c.stream).toContain(`/${group?.name ?? '?'} Do`);
+    // グループの図形が、エッジより前（下）に描かれる。
+    expect(c.stream.indexOf(' Do')).toBeLessThan(c.stream.indexOf('\nS\n'));
+    const pdf = new TextDecoder('latin1').decode(await buildPdf(c));
+    expect(pdf).toContain('/Group << /S /Transparency');
+  });
+});

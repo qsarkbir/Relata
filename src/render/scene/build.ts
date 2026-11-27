@@ -16,9 +16,11 @@ import {
 import type { NodeId, NodeShape, NodeTypeId } from '../../core/model';
 import { assertNever } from '../../core/util/assertNever';
 import { detectDirection, type TextDirection } from '../text/direction';
+import { layoutBundled, type BundleDrawEdge, type SceneBundling } from './bundled';
 import type {
   PathCommand,
   Scene,
+  SceneBundle,
   SceneEdge,
   SceneLabel,
   LegendMark,
@@ -97,6 +99,11 @@ export interface BuildSceneOptions {
   readonly zoom?: number;
   /** 選択中のノード。 */
   readonly selected?: ReadonlySet<NodeId>;
+  /**
+   * 選択中のエッジ（グラフのエッジのキー）。束ねた図では、選んだエッジを帯の上に細い線（`role: 'highlight'`）で
+   * 強調する。`includeSelection` が true のときだけ（ノードの選択と同じ）。
+   */
+  readonly selectedEdgeKeys?: ReadonlySet<string>;
   /** 選択の強調を図に含めるか。既定は含めない（D-31）。 */
   readonly includeSelection?: boolean;
   /**
@@ -119,6 +126,13 @@ export interface BuildSceneOptions {
    */
   readonly measureText?: MeasureText;
   readonly legend?: LegendSpec;
+  /**
+   * 束ねたエッジ（FR-VG-13、14）。束ねた結果（`paths` と `graph`）が有効なエッジは、通常のエッジの代わりに、
+   * 帯（`bands`）または半透明の重ね描き（`overlay`）で描く。省略、または結果に無いエッジ（束ねていない経路）は
+   * 今まで通り描く（計算中・中止・失敗のときは、省略して呼ぶ）。`paths` の座標はレイアウトの座標で、
+   * `zoom` 倍して使う。ズームでは `graph` を作り直さず、この関数を呼び直すだけでよい（太さとずらしは px）。
+   */
+  readonly bundled?: SceneBundling;
   /**
    * 文字のフォント。CSS の `font-family` と同じ書き方の一覧（例: `Amiri, serif`、
    * `'Times New Roman', serif`）。測定と描画で同じものを使う。既定 `sans-serif`。
@@ -304,6 +318,43 @@ export function buildScene(
     }
   });
   const rawEdges: SceneEdge[] = [];
+  // 束ねた描画（FR-VG-13、14）。束ねた経路のあるエッジは、ここで帯や線にし、下のループでは描かない。
+  let bundleLayer: SceneBundle | undefined;
+  let bundledKeys: ReadonlySet<string> = new Set();
+  if (options.bundled !== undefined) {
+    const drawEdges: BundleDrawEdge[] = [];
+    graph.forEachEdge((key, attrs, source, target) => {
+      const s = byId.get(source as NodeId);
+      const t = byId.get(target as NodeId);
+      if (s === undefined || t === undefined) return;
+      const flagged = options.missingEdges?.has(key) === true;
+      drawEdges.push({
+        id: key,
+        sourceId: s.id,
+        targetId: t.id,
+        directed: attrs.directed,
+        source: { x: s.x, y: s.y, extent: shapeExtent(s.shape, s.r) + s.strokeWidth / 2 },
+        target: { x: t.x, y: t.y, extent: shapeExtent(t.shape, t.r) + t.strokeWidth / 2 },
+        dashed: encoding.widths?.get(key)?.missing === true || flagged,
+        attrMissing: flagged,
+        highlighted:
+          showSel &&
+          (selected.has(s.id) || selected.has(t.id) || options.selectedEdgeKeys?.has(key) === true),
+        width: (() => {
+          const w = encoding.widths?.get(key)?.width;
+          return w !== undefined && Number.isFinite(w) ? Math.max(0, w) : DEFAULT_EDGE_WIDTH;
+        })(),
+      });
+    });
+    const layout = layoutBundled(options.bundled, {
+      zoom,
+      directedStyle: options.directedStyle ?? 'arrow',
+      edges: drawEdges,
+    });
+    bundleLayer = layout.bundle;
+    bundledKeys = layout.handled;
+    rawEdges.push(...layout.lines);
+  }
   let edgesWithoutEndpoint = 0;
   let widthMatched = 0;
   const selfLoops = 0;
@@ -317,6 +368,7 @@ export function buildScene(
 
     const w = encoding.widths?.get(key);
     if (w !== undefined) widthMatched += 1;
+    if (bundledKeys.has(key)) return; // 帯や線として描いた（上）
     const width =
       w !== undefined && Number.isFinite(w.width) ? Math.max(0, w.width) : DEFAULT_EDGE_WIDTH;
     const reverseWidth = directedWidths.get(JSON.stringify([target, source]));
@@ -407,6 +459,10 @@ export function buildScene(
   for (const edge of rawEdges) {
     for (const p of [...(edge.head ?? []), ...(edge.ribbon ?? [])]) grow(p.x, p.y, p.x, p.y);
   }
+  // 帯の頂点も範囲に含める（帯は線幅でなく多角形なので、頂点そのもので測る）。
+  for (const r of bundleLayer?.ribbons ?? []) {
+    for (const p of [...r.polygon, ...(r.head ?? [])]) grow(p.x, p.y, p.x, p.y);
+  }
   for (const l of rawLabels) {
     const w = textWidth(l.text);
     const x0 = l.anchor === 'right' ? l.x - w : l.x;
@@ -448,6 +504,19 @@ export function buildScene(
       }
     }),
   }));
+  const shiftPoints = (ps: readonly { readonly x: number; readonly y: number }[]) =>
+    ps.map((p) => ({ x: p.x + dx, y: p.y + dy }));
+  const shiftedBundle: SceneBundle | undefined =
+    bundleLayer === undefined
+      ? undefined
+      : {
+          ...bundleLayer,
+          ribbons: bundleLayer.ribbons.map((r) => ({
+            ...r,
+            polygon: shiftPoints(r.polygon),
+            ...(r.head === undefined ? {} : { head: shiftPoints(r.head) }),
+          })),
+        };
   const labels = rawLabels.map((l) => shiftLabel(l, dx, dy));
   const graphWidth = maxX - minX + margin * 2;
   let width = graphWidth;
@@ -473,6 +542,7 @@ export function buildScene(
     height,
     nodes,
     edges,
+    ...(shiftedBundle === undefined ? {} : { bundle: shiftedBundle }),
     labels,
     // 【なぜ】exactOptionalPropertyTypes のため、`legend: undefined` と書けない。あるときだけ足す。
     ...(legend === undefined ? {} : { legend }),

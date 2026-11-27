@@ -4,7 +4,7 @@
  * 見本は maghrib.relata.json（ノード 15、エッジ 17。既定では孤立の p20 を除いて 14 / 15）。
  * ページ送りは、130 ノードの作り物のプロジェクトで確かめる。
  */
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { readFileSync } from 'node:fs';
 import {
   fixturePath,
@@ -83,7 +83,8 @@ test.describe('日本語の画面', () => {
   }) => {
     await openProject(page, 'maghrib.relata.json');
     // 既定は閉じている。タブは「年表」「表」「欠損」（空のタブを置かない）。
-    await expect(page.getByRole('tab')).toHaveCount(3);
+    // 中央の「グラフ｜地図」のタブ（D-48）は、下の段のタブではないので数えない。
+    await expect(page.getByRole('tab').filter({ hasNotText: /^(グラフ|地図)$/ })).toHaveCount(3);
     await expect(page.getByRole('tab', { name: '表', exact: true })).toBeVisible();
     await expect(table(page)).toBeHidden();
     // 状態を作る: フィルタ、選択、ズーム。

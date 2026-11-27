@@ -115,6 +115,7 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
       ...(deps.targets.display === undefined ? {} : { display: deps.targets.display }),
       ...(deps.targets.timeline === undefined ? {} : { timeline: deps.targets.timeline }),
       ...(deps.targets.time === undefined ? {} : { time: deps.targets.time }),
+      ...(deps.targets.map === undefined ? {} : { map: deps.targets.map }),
     });
     if (snapshot === null) return;
     let text: string;
@@ -211,11 +212,15 @@ export function createAutosave(deps: AutosaveDeps): Autosave {
         )
           schedule();
       });
+      const unsubMap = deps.targets.map?.subscribe((s, prev) => {
+        if (s.map !== prev.map || s.geoSource !== prev.geoSource) schedule();
+      });
       const unsubDisplay = deps.targets.display?.subscribe((s, prev) => {
         if (s.calendar !== prev.calendar) schedule();
       });
       return () => {
         unsubWorkspace?.();
+        unsubMap?.();
         unsubDisplay?.();
         unsubTimeline?.();
         unsubTime?.();

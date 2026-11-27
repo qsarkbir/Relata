@@ -6,6 +6,9 @@ import { createDataStore, EMPTY_IMPORT_SETTINGS } from './dataStore';
 import { bindFilterToData, createFilterStore, selectFilterState } from './filterStore';
 import { createDisplayStore } from './displayStore';
 import { bindTimelineToData, createTimelineStore } from './timelineStore';
+import { DEFAULT_BUNDLING_VIEW, DEFAULT_GRAPH_VIEW } from '../core/project';
+import { createGraphViewStore } from './graphViewStore';
+import type { GraphViewState } from './graphViewStore';
 import { applySnapshot, takeSnapshot } from './project';
 
 const f: FilterDef = {
@@ -105,5 +108,50 @@ describe('state/project', () => {
     timeline.getState().patchTimeline({ width: 25, node: { kind: 'attr', attr: 'born' } });
     data.getState().setDataset(sampleDataset());
     expect(timeline.getState().timeline).toMatchObject({ width: 25, node: null, edge: null });
+  });
+});
+
+/**
+ * 束ねる設定を読む（項目が無ければ既定）。
+ *
+ * @param state - グラフ表示ストアの状態
+ * @returns 束ねる設定
+ */
+function bundlingOf(state: GraphViewState) {
+  return (state.view ?? DEFAULT_GRAPH_VIEW).bundling ?? DEFAULT_BUNDLING_VIEW;
+}
+
+describe('FR-VG-13: 束ねる設定の保存と復元', () => {
+  it('FR-VG-13: 既定と同じ（無効、強さ 0.85、帯）なら view.graph.bundling を保存しない', () => {
+    const { data, filter } = stores();
+    data.getState().loadDataset(sampleDataset(), { missingTokens: [], columnCalendars: [] });
+    const graph = createGraphViewStore();
+    graph.getState().setView({ ...DEFAULT_GRAPH_VIEW, bundling: DEFAULT_BUNDLING_VIEW });
+    const snap = takeSnapshot(data, filter, { graph });
+    expect(snap?.view.graph).toBeDefined();
+    expect(snap?.view.graph).not.toHaveProperty('bundling');
+  });
+
+  it('FR-VG-13: 有効にした設定は保存し、applySnapshot で復元する（往復）', () => {
+    const { data, filter } = stores();
+    data.getState().loadDataset(sampleDataset(), { missingTokens: [], columnCalendars: [] });
+    const graph = createGraphViewStore();
+    const bundling = { enabled: true, strength: 0.4, style: 'overlay' as const };
+    graph.getState().setView({ ...DEFAULT_GRAPH_VIEW, bundling });
+    const snap = takeSnapshot(data, filter, { graph });
+    expect(snap?.view.graph?.bundling).toEqual(bundling);
+    const data2 = createDataStore();
+    const filter2 = createFilterStore();
+    const graph2 = createGraphViewStore();
+    if (snap === null) throw new Error('snapshot');
+    applySnapshot(snap, data2, filter2, { graph: graph2 });
+    expect(bundlingOf(graph2.getState())).toEqual(bundling);
+  });
+
+  it('FR-VG-13: 項目が無いときは既定（無効）として読む', () => {
+    const graph = createGraphViewStore();
+    expect(bundlingOf(graph.getState())).toEqual(DEFAULT_BUNDLING_VIEW);
+    graph.getState().setView(DEFAULT_GRAPH_VIEW);
+    expect(bundlingOf(graph.getState())).toEqual(DEFAULT_BUNDLING_VIEW);
   });
 });

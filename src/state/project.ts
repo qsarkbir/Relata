@@ -5,8 +5,12 @@ import type { FilterStoreState } from './filterStore';
 import { selectFilterState } from './filterStore';
 
 import type { ProjectView, ProjectParts } from '../core/project';
+import type { GraphViewSettings } from '../core/project';
 import type { GraphViewState } from './graphViewStore';
+import { isDefaultBundlingView } from './graphViewStore';
 import type { WorkspaceViewState } from './workspaceStore';
+import type { MapViewState } from './mapViewStore';
+import { geoSourceToSave, isDefaultMapView } from './mapViewStore';
 import type { TimelineViewState } from './timelineStore';
 import { isDefaultTimeline } from './timelineStore';
 import { DEFAULT_TABLE_VIEW, DEFAULT_WORKSPACE } from '../core/project';
@@ -43,6 +47,19 @@ export interface ViewTargets {
   readonly timeline?: StoreApi<TimelineViewState>;
   /** 時間の再生の設定（FR-TM-02）。再生中かどうかは保存しない。 */
   readonly time?: StoreApi<TimeStoreState>;
+  /** 地図の設定と座標の出どころ（D-46、D-59）。渡したときだけ保存・復元の対象にする。 */
+  readonly map?: StoreApi<MapViewState>;
+}
+
+// 既定と同じ束ねる設定を落とす（項目ごと無くす）。
+function withoutDefaultBundling(view: GraphViewSettings): GraphViewSettings {
+  if (view.bundling === undefined || !isDefaultBundlingView(view.bundling)) return view;
+  // 【TS】分割代入の rest で `bundling` だけを除いた残りを作る（元のオブジェクトは変えない）。
+  // 【なぜ】項目を列挙して作り直すと、設定に項目が増えたとき書き漏らす。コピーしてから `bundling` だけを消す。
+  // 【TS】`-readonly [K in keyof T]` は、全項目の readonly を外した型（`delete` は任意の項目にだけ使える）。
+  const copy: { -readonly [K in keyof GraphViewSettings]: GraphViewSettings[K] } = { ...view };
+  delete copy.bundling;
+  return copy;
 }
 
 /**
@@ -65,12 +82,18 @@ export function takeSnapshot(
   const ws = targets.workspace?.getState();
   const timeline = targets.timeline?.getState().timeline;
   const time = targets.time === undefined ? undefined : selectTimeSettings(targets.time.getState());
+  const mapState = targets.map?.getState();
+  const geoSource =
+    mapState === undefined
+      ? undefined
+      : geoSourceToSave(mapState.geoSource, graphView ?? undefined);
   return {
     dataset,
     importSettings,
     view: {
       filter: VIEW_PROJECTORS.filter(f),
-      ...(graphView == null ? {} : { graph: graphView }),
+      // 【なぜ】束ねる設定が既定（無効）と同じなら書かない。任意の項目なので、無ければ既定が補われる（D-24）。
+      ...(graphView == null ? {} : { graph: withoutDefaultBundling(graphView) }),
       // 【なぜ】既定のままなら書かない。任意の項目なので、無ければ読み込みで既定が補われる（D-44）。
       ...(ws === undefined || ws.table === DEFAULT_TABLE_VIEW ? {} : { table: ws.table }),
       ...(ws === undefined || ws.workspace === DEFAULT_WORKSPACE
@@ -83,6 +106,9 @@ export function takeSnapshot(
       ...(timeline === undefined || isDefaultTimeline(timeline) ? {} : { timeline }),
       // 【なぜ】再生中かどうかは保存しない（開いた直後に動き出さないため）。既定と同じなら書かない。
       ...(time === undefined || isDefaultTimeSettings(time) ? {} : { time }),
+      // 【なぜ】地図の設定と座標の出どころも、既定と同じなら書かない（D-59。任意の項目）。
+      ...(mapState === undefined || isDefaultMapView(mapState.map) ? {} : { map: mapState.map }),
+      ...(geoSource === undefined ? {} : { geoSource }),
     },
   };
 }
@@ -118,4 +144,9 @@ export function applySnapshot(
     .setCalendar(snapshot.view.display?.calendar ?? DEFAULT_CALENDAR_DISPLAY);
   targets.timeline?.getState().reset(snapshot.view.timeline);
   targets.time?.getState().reset(snapshot.view.time);
+  // 【なぜ】項目が無いファイル（版 2 以前）は既定に戻す（前のプロジェクトの背景や表示範囲を残さない）。
+  targets.map?.getState().reset({
+    ...(snapshot.view.map === undefined ? {} : { map: snapshot.view.map }),
+    ...(snapshot.view.geoSource === undefined ? {} : { geoSource: snapshot.view.geoSource }),
+  });
 }

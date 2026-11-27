@@ -6,7 +6,7 @@
  * 幅のある日付）で、ノードは 219、エッジは 204（エッジに日付は無い）。
  */
 import { readFileSync } from 'node:fs';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures';
 import { openProject, readAutosave, saveProjectFile, startApp, waitForAutosave } from './support';
 
 test.use({ locale: 'ja-JP' });

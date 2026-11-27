@@ -99,6 +99,7 @@
     import base from './playwright.config';
     export default { ...base, use: { ...base.use, launchOptions: { executablePath: '/opt/pw-browsers/chromium' } } };
     ```
+  - **spec は `test` を `./fixtures` から import する**（`tests/e2e/fixtures.ts`。localhost 以外への要求を止め、OSM のタイルを小さな PNG に差し替える。OSM の利用規約で自動の操作からタイルを取らないため。`@playwright/test` から直接 import すると lint で止まる）。手でスクリーンショットを撮るスクリプトでも、`context.route` で外部への要求を止める。
   - 実行: `npm run build` の後、`RELATA_E2E_PORT=<番号> E2E_SKIP_BUILD=1 npx playwright test -c playwright.local.config.ts --trace off`。
     - `E2E_SKIP_BUILD=1` は `dist/` を使い回すので、ビルドし直すのを忘れない。
     - 並行して動かすときは、ポートを分ける（統括役 4320、エージェント 4321〜4324、性能 4194）。

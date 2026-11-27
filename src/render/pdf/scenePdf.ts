@@ -18,6 +18,7 @@ import { FADED_OPACITY } from '../scene/timeFade';
 import type {
   PathCommand,
   Scene,
+  SceneBundle,
   SceneEdge,
   SceneLabel,
   SceneLegendItem,
@@ -45,6 +46,11 @@ export interface PdfForm {
   readonly bbox: readonly [number, number, number, number];
   /** 図形の内容（パスと塗りの命令。ASCII だけ）。 */
   readonly stream: string;
+  /**
+   * true なら透過グループ（`/Group << /S /Transparency >>`）。束ねた帯の層（FR-VG-13）で、重なるリボンを
+   * 1 つの図形として扱い、層全体に 1 回だけ不透明度を掛ける（SVG の `<g opacity>` と同じ見え方にする）。
+   */
+  readonly group?: boolean;
 }
 
 /** ページの内容と、描画の状態の一覧。 */
@@ -200,6 +206,22 @@ class Writer {
       });
     }
     return name;
+  }
+
+  /**
+   * 透過グループの図形を作り、ページに置く（不透明度 `alpha` で）。中身は呼ぶ側が `lines` に作る。
+   *
+   * @param stream - グループの内容（px 単位のパスと塗り）
+   * @param bbox - 範囲（シーンの座標）
+   * @param alpha - 層全体の不透明度
+   */
+  group(stream: string, bbox: readonly [number, number, number, number], alpha: number): void {
+    const name = `F${String(this.formList.length)}`;
+    this.formList.push({ name, bbox, stream, group: true });
+    this.op('q');
+    this.alpha(alpha, alpha);
+    this.op(`/${name} Do`);
+    this.op('Q');
   }
 
   polygon(points: readonly { readonly x: number; readonly y: number }[]): void {
@@ -366,6 +388,33 @@ function drawEdge(w: Writer, e: SceneEdge): void {
   }
 }
 
+// 束ねた帯の層。リボンと矢じりを不透明で塗った透過グループにして、層全体に不透明度を掛ける。
+function drawBundle(w: Writer, b: SceneBundle, scene: Scene): void {
+  const color = rgb(b.color, '#999999');
+  for (const faded of [true, false]) {
+    const body: string[] = [`${color} rg`];
+    const sub = new Writer();
+    let count = 0;
+    for (const r of b.ribbons) {
+      if ((r.faded === true) !== faded) continue;
+      count++;
+      sub.polygon(r.polygon);
+      sub.op('f');
+      if (r.head !== undefined) {
+        sub.polygon(r.head);
+        sub.op('f');
+      }
+    }
+    if (count === 0) continue;
+    body.push(...sub.lines);
+    w.group(
+      body.join('\n') + '\n',
+      [0, 0, scene.width, scene.height],
+      faded ? b.opacity * FADED_OPACITY : b.opacity,
+    );
+  }
+}
+
 function drawText(w: Writer, label: SceneLabel, outline: TextOutliner, bold: boolean): void {
   const run = outline(label.text, label.fontSize, label.direction);
   // 【なぜ】anchor は x が文字列のどちらの端か（物理的な向き）。右端なら、幅の分だけ左へずらす。
@@ -476,6 +525,7 @@ export function renderPdfContent(scene: Scene, options: PdfSceneOptions): PdfCon
       `${rgb(options.background, '#ffffff')} rg 0 0 ${fmt(scene.width)} ${fmt(scene.height)} re f`,
     );
   }
+  if (scene.bundle !== undefined) drawBundle(w, scene.bundle, scene);
   for (const e of scene.edges) drawEdge(w, e);
   for (const n of scene.nodes) drawNode(w, n);
   w.op('0.133 0.133 0.133 rg');

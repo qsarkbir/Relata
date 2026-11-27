@@ -63,6 +63,32 @@ export const ja = {
   'graph.geo.choose': '緯度・経度の属性を選んでください',
   'graph.geo.notFound':
     '保存された緯度・経度の属性が、今のデータに見つかりません。選び直してください。',
+  'graph.bundle.toggle': '束ねる',
+  'graph.bundle.directionNote':
+    '束ねた経路の向きは、先細りで示すのがおすすめです（濃淡を選んでいても、帯は先細りで描きます）。矢印を選ぶと、経路の終端に付きます。',
+  'graph.bundle.toggleHint':
+    'ツールバーの「束ねる」をオンにすると、エッジを束ねて図の見通しをよくします。フィルタや配置が変わると計算し直します（強さの変更は「束ね直す」で反映します）。',
+  'graph.section.bundling': '束ねる（edge bundling）',
+  'graph.bundle.strength': '束ねる強さ',
+  'graph.bundle.style': '描き方',
+  'graph.bundle.style.bands': '束の太さの帯',
+  'graph.bundle.style.overlay': '半透明の重ね描き（簡易）',
+  'graph.bundle.rebundle': '束ね直す',
+  'graph.bundle.cancel': '取り消す',
+  'graph.bundle.start': '始める',
+  'graph.bundle.status.idle': '束ねるを有効にしています。',
+  'graph.bundle.status.waiting': '束ねる準備をしています。束ねない図を表示しています。',
+  'graph.bundle.status.running': '束ねています {percent}。束ねない図を表示しています。',
+  'graph.bundle.status.ready': '{count} 本のエッジを束ねました。',
+  'graph.bundle.status.cancelled': '束ねるのを中止しました。束ねない図を表示しています。',
+  'graph.bundle.status.error': '束ねられませんでした（{reason}）。束ねない図を表示しています。',
+  'graph.bundle.status.confirm':
+    '表示中のエッジが {count} 本で、{limit} 本を超えています。束ねるのに時間がかかります。始めますか。',
+  'graph.bundle.stale': '強さを変えました。「束ね直す」で反映します。',
+  'graph.bundleTask': 'エッジを束ねる計算中',
+  'legend.edgeWidthUnbundled': 'エッジの太さ（重み。束ねていないエッジ）',
+  'legend.bundleWidth': '束の太さ（通るエッジの重みの合計）',
+  'legend.bundleWeight': '重み {w}',
   'graph.relayout': '再配置する',
   'graph.layoutTask': 'グラフの配置を計算中',
   'graph.labels': 'ラベル',
@@ -914,6 +940,84 @@ export const ja = {
     '時間フィルタに開始も終了もありません。すべての日付が条件に合うとは限りません。確認してください。',
   'filter.time.bound.from': '{range}以後',
   'filter.time.bound.to': '{range}以前',
+  'main.views': '主な表示の切り替え',
+  'main.view.graph': 'グラフ',
+  'main.view.map': '地図',
+  'map.title': '地図',
+  'map.toolbar': '地図の操作',
+  'map.zoomIn': '地図を拡大',
+  'map.zoomOut': '地図を縮小',
+  'map.fit': '全体を表示',
+  'map.fit.disabled': '座標を持つノードがないため、データに合わせられません。',
+  'map.settings': '表示の設定',
+  'map.loading': '地図を読み込み中…',
+  'map.unavailable': 'この環境では地図を描けません',
+  'map.unavailable.webgl2':
+    '地図の描画には WebGL2 が必要ですが、このブラウザでは使えません。ブラウザを新しくするか、グラフの表示をお使いください。',
+  'map.unavailable.initFailed': '地図を初期化できませんでした。ページを読み込み直してください。',
+  'map.unavailable.loadFailed':
+    '地図の部品を読み込めませんでした。ページを読み込み直してください。',
+  'map.reportError': '地図の誤りを報告',
+  'map.drawer': '地図の表示の設定',
+  'map.drawer.title': '地図だけの設定',
+  'map.settingsScope': 'ここの設定は地図だけに効きます。グラフの表示は変わりません。',
+  'map.background': '背景地図',
+  'map.background.osm': 'OpenStreetMap（標準の地図）',
+  'map.background.simple': '簡易背景（陸地だけ。外部へ通信しません）',
+  'map.background.custom': '自分の地図タイル（XYZ の URL）',
+  'map.background.simpleNote':
+    '陸地だけの簡易な背景です。Natural Earth（パブリックドメイン）の陸地を、このサイトから読みます。',
+  'map.tileUrl': 'タイルの URL',
+  'map.tileUrl.hint':
+    '例: https://example.org/tiles/{z}/{x}/{y}.png（https で始め、{z}、{x}、{y} を含めます）',
+  'map.tileAttribution': '帰属表示の文',
+  'map.tileAttribution.hint': '古地図の出典などを書きます。空なら URL のホスト名を表示します。',
+  'map.tileProblem.empty': 'タイルの URL を入力してください。入力するまでは海の色だけを描きます。',
+  'map.tileProblem.not-https': 'この URL は使えません。https で始まる URL だけ使えます。',
+  'map.tileProblem.missing-placeholder':
+    'この URL は使えません。{z}、{x}、{y} をすべて含めてください。',
+  'map.tileProblem.subdomain-placeholder':
+    'この URL は使えません。{s} には対応していません。{s} を除いた URL にしてください。',
+  'map.tileProblem.invalid':
+    'この URL は使えません。ホスト名があること、空白やユーザー名・パスワードを含まないことを確かめてください。',
+  'map.tileKeysRemoved':
+    '保存したとき、URL から鍵らしい項目（{names}）を除きました。鍵を入れ直してください。',
+  'map.tileTerms': '自分のタイルを使うときは、そのタイルの提供元の利用条件に従ってください。',
+  'map.privacy.title': '通信について',
+  'map.privacy.body':
+    '背景に OpenStreetMap か自分の地図タイルを使うと、表示中の範囲とズームがタイルのサーバーに伝わります。読み込んだデータ（ノード、属性、ファイル）は送りません。OpenStreetMap 財団は、タイルの利用の集計（利用しているサイトを含む）を公開しています。通信したくないときは「簡易背景」を選んでください。',
+  'map.geo.title': '座標の出どころ',
+  'map.geo.note':
+    'グラフの「地理座標」の配置と共通の設定です。ここを変えると、グラフの配置も同じ出どころで計算し直します。',
+  'map.geo.kind': '出どころ',
+  'map.geo.kind.geo': '読み込みで指定した緯度・経度（geo）',
+  'map.geo.kind.attrs': '属性の組（緯度の列と経度の列を選ぶ）',
+  'map.geo.pending': '緯度と経度の両方を選ぶと反映されます。',
+  'map.unplaced.summary': '地図に載らないノード {count} 件',
+  'map.unplaced.region': '地図に載らないノードの一覧',
+  'map.unplaced.reason.no-column': '座標の列が無い型のノード（{count} 件）',
+  'map.unplaced.reason.missing': '座標の値が欠損（{count} 件）',
+  'map.unplaced.reason.invalid': '座標が不正な値（{count} 件）',
+  'map.unplaced.reason.out-of-range': '座標が範囲外（{count} 件）',
+  'map.unplaced.edges':
+    '端のノードが地図に載らないため描けないエッジ {count} 件（表示中のエッジ {total} 本のうち）',
+  'map.unplaced.pick': '「{name}」を選択する',
+  'map.noCoordinates.title': '座標を持つノードがありません',
+  'map.noCoordinates.body':
+    '座標の出どころを選んでください。「表示の設定」の「座標の出どころ」で、緯度・経度の列を指定できます。',
+  'map.noNodes': '表示中のノードがありません。絞り込みを確かめてください。',
+  'project.tileKeysStripped':
+    '保存したファイルには、地図のタイルの URL から鍵らしい項目（{names}）を含めていません。このファイルを開いた人は、鍵を入れ直してください。',
+  'project.tileUrlDropped':
+    '地図のタイルの URL が使えない形だったため、保存したファイルには含めていません。',
+  'about.mapPrivacy':
+    '地図のタブを開くと、背景のタイルを取得するために外部（OpenStreetMap など、選んだタイルのサーバー）へ通信します。このとき、表示中の範囲とズームがサーバーに伝わります。読み込んだデータは送りません。OpenStreetMap 財団は、タイルの利用の集計（利用しているサイトを含む）を公開しています。「簡易背景」を選ぶと、外部へ通信しません。',
+  'about.mapSources':
+    '背景地図の出典: © OpenStreetMap contributors（ODbL）、Natural Earth（パブリックドメイン）。',
+  'map.unplaced.more': '他 {count} 件（一覧には先頭の一部だけを出しています）',
+  'map.gate.body':
+    'このプロジェクトは {host} の地図タイルを使います。表示すると、表示範囲がそのサーバーに伝わります。',
+  'map.gate.show': '地図を表示する',
 } as const;
 
 /**

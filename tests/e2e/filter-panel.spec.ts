@@ -5,7 +5,7 @@
  * 既定（孤立ノードを表示しない）では、最初の件数は「ノード 14 / 15、エッジ 17 / 17」。
  * 期待する件数は、見本の中身から手で数えた（各テストのコメントに根拠を書く）。
  */
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import {
   appliedRegion,
   attrBox,

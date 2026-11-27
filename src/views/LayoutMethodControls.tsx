@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { countNoCoordinates, resolveColumnOrder } from '../core/layout';
-import { geoCandidates, geoInputsFor, resolveGeoSelection } from './geoInputs';
+import { useStore } from 'zustand';
+import { effectiveGeoAttrs, geoInputsFor, geoLayoutState } from './geoInputs';
+import { GeoSourceControls } from './GeoSourceControls';
+import { mapViewStore } from '../state';
+import { resolveGeoSource } from '../core/project';
 import type { Dataset } from '../core/model';
 import type { RelataGraph } from '../core/graph';
 import type { GraphViewSettings } from '../core/project';
 import { useT } from './hooks';
-import { Field } from './ui/Field';
 
 /** {@link NoCoordinatesNote} の props。 */
 interface NoteProps {
@@ -24,19 +27,24 @@ interface NoteProps {
  */
 export function NoCoordinatesNote({ dataset, graph, view }: NoteProps) {
   const t = useT();
-  const selection = resolveGeoSelection(dataset, view.geoAttrs);
-  const ready = selection.lat !== undefined && selection.lon !== undefined;
+  // 【なぜ】座標の出どころは地図と共通の設定（`view.geoSource`。D-46）。無ければ旧版の `geoAttrs` を読み替える。
+  const geoSource = useStore(mapViewStore, (s) => s.geoSource);
+  const source = useMemo(() => resolveGeoSource(geoSource, view), [geoSource, view]);
+  const state = geoLayoutState(dataset, source, effectiveGeoAttrs(geoSource, view.geoAttrs));
+  const ready = state === 'ready';
   const count = useMemo(
     () =>
-      view.layout === 'geo' && ready
-        ? countNoCoordinates(geoInputsFor(dataset, graph, view.geoAttrs))
-        : 0,
-    [dataset, graph, view.layout, view.geoAttrs, ready],
+      view.layout === 'geo' && ready ? countNoCoordinates(geoInputsFor(dataset, graph, source)) : 0,
+    [dataset, graph, view.layout, source, ready],
   );
   if (view.layout !== 'geo' || graph.order === 0) return null;
   return (
     <p className="graph-no-coordinates" role="status" data-testid="no-coordinates">
-      {!ready ? t('graph.geo.choose') : t('graph.noCoordinates', { count })}
+      {state === 'not-found'
+        ? t('graph.geo.notFound')
+        : !ready
+          ? t('graph.geo.choose')
+          : t('graph.noCoordinates', { count })}
     </p>
   );
 }
@@ -122,49 +130,18 @@ export function LayoutMethodControls({ dataset, graph, view, onChange }: Control
     );
   }
   if (view.layout === 'geo') {
-    const candidates = geoCandidates(dataset);
-    const selection = resolveGeoSelection(dataset, view.geoAttrs);
-    const select = (which: 'lat' | 'lon') => {
-      const label = t(which === 'lat' ? 'graph.geo.lat' : 'graph.geo.lon');
-      return (
-        <Field label={label}>
-          <select
-            aria-label={label}
-            value={selection[which] ?? ''}
-            onChange={(e) => {
-              const value = e.currentTarget.value;
-              // 【なぜ】選んでいない側は項目ごと省く（空の文字列は保存しない）。画面に出ている有効な選択だけを引き継ぐ。
-              const lat = which === 'lat' ? value : selection.lat;
-              const lon = which === 'lon' ? value : selection.lon;
-              const next = {
-                ...(lat === undefined || lat === '' ? {} : { lat }),
-                ...(lon === undefined || lon === '' ? {} : { lon }),
-              };
-              // 【なぜ】両方とも未選択に戻したら、空のオブジェクトではなく項目ごと消す（保存の形と揃える）。
-              //       JSON に書き出すとき、値が undefined の項目は省かれる。
-              onChange({ geoAttrs: Object.keys(next).length === 0 ? undefined : next });
-            }}
-          >
-            <option value="">{t('graph.geo.none')}</option>
-            {candidates.map((a) => (
-              <option key={a.key} value={a.key}>
-                {a.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-      );
-    };
     return (
       <div className="graph-layout-method">
         <p className="rl-section-note">{t('graph.geo.note')}</p>
-        {selection.missing && (
-          <p className="rl-section-note" role="alert">
-            {t('graph.geo.notFound')}
-          </p>
-        )}
-        {select('lat')}
-        {select('lon')}
+        {/* 【なぜ】座標の出どころは地図と共通（D-46）。地図の設定と同じ部品を使い、選んだら配置を計算し直す。 */}
+        <GeoSourceControls
+          dataset={dataset}
+          geoAttrs={view.geoAttrs}
+          alwaysShowAttrs
+          onGeoAttrs={(next) => {
+            onChange({ geoAttrs: next });
+          }}
+        />
       </div>
     );
   }

@@ -7,7 +7,7 @@
  * 待ちは時間の経過ではなく、画面の状態（時刻の文、要素の数）で行う。
  */
 import { readFileSync } from 'node:fs';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures';
 import {
   openExportDialog,
   openProject,

@@ -3,7 +3,7 @@
  *
  * 見本は maghrib.relata.json（ノード 15、エッジ 17。既定では孤立の p20 を除いて 14 / 15）。
  */
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { appliedRegion, openGraphSettings, openProject, selectNode, startApp } from './support';
 
 test.use({ locale: 'ja-JP' });
