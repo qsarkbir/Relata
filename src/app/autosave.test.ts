@@ -390,8 +390,7 @@ describe('autosave', () => {
   });
 
   describe('地図の設定（D-52、NFR-02）', () => {
-    function withMap() {
-      const mem = memory();
+    function withMap(mem: ReturnType<typeof memory> = memory()) {
       const data = createDataStore();
       const filter = createFilterStore();
       bindFilterToData(filter, data);
@@ -404,7 +403,7 @@ describe('autosave', () => {
         ui: createUiStore(),
       });
       auto.start();
-      return { mem, data, map };
+      return { mem, data, map, auto };
     }
 
     it('NFR-02: タイルの URL の鍵は自動保存に残らず、除いた項目名だけが残る', async () => {
@@ -430,6 +429,10 @@ describe('autosave', () => {
       await vi.advanceTimersByTimeAsync(AUTOSAVE_DELAY_MS);
       expect(mem.saves).toBe(before + 1);
       expect(mem.value).toContain('"viewport":{"lon":44,"lat":33,"zoom":5}');
+      // 別のストアの組で復元すると、表示範囲が戻る。
+      const restored = withMap(mem);
+      await restored.auto.restore();
+      expect(restored.map.getState().map.viewport).toEqual({ lon: 44, lat: 33, zoom: 5 });
     });
   });
 });

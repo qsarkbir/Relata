@@ -45,6 +45,8 @@ export interface GeoSelection {
  * @param geoAttrs - 保存された指定
  * @returns 有効な指定と、データに無い属性があったか
  */
+// 【TS】`GraphViewSettings['geoAttrs']` は「型 GraphViewSettings の geoAttrs 項目の型」を取り出す添字アクセス型。
+//       項目の型を書き写さずに済み、元の型が変われば自動で追随する（任意の項目なので `| undefined` を含む）。
 export function resolveGeoSelection(
   dataset: Dataset,
   geoAttrs: GraphViewSettings['geoAttrs'],
@@ -79,18 +81,37 @@ export function effectiveGeoAttrs(
   return geoSource.kind === 'attrs' ? { lat: geoSource.lat, lon: geoSource.lon } : undefined;
 }
 
+/** 地理座標の配置を計算できる状態か。 */
+export type GeoLayoutState =
+  /** 計算できる。 */
+  | 'ready'
+  /** 選ぶ必要がある（座標を 1 つも取り出せない、または緯度・経度の片方だけを選んでいる）。 */
+  | 'choose'
+  /** 保存された出どころが、今のデータに無い属性を指している。 */
+  | 'not-found';
+
 /**
- * 出どころが 1 つの座標も取り出せない状態か（地理座標の配置を計算せず、選ぶよう促す状態）。
+ * 地理座標の配置を計算してよいかを判定する（FR-VG-02、D-46）。計算しない間は、前の配置を上書きしない。
  *
- * 【なぜ】出どころが `geo`（既定）で、どの型のノードにも `geo` が無いデータ（座標を属性の列として持つデータ）は、
- * 属性の組を選ぶまで配置できない。この間は配置を計算せず、前の配置を上書きしない。
+ * 順に見る: (1) データに無い属性を指していれば `not-found`。(2) 属性の組を片方だけ選んでいる間は `choose`
+ * （選び終わるまで待つ。選択欄の表示と、配置に使う出どころを食い違わせない）。(3) 出どころの種類を問わず、
+ * 座標を 1 つも取り出せなければ `choose`。
  *
  * @param dataset - 元のデータ
- * @param source - 座標の出どころ
- * @returns 選ぶ必要があるなら true
+ * @param source - 座標の出どころ（読み替え後）
+ * @param selected - 選択欄に出す属性の組（`effectiveGeoAttrs` の結果）
+ * @returns 状態
  */
-export function needsGeoChoice(dataset: Dataset, source: GeoSource): boolean {
-  return source.kind === 'geo' && geoSourceTypes(dataset, source).size === 0;
+export function geoLayoutState(
+  dataset: Dataset,
+  source: GeoSource,
+  selected: GraphViewSettings['geoAttrs'],
+): GeoLayoutState {
+  if (resolveGeoSelection(dataset, selected).missing) return 'not-found';
+  const half =
+    selected !== undefined && (selected.lat === undefined) !== (selected.lon === undefined);
+  if (source.kind === 'geo' && half) return 'choose';
+  return geoSourceTypes(dataset, source).size === 0 ? 'choose' : 'ready';
 }
 
 /**

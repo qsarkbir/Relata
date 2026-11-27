@@ -11,7 +11,7 @@ const MAX_LISTED = 200;
 /** {@link MapUnplaced} の props。 */
 interface Props {
   readonly placement: MapPlacement;
-  /** 一覧のノードを選んだとき（選択中のカードへ出す。表と同じ連動）。 */
+  /** 一覧のノードを押したとき（選択に入る。グラフの選択中のカードと表に出る。選択中なら外れる）。 */
   readonly onPick: (id: NodeId) => void;
   /** いま選択中のノード。選択中の行は、色だけでなく印でも示す。 */
   readonly selected: ReadonlySet<NodeId>;

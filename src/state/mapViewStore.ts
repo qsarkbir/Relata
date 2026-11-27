@@ -37,6 +37,8 @@ export interface MapViewState {
    *
    * @param change - 変える項目（`url`、`attribution`）
    */
+  // 【TS】`Pick<T, 'a' | 'b'>` は T から項目 a と b だけを取り出した型、`Partial<…>` はその全項目を省略可にした型。
+  //       合わせて「url と attribution のうち、変えたいものだけを渡せる」引数の型になる（`removedParams` は渡せない）。
   readonly patchCustomTiles: (change: Partial<Pick<CustomTiles, 'url' | 'attribution'>>) => void;
   /**
    * 表示範囲を保存する（地図の操作が止まったとき）。null は「データに合わせる」に戻す。

@@ -44,14 +44,18 @@
   inset-inline-end: var(--rl-space-2);
   inline-size: 20rem;
 }
-/* 左下の「地図に載らないノード」。右下は帰属表示（地図の部品が出す）なので、重ならない。 */
+/* 左下の「地図に載らないノード」。下端を帰属表示（右下。地図の部品が出す）の行より上に上げ、重ならないようにする。 */
 .map-unplaced {
   position: absolute;
   z-index: 2;
-  inset-block-end: var(--rl-space-2);
+  /* 下端を、右下の帰属表示の行より上に上げる（帰属表示が折り返しても覆われない高さ）。 */
+  inset-block-end: calc(var(--rl-space-2) + 3rem);
   inset-inline-start: var(--rl-space-2);
   box-sizing: border-box;
-  max-inline-size: min(22rem, calc(100% - 12rem));
+  display: flex;
+  flex-direction: column;
+  max-inline-size: min(22rem, calc(100% - var(--rl-space-4)));
+  max-block-size: calc(100% - 3rem - var(--rl-space-4));
   background: var(--rl-surface);
   border: var(--rl-border-width) solid var(--rl-border);
   border-radius: var(--rl-radius);
@@ -59,10 +63,13 @@
   font-size: var(--rl-font-md);
 }
 .map-unplaced-toggle {
+  flex: none;
   inline-size: 100%;
   text-align: start;
 }
 .map-unplaced-body {
+  flex: 1 1 auto;
+  min-block-size: 0;
   max-block-size: 16rem;
   overflow: auto;
   padding: var(--rl-space-2);
@@ -119,9 +126,19 @@
 .map-privacy-title {
   margin-block: var(--rl-space-2) var(--rl-space-1);
 }
-/* 引き出しは地図の上に重ねるときも、帰属表示より前に出る。 */
-.map-view .graph-drawer {
-  z-index: 4;
+/* 【なぜ】地図のビューでは、右の引き出しを地図に重ねず、横に並べる（地図の枠を縮める。統括役の決定）。
+   帰属表示（地図の部品が z-index 10 で出す）を UI の下に隠さない（OSM の利用規約。D-51 補足）ためと、
+   帰属表示が UI の部品（引き出しの末尾など）を覆わないため。グラフの引き出しは狭い幅で重なるが
+   （graph.css の @container）、地図ではその規則を打ち消し、幅が狭くても並べる。引き出しは枠の 45% までに収める。 */
+@container (max-width: 46rem) {
+  .map-view .graph-drawer {
+    position: static;
+    flex: 0 0 min(20rem, 45%);
+    inline-size: auto;
+    max-block-size: 85vh;
+    box-shadow: none;
+    z-index: auto;
+  }
 }
 
 /* 「グラフ｜地図」の 2 つのビューの入れ物（D-48）。隠れているほうは描いたまま display: none。 */

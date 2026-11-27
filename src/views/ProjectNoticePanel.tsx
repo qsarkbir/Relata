@@ -92,7 +92,7 @@ export function ProjectNotice() {
       case 'other-tab':
         return t('project.otherTab');
       case 'tile-keys-stripped':
-        return t('project.tileKeysStripped', { names: n.names.join(', ') });
+        return tRich(t, 'project.tileKeysStripped', {}, { names: n.names.join(', ') });
       case 'tile-url-dropped':
         return t('project.tileUrlDropped');
       default:

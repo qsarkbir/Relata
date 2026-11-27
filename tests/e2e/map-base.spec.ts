@@ -775,6 +775,8 @@ test.describe('FR-MP-01・NFR-02: 保存と鍵', () => {
         },
       }),
     );
+    // 利用者のタイルのファイルは、開いた人が許すまで読まない（D-51 補足）。確認の画面で押す。
+    await page.getByTestId('map-gate').getByRole('button', { name: '地図を表示する' }).click();
     await expectColor(page, CUSTOM_TILE_RGB);
     // 鍵つきの URL が（差し替えた）タイルの要求に使われている。
     expect(rec.external().some((r) => r.url().includes('access_token=SECRET123'))).toBe(true);
@@ -803,6 +805,8 @@ test.describe('FR-MP-01・NFR-02: 保存と鍵', () => {
     });
     await expect(mapTab(page)).toHaveAttribute('aria-selected', 'true');
     await expect(loadedNotice(page)).toBeVisible();
+    // 開き直したファイルも、確認の画面で止まる。
+    await page.getByTestId('map-gate').getByRole('button', { name: '地図を表示する' }).click();
     await expect(page.locator('.map-overlay-key')).toContainText('access_token');
     const drawer = await openMapSettings(page);
     await expect(drawer.getByRole('radio', { name: /自分の地図タイル/ })).toBeChecked();

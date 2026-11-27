@@ -21,6 +21,7 @@ import {
   workspaceStore,
 } from '../state';
 import type { DataState, FilterStoreState, UiState } from '../state';
+import { mapGateStore, tileHost } from './mapGate';
 import { projectNoticeStore } from './projectNotice';
 import type { ProjectNoticeState, ProjectSource } from './projectNotice';
 
@@ -80,6 +81,13 @@ export function loadProjectText(
     });
     return result;
   }
+  // 【なぜ】ファイルの背景が利用者のタイルなら、開いた人が許すまで地図を読まない（D-51 補足。mapGate）。
+  // データを入れる前に決める（入れた直後の描画で、待ちが間に合わないことが無いように）。
+  mapGateStore.getState().release();
+  const tiles = result.value.view.map;
+  const host =
+    source === 'file' && tiles?.background === 'custom' ? tileHost(tiles.customTiles.url) : null;
+  if (host !== null) mapGateStore.getState().holdFor(host, result.value.dataset);
   applySnapshot(result.value, targets.data, targets.filter, {
     ...(targets.graph === undefined ? {} : { graph: targets.graph }),
     ...(targets.workspace === undefined ? {} : { workspace: targets.workspace }),

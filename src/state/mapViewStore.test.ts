@@ -67,7 +67,7 @@ describe('FR-MP-01・D-59: 地図の設定のスナップショット', () => {
     expect(map.getState().geoSource).toBeUndefined();
   });
 
-  it('D-46: 明示した geo の出どころは、geoAttrs の読み替えが働くときは省かない', () => {
+  it('FR-MP-05・FR-VG-02: D-46 明示した geo の出どころは、geoAttrs の読み替えが働くときは省かない', () => {
     const geoAttrs = { lat: 'Lat', lon: 'Lon' };
     expect(geoSourceToSave({ kind: 'geo' }, undefined)).toBeUndefined();
     expect(geoSourceToSave({ kind: 'geo' }, { geoAttrs: { lat: 'Lat' } })).toBeUndefined();
@@ -100,7 +100,7 @@ describe('FR-MP-01・D-59: 地図の設定のスナップショット', () => {
 describe('NFR-02・D-52: タイルの URL の鍵', () => {
   const tiles = 'https://tiles.example.test/{z}/{x}/{y}.png';
 
-  it('D-52: URL を編集すると、除いた鍵の項目名の記録（removedParams）が消える', () => {
+  it('NFR-02: D-52 URL を編集すると、除いた鍵の項目名の記録（removedParams）が消える', () => {
     const m = createMapViewStore();
     m.getState().reset({
       map: {

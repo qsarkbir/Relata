@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
+// 【TS】`import type` は型だけを取り込み、実行時には消える（JavaScript に何も残らない）。地図の部品の本体
+//       （maplibre-gl と deck.gl を含む大きな塊）は、下の `import('../map')` で地図を初めて開くときに読む。
+//       型だけの import は、この「遅延して読む」性質を損なわない。
 import type { MapEngine } from '../map';
 import { sameGeoSource } from '../core/geo';
 import { resolveGeoSource } from '../core/project';
@@ -8,6 +11,7 @@ import type { NodeId } from '../core/model';
 import { graphViewStore, mapViewStore, placeNodes, selectionStore } from '../state';
 import { useData, useMapView, useSelection, useT, useUi } from './hooks';
 import { getNumberFormat } from './intl';
+import { MainViewTabs } from './MainViewTabs';
 import { MapSettings } from './MapSettings';
 import { MapUnplaced } from './MapUnplaced';
 import { useNetwork } from './useNetwork';
@@ -15,6 +19,7 @@ import { Chip } from './ui/Chip';
 import { Icon, IconButton } from './ui/icons';
 import { StatusMessage } from './ui/StatusMessage';
 import { Toolbar, ToolbarGroup } from './ui/Toolbar';
+import { tRich } from './richText';
 import './graph.css';
 import './map.css';
 
@@ -56,6 +61,8 @@ export function MapView({ active }: Props) {
   const frame = useRef<HTMLDivElement>(null);
   const engineHost = useRef<HTMLDivElement>(null);
   const engineRef = useRef<MapEngine | null>(null);
+  // 【TS】`typeof import('../map')` は「モジュール `../map` 全体（export の集まり）の型」。値としては読み込まず、
+  //       型だけを使う。読み込み後のモジュールを入れておく入れ物の型に使う。
   const mapModule = useRef<typeof import('../map') | null>(null);
   const [status, setStatus] = useState<EngineStatus>('loading');
   const [engineReady, setEngineReady] = useState(false);
@@ -76,9 +83,14 @@ export function MapView({ active }: Props) {
   );
 
   // 最新の値を、地図の部品の作成（1 回だけ）から読むための参照。
-  const latest = useRef({ map, t });
+  const bbox = placement?.bbox ?? null;
+  // 【なぜ】表示範囲が未保存（null）で座標があるときは、地図を作る時点で、データに合わせた最初の表示範囲を渡す。
+  //   世界全体で作ってから合わせると、見ないズームのタイルを先に取りに行く（OSM の利用規約は無駄な取得を嫌う。D-51 補足）。
+  //   どのデータ・出どころに合わせたかは `fitted` に覚える（下の「合わせる」効果が二重に動かさないため）。
+  const fitted = useRef<{ dataset: unknown; source: unknown } | null>(null);
+  const latest = useRef({ map, t, bbox, dataset, source });
   useEffect(() => {
-    latest.current = { map, t };
+    latest.current = { map, t, bbox, dataset, source };
   });
 
   // ---- 地図の部品を読み込み、作る。外れるときに壊す（StrictMode の二重実行でも 1 つだけ残る）。
@@ -93,10 +105,14 @@ export function MapView({ active }: Props) {
         // 【なぜ】読み込みの間に外れたら、地図を作らない（作ると、すぐ壊すことになり、タイルも取りに行く）。
         if (lifetime.cancelled) return;
         mapModule.current = m;
-        const { map: current, t: tr } = latest.current;
+        const { map: current, t: tr, bbox: dataBox, dataset: ds, source: src } = latest.current;
+        // 保存はしない（null のまま「データに合わせる」を保つ）。`initialBounds` は viewport が null のときだけ効く。
+        const fitsData = current.viewport === null && dataBox !== null;
+        if (fitsData) fitted.current = { dataset: ds, source: src };
         const result = m.createMapEngine(host, {
           background: { background: current.background, customTiles: current.customTiles },
           viewport: current.viewport,
+          ...(current.viewport === null && dataBox !== null ? { initialBounds: dataBox } : {}),
           texts: { reportMapErrorLabel: tr('map.reportError') },
         });
         if (!result.ok) {
@@ -143,22 +159,24 @@ export function MapView({ active }: Props) {
     if (!m.sameViewport(engine.getViewport(), map.viewport)) engine.setViewport(map.viewport);
   }, [engineReady, map.viewport]);
 
-  // ---- 表示範囲が未保存（null）のあいだは、データの座標に合わせる。返った値は保存しない（null のまま）。
-  // 【なぜ】フィルタの変更のたびに動かすと、見ている場所から飛ぶ。データか出どころが変わったときだけ合わせる。
-  const fitted = useRef<{ dataset: unknown; source: unknown } | null>(null);
-  const bbox = placement?.bbox ?? null;
-  useEffect(() => {
-    const engine = engineRef.current;
-    if (!engineReady || engine === null || map.viewport !== null || bbox === null) return;
-    if (fitted.current?.dataset === dataset && fitted.current.source === source) return;
-    fitted.current = { dataset, source };
-    engine.fitBounds(bbox);
-  }, [engineReady, map.viewport, bbox, dataset, source]);
-
   // ---- 隠れていた地図が見えたら、枠の大きさに合わせ直す。
+  // 【なぜ】下の「データに合わせる」より先に置く。枠の大きさを合わせてから、表示範囲を決めるため。
   useEffect(() => {
     if (active && engineReady) engineRef.current?.resize();
   }, [active, engineReady]);
+
+  // ---- 表示範囲が未保存（null）のあいだは、データの座標に合わせる。返った値は保存しない（null のまま）。
+  // 【なぜ】フィルタの変更のたびに動かすと、見ている場所から飛ぶ。データか出どころが変わったときだけ合わせる。
+  // 【なぜ】隠れている間（枠が 0×0）は合わせず、`fitted` も更新しない。0×0 で合わせると結果が壊れ、
+  //   戻ったときに「合わせた」と誤って判断してしまう。見えたとき（`active`）に、改めて合わせる。
+  useEffect(() => {
+    const engine = engineRef.current;
+    if (!active || !engineReady || engine === null || map.viewport !== null || bbox === null)
+      return;
+    if (fitted.current?.dataset === dataset && fitted.current.source === source) return;
+    fitted.current = { dataset, source };
+    engine.fitBounds(bbox);
+  }, [active, engineReady, map.viewport, bbox, dataset, source]);
 
   const fitAll = useCallback(() => {
     const engine = engineRef.current;
@@ -167,8 +185,11 @@ export function MapView({ active }: Props) {
     mapViewStore.getState().setViewport(engine.fitBounds(bbox));
   }, [bbox]);
 
+  // 一覧のノードを押すと選択に入り、選択中のノードを押すと選択から外れる（`aria-pressed` の切り替えと合わせる）。
   const pick = useCallback((id: NodeId) => {
-    selectionStore.getState().select({ nodes: [id] });
+    const sel = selectionStore.getState();
+    if (sel.nodes.has(id)) sel.remove({ nodes: [id] });
+    else sel.select({ nodes: [id] });
   }, []);
 
   const toggleDrawer = (): void => {
@@ -201,6 +222,7 @@ export function MapView({ active }: Props) {
         {t('map.title')}
       </h2>
       <Toolbar label={t('map.toolbar')}>
+        <MainViewTabs host="map" />
         {hasSelection && (
           <Chip
             title={
@@ -293,7 +315,7 @@ export function MapView({ active }: Props) {
               )}
               {keyNotice && status === 'ready' && (
                 <div className="map-overlay map-overlay-key" role="status">
-                  {t('map.tileKeysRemoved', { names: removed.join(', ') })}
+                  {tRich(t, 'map.tileKeysRemoved', {}, { names: removed.join(', ') })}
                 </div>
               )}
               <MapUnplaced placement={placement} onPick={pick} selected={selected} />

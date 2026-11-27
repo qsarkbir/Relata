@@ -5,7 +5,7 @@ import { DEFAULT_FILTER_STATE, toFilterId } from '../core/filter';
 import type { FilterState } from '../core/filter';
 import { DEFAULT_GRAPH_OPTIONS } from '../core/graph';
 import { getNetwork } from '../state';
-import { effectiveGeoAttrs, geoCandidates, geoInputsFor, needsGeoChoice } from './geoInputs';
+import { effectiveGeoAttrs, geoCandidates, geoInputsFor, geoLayoutState } from './geoInputs';
 
 const person = toNodeTypeId('person');
 const city = toNodeTypeId('city');
@@ -96,14 +96,28 @@ describe('FR-VG-02・D-46: 地理座標の入力は core の nodeGeo を通す',
     expect(r.map((i) => i.id)).toEqual(['a']);
   });
 
-  it('FR-VG-02: どの型にも geo が無いなら選ぶ必要がある。属性の組を選べば不要', () => {
-    const none: Dataset = { ...dataset, nodes: dataset.nodes.slice(2) };
-    expect(needsGeoChoice(none, { kind: 'geo' })).toBe(true);
-    expect(needsGeoChoice(dataset, { kind: 'geo' })).toBe(false);
-    expect(needsGeoChoice(none, { kind: 'attrs', lat: 'Lat', lon: 'Lon' })).toBe(false);
+  it('FR-VG-02: 配置の状態は、座標を 1 つも取り出せなければ choose、片方だけ選んでいる間も choose、データに無い属性は not-found', () => {
+    const withSchema: Dataset = {
+      ...dataset,
+      schema: [
+        { key: 'Lat', label: '緯度', appliesTo: 'node', valueType: 'number' },
+        { key: 'Lon', label: '経度', appliesTo: 'node', valueType: 'number' },
+      ],
+    };
+    const none: Dataset = { ...withSchema, nodes: dataset.nodes.slice(2) };
+    const attrs = { kind: 'attrs', lat: 'Lat', lon: 'Lon' } as const;
+    expect(geoLayoutState(withSchema, { kind: 'geo' }, undefined)).toBe('ready');
+    expect(geoLayoutState(none, { kind: 'geo' }, undefined)).toBe('choose');
+    expect(geoLayoutState(none, attrs, { lat: 'Lat', lon: 'Lon' })).toBe('ready');
+    // 属性の組を片方だけ選んでいる間は、GraphNode.geo があっても待つ（選択欄と配置を食い違わせない）。
+    expect(geoLayoutState(withSchema, { kind: 'geo' }, { lat: 'Lat' })).toBe('choose');
+    // データに無い属性を指す出どころは、計算せず「見つかりません」。
+    expect(
+      geoLayoutState(withSchema, { kind: 'attrs', lat: 'X', lon: 'Lon' }, { lat: 'X', lon: 'Lon' }),
+    ).toBe('not-found');
   });
 
-  it('D-46: 出どころが明示されていれば、旧版の geoAttrs より優先して選択欄に出す', () => {
+  it('FR-VG-02・FR-MP-05: 出どころが明示されていれば、旧版の geoAttrs より優先して選択欄に出す', () => {
     const attrs = { lat: 'Lat', lon: 'Lon' };
     expect(effectiveGeoAttrs(undefined, attrs)).toEqual(attrs);
     expect(effectiveGeoAttrs({ kind: 'geo' }, attrs)).toBeUndefined();

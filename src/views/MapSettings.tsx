@@ -10,6 +10,7 @@ import { GeoSourceControls } from './GeoSourceControls';
 import { useMapView, useT } from './hooks';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { Field } from './ui/Field';
+import { tRich } from './richText';
 
 /** {@link MapSettings} の props。 */
 interface Props {
@@ -39,6 +40,8 @@ function tileProblemOf(url: string): TileUrlProblem | 'empty' | null {
  * @param props - データ、旧版の属性の指定
  * @returns 設定欄
  */
+// 【TS】`GraphViewSettings['geoAttrs']`（下の props）は、グラフの設定の `geoAttrs` 項目の型を取り出す添字アクセス型。
+//       旧版の読み替え元の値を、型を書き写さずにそのまま受け渡すために使う。
 export function MapSettings({ dataset, geoAttrs }: Props) {
   const t = useT();
   const map = useMapView((s) => s.map);
@@ -114,7 +117,7 @@ export function MapSettings({ dataset, geoAttrs }: Props) {
             )}
             {removed.length > 0 && (
               <p role="status" className="map-tile-problem" data-testid="map-removed-params">
-                {t('map.tileKeysRemoved', { names: removed.join(', ') })}
+                {tRich(t, 'map.tileKeysRemoved', {}, { names: removed.join(', ') })}
               </p>
             )}
             <Field label={t('map.tileAttribution')}>

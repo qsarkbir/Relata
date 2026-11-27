@@ -985,10 +985,10 @@ export const en = {
   'map.tileTerms': 'When you use your own tiles, follow the terms of the provider of those tiles.',
   'map.privacy.title': 'About network requests',
   'map.privacy.body':
-    'With OpenStreetMap or your own map tiles as the background, the visible area and zoom level are sent to the tile server. Your data (nodes, attributes, files) is never sent. Choose "Simple background" to avoid any request.',
+    'With OpenStreetMap or your own map tiles as the background, the visible area and zoom level are sent to the tile server. Your data (nodes, attributes, files) is never sent. The OpenStreetMap Foundation publishes usage statistics for its tiles, including which sites use them. Choose "Simple background" to avoid any request.',
   'map.geo.title': 'Coordinate source',
   'map.geo.note':
-    'This setting is shared with the "Geographic" layout of the graph, which uses the same source (recompute the layout with "Re-layout").',
+    'This setting is shared with the "Geographic" layout of the graph. Changing it recomputes the graph layout with the same source.',
   'map.geo.kind': 'Source',
   'map.geo.kind.geo': 'Latitude and longitude chosen at import (geo)',
   'map.geo.kind.attrs': 'A pair of attributes (choose the latitude and longitude columns)',
@@ -1002,7 +1002,6 @@ export const en = {
   'map.unplaced.edges':
     '{count} of the {total} edges shown cannot be drawn because an end node is not on the map',
   'map.unplaced.pick': 'Select "{name}"',
-  'map.unplaced.none': 'Every node shown is on the map.',
   'map.noCoordinates.title': 'No node has coordinates',
   'map.noCoordinates.body':
     'Choose a coordinate source. Under "Display settings", "Coordinate source", you can pick the latitude and longitude columns.',
@@ -1012,8 +1011,11 @@ export const en = {
   'project.tileUrlDropped':
     'The map tile URL was not in a usable form, so it is not included in the saved file.',
   'about.mapPrivacy':
-    'Opening the map tab makes requests to external tile servers (such as OpenStreetMap, whichever you choose) to fetch background tiles. The visible area and zoom level are sent to the server. Your data is never sent. Choose "Simple background" to avoid any external request.',
+    'Opening the map tab makes requests to external tile servers (such as OpenStreetMap, whichever you choose) to fetch background tiles. The visible area and zoom level are sent to the server. Your data is never sent. The OpenStreetMap Foundation publishes usage statistics for its tiles, including which sites use them. Choose "Simple background" to avoid any external request.',
   'about.mapSources':
     'Background map sources: © OpenStreetMap contributors (ODbL), Natural Earth (public domain).',
   'map.unplaced.more': '{count} more (only the first ones are listed)',
+  'map.gate.body':
+    'This project uses map tiles from {host}. Showing the map sends the visible area to that server.',
+  'map.gate.show': 'Show the map',
 } satisfies Record<MessageKey, string>;

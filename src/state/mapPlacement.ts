@@ -31,6 +31,8 @@ export interface MapPlacement {
   /** 座標のないノード（データの並び順）。 */
   readonly unplaced: readonly UnplacedNode[];
   /** 理由ごとの件数。理由は `GEO_NONE_REASONS` の順で、0 件の理由も持つ。 */
+  // 【TS】`Record<K, V>` は「キー K をすべてそろえた表」、`Readonly<…>` はそれを書き換え不可にしたもの。
+  //       理由（K）を足すと、この表を作る箇所が型エラーになり、数え漏れを防げる。
   readonly counts: Readonly<Record<GeoNoneReason, number>>;
   /**
    * 片端か両端が座標なしのノードにつながるため、地図に描けないエッジの本数（表示中のエッジから数える）。
