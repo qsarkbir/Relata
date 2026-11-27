@@ -22,3 +22,13 @@ export {
 export type { CompatEdge, CompatPair, NeighborTable } from './compatibility';
 export { bundleEdges, createBundlingSession, MAX_BUNDLING_COORDINATE } from './session';
 export type { BundlingSession } from './session';
+export {
+  DEFAULT_EPSILON_RATIO,
+  DEFAULT_MIN_COSINE,
+  buildBundleGraph,
+  bundleEdgeIds,
+  oppositesOf,
+  segmentBundlesOf,
+  weightsFor,
+} from './bundleGraph';
+export type { BundleGraph, BundleGraphOptions } from './bundleGraph';
