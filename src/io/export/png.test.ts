@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_CANVAS_AREA, MAX_CANVAS_SIDE, pngSize } from './png';
 import { withExtension } from './download';
+import Graph from 'graphology';
+import type { RelataGraph } from '../../core/graph';
+import { toNodeId, toNodeTypeId } from '../../core/model';
+import { buildBundleGraph } from '../../render/bundling';
+import { createSvgExport } from './svg';
 
 describe('FR-OUT-03: PNG の大きさ', () => {
   it('倍率に従って画素数が決まる（1×、2×、4×）', () => {
@@ -34,5 +39,36 @@ describe('FR-OUT-03: PNG の大きさ', () => {
     expect(withExtension('図', 'png')).toBe('図.png');
     expect(withExtension('a.PNG', 'png')).toBe('a.PNG');
     expect(withExtension('  ', 'pdf')).toBe('relata.pdf');
+  });
+});
+
+describe('FR-VG-13: 束ねた図の書き出し', () => {
+  it('同じシーンの SVG に帯の層が入り、PNG の大きさは SVG の寸法から決まる', () => {
+    const a = toNodeId('a');
+    const b = toNodeId('b');
+    const graph: RelataGraph = new Graph({ type: 'mixed', multi: false });
+    graph.addNode(a, { label: 'A', type: toNodeTypeId('t') });
+    graph.addNode(b, { label: 'B', type: toNodeTypeId('t') });
+    graph.addEdgeWithKey('e', a, b, {
+      weight: 2,
+      count: 1,
+      edgeIds: [],
+      directed: false,
+      missingWeightCount: 0,
+    });
+    const points = Array.from({ length: 9 }, (_, i) => [i * 25, 0]).flat();
+    const paths = [{ id: 'e', points, bundled: true, directed: false }];
+    const out = createSvgExport(
+      graph,
+      new Map([
+        [a, { x: 0, y: 0 }],
+        [b, { x: 200, y: 0 }],
+      ]),
+      {},
+      { bundled: { paths, graph: buildBundleGraph(paths, [{ id: 'e', weight: 2 }]) } },
+    );
+    expect(out.svg).toContain('<g id="bundles"');
+    expect(out.scene.bundle?.ribbons).toHaveLength(1);
+    expect(pngSize(out.width, out.height, 2)).toMatchObject({ clamped: false });
   });
 });

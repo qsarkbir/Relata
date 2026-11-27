@@ -24,6 +24,7 @@ export {
   createGraphViewStore,
   graphViewStore,
   bindGraphViewToData,
+  isDefaultBundlingView,
   selectGraphOptions,
 } from './graphViewStore';
 export type { GraphViewState } from './graphViewStore';
@@ -34,6 +35,22 @@ export type {
   MetricsScheduler,
   MetricsView,
 } from './metricsController';
+export {
+  BUNDLING_SETTLE_DELAY,
+  bundleEdgesOf,
+  bundlingController,
+  createBundlingController,
+  createWorkerBundlingController,
+  timerScheduler,
+} from './bundlingController';
+export type {
+  BundlingController,
+  BundlingOutcome,
+  BundlingPhase,
+  BundlingRequest,
+  BundlingScheduler,
+  BundlingView,
+} from './bundlingController';
 export { createLayoutController, layoutController } from './layoutController';
 export type { LayoutController, LayoutOutcome, LayoutRequest } from './layoutController';
 export { bindSelectionToData, createSelectionStore, selectionStore } from './selectionStore';

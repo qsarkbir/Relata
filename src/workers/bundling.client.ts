@@ -1,8 +1,20 @@
 /** Edge bundling の Worker の寿命と中止を管理する（FR-VG-13、D-55、D-17）。 */
 // 【TS】`import type` は型だけを読み込み、実行時には消える。worker のファイルを client に実行時に混ぜない。
 import { wrap } from 'comlink';
-import type { BundlingInfo, BundlingProgress, BundlingResult } from '../render/bundling';
+import type {
+  BundleGraph,
+  BundlingInfo,
+  BundlingProgress,
+  BundlingResult,
+} from '../render/bundling';
 import type { BundlingJob, BundlingStepResult, BundlingWorkerApi } from './bundling.worker';
+
+// 【なぜ】state は render の型を直接 `import type` で読める（設計書 §4.1 の例外）ので、render の型は再 export しない。
+export type { BundlingJob };
+/** `run` の結果。`job.buildGraph` が true のときだけ `graph` を持つ。 */
+export interface BundlingRunResult extends BundlingResult {
+  readonly graph?: BundleGraph;
+}
 
 /** 起動した Worker。テストでは偽物に差し替えられる。 */
 export interface BundlingWorkerHandle {
@@ -19,7 +31,10 @@ export interface BundlingClient {
    * 計算を最後まで行う。前の計算は AbortError で中止する。段階が終わるたびに onProgress を呼ぶ
    * （関数は Worker へ渡さず、メインスレッドの中だけで呼ぶ）。
    */
-  run(job: BundlingJob, onProgress?: (progress: BundlingProgress) => void): Promise<BundlingResult>;
+  run(
+    job: BundlingJob,
+    onProgress?: (progress: BundlingProgress) => void,
+  ): Promise<BundlingRunResult>;
   /** 中止する。保留中の Promise を AbortError で reject し、Worker を terminate する。 */
   cancel(): void;
 }
@@ -115,7 +130,9 @@ export function createBundlingClient(
             if (handle !== current) throw abort();
             // 終わった Worker はすぐ捨てる（次の run が新しい Worker を作る）。
             discard(abort());
-            return progress.result;
+            return progress.graph === undefined
+              ? progress.result
+              : { ...progress.result, graph: progress.graph };
           }
         }
       } catch (error) {
