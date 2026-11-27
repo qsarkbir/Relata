@@ -13,6 +13,7 @@ export type {
   EdgeRule,
   FilterState,
 } from './types';
+export type { GeoBBox } from '../geo';
 export { toFilterId, FILTER_KINDS, CERTAINTY_KEYS, DEFAULT_FILTER_STATE } from './types';
 
 export {
@@ -56,6 +57,9 @@ export type {
   DayExtent,
 } from './timeSource';
 export { dateAttributes, describeTimeFilter, timeDataExtent } from './timeSource';
+
+export type { GeoSourceDescription, GeoFilterDescription } from './geoFilter';
+export { describeGeoFilter } from './geoFilter';
 
 export type { TimelineBin, TimelineResult } from './timeline';
 export {

@@ -19,6 +19,7 @@ import { DEFAULT_IMPORT_SETTINGS, PROJECT_VIEW_KEYS, type ProjectParts } from '.
 
 import {
   DEFAULT_GRAPH_VIEW,
+  DEFAULT_MAP_VIEW,
   DEFAULT_TABLE_VIEW,
   DEFAULT_TIMELINE,
   DEFAULT_WORKSPACE,
@@ -77,7 +78,7 @@ describe('プロジェクトの往復', () => {
     expect(r.value.importSettings).toEqual(sampleSettings);
     expect(r.value.view.filter).toEqual(cleanFilter);
     expect(r.value.savedAt).toBe(AT);
-    expect(r.value.formatVersion).toBe(2);
+    expect(r.value.formatVersion).toBe(3);
     expect(r.warnings).toEqual([]);
     const node = r.value.dataset.nodes[0];
     expect(node && Object.hasOwn(node.attrs, '__proto__')).toBe(true);
@@ -95,6 +96,8 @@ describe('プロジェクトの往復', () => {
         display: { calendar: 'hijri' as const },
         timeline: DEFAULT_TIMELINE,
         time: DEFAULT_TIME_SETTINGS,
+        geoSource: { kind: 'geo' as const },
+        map: DEFAULT_MAP_VIEW,
       },
     };
     const saved = sub(obj(serializeProject(full, AT)), 'view');
@@ -110,7 +113,12 @@ describe('プロジェクトの往復', () => {
       node: { sort: { column: 'label', direction: 'desc' }, columns: ['label', 'id'] },
       edge: { sort: null, columns: [] },
     };
-    const workspace: WorkspaceSettings = { tab: 'table', open: true, height: 420 };
+    const workspace: WorkspaceSettings = {
+      mainView: 'map',
+      tab: 'table',
+      open: true,
+      height: 420,
+    };
     const r = ok(serializeProject({ ...parts, view: { ...parts.view, table, workspace } }, AT));
     expect(r.value.view.table).toEqual(table);
     expect(r.value.view.workspace).toEqual(workspace);
@@ -234,11 +242,11 @@ describe('プロジェクトの読み込みの失敗', () => {
     expect(failed('{"app":"Relata"}')).toEqual({ kind: 'broken', path: 'formatVersion' });
   });
   it('FR-PJ-03: 新しい版は読まずに断る', () => {
-    const r = parseProject('{"app":"Relata","formatVersion":3,"dataset":{}}');
+    const r = parseProject('{"app":"Relata","formatVersion":4,"dataset":{}}');
     expect(r.ok).toBe(false);
     if (!r.ok) {
       expect(r.kind).toBe('newer-version');
-      expect(r.fileVersion).toBe(3);
+      expect(r.fileVersion).toBe(4);
     }
   });
   it('FR-PJ-01: 壊れた dataset は path を返す', () => {
@@ -431,9 +439,9 @@ describe('版 1 → 2 の移行（D-36）', () => {
       if (!Array.isArray(filters)) throw new Error('filters');
       for (const f of filters) if (isPlainObject(f)) delete f.source;
     });
-  it('FR-PJ-03: 現在の版は 2 で、移行は 1 → 2 だけを持つ', () => {
-    expect(CURRENT_FORMAT_VERSION).toBe(2);
-    expect(Object.keys(MIGRATIONS)).toEqual(['1']);
+  it('FR-PJ-03: 現在の版は 3 で、移行は 1 → 2、2 → 3 を持つ', () => {
+    expect(CURRENT_FORMAT_VERSION).toBe(3);
+    expect(Object.keys(MIGRATIONS)).toEqual(['1', '2']);
   });
   it('FR-PJ-03: 移行関数は source の無い時間フィルタにだけ span を補う', () => {
     const out = migrateV1ToV2({
@@ -489,7 +497,7 @@ describe('版 1 → 2 の移行（D-36）', () => {
   });
   it('FR-PJ-03: 時間フィルタ付きの版 1 が source: span で読め、同じ絞り込み結果になる', () => {
     const r = ok(asV1());
-    expect(r.value.formatVersion).toBe(2);
+    expect(r.value.formatVersion).toBe(3);
     expect(r.value.view.filter).toEqual(cleanFilter);
     const time = r.value.view.filter.filters.find((f) => f.kind === 'time');
     expect(time?.kind === 'time' && time.source).toEqual({ kind: 'span' });
@@ -498,28 +506,28 @@ describe('版 1 → 2 の移行（D-36）', () => {
     expect([...a.nodeIds]).toEqual([...b.nodeIds]);
     expect([...a.edgeIds]).toEqual([...b.edgeIds]);
   });
-  it('FR-PJ-03: v0.1 の公開サンプル（版 1 の写し）が警告なしで読め、版 2 になる', () => {
+  it('FR-PJ-03: v0.1 の公開サンプル（版 1 の写し）が警告なしで読め、版 3 になる（1 → 2 → 3 の連鎖）', () => {
     expect(obj(sampleV1).formatVersion).toBe(1);
     const r = ok(sampleV1);
-    expect(r.value.formatVersion).toBe(2);
+    expect(r.value.formatVersion).toBe(3);
     expect(r.value.dataset.nodes).toHaveLength(219);
     expect(r.warnings).toEqual([]);
   });
-  it('FR-PJ-03: 版 2 で保存し、版 2 として読み直せる。版 3 以上は新しい版として拒む', () => {
+  it('FR-PJ-03: 版 3 で保存し、版 3 として読み直せる。版 4 以上は新しい版として拒む', () => {
     const saved = serializeProject(parts, AT);
-    expect(obj(saved).formatVersion).toBe(2);
+    expect(obj(saved).formatVersion).toBe(3);
     expect(ok(saved).value.view.filter).toEqual(cleanFilter);
-    for (const v of [3, 4, 999]) {
+    for (const v of [4, 5, 999]) {
       const r = parseProject(JSON.stringify({ ...obj(saved), formatVersion: v }));
       expect(!r.ok && r.kind).toBe('newer-version');
     }
   });
-  it('FR-PJ-03: 版 1 を読んで保存し直すと版 2 になり、内容は変わらない', () => {
+  it('FR-PJ-03: 版 1 を読んで保存し直すと版 3 になり、内容は変わらない', () => {
     const r = ok(sampleV1);
     const again = ok(serializeProject(r.value, AT));
     expect(again.value.dataset).toEqual(r.value.dataset);
     expect(again.value.view).toEqual(r.value.view);
-    expect(again.value.formatVersion).toBe(2);
+    expect(again.value.formatVersion).toBe(3);
   });
 });
 
@@ -553,7 +561,7 @@ describe('FR-TM-09: 表示する暦（view.display.calendar、R-24、D-45）', (
     mutated((o) => {
       sub(o, 'view').display = { calendar };
     });
-  it('FR-TM-09: 保存して読み直すと暦が戻る（版は 2 のまま）', () => {
+  it('FR-TM-09: 保存して読み直すと暦が戻る（版は現在の版）', () => {
     for (const calendar of ['gregorian', 'hijri', 'both'] as const) {
       const text = serializeProject(
         { ...parts, view: { ...parts.view, display: { calendar } } },

@@ -7,6 +7,7 @@
  */
 import { assertNever } from '../util/assertNever';
 import { getAttr, type AttributeDef, type Dataset } from '../model';
+import { geoSourceTypes } from '../geo';
 import { categoryKeyId, categoryKeysOf } from './keys';
 import type { CategoryKey, FilterId, FilterState, Target } from './types';
 
@@ -32,7 +33,11 @@ export type FilterIssue =
   /** 時間フィルタが指す属性が日付型（`valueType: 'date'`）でない（D-35）。 */
   | { readonly kind: 'attr-not-date'; readonly filterId: FilterId; readonly attr: string }
   /** `nodeSet` のフィルタが、データセットに無いノード ID を含んでいる（D-41）。 */
-  | { readonly kind: 'unknown-node-id'; readonly filterId: FilterId; readonly nodeId: string };
+  | { readonly kind: 'unknown-node-id'; readonly filterId: FilterId; readonly nodeId: string }
+  /** `geo` のフィルタの座標の属性が、日付か真偽値の型で、座標にならない（D-46）。 */
+  /** `geo` のフィルタの出どころに、座標を持つノードが 1 つも無い（型の集合が空）。何も絞り込まない。 */
+  | { readonly kind: 'geo-no-coordinates'; readonly filterId: FilterId }
+  | { readonly kind: 'attr-not-number'; readonly filterId: FilterId; readonly attr: string };
 
 /**
  * FilterState がデータセットと整合しているかを検査する。
@@ -107,6 +112,31 @@ export function checkFilterState(dataset: Dataset, state: FilterState): FilterIs
           if (!typeIds.has(t))
             issues.push({ kind: 'unknown-node-type', filterId: f.id, nodeType: t });
         }
+        break;
+      }
+      case 'geo': {
+        // 【なぜ】出どころが属性の組のとき、2 つの属性が schema のノード用の数値の属性として
+        //   あるかを調べる（D-46）。範囲外などの値の問題は、座標なしの扱い（missing）で表すので報告しない。
+        if (f.source.kind === 'attrs') {
+          for (const key of [f.source.lat, f.source.lon]) {
+            const def = findAttr(dataset, 'node', key);
+            if (def === undefined) {
+              issues.push({ kind: 'unknown-attr', filterId: f.id, target: 'node', attr: key });
+            } else if (def.valueType === 'date' || def.valueType === 'boolean') {
+              // 【なぜ】日付と真偽値は座標にならない。数値のほか、数として読める文字列（アラビア・インド数字など）や
+              //   カテゴリの属性は座標になりうるので、型だけでは弾かない。
+              issues.push({ kind: 'attr-not-number', filterId: f.id, attr: key });
+            }
+          }
+        }
+        for (const t of f.passTypes ?? []) {
+          if (!typeIds.has(t))
+            issues.push({ kind: 'unknown-node-type', filterId: f.id, nodeType: t });
+        }
+        // 【なぜ】座標を持つ型が 1 つも無いと、どの型も「出どころを持たない型」として通り、フィルタが
+        //   黙って何も絞り込まない。利用者に気づかせる。
+        if (geoSourceTypes(dataset, f.source).size === 0)
+          issues.push({ kind: 'geo-no-coordinates', filterId: f.id });
         break;
       }
       case 'certainty':

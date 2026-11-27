@@ -69,7 +69,12 @@ describe('保存と読み込みのスナップショット', () => {
     workspace.getState().patchWorkspace({ open: true, height: 410 });
     const snap = takeSnapshot(data, filter, { workspace });
     expect(snap?.view.table?.target).toBe('edge');
-    expect(snap?.view.workspace).toEqual({ tab: 'table', open: true, height: 410 });
+    expect(snap?.view.workspace).toEqual({
+      mainView: 'graph',
+      tab: 'table',
+      open: true,
+      height: 410,
+    });
     if (snap === null) throw new Error('snapshot');
 
     // 別のストアへ読み込むと、設定が戻る。

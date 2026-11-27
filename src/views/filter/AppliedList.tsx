@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { assertNever } from '../../core/util/assertNever';
-import { describeTimeFilter } from '../../core/filter';
+import { describeGeoFilter, describeTimeFilter } from '../../core/filter';
 import type { FilterDef, FilterId, FilterIssue } from '../../core/filter';
 import type { CalendarDisplay } from '../../core/time';
 import type { Dataset } from '../../core/model';
@@ -72,7 +72,7 @@ export function AppliedList({ dataset, filters, issues, missingExcluded }: Appli
                 <span className="applied-summary">
                   <span className="applied-target">{targetText(t, f)} </span>
                   {summary(t, nf, dataset, f, calendar)}
-                  {(f.kind === 'range' || f.kind === 'time') && (
+                  {(f.kind === 'range' || f.kind === 'time' || f.kind === 'geo') && (
                     <span className="applied-missing">
                       {' '}
                       {t(
@@ -115,7 +115,7 @@ type NumberFormatter = Pick<Intl.NumberFormat, 'format'>;
 // 対象の語（ノード／エッジ）。ノード型のフィルタはノード専用。
 function targetText(t: Translate, f: FilterDef): string {
   return t(
-    f.kind === 'nodeType' || f.kind === 'nodeSet' || f.target === 'node'
+    f.kind === 'nodeType' || f.kind === 'nodeSet' || f.kind === 'geo' || f.target === 'node'
       ? 'filter.target.node'
       : 'filter.target.edge',
   );
@@ -221,9 +221,36 @@ function summary(
           {t('filter.certainty')}: {f.include.map((k) => t(`filter.certainty.${k}`)).join(', ')}
         </>
       );
+    case 'geo':
+      // T3-01b の仮の表示。T3-06 で ui が出どころ・欠損の扱いを含めて作り込む。
+      return geoText(t, nf, dataset, f);
     default:
       return assertNever(f, 'FilterDef');
   }
+}
+
+// `geo` フィルタの範囲の説明（例: 「緯度 30〜36°、経度 −10〜0°」。180° をまたぐときは、そう添える）。
+function geoText(
+  t: Translate,
+  nf: NumberFormatter,
+  dataset: Dataset,
+  f: Extract<FilterDef, { kind: 'geo' }>,
+): string {
+  const d = describeGeoFilter(f, dataset);
+  const range = t('filter.summary.geo', {
+    south: nf.format(d.lat.south),
+    north: nf.format(d.lat.north),
+    west: nf.format(d.lon.west),
+    east: nf.format(d.lon.east),
+    across: d.crossesAntimeridian ? t('filter.summary.geoAcross') : '',
+  });
+  // 仮の文言（T3-06 で作り込む）。どの型を「座標を持つ型」と判定したかを出す。
+  return d.coordinateTypes.length === 0
+    ? range
+    : t('filter.summary.geoTypes', {
+        types: d.coordinateTypes.map((x) => x.label).join(', '),
+        range,
+      });
 }
 
 // ボタンの aria-label 用の、文字だけの説明。
@@ -274,6 +301,8 @@ function plainSummary(
       return `${targetText(t, f)} ${t('filter.certainty')}: ${f.include
         .map((k) => t(`filter.certainty.${k}`))
         .join(', ')}`;
+    case 'geo':
+      return `${targetText(t, f)} ${geoText(t, nf, dataset, f)}`;
     default:
       return assertNever(f, 'FilterDef');
   }
@@ -304,6 +333,10 @@ function issueText(t: Translate, i: FilterIssue): ReactNode {
       return t('filter.issue.unknown-node-id');
     case 'time-unbounded':
       return t('filter.issue.time-unbounded');
+    case 'attr-not-number':
+      return t('filter.issue.attr-not-number');
+    case 'geo-no-coordinates':
+      return t('filter.issue.geo-no-coordinates');
     default:
       return assertNever(i, 'FilterIssue');
   }

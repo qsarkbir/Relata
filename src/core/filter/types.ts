@@ -4,6 +4,7 @@
  * フィルタは関数ではなく「データ」として持つ。そのため、保存（FR-PJ-01）、
  * 元に戻す（FR-FL-10）、一覧表示（FR-FL-08）が、値の複製と比較だけで済む。
  */
+import type { GeoBBox, GeoSource } from '../geo';
 import type { Certainty, DayNumber, MissingReason, NodeId, NodeTypeId } from '../model';
 
 // 【TS】「ブランド型」。ふつうの文字列を FilterId として渡す取り違えを、コンパイル時に防ぐ
@@ -87,6 +88,8 @@ export const CERTAINTY_KEYS = [
  * - `nodeType`: ノード型で絞る（ノード専用なので `target` を持たない）。
  * - `nodeSet`: ID が `include` に含まれるノードだけ通す（ノード専用。範囲選択から作る。`passTypes` の型のノードは常に通す。D-41）。
  * - `certainty`: 確からしさが `include` のどれかに当たれば通す（D-37）。
+ * - `geo`: ノードの座標が `bbox` に入れば通す（ノード専用。D-58）。座標は `source`（D-46）から取る。
+ *   座標のないノード（理由は問わない）は `missing` に従う。`passTypes` の型のノードは常に通す（D-41）。
  */
 export type FilterDef =
   | {
@@ -145,6 +148,24 @@ export type FilterDef =
       readonly kind: 'certainty';
       readonly target: Target;
       readonly include: readonly CertaintyKey[];
+    }
+  | {
+      readonly id: FilterId;
+      readonly kind: 'geo';
+      /**
+       * 座標の出どころ。
+       * 【なぜ】フィルタが自分で持つ。`applyFilters(dataset, filterState)` が引数だけで決まるようにし、
+       * 画面の出どころの設定を変えても、作った範囲の意味が変わらないようにする（時間フィルタの `source` と同じ。D-35）。
+       */
+      readonly source: GeoSource;
+      readonly bbox: GeoBBox;
+      /** 座標のないノード（列が無い、欠損、数でない、範囲外）を含めるか除くか。 */
+      readonly missing: MissingPolicy;
+      /**
+       * この型のノードは座標に関係なく通す（任意）。
+       * 【なぜ】射影の適用中は、仲介の型（組織など）に座標が無く、全部落ちてエッジが 0 本になるため（`nodeSet` と同じ。D-41）。
+       */
+      readonly passTypes?: readonly NodeTypeId[];
     };
 
 /** フィルタの種類の一覧。外から来た値の検査に使う。 */
@@ -160,6 +181,7 @@ export const FILTER_KINDS = [
   'nodeType',
   'nodeSet',
   'certainty',
+  'geo',
 ] as const satisfies readonly FilterDef['kind'][];
 
 /** エッジの表示の規則。'both-ends' は両端が通過（既定）、'either-end' は片端でも通過（FR-FL-04）。 */

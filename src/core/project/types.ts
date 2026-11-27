@@ -1,6 +1,8 @@
 import type { DatasetIssue } from '../model';
 import type { FilterIssue } from '../filter';
+import type { GeoSource } from '../geo';
 import type { GraphViewSettings } from './graphView';
+import type { MapViewSettings } from './mapView';
 import type { TableViewSettings, WorkspaceSettings } from './tableView';
 import type { TimelineSettings } from './timelineView';
 import type { TimeSettings } from '../time';
@@ -15,9 +17,10 @@ import type { CalendarDisplay } from '../time';
 
 /**
  * 今のプロジェクトファイルの版。互換性のない変更（列挙の要素の追加を含む）のときだけ上げる（D-24）。
- * 版 2 はフェーズ 2 の間は開発中で、v0.2 の公開で確定する（D-36）。
+ * 版 2 はフェーズ 2 の間は開発中で、v0.2 の公開で確定した（D-36）。
+ * 版 3 は `geo` のフィルタの追加による（D-59）。フェーズ 3 の間は開発中で、v0.3 の公開で確定する。
  */
-export const CURRENT_FORMAT_VERSION = 2;
+export const CURRENT_FORMAT_VERSION = 3;
 
 // 【TS】`readonly` を付けた項目は代入できない。`readonly T[]` は「要素の追加や置き換えができない配列」。
 //       読み込んだ設定を、うっかり書き換えないための約束。
@@ -89,6 +92,13 @@ export interface ProjectView {
   readonly timeline?: TimelineSettings;
   /** 時間の再生の設定（FR-TM-02、D-44。時刻、方式、窓の幅、速度。再生中かどうかは保存しない）。無ければ既定。 */
   readonly time?: TimeSettings;
+  /**
+   * 座標の出どころ（D-46）。地図とグラフの地理座標の配置で共通。無ければ、`view.graph.geoAttrs` を読み替えるか、
+   * 既定（ノードの `geo`）にする（`resolveGeoSource`）。
+   */
+  readonly geoSource?: GeoSource;
+  /** 地図の設定（D-59）。無ければ既定（`DEFAULT_MAP_VIEW`）。 */
+  readonly map?: MapViewSettings;
 }
 
 /** 全ビューに共通の表示設定（R-24、D-45）。内部の日付（JDN）は変えず、表示だけを変える。 */
@@ -108,6 +118,8 @@ const PROJECT_VIEW_KEY_TABLE: Record<keyof ProjectView, true> = {
   display: true,
   timeline: true,
   time: true,
+  geoSource: true,
+  map: true,
 };
 /** `ProjectView` のすべてのキー。 */
 export const PROJECT_VIEW_KEYS: readonly string[] = Object.keys(PROJECT_VIEW_KEY_TABLE);

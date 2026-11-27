@@ -9,6 +9,7 @@
  * 【なぜ】`edgeRule` と `showIsolated` は、無ければ既定値で補う（D-24: 任意の項目の追加では
  * 版を上げず、無い項目は既定値で補う）。あるのに型が違えば失敗にする。
  */
+import { MAX_GEO_LON, parseGeoSourceValue, type GeoBBox, type GeoSource } from '../geo';
 import {
   isMissingReason,
   isPlainObject,
@@ -170,6 +171,44 @@ function parseTimeSource(x: unknown, path: string): ParseResult<TimeSource> {
   return fail(child(path, 'kind'), "'span' か 'attr' が必要です");
 }
 
+// `geo` フィルタの出どころ（D-46）を組み立てる。
+//
+function parseGeoSource(x: unknown, path: string): ParseResult<GeoSource> {
+  const source = parseGeoSourceValue(x);
+  return source === null
+    ? fail(
+        path,
+        "出どころは { kind: 'geo' } か、lat と lon（空でない文字列）を持つ { kind: 'attrs' } が必要です",
+      )
+    : ok(source);
+}
+
+// 地理範囲（D-58）を組み立てる。値は有限の数で、経度は ±180、緯度は ±90 の内側。南北の逆転は拒否する。
+//
+function parseGeoBBox(x: unknown, path: string): ParseResult<GeoBBox> {
+  if (!isPlainObject(x)) return fail(path, 'オブジェクトが必要です');
+  const read = (key: 'west' | 'south' | 'east' | 'north', limit: number): ParseResult<number> => {
+    const v = needFinite(get(x, key), child(path, key));
+    if (!v.ok) return v;
+    return Math.abs(v.value) <= limit
+      ? v
+      : fail(child(path, key), `絶対値は ${String(limit)} 以下が必要です`);
+  };
+  const west = read('west', MAX_GEO_LON);
+  if (!west.ok) return west;
+  const south = read('south', 90);
+  if (!south.ok) return south;
+  const east = read('east', MAX_GEO_LON);
+  if (!east.ok) return east;
+  const north = read('north', 90);
+  if (!north.ok) return north;
+  // 【なぜ】南北の逆転は壊れた入力として拒否する（range、time と同じ。D-21 (6)）。
+  //   東西の逆転（west > east）は、経度 180° をまたぐ範囲として正しい。
+  if (south.value > north.value)
+    return fail(child(path, 'north'), 'north は south 以上でなければなりません');
+  return ok({ west: west.value, south: south.value, east: east.value, north: north.value });
+}
+
 // フィルタ 1 つを組み立てる。
 //
 function parseFilterDef(x: unknown, path: string): ParseResult<FilterDef> {
@@ -311,6 +350,35 @@ function parseFilterDef(x: unknown, path: string): ParseResult<FilterDef> {
       );
       if (!include.ok) return include;
       return ok({ id, kind: 'certainty', target: target.value, include: include.value });
+    }
+    case 'geo': {
+      const source = parseGeoSource(get(x, 'source'), child(path, 'source'));
+      if (!source.ok) return source;
+      const bbox = parseGeoBBox(get(x, 'bbox'), child(path, 'bbox'));
+      if (!bbox.ok) return bbox;
+      const missing = needOneOf(get(x, 'missing'), child(path, 'missing'), MISSING_POLICIES);
+      if (!missing.ok) return missing;
+      // passTypes は任意。無ければ項目ごと作らない（往復で同じ形に戻すため）。
+      // 【TS】オブジェクトに付けた `as const` は、`kind: 'geo'` を `string` ではなく文字列リテラルの型 `'geo'`
+      //       に固定する。これで `ok(base)` が FilterDef（判別共用体）の `geo` の要素として受け取られる。
+      const base = {
+        id,
+        kind: 'geo',
+        source: source.value,
+        bbox: bbox.value,
+        missing: missing.value,
+      } as const;
+      if (get(x, 'passTypes') === undefined) return ok(base);
+      const passTypes = parseArray<NodeTypeId>(
+        get(x, 'passTypes'),
+        child(path, 'passTypes'),
+        (item, itemPath) => {
+          const s = needString(item, itemPath, true);
+          return s.ok ? ok(toNodeTypeId(s.value)) : s;
+        },
+      );
+      if (!passTypes.ok) return passTypes;
+      return ok({ ...base, passTypes: passTypes.value });
     }
     default:
       return fail(child(path, 'kind'), 'フィルタの種類が正しくありません');
