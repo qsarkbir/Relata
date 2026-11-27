@@ -3,7 +3,7 @@ import sourceText from '../../../tests/fixtures/io/palladio/maghrib-20231106.jso
 import approvedText from '../../../tests/fixtures/io/palladio/README.md?raw';
 import sampleText from '../../../public/samples/maghrib.relata.json?raw';
 import { checkDataset, isPlainObject, parseNodeId } from '../../core/model';
-import { parseProject, serializeProject } from '../project';
+import { migrateV2ToV3, parseProject, serializeProject } from '../project';
 import { buildMaghribSample } from './buildSample';
 import { MAGHRIB_SAMPLE } from './catalog';
 
@@ -47,7 +47,11 @@ it('FR-IN-09 / D-28: 公開ファイルは承認した題名と説明を使い�
     serializeProject(buildMaghribSample(source), '2026-11-21T00:00:00.000Z'),
   );
   const published: unknown = JSON.parse(sampleText);
-  expect(published).toEqual(expected);
+  // 公開ファイルは版 2（v0.2 で確定した形）のまま置く。現在の版で再生成した結果は、版 2 → 3 の移行
+  // （中身を変えない。D-59）を通せば同じになる。
+  // 公開ファイルの版は 2。v0.3 の公開で、版 3 に再生成する（このとき下の 2 行は版 3 の比較に直す）。
+  expect(isPlainObject(published) && published.formatVersion).toBe(2);
+  expect(migrateV2ToV3(published)).toEqual(expected);
   expect(approvedText).toContain(MAGHRIB_SAMPLE.title);
   expect(approvedText.replaceAll('_', '')).toContain(MAGHRIB_SAMPLE.description);
 });

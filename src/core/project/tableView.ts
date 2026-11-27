@@ -45,6 +45,11 @@ export interface TableViewSettings {
 /** 開けるタブの一覧（年表、表、欠損）。タブは機能ができた順に足す（空のタブを置かない）。 */
 export const WORKSPACE_TABS = ['timeline', 'table', 'missing'] as const;
 
+/** 中央の主な領域のビュー。グラフか地図（D-48、D-59）。 */
+export type MainView = 'graph' | 'map';
+/** 主なビューの一覧。 */
+export const MAIN_VIEWS = ['graph', 'map'] as const satisfies readonly MainView[];
+
 /** 下の段のタブの ID。 */
 export type WorkspaceTab = (typeof WORKSPACE_TABS)[number];
 
@@ -52,8 +57,13 @@ export type WorkspaceTab = (typeof WORKSPACE_TABS)[number];
 export const WORKSPACE_HEIGHT_MIN = 120;
 export const WORKSPACE_HEIGHT_MAX = 800;
 
-/** 下の段の設定（開いているタブ、開閉、高さ）。 */
+/** 下の段の設定（開いているタブ、開閉、高さ）と、中央に出すビュー。 */
 export interface WorkspaceSettings {
+  /**
+   * 中央の主な領域に出すビュー（D-48）。無いファイルでは `'graph'`。
+   * 【なぜ】下の段と同じ「画面の配置」の設定なので、workspace に置く（D-59）。
+   */
+  readonly mainView: MainView;
   readonly tab: WorkspaceTab;
   readonly open: boolean;
   /** 段の中身の高さ（CSS ピクセル）。 */
@@ -70,7 +80,12 @@ export const DEFAULT_TABLE_VIEW: TableViewSettings = {
 };
 
 /** 未設定のときの下の段の設定。閉じておく（図を広く使う。表は見出しのタブから開く）。 */
-export const DEFAULT_WORKSPACE: WorkspaceSettings = { tab: 'table', open: false, height: 300 };
+export const DEFAULT_WORKSPACE: WorkspaceSettings = {
+  mainView: 'graph',
+  tab: 'table',
+  open: false,
+  height: 300,
+};
 
 /**
  * 下の段の高さを許す範囲に収める。
@@ -145,6 +160,7 @@ export function parseWorkspace(x: unknown): ParseResult<WorkspaceSettings> {
   return {
     ok: true,
     value: {
+      mainView: MAIN_VIEWS.find((v) => v === get('mainView')) ?? DEFAULT_WORKSPACE.mainView,
       tab,
       open: typeof open === 'boolean' ? open : DEFAULT_WORKSPACE.open,
       height:

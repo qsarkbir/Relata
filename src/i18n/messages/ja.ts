@@ -328,6 +328,12 @@ export const ja = {
   'filter.issues': '確認が必要な点',
   'filter.issue.unknown-attr': 'この属性はデータにありません。',
   'filter.summary.nodeSet': '選択したノード（{count} 件）',
+  'filter.summary.geo': '緯度 {south}〜{north}°、経度 {west}〜{east}°{across}',
+  'filter.summary.geoAcross': '（180°をまたぐ）',
+  'filter.issue.attr-not-number': 'この属性は座標として読めません（日付か真偽値です）。',
+  'filter.summary.geoTypes': '{types}を範囲で絞り込み（{range}）',
+  'filter.issue.geo-no-coordinates':
+    'データに座標を持つノードがありません。何も絞り込まれません。座標の出どころを確認してください。',
   'filter.certainty': '確からしさ',
   'filter.certainty.certain': '確実',
   'filter.certainty.probable': 'おそらく',
