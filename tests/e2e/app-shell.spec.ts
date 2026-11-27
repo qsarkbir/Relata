@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { startApp } from './support';
 
 // 【なぜ】ブラウザの言語は test.use({ locale }) で明示する。Chromium の既定は en-US で、

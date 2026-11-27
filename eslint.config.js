@@ -150,7 +150,17 @@ const noTsxFileSyntax = {
 // どこかの層が静的に import すると、普段の起動にも含まれて重くなる。そこで、使ってよい層を
 // src/map/ だけにして、ほかの層からは名前で止める。d3-geo（SVG の書き出し）も、書き出しの図を
 // 描く map-geo の renderer が src/map/ の中に置くため、src/map/ に限る（D-50、D-54、D-60）。
-const mapPackages = ['maplibre-gl', 'deck.gl', '@deck.gl', 'd3-geo'];
+// deck.gl は @luma.gl、@math.gl、@loaders.gl を内部で使う。これらを直接 import しても同じく本体に混ざるので、
+// あわせて止める（T3-03 のレビュー）。
+const mapPackages = [
+  'maplibre-gl',
+  'deck.gl',
+  '@deck.gl',
+  '@luma.gl',
+  '@math.gl',
+  '@loaders.gl',
+  'd3-geo',
+];
 const mapPackagesReason =
   '地図の部品（maplibre-gl、deck.gl、d3-geo）は src/map/ だけが使います。地図を初めて開いたときだけ読み込むためです（設計書 §4.1、D-50）。';
 
@@ -161,6 +171,27 @@ const randomRestriction = [
     property: 'random',
     message:
       'Math.random は使いません。同じ入力は同じ結果になるようにします（NFR-08、設計書 §4.1、D-52）。',
+  },
+];
+
+// 【なぜ】`window.Date`、`globalThis.Date`、`globalThis.Math.random` は、識別子 `Date` や `Math.random`
+// の検査（no-restricted-globals、no-restricted-properties）をすり抜ける。window、globalThis、self を
+// 経由した参照を構文で止める。map と render だけに使う（core は window などを丸ごと禁止している）。
+const globalObjects = '/^(window|globalThis|self)$/';
+const globalAccessSyntax = [
+  {
+    selector: `MemberExpression[object.name=${globalObjects}][property.name='Date']`,
+    message:
+      'window.Date、globalThis.Date は使いません。日付は JDN の整数で持ちます（CLAUDE.md、設計書 §5.1）。',
+  },
+  {
+    selector: `MemberExpression[object.name=${globalObjects}][property.value='Date']`,
+    message: "window['Date'] などは使いません。日付は JDN の整数で持ちます（設計書 §5.1）。",
+  },
+  {
+    selector: `MemberExpression[object.object.name=${globalObjects}][object.property.name='Math'][property.name='random']`,
+    message:
+      'window.Math.random、globalThis.Math.random は使いません。同じ入力は同じ結果になるようにします（NFR-08、D-52）。',
   },
 ];
 
@@ -176,6 +207,32 @@ function restrictPackages(names, reason) {
   return {
     paths: names.map((name) => ({ name, message: `${name} には依存しません。${reason}` })),
     patterns: [{ group: names.map((name) => `${name}/*`), message: reason }],
+  };
+}
+
+/**
+ * views と app 用の、地図への import の禁止（パッケージ名と src/map/ の両方）。
+ *
+ * 【なぜ】views と app は src/map/ を「型だけ」import してよい（`import type`）が、値として静的に
+ * import してはいけない。値の import は map のコードと maplibre-gl の CSS を本体に混ぜ、
+ * 「地図を初めて開いたときだけ読み込む」（D-50、NFR-02）を壊す。動的 `import('../map')` は許す。
+ * 型の例外（allowTypeImports）は typescript-eslint 版の規則だけにあるので、そちらを使う。
+ *
+ * @returns @typescript-eslint/no-restricted-imports に渡すオプション
+ */
+function restrictMapImports() {
+  const base = restrictPackages(mapPackages, mapPackagesReason);
+  return {
+    paths: base.paths,
+    patterns: [
+      ...base.patterns,
+      {
+        group: ['**/map', '**/map/**'],
+        allowTypeImports: true,
+        message:
+          'src/map/ を値として静的に import しません。地図は動的 import() で初めて開いたときに読み込みます。型だけなら `import type` を使えます（設計書 §4.1、D-50）。',
+      },
+    ],
   };
 }
 
@@ -432,7 +489,7 @@ export default defineConfig(
           ),
         },
       ],
-      'no-restricted-syntax': ['error', ...noImplicitDependencySyntax],
+      'no-restricted-syntax': ['error', ...noImplicitDependencySyntax, ...globalAccessSyntax],
       // 【なぜ】render は書き出しにも使われ、同じ入力は同じ絵になる必要がある（NFR-08）。T3-01 のレビューの申し送り。
       'no-restricted-globals': ['error', dateRestriction],
       'no-restricted-properties': ['error', ...randomRestriction],
@@ -459,8 +516,8 @@ export default defineConfig(
           basePath: import.meta.dirname,
           zones: zones(
             './src/map',
-            [state, views, app, io, workers],
-            'src/map/ は state、views、app、io、workers を import しません。ストアの値と更新の関数は views から props で受け取ります（設計書 §4.1、D-52）。core、render、i18n には依存してよい。',
+            [state, views, app, io, workers, i18n],
+            'src/map/ は state、views、app、io、workers、i18n を import しません。ストアの値と更新の関数、文言（texts）は views から props で受け取ります（設計書 §4.1、D-52）。core と render には依存してよい。',
           ),
         },
       ],
@@ -469,7 +526,7 @@ export default defineConfig(
       // 【なぜ】JSX は react/jsx-runtime を暗黙に import するので、React の禁止をすり抜ける。
       // 動的 import と型の位置の import('x') も、層の検査をすり抜けるので止める。
       // 地図の部分全体は views が動的 import で読み込む（D-50）ので、map の中では静的 import で足りる。
-      'no-restricted-syntax': ['error', ...noImplicitDependencySyntax],
+      'no-restricted-syntax': ['error', ...noImplicitDependencySyntax, ...globalAccessSyntax],
     },
   },
   // 【なぜ】views は Worker の client を直接呼ばず、state の controller を通す（設計書 §4.1、D-17）。
@@ -478,7 +535,8 @@ export default defineConfig(
     files: ['src/views/**/*.{ts,tsx}'],
     rules: {
       // 【なぜ】views も地図の部品を直接 import しない。src/map/ を動的 import で読み込む（D-50）。
-      'no-restricted-imports': ['error', restrictPackages(mapPackages, mapPackagesReason)],
+      'no-restricted-imports': 'off',
+      '@typescript-eslint/no-restricted-imports': ['error', restrictMapImports()],
       'import-x/no-restricted-paths': [
         'error',
         {
@@ -525,7 +583,8 @@ export default defineConfig(
   {
     files: ['src/app/**/*.{ts,tsx}'],
     rules: {
-      'no-restricted-imports': ['error', restrictPackages(mapPackages, mapPackagesReason)],
+      'no-restricted-imports': 'off',
+      '@typescript-eslint/no-restricted-imports': ['error', restrictMapImports()],
     },
   },
   // 【なぜ】Web Worker の中（*.worker.ts）には window も document も無い。上の src/ 全体の設定は
@@ -602,6 +661,27 @@ export default defineConfig(
   {
     files: ['vite.config.ts', 'vitest.config.ts', 'playwright.config.ts', 'tests/**/*.ts'],
     languageOptions: { globals: globals.node },
+  },
+  // 【なぜ】E2E の spec は、`test` を '@playwright/test' から直接 import せず、tests/e2e/fixtures.ts から import する。
+  // fixtures.ts の `test` は、OpenStreetMap への要求を常に差し替え、外部への通信を失敗させる（D-51 の補足 (4)、NFR-02）。
+  // 直接 import すると、地図のタブを開いたとき本物の OSM にタイルを取りに行ってしまう。
+  {
+    files: ['tests/e2e/**/*.spec.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@playwright/test',
+              importNames: ['test'],
+              message:
+                "`test` は './fixtures' から import してください（OSM への通信を差し替える共通の fixture。tests/e2e/fixtures.ts）。",
+            },
+          ],
+        },
+      ],
+    },
   },
 
   // 【なぜ】最後に置く。ESLint が持つ整形の規則のうち、Prettier と衝突するものを切る。

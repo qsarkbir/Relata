@@ -6,7 +6,7 @@
  * maghrib-filtered.relata.json は、地名と年のフィルタ、片端の規則、孤立ノードを表示する設定つき
  * （件数は「ノード 7 / 15、エッジ 6 / 17」）。
  */
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { readFileSync } from 'node:fs';
 import {
   alerts,

@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { openProject, startApp } from './support';
 
 test.use({ locale: 'ja-JP' });

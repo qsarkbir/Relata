@@ -349,7 +349,7 @@ const cases = [
   },
   {
     // 【なぜ】D-52。src/map/ は state、views、app、io、workers を import せず、React と zustand にも依存しない。
-    name: 'map は state、views、app、io、workers、react、zustand を import できない（core、render、i18n は import できる）',
+    name: 'map は state、views、app、io、workers、i18n、react、zustand を import できない（core、render は import できる）',
     lint: 'src/map/__lint_probe__.ts',
     files: {
       'src/map/__lint_probe__.ts': [
@@ -374,7 +374,8 @@ const cases = [
       'src/render/__lint_probe__r.ts': ['export const r = 1;'],
       'src/i18n/__lint_probe__i.ts': ['export const i = 1;'],
     },
-    expect: { 'no-restricted-imports': 2, 'import-x/no-restricted-paths': 5 },
+    // 【なぜ】文言（texts）は views から props で受け取る。map は i18n に依存しない（設計書 §4.1）。
+    expect: { 'no-restricted-imports': 2, 'import-x/no-restricted-paths': 6 },
   },
   {
     name: 'map は maplibre-gl、@deck.gl、d3-geo と DOM のグローバルを使える',
@@ -400,14 +401,25 @@ const cases = [
       'src/map/__lint_probe__.ts': [
         'export const a = new Date();',
         'export const b = Math.random();',
+        // 【なぜ】window や globalThis 経由は、識別子の検査をすり抜けるので、構文で止める。
+        'export const c = [window.Date, globalThis.Date, window.Math.random(), globalThis.Math.random()];',
+        "export const d = [window['Date'], Math['random']()];",
       ],
       'src/render/__lint_probe__.ts': [
         'export const a = new Date();',
         'export const b = Math.random();',
+        'export const c = [window.Date, globalThis.Date, window.Math.random(), globalThis.Math.random()];',
+        "export const d = [window['Date'], Math['random']()];",
       ],
     },
     lintAlso: ['src/render/__lint_probe__.ts'],
-    expect: { 'no-restricted-globals': 2, 'no-restricted-properties': 2 },
+    // map: window.Date、globalThis.Date、window.Math.random、globalThis.Math.random、window['Date'] の 5（Math['random'] は no-restricted-properties が止める）、
+    // render: 同じく 5。
+    expect: {
+      'no-restricted-globals': 2,
+      'no-restricted-properties': 4,
+      'no-restricted-syntax': 10,
+    },
   },
   {
     name: 'map で JSX、動的 import、型の位置の import を書けない',
@@ -467,24 +479,87 @@ const cases = [
       'src/views/__lint_probe__.ts',
       'src/app/__lint_probe__.ts',
     ],
-    expect: { 'no-restricted-imports': 8 },
+    expect: { 'no-restricted-imports': 6, '@typescript-eslint/no-restricted-imports': 2 },
   },
   {
     name: 'core、render、state、i18n、io、workers は map を import できない（map から他の層への逆向き）',
-    lint: 'src/io/__lint_probe__.ts',
+    lint: 'src/core/__lint_probe__.ts',
     files: {
-      'src/io/__lint_probe__.ts': [
-        "import { f } from '../map/__lint_probe__f';",
-        'export const a = f;',
-      ],
-      'src/workers/__lint_probe__.ts': [
-        "import { f } from '../map/__lint_probe__f';",
-        'export const a = f;',
-      ],
+      ...Object.fromEntries(
+        ['core', 'render', 'state', 'i18n', 'io', 'workers'].map((layer) => [
+          `src/${layer}/__lint_probe__.ts`,
+          ["import { f } from '../map/__lint_probe__f';", 'export const a = f;'],
+        ]),
+      ),
       'src/map/__lint_probe__f.ts': ['export const f = 1;'],
     },
-    lintAlso: ['src/workers/__lint_probe__.ts'],
-    expect: { 'import-x/no-restricted-paths': 2 },
+    lintAlso: [
+      'src/render/__lint_probe__.ts',
+      'src/state/__lint_probe__.ts',
+      'src/i18n/__lint_probe__.ts',
+      'src/io/__lint_probe__.ts',
+      'src/workers/__lint_probe__.ts',
+    ],
+    expect: { 'import-x/no-restricted-paths': 6 },
+  },
+  {
+    // 【なぜ】deck.gl の内部の部品（luma.gl、math.gl、loaders.gl）を直接 import しても、本体に混ざる。
+    name: 'core、i18n、state、render、io、workers、views、app は @luma.gl、@math.gl、@loaders.gl を import できない',
+    lint: 'src/core/__lint_probe__.ts',
+    files: Object.fromEntries(
+      ['core', 'i18n', 'state', 'render', 'io', 'workers', 'views', 'app'].map((layer) => [
+        `src/${layer}/__lint_probe__.ts`,
+        [
+          "import { a } from '@luma.gl/core';",
+          "import { b } from '@math.gl/core';",
+          "import { c } from '@loaders.gl/core';",
+          'export const x = [a, b, c];',
+        ],
+      ]),
+    ),
+    lintAlso: [
+      'src/i18n/__lint_probe__.ts',
+      'src/state/__lint_probe__.ts',
+      'src/render/__lint_probe__.ts',
+      'src/io/__lint_probe__.ts',
+      'src/workers/__lint_probe__.ts',
+      'src/views/__lint_probe__.ts',
+      'src/app/__lint_probe__.ts',
+    ],
+    expect: { 'no-restricted-imports': 18, '@typescript-eslint/no-restricted-imports': 6 },
+  },
+  {
+    // 【なぜ】views と app は map を「型だけ」なら import でき、値の静的 import は止まる。動的 import() は map の
+    // 読み込みの正規の方法（D-50）なので止めない。
+    name: 'views と app は map を値として静的に import できない（import type と動的 import() は書ける）',
+    lint: 'src/views/__lint_probe__.ts',
+    files: {
+      'src/views/__lint_probe__.ts': [
+        "import { f } from '../map/__lint_probe__f';",
+        "import * as ns from '../map/__lint_probe__f';",
+        "import type { T } from '../map/__lint_probe__f';",
+        "import { type U, g } from '../map/__lint_probe__f';",
+        "export { f as h } from '../map/__lint_probe__f';",
+        "export const load = () => import('../map/__lint_probe__f');",
+        'export const x = [f, ns, g];',
+        'export type V = [T, U];',
+      ],
+      'src/app/__lint_probe__.ts': [
+        "import { f } from '../map/__lint_probe__f';",
+        "import type { T } from '../map/__lint_probe__f';",
+        "export const load = () => import('../map/__lint_probe__f');",
+        'export const x: T = f as unknown as T;',
+      ],
+      'src/map/__lint_probe__f.ts': [
+        'export const f = 1;',
+        'export type T = number;',
+        'export type U = number;',
+        'export const g = 1;',
+      ],
+    },
+    lintAlso: ['src/app/__lint_probe__.ts'],
+    // views: 値の import 4（f、ns、g、再 export の f）。app: 値の import 1。
+    expect: { '@typescript-eslint/no-restricted-imports': 5 },
   },
   {
     name: 'CLAUDE.md の規約: any、非 null アサーション、switch の網羅漏れ、理由なしの disable',

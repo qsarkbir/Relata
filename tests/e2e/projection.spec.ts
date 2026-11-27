@@ -5,7 +5,7 @@
  * 人物 → 組織: o1 に p1,p2,p3、o2 に p2,p3,p4、o3 に p4,p5。場所 l1 は p1 だけがつながる（第 3 の型）。
  * 人物 ← 組織で射影すると、ノード 5、エッジ 6。p2—p3 だけが 2 つの組織（o1、o2）を共有する。
  */
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { readFileSync } from 'node:fs';
 import {
   buildPanel,

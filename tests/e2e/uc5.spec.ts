@@ -16,7 +16,7 @@
  * 【歴史の事情】元の表記（「505 AH」など）は書き換えない。換算した値は年表と時間フィルタに現れる。
  */
 import { readFileSync } from 'node:fs';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from './fixtures';
 import { openProject, saveProjectFile, startApp } from './support';
 import { importPair } from './uc-support';
 

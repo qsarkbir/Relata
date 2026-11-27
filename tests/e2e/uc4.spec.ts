@@ -10,7 +10,7 @@
  * - Born（生年。日付）: n10 だけ欠損。
  * - Rank（序列。数値）: n2、n4、n7 が欠損。
  */
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { appliedRegion, counts, openAttr, openGraphSection, startApp } from './support';
 import { downloadText, importPair } from './uc-support';
 

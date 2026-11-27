@@ -3,7 +3,7 @@
  *
  * 見本は「サンプルを読み込む」のデータ（public/samples/maghrib.relata.json。219 ノード、年表に年代がある）。座標は使わず、要素の大きさとスクロールの量だけを調べる。
  */
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { loadedNotice, startApp } from './support';
 
 test.use({ locale: 'ja-JP' });
@@ -112,6 +112,12 @@ test('FR-UI-02: D-49 End で広げても中央の列の 40% に丸められ、�
     .toBeLessThanOrEqual(3);
   await bar.focus();
   await page.keyboard.press('End');
+  // 【なぜ】aria-valuenow は、段の高さが変わったあとに ResizeObserver 経由で（非同期に）更新される。キーを
+  // 押してすぐ読むと、広げる前の値（既定の高さ。上限との差 82 px）を読むことがあり、負荷が高いと落ちていた。
+  // 値が上限に届くまで待ってから読む。
+  await expect
+    .poll(async () => Math.abs(Number(await bar.getAttribute('aria-valuenow')) - (await limit())))
+    .toBeLessThanOrEqual(3);
   const now = Number(await bar.getAttribute('aria-valuenow'));
   expect(now).toBeLessThan(800);
   // 値は「中央の列の内側の高さ × 0.4」に一致する（図が 240 px を保てる余裕は、この窓では十分にある）。

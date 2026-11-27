@@ -4,7 +4,7 @@
  * 見本は maghrib.relata.json（ノード 15、エッジ 17。既定では孤立の p20 を除いて 14 / 15）。
  * ページ送りは、130 ノードの作り物のプロジェクトで確かめる。
  */
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page } from './fixtures';
 import { readFileSync } from 'node:fs';
 import {
   fixturePath,

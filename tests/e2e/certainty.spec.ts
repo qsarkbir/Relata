@@ -4,8 +4,8 @@
  * 見本は tests/fixtures/e2e/certainty-edges.csv（エッジ 4 本: 確実 1、おそらく 1、可能性あり 1、指定なし 1。
  * place 列の値は「بغداد؟」「Basra?」「Mosul」「Cairo」）。
  */
-import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures';
+import type { Page } from './fixtures';
 import { readFileSync } from 'node:fs';
 import {
   appliedRegion,

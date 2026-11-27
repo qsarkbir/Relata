@@ -6,8 +6,9 @@
  * 入口は本物の画面（「グラフ｜地図」の地図のタブ。`MapView.tsx`）。
  */
 /// <reference lib="dom" />
-import { expect, test, type BrowserContext, type Page, type Request } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { expect, test, type BrowserContext, type Page, type Request } from './fixtures';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   fixturePath,
   loadedNotice,
@@ -306,6 +307,11 @@ test.describe('FR-MP-01・FR-MP-06・NFR-02: OSM の背景', () => {
     const zooms = new Set(osm.map((r) => /\/(\d+)\/\d+\/\d+\.png$/u.exec(r.url())?.[1]));
     expect(zooms.size).toBe(1);
     expect(new Set(osm.map((r) => r.url())).size).toBe(osm.length);
+    // 先読みしない: 表示範囲を覆う枚数（各辺 ceil(長さ/256)+1 枚）を超えない。
+    const area = await page.locator('.map-engine').boundingBox();
+    if (area === null) throw new Error('表示範囲の大きさが取れません');
+    const limit = (Math.ceil(area.width / 256) + 1) * (Math.ceil(area.height / 256) + 1);
+    expect(osm.length).toBeLessThanOrEqual(limit);
     expect(rec.hosted().some((r) => r.url().includes('/geo/'))).toBe(false);
   });
 });
@@ -394,7 +400,17 @@ test.describe('FR-MP-01・FR-MP-06・NFR-02: 背景の切り替えと利用者�
     await expect(drawer.getByRole('alert')).toContainText('https で始まる');
     await setCustomUrl(drawer, 'https://tiles.example.test/{x}/{y}.png');
     await expect(drawer.getByRole('alert')).toContainText('{z}、{x}、{y} をすべて含めて');
-    await page.waitForLoadState('networkidle');
+    // 【なぜ】networkidle ではなく、描画を 2 フレーム進めてから数える（要求は描画の更新で出るため）。
+    await page.evaluate(
+      () =>
+        new Promise<void>((done) => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              done();
+            });
+          });
+        }),
+    );
     expect(rec.external()).toEqual([]);
     await setCustomUrl(drawer, CUSTOM_URL);
     const attr = drawer.getByLabel('帰属表示の文');
@@ -418,6 +434,251 @@ test.describe('FR-MP-01・FR-MP-06・NFR-02: 背景の切り替えと利用者�
     await expect(page.getByTestId('about-map-privacy')).toContainText('表示中の範囲とズーム');
     await expect(page.getByRole('dialog')).toContainText('Natural Earth');
     await expect(page.getByRole('dialog')).toContainText('OpenStreetMap contributors');
+  });
+});
+
+/** 画面の地図の枠の、(x, y)（枠の左上から）の色を読む。 */
+async function colorAt(page: Page, x: number, y: number): Promise<[number, number, number]> {
+  const shot = await page.locator('.map-engine').screenshot();
+  return page.evaluate(
+    async ({ b64, px, py }) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const bmp = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const c = document.createElement('canvas');
+      c.width = bmp.width;
+      c.height = bmp.height;
+      const ctx = c.getContext('2d');
+      if (ctx === null) throw new Error('2D の文脈を作れません');
+      ctx.drawImage(bmp, 0, 0);
+      const d = ctx.getImageData(px, py, 1, 1).data;
+      return [d[0] ?? 0, d[1] ?? 0, d[2] ?? 0] as [number, number, number];
+    },
+    { b64: shot.toString('base64'), px: x, py: y },
+  );
+}
+
+/** Web メルカトルの、世界の幅を 1 としたときの座標（北が y = 0）。 */
+function mercator(lon: number, lat: number): { x: number; y: number } {
+  const rad = (lat * Math.PI) / 180;
+  return {
+    x: (lon + 180) / 360,
+    y: 0.5 - Math.log(Math.tan(Math.PI / 4 + rad / 2)) / (2 * Math.PI),
+  };
+}
+
+const LAND_RGB = [0xf1, 0xee, 0xe6];
+const SEA_RGB = [0xd6, 0xe2, 0xea];
+
+test.describe('FR-MP-01: 簡易背景の陸地の塗り', () => {
+  // 【なぜ】世界の陸地のデータは、日付変更線をまたぐ環（ユーラシア）を平面で扱えるよう切り直してある。
+  //   切り直さないと、イベリア半島から西ヨーロッパの陸が海の色の長方形で抜け、黒海の北に海の色の三角形が出た（T3-03b）。
+  test('FR-MP-01: 地中海の周りの陸地が欠けない（イベリア半島、フランス、ウクライナの内陸は陸の色、地中海は海の色）', async ({
+    page,
+    context,
+  }) => {
+    await mockTiles(context);
+    const center = { lon: 18, lat: 44, zoom: 3 };
+    await startApp(page);
+    await openProject(
+      page,
+      projectWithCoords({
+        coords: 'geo',
+        view: {
+          workspace: { mainView: 'map', tab: 'table', open: false, height: 300 },
+          map: {
+            background: 'simple',
+            viewport: center,
+            customTiles: { url: '', attribution: '' },
+          },
+        },
+      }),
+    );
+    await expect(page.locator('[data-map-attribution]')).toHaveText('Natural Earth');
+    const box = await page.locator('.map-engine').boundingBox();
+    if (box === null) throw new Error('地図の大きさが取れません');
+    const c = mercator(center.lon, center.lat);
+    const scale = 512 * 2 ** center.zoom;
+    const at = (lon: number, lat: number): [number, number] => {
+      const p = mercator(lon, lat);
+      return [
+        Math.round(box.width / 2 + (p.x - c.x) * scale),
+        Math.round(box.height / 2 + (p.y - c.y) * scale),
+      ];
+    };
+    const near = (a: number[], e: number[]): boolean =>
+      e.every((v, i) => Math.abs((a[i] ?? 0) - v) <= 6);
+    const points: [string, number, number, number[]][] = [
+      ['地中海（イオニア海）', 17, 36, SEA_RGB],
+      ['イベリア半島の内陸', -4, 40, LAND_RGB],
+      ['フランスの内陸', 2.5, 47, LAND_RGB],
+      ['西フランス（ビスケー湾岸）', -1, 46.5, LAND_RGB],
+      ['ブルターニュ', -3, 48, LAND_RGB],
+      ['ジョージア（黒海の東岸）', 42.5, 42, LAND_RGB],
+      ['トルコ北東部', 40, 40.5, LAND_RGB],
+      ['ウクライナの内陸', 31, 49, LAND_RGB],
+      ['黒海の北の陸（南ロシア）', 41, 48, LAND_RGB],
+      ['ドイツの内陸', 10, 51, LAND_RGB],
+    ];
+    for (const [name, lon, lat, rgb] of points) {
+      const [x, y] = at(lon, lat);
+      expect(x, `${name} は枠の中`).toBeGreaterThan(0);
+      expect(x, `${name} は枠の中`).toBeLessThan(box.width);
+      expect(y, `${name} は枠の中`).toBeGreaterThan(0);
+      expect(y, `${name} は枠の中`).toBeLessThan(box.height);
+      await expect
+        .poll(async () => near(await colorAt(page, x, y), rgb), { message: name })
+        .toBe(true);
+    }
+  });
+});
+
+/** 地図の部品のチャンクを、画面とは別に読み込んで使うための入口（型は最小限）。 */
+interface MapModule {
+  createMapEngine(
+    el: HTMLElement,
+    o: {
+      background: { background: string; customTiles: { url: string; attribution: string } };
+      initialBounds?: { west: number; south: number; east: number; north: number };
+      onError?: (e: { kind: string; message: string }) => void;
+    },
+  ): {
+    ok: boolean;
+    engine?: {
+      isLoaded(): boolean;
+      destroy(): void;
+      getViewport(): { lon: number; lat: number; zoom: number };
+    };
+  };
+}
+interface ContextWindow {
+  __contexts?: { canvas: HTMLCanvasElement; gl: WebGL2RenderingContext }[];
+}
+
+test.describe('FR-MP-01・NFR-02: 地図の部品の後始末と失敗の通知', () => {
+  test('FR-MP-01: destroy すると、MapLibre と deck.gl の両方の WebGL の文脈を手放す', async ({
+    page,
+    context,
+  }) => {
+    await mockTiles(context);
+    // 作られた WebGL2 の文脈を、canvas と対で記録する。
+    await page.addInitScript(() => {
+      const w = window as unknown as ContextWindow;
+      w.__contexts = [];
+      // eslint-disable-next-line @typescript-eslint/unbound-method -- 元の関数を、this を付けて呼び直すために取り出す
+      const original = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (
+        this: HTMLCanvasElement,
+        ...args: unknown[]
+      ) {
+        const gl: unknown = Reflect.apply(original, this, args);
+        if (args[0] === 'webgl2' && gl instanceof WebGL2RenderingContext)
+          w.__contexts?.push({ canvas: this, gl });
+        return gl;
+      } as typeof original;
+    });
+    const rec = record(page);
+    await startApp(page);
+    await openProject(page, projectWithCoords({ coords: 'geo' }));
+    await openMapTab(page);
+    await expectColor(page, OSM_TILE_RGB);
+    const chunk = rec.requests.map((r) => r.url()).find((u) => /\/assets\/map-[^/]*\.js/u.test(u));
+    if (chunk === undefined) throw new Error('地図のチャンクが読まれていません');
+    const result = await page.evaluate(async (url) => {
+      const w = window as unknown as ContextWindow;
+      // 【TS】動的 import の戻り値は型が付かないので、最小の型で受け直す。
+      const m = (await import(/* @vite-ignore */ url)) as MapModule; // 理由: 自分のアプリのチャンク
+      const host = document.createElement('div');
+      host.style.cssText = 'position:fixed;left:0;top:0;width:300px;height:200px';
+      document.body.append(host);
+      const r = m.createMapEngine(host, {
+        background: { background: 'simple', customTiles: { url: '', attribution: '' } },
+      });
+      if (!r.ok || r.engine === undefined) throw new Error('地図を作れません');
+      const engine = r.engine;
+      while (!engine.isLoaded()) await new Promise((res) => setTimeout(res, 50));
+      const canvases = [...host.querySelectorAll('canvas')];
+      engine.destroy();
+      return canvases.map((c) => ({
+        name: c.id !== '' ? c.id : c.className,
+        lost: w.__contexts?.find((x) => x.canvas === c)?.gl.isContextLost() ?? null,
+      }));
+    }, chunk);
+    // MapLibre の canvas と deck.gl の canvas の 2 枚。どちらの文脈も失われている。
+    expect(result.map((r) => r.name).sort()).toEqual(['deckgl-overlay', 'maplibregl-canvas']);
+    expect(result.map((r) => r.lost)).toEqual([true, true]);
+  });
+
+  test('NFR-02: initialBounds で作ると、世界全体のタイルを取らず、範囲に合う 1 つの段だけを取る', async ({
+    page,
+    context,
+  }) => {
+    await mockTiles(context);
+    const rec = record(page);
+    await startApp(page);
+    // 画面の地図は作らず、地図のチャンクだけを直接読む（チャンクの名前は出力のフォルダから探す）。
+    const dist = join(import.meta.dirname, '..', '..', 'dist', 'assets');
+    const chunk = readdirSync(dist).find((f) => /^map-[^.]+\.js$/u.test(f));
+    if (chunk === undefined) throw new Error('地図のチャンクが見つかりません');
+    const url = new URL(`assets/${chunk}`, page.url()).href;
+    const viewport = await page.evaluate(async (u) => {
+      const m = (await import(/* @vite-ignore */ u)) as MapModule; // 理由: 自分のアプリのチャンク
+      const host = document.createElement('div');
+      host.style.cssText = 'position:fixed;left:0;top:0;width:700px;height:500px';
+      document.body.append(host);
+      const r = m.createMapEngine(host, {
+        background: { background: 'osm', customTiles: { url: '', attribution: '' } },
+        initialBounds: { west: 40, south: 30, east: 50, north: 36 },
+      });
+      if (!r.ok || r.engine === undefined) throw new Error('地図を作れません');
+      while (!r.engine.isLoaded()) await new Promise((res) => setTimeout(res, 50));
+      return r.engine.getViewport();
+    }, url);
+    expect(viewport.lon).toBeCloseTo(45, 3);
+    const zooms = new Set(rec.external().map((r) => /\/(\d+)\/\d+\/\d+\.png$/u.exec(r.url())?.[1]));
+    expect(rec.external().length).toBeGreaterThan(0);
+    expect(zooms.size).toBe(1);
+    expect(Number([...zooms][0])).toBeGreaterThanOrEqual(4);
+  });
+
+  test('NFR-02: タイルの取得の失敗は、タイルが何枚失敗しても 1 回だけ通知される', async ({
+    page,
+    context,
+  }) => {
+    await mockTiles(context);
+    const rec = record(page);
+    await startApp(page);
+    await openProject(page, projectWithCoords({ coords: 'geo' }));
+    await openMapTab(page);
+    await expectColor(page, OSM_TILE_RGB);
+    const chunk = rec.requests.map((r) => r.url()).find((u) => /\/assets\/map-[^/]*\.js/u.test(u));
+    if (chunk === undefined) throw new Error('地図のチャンクが読まれていません');
+    // 差し替えていない外部ホストは、mockTiles が通信せずに失敗させる。
+    const unreachable = 'https://unreachable.example.test/{z}/{x}/{y}.png';
+    await page.evaluate(
+      async ({ url, tiles }) => {
+        const m = (await import(/* @vite-ignore */ url)) as MapModule; // 理由: 自分のアプリのチャンク
+        const host = document.createElement('div');
+        host.style.cssText = 'position:fixed;left:0;top:0;width:700px;height:500px';
+        document.body.append(host);
+        const errors: string[] = [];
+        (window as unknown as { __errors?: string[] }).__errors = errors;
+        m.createMapEngine(host, {
+          background: { background: 'custom', customTiles: { url: tiles, attribution: '' } },
+          onError: (e) => errors.push(e.kind),
+        });
+      },
+      { url: chunk, tiles: unreachable },
+    );
+    await expect
+      .poll(() => rec.requests.filter((r) => r.url().includes('unreachable.example.test')).length)
+      .toBeGreaterThan(2);
+    await expect
+      .poll(() => page.evaluate(() => (window as unknown as { __errors?: string[] }).__errors))
+      .toEqual(['tile']);
+    await page.waitForTimeout(500);
+    expect(
+      await page.evaluate(() => (window as unknown as { __errors?: string[] }).__errors),
+    ).toEqual(['tile']);
   });
 });
 
@@ -533,7 +794,8 @@ test.describe('FR-MP-01・NFR-02: 保存と鍵', () => {
     // 自動保存にも鍵は残らない。
     const auto = await waitForAutosave(page, (p) => JSON.stringify(p).includes('removedParams'));
     expect(JSON.stringify(auto)).not.toContain('SECRET123');
-    // 保存したファイルを開き直す。
+    // 保存したファイルを開き直す。ここから先の要求だけを調べる（鍵つきの URL は、もう使われない）。
+    const beforeReopen = rec.requests.length;
     await openProject(page, {
       name: 'saved.relata.json',
       mimeType: 'application/json',
@@ -549,7 +811,10 @@ test.describe('FR-MP-01・NFR-02: 保存と鍵', () => {
     // URL を編集すると、入れ直しの促しは消える。
     await setCustomUrl(drawer, `${CUSTOM_URL}?style=old&x=1`);
     await expect(drawer.getByTestId('map-removed-params')).toHaveCount(0);
-    expect(rec.external().every((r) => !r.url().includes('SECRET123') || true)).toBe(true);
+    // 開き直した後の要求に、鍵（SECRET123）を含むものが無い。
+    expect(rec.requests.slice(beforeReopen).filter((r) => r.url().includes('SECRET123'))).toEqual(
+      [],
+    );
   });
 
   test('FR-MP-01: 再読み込みしても（自動保存から）背景と地図のタブが戻る', async ({

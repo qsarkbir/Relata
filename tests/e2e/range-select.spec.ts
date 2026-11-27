@@ -1,5 +1,5 @@
 /** グラフの範囲選択（Shift ＋ ドラッグ）と選択で絞り込む: FR-FL-11 */
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page } from './fixtures';
 import { appliedRegion, openProject, startApp } from './support';
 
 const NODES = '.graph-canvas #graph-view-nodes > [data-id]';

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { openProject, startApp } from './support';
 
 function projectFile(kind: 'directed' | 'undirected' = 'directed', count = 4, isolated = false) {
