@@ -11,12 +11,17 @@ export interface LibraryInfo {
  * 依存を足したら、ここにも足す。`libraries.test.ts` が `package.json` との一致を確かめる（D-25）。
  */
 export const LIBRARIES: readonly LibraryInfo[] = [
+  { name: '@deck.gl/core', license: 'MIT' },
+  { name: '@deck.gl/layers', license: 'MIT' },
+  { name: '@deck.gl/mapbox', license: 'MIT' },
   { name: 'bidi-js', license: 'MIT' },
   { name: 'comlink', license: 'Apache-2.0' },
+  { name: 'd3-geo', license: 'ISC' },
   { name: 'graphology', license: 'MIT' },
   { name: 'graphology-metrics', license: 'MIT' },
   { name: 'graphology-layout-forceatlas2', license: 'MIT' },
   { name: 'harfbuzzjs', license: 'MIT' },
+  { name: 'maplibre-gl', license: 'BSD-3-Clause' },
   { name: 'react', license: 'MIT' },
   { name: 'react-dom', license: 'MIT' },
   { name: 'xlsx', license: 'Apache-2.0' },
