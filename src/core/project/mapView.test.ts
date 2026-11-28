@@ -19,13 +19,25 @@ describe('view.map（D-59、FR-MP-01）', () => {
   });
   it('FR-MP-01: 正しい値が往復する', () => {
     const v = {
+      ...DEFAULT_MAP_VIEW,
       background: 'custom',
       customTiles: { url: 'https://t.example/{z}/{x}/{y}.png', attribution: '© 古地図' },
       viewport: { lon: 35.2, lat: 31.8, zoom: 6.5 },
       edgeShape: 'arc',
+      direction: 'taper',
+      encoding: {
+        ...DEFAULT_MAP_VIEW.encoding,
+        edgeWidth: { ...DEFAULT_MAP_VIEW.encoding.edgeWidth, scale: 'log' },
+      },
       labels: 'none',
       playback: { particles: false, cumulativeDegree: true },
-      bundling: { enabled: true, strength: 0.8, style: 'overlay' },
+      bundling: {
+        enabled: true,
+        strength: 0.8,
+        style: 'overlay',
+        iterations: 90,
+        epsilonRatio: 0.025,
+      },
     };
     expect(parseMapView(v)).toEqual({ ok: true, value: v });
   });
@@ -140,8 +152,19 @@ describe('bundling の設定（D-55、FR-VG-13）', () => {
     expect(s(0)).toBe(0);
     expect(s(1)).toBe(1);
     for (const x of [-0.1, 1.1, Number.NaN, '0.3', null]) expect(s(x)).toBe(0.85);
-    const r = parseBundlingView({ enabled: true, style: 'overlay', iterations: 90 });
+    const r = parseBundlingView({ enabled: true, style: 'overlay', other: 90 });
     expect(r).toEqual({ ok: true, value: { enabled: true, strength: 0.85, style: 'overlay' } });
+  });
+  it('FR-VG-13/14: 反復回数と ε は省略でき、入力範囲を外れたら既定になる', () => {
+    const value = (iterations: unknown, epsilonRatio: unknown) => {
+      const r = parseBundlingView({ iterations, epsilonRatio });
+      return r.ok ? r.value : undefined;
+    };
+    expect(value(500, 0.1)).toMatchObject({ iterations: 500, epsilonRatio: 0.1 });
+    expect(value(1, 0.001)).toMatchObject({ iterations: 1, epsilonRatio: 0.001 });
+    expect(value(50, 0.01)).toEqual(DEFAULT_BUNDLING_VIEW);
+    expect(value(1.5, 0)).toEqual(DEFAULT_BUNDLING_VIEW);
+    expect(value(501, Number.NaN)).toEqual(DEFAULT_BUNDLING_VIEW);
   });
   it('FR-VG-13: オブジェクトでなければ失敗', () => {
     expect(parseBundlingView(null).ok).toBe(false);

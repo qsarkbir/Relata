@@ -22,7 +22,7 @@ import { Map as MapLibreMap, setWorkerUrl } from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapboxOverlay } from '@deck.gl/mapbox';
-import { Layer, type LayersList } from '@deck.gl/core';
+import type { PickingInfo } from '@deck.gl/core';
 import type { GeoBBox } from '../core/geo';
 import type { MapViewport } from '../core/project/mapView';
 import {
@@ -43,6 +43,9 @@ import {
   viewportToCamera,
   WORLD_BBOX,
 } from './viewport';
+import { buildMapScene, mapLabels, type MapNetwork, type MapScene } from './scene';
+import { networkLayers, type MapPick } from './networkLayers';
+import { createLabelOverlay } from './labelOverlay';
 import './map.css';
 
 // 絶対 URL にして渡す（基準の違う場所から読まれても迷わないように）。モジュールを読んだときに 1 回だけ。
@@ -148,11 +151,12 @@ export interface MapEngine {
   /** 枠の大きさに合わせ直す。枠の大きさが変わったとき（タブの切り替えで見えたときなど）に呼ぶ。 */
   resize(): void;
   /**
-   * deck.gl の層を差し替える（T3-04 以降の、ノードとエッジの描画用）。
+   * 地図に描くグラフと選択を差し替える。
    *
-   * @param layers - 層の一覧
+   * @param network - 地図に描くデータ
+   * @param onPick - 地図上で押したノードかエッジ（背景なら null）
    */
-  setLayers(layers: LayersList): void;
+  setNetwork(network: MapNetwork, onPick: (pick: MapPick | null) => void): void;
   /** 表示中のタイルなどを読み終えたか（テストの待ち合わせ用）。 */
   isLoaded(): boolean;
   /** 地図を壊して、DOM と WebGL の資源を解放する。何度呼んでもよい。 */
@@ -182,43 +186,6 @@ function hasWebGL2(): boolean {
   // 【なぜ】確かめるだけに使った文脈をすぐ手放す（ブラウザが同時に持てる文脈の数には上限がある）。
   gl.getExtension('WEBGL_lose_context')?.loseContext();
   return true;
-}
-
-// 層の `loadOptions` に足す、Worker を使わない設定。同じ物を使い回す（層の props の比較で、毎回変わった
-// と見なされて再計算されないように）。
-const NO_WORKER: { readonly worker: false } = { worker: false };
-
-/**
- * 層の一覧の、すべての層に「loaders.gl の Worker を使わない」設定を足す。
- *
- * 【なぜ】deck.gl の読み込みの部品（loaders.gl）は、Worker を使う読み込みの形式で、Worker の本体を
- * `https://unpkg.com/@loaders.gl` から取る予備の経路を持つ（地図のチャンクに含まれている）。
- * 外部への通信を地図のタイルだけに保つ（NFR-02）ため、`loadOptions.worker: false` でその経路を断つ。
- * `MapboxOverlay` 自体には `loadOptions` を渡せない（層ごとの設定）ので、層を渡すときにここで足す。
- * ノードとエッジの層（点、線、多角形）は画像や外部の形式を読まないので、実際には使われない保険である。
- *
- * @param list - 層の一覧（入れ子、`null`、`false` を含みうる）
- * @returns 設定を足した層の一覧
- */
-function withoutLoaderWorkers(list: LayersList): LayersList {
-  const out: LayersList = [];
-  for (const item of list) {
-    if (Array.isArray(item)) {
-      // 【TS】`Array.isArray` は `any[]` に絞るので、入れ子の層の一覧として受け直す。
-      const nested: LayersList = item;
-      out.push(withoutLoaderWorkers(nested));
-    } else if (item instanceof Layer) {
-      // 【TS】`props.loadOptions` は deck.gl の型が `any`。`unknown` で受け、オブジェクトのときだけ広げる。
-      const own: unknown = item.props.loadOptions;
-      const loadOptions =
-        typeof own === 'object' && own !== null ? { ...own, worker: false } : NO_WORKER;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- deck.gl の clone は any を返す。層を複製しているだけで、Layer として受ける
-      const cloned: Layer = item.clone({ loadOptions });
-      out.push(cloned);
-    }
-    // 【なぜ】`null`、`undefined`、`false`（「層なし」の印）は、描くものが無いので捨てる。
-  }
-  return out;
 }
 
 /**
@@ -331,8 +298,37 @@ export function createMapEngine(
   map.keyboard.disableRotation();
   map.touchZoomRotate.disableRotation();
 
-  const overlay = new MapboxOverlay({ interleaved: false, layers: [] });
+  let onPick: ((pick: MapPick | null) => void) | null = null;
+  const overlay = new MapboxOverlay({
+    interleaved: false,
+    layers: [],
+    // 平面の図形は、深さではなく層の順で重ねる。点は線の上に表示され、選択でも先に当たる。
+    parameters: { depthWriteEnabled: false, depthCompare: 'always' },
+    pickingRadius: 3,
+    onClick: (info: PickingInfo<{ readonly pick: MapPick }>) => {
+      onPick?.(info.object?.pick ?? null);
+    },
+  });
   map.addControl(overlay);
+  const labelOverlay = createLabelOverlay(container);
+  let network: MapNetwork | null = null;
+  let scene: MapScene | null = null;
+  let labelFrame: number | null = null;
+  const scheduleLabels = (): void => {
+    if (labelFrame !== null || network === null) return;
+    labelFrame = requestAnimationFrame(() => {
+      labelFrame = null;
+      if (scene === null || network === null) return;
+      labelOverlay.update(
+        mapLabels(scene, network, readViewport(map), sizeOf(container), labelOverlay.textWidth),
+      );
+    });
+  };
+  const rebuildScene = (): void => {
+    if (network === null) return;
+    scene = buildMapScene(network, map.getZoom());
+    overlay.setProps({ layers: networkLayers(scene, network) });
+  };
 
   const attributionEl = document.createElement('div');
   attributionEl.className = 'relata-map-attribution';
@@ -354,9 +350,13 @@ export function createMapEngine(
     for (const l of listeners) l(v, phase);
   };
   map.on('move', () => {
+    scheduleLabels();
     emit('move');
   });
   map.on('moveend', () => {
+    // パンは位置をずらすだけ。ズームが確定したら、縁の切断、矢じりと帯の幅だけ作り直す。
+    if (scene !== null && scene.zoom !== map.getZoom()) rebuildScene();
+    scheduleLabels();
     emit('end');
   });
 
@@ -386,6 +386,7 @@ export function createMapEngine(
     silent = true;
     try {
       map.resize();
+      scheduleLabels();
     } finally {
       silent = was;
     }
@@ -442,8 +443,13 @@ export function createMapEngine(
     zoomIn: () => void map.zoomIn(),
     zoomOut: () => void map.zoomOut(),
     resize: resizeSilently,
-    setLayers(layers) {
-      overlay.setProps({ layers: withoutLoaderWorkers(layers) });
+    setNetwork(next, listener) {
+      onPick = listener;
+      if (network === next) return;
+      if (network?.graph !== next.graph) labelOverlay.resetMeasurements();
+      network = next;
+      rebuildScene();
+      scheduleLabels();
     },
     isLoaded: () => map.loaded(),
     destroy() {
@@ -451,6 +457,8 @@ export function createMapEngine(
       destroyed = true;
       observer.disconnect();
       listeners.clear();
+      if (labelFrame !== null) cancelAnimationFrame(labelFrame);
+      labelOverlay.destroy();
       // 【なぜ】canvas は壊す前に取っておく。壊した後は取れず、WebGL の文脈（ブラウザが同時に持てる数に
       //   上限がある）を、ガベージコレクションまで手放せないため。地図を開閉し直すたびに文脈が溜まると、
       //   古い文脈から失われていく。

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useStore } from 'zustand';
 import { GraphView } from './GraphView';
 import { MapView } from './MapView';
-import { MapGate } from './MapGate';
+import { MapGate } from './MapGatePanel';
 import { MAIN_VIEW_PANEL_PREFIX } from './MainViewTabs';
 import { mapGateStore } from './mapGate';
 import { useData, useWorkspaceView } from './hooks';

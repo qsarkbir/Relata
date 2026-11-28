@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import type { NodeId } from '../core/model';
+import type { EdgeId, GraphEdge, NodeId } from '../core/model';
 import type { RelataGraph } from '../core/graph';
 import { selectionStore } from '../state';
 import { useData, useT, useUi } from './hooks';
@@ -58,6 +58,8 @@ function ViaList({ ids, labels }: ViaListProps) {
 interface SelectedEdgesProps {
   readonly graph: RelataGraph;
   readonly edgeKeys: readonly string[];
+  readonly edgeNote?: (key: string) => string | undefined;
+  readonly records?: ReadonlyMap<EdgeId, GraphEdge>;
 }
 
 /**
@@ -66,7 +68,7 @@ interface SelectedEdgesProps {
  * @param props - グラフと、選択中のエッジのキー
  * @returns エッジごとの一覧
  */
-export function SelectedEdges({ graph, edgeKeys }: SelectedEdgesProps) {
+export function SelectedEdges({ graph, edgeKeys, edgeNote, records }: SelectedEdgesProps) {
   const t = useT();
   const locale = useUi((s) => s.locale);
   const nf = getNumberFormat(locale);
@@ -85,6 +87,7 @@ export function SelectedEdges({ graph, edgeKeys }: SelectedEdgesProps) {
           const attrs = graph.getEdgeAttributes(key);
           const source = graph.getNodeAttribute(graph.source(key), 'label');
           const target = graph.getNodeAttribute(graph.target(key), 'label');
+          const note = edgeNote?.(key);
           return (
             <li key={key} data-testid="evidence-edge">
               <p className="evidence-edge-title">
@@ -98,11 +101,72 @@ export function SelectedEdges({ graph, edgeKeys }: SelectedEdgesProps) {
               ) : (
                 <ViaList ids={attrs.via} labels={labels} />
               )}
+              {note !== undefined && <p className="graph-card-hidden">{note}</p>}
+              {records !== undefined && (
+                <details>
+                  <summary>{t('evidence.edgeRecords')}</summary>
+                  <OriginalEdgeRecords
+                    ids={attrs.edgeIds}
+                    records={records}
+                    labelOf={(id) => labels.get(id) ?? id}
+                  />
+                </details>
+              )}
             </li>
           );
         })}
       </ul>
     </section>
+  );
+}
+
+/**
+ * 元のエッジに記録されている端点・関係・重みを示す。集約で置き換わった値も ID から確認できる。
+ *
+ * @param props - 元のエッジ ID と記録、ノードの名前、項目ごとの表示理由
+ * @returns 元のエッジの一覧
+ */
+export function OriginalEdgeRecords({
+  ids,
+  records,
+  labelOf,
+  noteOf,
+}: {
+  readonly ids: Iterable<EdgeId>;
+  readonly records: ReadonlyMap<EdgeId, GraphEdge>;
+  readonly labelOf: (id: NodeId) => string;
+  readonly noteOf?: (id: EdgeId) => string;
+}) {
+  const t = useT();
+  const nf = getNumberFormat(useUi((s) => s.locale));
+  return (
+    <ul className="map-edge-records">
+      {Array.from(ids, (id) => {
+        const record = records.get(id);
+        const note = noteOf?.(id);
+        return (
+          <li key={id}>
+            <bdi>{id}</bdi>
+            {record !== undefined && (
+              <>
+                {' · '}
+                <bdi>{labelOf(record.source)}</bdi> {record.directed ? '→' : '—'}{' '}
+                <bdi>{labelOf(record.target)}</bdi>
+                {record.relation !== undefined && (
+                  <>
+                    {' '}
+                    {'·'} <bdi>{record.relation}</bdi>
+                  </>
+                )}
+                {' · '}
+                {t('table.col.weight')} {nf.format(record.weight)}
+              </>
+            )}
+            {note !== undefined && <p className="graph-card-hidden">{note}</p>}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

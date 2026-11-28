@@ -708,7 +708,9 @@ test.describe('FR-MP-05: 地図に載らないノード', () => {
     );
     await expect(page.locator('.map-view .rl-toolbar')).toContainText('عبد الله الغزواني');
     await graphTab(page).click();
-    await expect(page.locator('.graph-card')).toContainText('عبد الله الغزواني');
+    await expect(page.getByRole('region', { name: '選択したノードの詳細' })).toContainText(
+      'عبد الله الغزواني',
+    );
   });
 
   test('FR-MP-05: 座標を持つノードが無いと、空の地図と「座標の出どころを選んでください」の案内を出す', async ({

@@ -81,11 +81,11 @@ test.describe('FR-VG-13/14: グラフ図の edge bundling', () => {
     await expect(bands(page).first()).toBeVisible();
     await openGraphSection(page, /束ねる/);
     await page.getByLabel('束ねる強さ', { exact: true }).fill('0.3');
-    await expect(page.getByText(/強さを変えました/)).toBeVisible();
+    await expect(page.getByText(/変更した設定は/)).toBeVisible();
     expect(await workerStarts(page)).toBe(1);
     await page.getByRole('button', { name: '束ね直す', exact: true }).click();
     await expect.poll(() => workerStarts(page)).toBe(2);
-    await expect(page.getByText(/強さを変えました/)).toBeHidden();
+    await expect(page.getByText(/変更した設定は/)).toBeHidden();
     await expect(bands(page).first()).toBeVisible();
   });
 

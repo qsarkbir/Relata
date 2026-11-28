@@ -36,3 +36,19 @@
 .relata-map-attribution:empty {
   display: none;
 }
+
+.relata-map-labels {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  pointer-events: none;
+  font-family: sans-serif;
+  fill: #222;
+  stroke: rgb(255 255 255 / 90%);
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}

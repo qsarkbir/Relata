@@ -21,6 +21,8 @@ export interface BundlingJob {
    * 最後の step の `graph` に入れる。【なぜ】5,000 本で約 1 秒かかり、主スレッドで行うと画面が止まるため（T3-02）。
    */
   readonly buildGraph?: boolean;
+  /** 区間をまとめる距離の比率。省略時は算法の既定値。 */
+  readonly epsilonRatio?: number;
 }
 /** step の戻り値。最後の段階だけ result を持つ（途中の折れ線は重いので送らない）。 */
 export interface BundlingStepResult extends BundlingProgress {
@@ -33,6 +35,7 @@ export interface BundlingStepResult extends BundlingProgress {
 let session: BundlingSession | null = null;
 let jobEdges: readonly BundleEdge[] = [];
 let wantGraph = false;
+let epsilonRatio: number | undefined;
 const api = {
   /**
    * 新しい計算を始める。設定や入力が不正なら例外（client の run が reject される）。
@@ -43,6 +46,7 @@ const api = {
     session = createBundlingSession(job.edges, job.settings);
     jobEdges = job.edges;
     wantGraph = job.buildGraph === true;
+    epsilonRatio = job.epsilonRatio;
     return session.info;
   },
   /**
@@ -57,7 +61,15 @@ const api = {
     return {
       ...progress,
       result,
-      ...(wantGraph ? { graph: buildBundleGraph(result.paths, jobEdges) } : {}),
+      ...(wantGraph
+        ? {
+            graph: buildBundleGraph(
+              result.paths,
+              jobEdges,
+              epsilonRatio === undefined ? {} : { epsilonRatio },
+            ),
+          }
+        : {}),
     };
   },
 };

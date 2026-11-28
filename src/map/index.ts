@@ -39,3 +39,5 @@ export type {
 } from './background';
 export { clampViewport, fitViewport, sameViewport, WORLD_BBOX } from './viewport';
 export type { FitOptions } from './viewport';
+export type { MapNetwork, MapScene } from './scene';
+export type { MapPick } from './networkLayers';

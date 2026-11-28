@@ -55,11 +55,12 @@
  */
 // 【TS】`import type` は型だけを読み込む。実行時のコードには残らないので、循環参照や余計な読み込みが起きない。
 import type { BundledPath, BundleEdge } from './settings';
+import { BUNDLING_VIEW_NUMBERS } from '../../core/project/bundlingView';
 
 /** ε の既定: 束ねた対象の「入口と出口の距離」の平均に対する割合。 */
 // 【なぜ】0.01。区間 1 つの長さ（平均 ÷ 2^cycles = 約 0.03）より小さく、束ねた後の平行線の間隔
 //   （束ねる強さ 0.85 で、平均の 0.5% 程度）をまとめられる大きさ。実データの束ねた結果で調整できる。
-export const DEFAULT_EPSILON_RATIO = 0.01;
+export const DEFAULT_EPSILON_RATIO = BUNDLING_VIEW_NUMBERS.epsilonRatio.defaultValue;
 /** 向きの許容の既定: 単位接線の内積 cos θ の下限（0.5 = 60 度まで同じ向きとみなす）。 */
 export const DEFAULT_MIN_COSINE = 0.5;
 

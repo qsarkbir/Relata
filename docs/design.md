@@ -3,7 +3,7 @@
 | 項目 | 内容 |
 |---|---|
 | 文書番号 | RLT-DES |
-| 版 | 3.17（2026-11-27） |
+| 版 | 3.18（2026-11-28） |
 | 状態 | 承認済み（内容を変えるときは版を上げ、[進行表](progress.md) の更新履歴に記録する） |
 | 関連文書 | [要件定義書](requirements.md)（RLT-REQ）、[進行表](progress.md)（RLT-PRG）、[旧 Palladio フィルタ精査](filter-audit.md)、[共通規約](../CLAUDE.md) |
 
@@ -598,9 +598,10 @@ interface SceneEdge { id: string; path: PathCommand[]; width: number | TaperedWi
 
 ### 9.1 地図（FR-MP-01〜06）
 - **背景地図**: MapLibre GL で描く。既定は OpenStreetMap のラスタータイル。利用者は XYZ 形式の URL を指定できる。ネットに頼らない背景として、Natural Earth の海岸線（低解像度）をアプリに同梱する。
-- **束ねた経路**: bundling は重いので Worker で行う。map は投影した座標を props の関数で返し、state が bundling の client を呼び、結果の経路を map が props で受け取る（map は workers を import しない）。
-- **重ね合わせ**: deck.gl で描く。ノードは ScatterplotLayer、エッジは PathLayer（直線、平面の弧、束ねた経路。ArcLayer は使わない。D-54）、矢じりは SolidPolygonLayer で描く。ラベルは SVG の層（D-53）。有向の表し方は、§8.3 と同じ幾何計算（`src/render/arrows/`）を地図の座標で使う。
+- **束ねた経路**: グラフと地図の controller は別の Worker client を使う。両方の設定に、最初の段階の反復回数（1〜500、既定 50）と、平均端点間距離に対する ε の割合（0.1〜10%、既定 1%）を保存できる。変更は「束ね直す」で適用する。地図のビューは、地理座標配置と共通のメルカトル投影で座標を作り、state に計算を頼み、結果を map へ渡す（D-55）。
+- **重ね合わせ**: MapLibre と別の canvas に deck.gl の層を置く。点は ScatterplotLayer、直線・平面の弧・束ねた重ね描きは PathLayer、矢じり・先細り・束の帯は SolidPolygonLayer で描く。層の `loadOptions` で loaders.gl の Worker を無効にする（D-51）。点と線の幅は画面の px を指定し、矢じりや帯などの多角形はズームが確定してから作り直す。シーンには原点を移動しないメルカトル平面の位置を使い、縁での切断と往復の弧は `src/render/edges/` の幾何を共有する。ラベルは枠の中の点から画面の px で衝突を判定し、SVG に描く（D-53、D-54）。
 - **範囲選択**（FR-MP-04）: 選んだ範囲を `FilterDef` に変換して、views から props で受け取った関数（`onAddFilter` など）に渡す。地図の中でデータを直接絞り込まない。
+- **欠損と選択**: 点の輪郭とエッジの欠損は `@deck.gl/extensions` の `PathStyleExtension` で、SVG と同じ間隔の破線にする。先細りでは薄い塗りと破線の輪郭を、束では帯に重ねた破線を使う。地図とグラフは選択カードの枠と隣接関係の表示を共有する。地図のカードでは、集約・射影された関係の元のエッジも確認でき、絞り込みと座標の不足を区別して伝える（D-40）。
 - **座標のないノード**（FR-MP-05）: 件数と一覧をパネルに出す。
 - **帰属表示**（FR-MP-06）: 地図の右下に常に出す。
 

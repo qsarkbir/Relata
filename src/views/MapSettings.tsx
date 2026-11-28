@@ -3,9 +3,11 @@ import type { KeyboardEvent } from 'react';
 import { checkTileUrl, TILE_PLACEHOLDERS } from '../core/geo';
 import type { TileUrlProblem } from '../core/geo';
 import type { Dataset } from '../core/model';
-import { MAP_BACKGROUNDS } from '../core/project';
+import { MAP_BACKGROUNDS, MAP_EDGE_DIRECTIONS, MAP_EDGE_SHAPES, MAP_LABELS } from '../core/project';
 import type { GraphViewSettings, MapBackground } from '../core/project';
-import { mapViewStore } from '../state';
+import { mapBundlingController, mapViewStore, type BundlingView } from '../state';
+import { BundlingControls } from './BundlingControls';
+import { EncodingControls } from './EncodingControls';
 import { GeoSourceControls } from './GeoSourceControls';
 import { useMapView, useT } from './hooks';
 import { CollapsibleSection } from './ui/CollapsibleSection';
@@ -16,6 +18,7 @@ import { tRich } from './richText';
 interface Props {
   readonly dataset: Dataset;
   readonly geoAttrs: GraphViewSettings['geoAttrs'];
+  readonly bundlingView: BundlingView;
 }
 
 /**
@@ -42,7 +45,7 @@ function tileProblemOf(url: string): TileUrlProblem | 'empty' | null {
  */
 // 【TS】`GraphViewSettings['geoAttrs']`（下の props）は、グラフの設定の `geoAttrs` 項目の型を取り出す添字アクセス型。
 //       旧版の読み替え元の値を、型を書き写さずにそのまま受け渡すために使う。
-export function MapSettings({ dataset, geoAttrs }: Props) {
+export function MapSettings({ dataset, geoAttrs, bundlingView }: Props) {
   const t = useT();
   const map = useMapView((s) => s.map);
   const { patchMap, patchCustomTiles } = mapViewStore.getState();
@@ -142,6 +145,75 @@ export function MapSettings({ dataset, geoAttrs }: Props) {
       </CollapsibleSection>
       <CollapsibleSection title={t('map.geo.title')} defaultOpen>
         <GeoSourceControls dataset={dataset} geoAttrs={geoAttrs} />
+      </CollapsibleSection>
+      <CollapsibleSection title={t('map.appearance')}>
+        <Field label={t('map.edgeShape')}>
+          <select
+            value={map.edgeShape}
+            onChange={(e) => {
+              const edgeShape = MAP_EDGE_SHAPES.find((shape) => shape === e.currentTarget.value);
+              if (edgeShape !== undefined) patchMap({ edgeShape });
+            }}
+          >
+            {MAP_EDGE_SHAPES.map((shape) => (
+              <option key={shape} value={shape}>
+                {t(`map.edgeShape.${shape}`)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label={t('graph.direction')}>
+          <select
+            value={map.direction}
+            onChange={(e) => {
+              const direction = MAP_EDGE_DIRECTIONS.find(
+                (style) => style === e.currentTarget.value,
+              );
+              if (direction !== undefined) patchMap({ direction });
+            }}
+          >
+            {MAP_EDGE_DIRECTIONS.map((direction) => (
+              <option key={direction} value={direction}>
+                {t(`graph.${direction}`)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <EncodingControls
+          dataset={dataset}
+          settings={map.encoding}
+          showShape={false}
+          onChange={(encoding) => {
+            patchMap({ encoding });
+          }}
+        />
+      </CollapsibleSection>
+      <CollapsibleSection title={t('graph.section.bundling')}>
+        <BundlingControls
+          settings={map.bundling}
+          view={bundlingView}
+          controller={mapBundlingController}
+          onChange={(bundling) => {
+            patchMap({ bundling });
+          }}
+        />
+      </CollapsibleSection>
+      <CollapsibleSection title={t('map.labels')}>
+        <Field label={t('map.labels')}>
+          <select
+            value={map.labels}
+            onChange={(e) => {
+              const labels = MAP_LABELS.find((mode) => mode === e.currentTarget.value);
+              if (labels !== undefined) patchMap({ labels });
+            }}
+          >
+            {MAP_LABELS.map((mode) => (
+              <option key={mode} value={mode}>
+                {t(`map.labels.${mode}`)}
+              </option>
+            ))}
+          </select>
+        </Field>
       </CollapsibleSection>
     </>
   );

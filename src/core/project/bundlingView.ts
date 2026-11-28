@@ -1,8 +1,7 @@
 /**
  * edge bundling の保存可能な設定（`view.graph.bundling`、`view.map.bundling`。D-55、D-59、FR-VG-13、14）。
  *
- * 最小限の項目だけを持つ。算法の細かい設定（反復回数、段階など）は、T3-01 の算法が決まってから足す
- * （任意の項目の追加なので版は上げない。D-24）。設定はグラフと地図でそれぞれ持つ（ビューごと）。
+ * 設定はグラフと地図でそれぞれ持つ。反復回数と ε は古いファイルで省略できる（D-24）。
  */
 import { isPlainObject, type ParseResult } from '../model';
 
@@ -17,17 +16,27 @@ export const BUNDLING_VIEW_STYLES = [
   'overlay',
 ] as const satisfies readonly BundlingViewStyle[];
 
+/** 最初の段階の反復回数と、平均端点間距離に対する ε の比率の入力範囲。 */
+export const BUNDLING_VIEW_NUMBERS = {
+  iterations: { min: 1, max: 500, defaultValue: 50 },
+  epsilonRatio: { min: 0.001, max: 0.1, defaultValue: 0.01 },
+} as const;
+
 /**
  * 束ねる設定（保存用）。
  *
  * 【なぜ】名前に `View` を付ける。`render/bundling` の算法用の設定（反復回数など）と取り違えないため。
- * これはファイルに保存する、画面の設定（有効か、強さ、描き方）だけ。強さの既定 0.85 は算法の既定に合わせる。
+ * 強さと反復回数の既定値は算法の既定に合わせる。ε の比率は座標の単位が異なる地図とグラフで共通に使える。
  */
 export interface BundlingViewSettings {
   /** 束ねるか。既定は無効（計算が重いので、利用者が有効にする）。 */
   readonly enabled: boolean;
   /** 束ねる強さ（0〜1）。0 は束ねない（直線のまま）、1 は最も強く束ねる。 */
   readonly strength: number;
+  /** 最初の段階の反復回数。省略時は 50。 */
+  readonly iterations?: number;
+  /** 区間を同じ束とみなす距離（ε）を平均端点間距離に対する比率で指定する。省略時は 0.01。 */
+  readonly epsilonRatio?: number;
   readonly style: BundlingViewStyle;
 }
 
@@ -37,6 +46,17 @@ export const DEFAULT_BUNDLING_VIEW: BundlingViewSettings = {
   strength: 0.85,
   style: 'bands',
 };
+
+function numberSetting(
+  key: keyof typeof BUNDLING_VIEW_NUMBERS,
+  value: unknown,
+): number | undefined {
+  const { min, max, defaultValue } = BUNDLING_VIEW_NUMBERS[key];
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max)
+    return undefined;
+  if (key === 'iterations' && !Number.isInteger(value)) return undefined;
+  return value === defaultValue ? undefined : value;
+}
 
 /**
  * JSON から束ねる設定を組み立てる。無い項目と、読めない項目は既定で補う。
@@ -53,6 +73,8 @@ export function parseBundlingView(x: unknown): ParseResult<BundlingViewSettings>
   const get = (k: string): unknown => (Object.hasOwn(x, k) ? x[k] : undefined);
   const enabled = get('enabled');
   const strength = get('strength');
+  const iterations = numberSetting('iterations', get('iterations'));
+  const epsilonRatio = numberSetting('epsilonRatio', get('epsilonRatio'));
   return {
     ok: true,
     value: {
@@ -62,6 +84,8 @@ export function parseBundlingView(x: unknown): ParseResult<BundlingViewSettings>
           ? strength
           : DEFAULT_BUNDLING_VIEW.strength,
       style: BUNDLING_VIEW_STYLES.find((s) => s === get('style')) ?? DEFAULT_BUNDLING_VIEW.style,
+      ...(iterations === undefined ? {} : { iterations }),
+      ...(epsilonRatio === undefined ? {} : { epsilonRatio }),
     },
   };
 }

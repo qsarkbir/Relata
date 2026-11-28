@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { readFileSync, statSync, writeFileSync, mkdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import * as hb from 'harfbuzzjs';
@@ -11,7 +12,7 @@ import { PDF_FONT_BYTES_ESTIMATE, PDF_FONT_FILES } from '../../src/io/export/pdf
 import { createTextShaper, splitRuns, visualOrder } from '../../src/io/export/pdfText';
 
 const fontPath = (name: string): string =>
-  new URL(`../../public/fonts/${name}`, import.meta.url).pathname;
+  fileURLToPath(new URL(`../../public/fonts/${name}`, import.meta.url));
 const read = (name: string): ArrayBuffer => {
   const b = readFileSync(fontPath(name));
   return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength); // 理由: Buffer の裏の ArrayBuffer を切り出すだけ
@@ -137,7 +138,7 @@ describe('NFR-09: 転写記号・トルコ語・日本語・アラビア文字�
   it('サンプルの全ラベル・属性・出典と、日本語・アラビア文字・約物の混在は、豆腐にならない', () => {
     const sample: unknown = JSON.parse(
       readFileSync(
-        new URL('../../public/samples/maghrib.relata.json', import.meta.url).pathname,
+        fileURLToPath(new URL('../../public/samples/maghrib.relata.json', import.meta.url)),
         'utf8',
       ),
     );

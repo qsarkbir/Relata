@@ -11,6 +11,14 @@
   position: absolute;
   inset: 0;
 }
+.map-view .graph-card {
+  z-index: 3;
+  max-inline-size: min(45%, calc(100% - var(--rl-space-4)));
+  max-block-size: calc(100% - 5rem);
+}
+.map-edge-records li {
+  overflow-wrap: anywhere;
+}
 .map-overlay {
   position: absolute;
   z-index: 2;

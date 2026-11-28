@@ -5,6 +5,7 @@
  * 地図の画面の一時的な状態（ドラッグ中の矩形、選択など）は保存しない。
  */
 import { checkTileUrl, MAX_GEO_LAT, MAX_GEO_LON } from '../geo';
+import { DEFAULT_ENCODING, parseEncodingSettings, type EncodingSettings } from '../encode';
 import { isPlainObject, type ParseResult } from '../model';
 import {
   DEFAULT_BUNDLING_VIEW,
@@ -25,6 +26,11 @@ export const MAP_BACKGROUNDS = [
 export type MapEdgeShape = 'line' | 'arc';
 /** エッジの形の一覧。 */
 export const MAP_EDGE_SHAPES = ['line', 'arc'] as const satisfies readonly MapEdgeShape[];
+
+/** 地図の有向エッジの表し方。 */
+export const MAP_EDGE_DIRECTIONS = ['arrow', 'taper', 'gradient'] as const;
+/** 地図の有向エッジの表し方の型。 */
+export type MapEdgeDirection = (typeof MAP_EDGE_DIRECTIONS)[number];
 
 /** ラベルの表示。すべて、選択中のノードだけ、出さない。 */
 export type MapLabels = 'all' | 'selected' | 'none';
@@ -76,6 +82,8 @@ export interface MapViewSettings {
    */
   readonly viewport: MapViewport | null;
   readonly edgeShape: MapEdgeShape;
+  readonly direction: MapEdgeDirection;
+  readonly encoding: EncodingSettings;
   readonly labels: MapLabels;
   readonly playback: MapPlaybackSettings;
   /** 地図の束ねる設定（グラフとは別。D-55）。 */
@@ -88,6 +96,8 @@ export const DEFAULT_MAP_VIEW: MapViewSettings = {
   customTiles: { url: '', attribution: '' },
   viewport: null,
   edgeShape: 'line',
+  direction: 'arrow',
+  encoding: { ...DEFAULT_ENCODING, nodeShape: { kind: 'constant', shape: 'circle' } },
   labels: 'selected',
   playback: { particles: true, cumulativeDegree: true },
   bundling: DEFAULT_BUNDLING_VIEW,
@@ -215,6 +225,9 @@ export function parseMapViewDetailed(x: unknown): ParseResult<ParsedMapView> {
   const bundling = rawBundling === undefined ? undefined : parseBundlingView(rawBundling);
   if (bundling !== undefined && !bundling.ok) reset.push('bundling');
   const rawViewport = own(x, 'viewport');
+  const rawEncoding = own(x, 'encoding');
+  const encoding = rawEncoding === undefined ? undefined : parseEncodingSettings(rawEncoding);
+  if (encoding !== undefined && !encoding.ok) reset.push('encoding');
   const viewport = parseViewport(rawViewport);
   // 【なぜ】null は「データに合わせる」という正しい値なので、既定に戻したことにしない。
   if (rawViewport !== undefined && rawViewport !== null && viewport === null)
@@ -236,6 +249,17 @@ export function parseMapViewDetailed(x: unknown): ParseResult<ParsedMapView> {
       'edgeShape',
       reset,
     ),
+    direction: oneOf(
+      own(x, 'direction'),
+      MAP_EDGE_DIRECTIONS,
+      DEFAULT_MAP_VIEW.direction,
+      'direction',
+      reset,
+    ),
+    encoding:
+      encoding?.ok === true
+        ? { ...encoding.value, nodeShape: DEFAULT_MAP_VIEW.encoding.nodeShape }
+        : DEFAULT_MAP_VIEW.encoding,
     labels: oneOf(own(x, 'labels'), MAP_LABELS, DEFAULT_MAP_VIEW.labels, 'labels', reset),
     playback: { particles: bool('particles'), cumulativeDegree: bool('cumulativeDegree') },
     bundling: bundling?.ok === true ? bundling.value : DEFAULT_BUNDLING_VIEW,

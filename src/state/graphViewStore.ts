@@ -58,6 +58,8 @@ export function isDefaultBundlingView(b: BundlingViewSettings): boolean {
   return (
     b.enabled === DEFAULT_BUNDLING_VIEW.enabled &&
     b.strength === DEFAULT_BUNDLING_VIEW.strength &&
+    b.iterations === undefined &&
+    b.epsilonRatio === undefined &&
     b.style === DEFAULT_BUNDLING_VIEW.style
   );
 }
