@@ -19,6 +19,7 @@ import type {
   SceneNode,
 } from '../scene/types';
 import { escapeXml, num, safeColor, safeIdPrefix } from './escape';
+import { edgeDash, MISSING_TAPER_FILL_OPACITY, nodeDash } from '../scene/missingStyle';
 
 /** `renderSvg` の選択肢。 */
 export interface RenderSvgOptions {
@@ -84,7 +85,7 @@ function nodeSvg(n: SceneNode, index: number, prefix: string): string {
   const attrs =
     ` fill="${safeColor(n.fill, '#999999')}" stroke="${safeColor(n.stroke, '#333333')}"` +
     ` stroke-width="${num(n.strokeWidth)}"` +
-    (n.dashed ? ` stroke-dasharray="${n.attrMissing === true ? '6 3' : '3 2'}"` : '') +
+    (n.dashed ? ` stroke-dasharray="${nodeDash(n.attrMissing === true).join(' ')}"` : '') +
     ` id="${prefix}node-${String(index)}" data-id="${escapeXml(n.id)}"` +
     (n.selected ? ' class="selected"' : '') +
     // 【なぜ】再生の時刻の外は薄くする（消さない。D-38）。`data-out-of-time` は色や濃さに頼らず、
@@ -110,7 +111,7 @@ function edgeSvg(e: SceneEdge, index: number, prefix: string): string {
     (e.faded === true ? ' data-out-of-time="true"' : '') +
     (e.role === undefined ? '' : ' data-bundle-role="' + e.role + '"');
   // 【なぜ】値の欠損（重み）と指定した属性の欠損は、破線の間隔を変えて見分けられるようにする。
-  const dash = e.attrMissing === true ? '9 4' : '4 3';
+  const dash = edgeDash(e.attrMissing === true).join(' ');
   if (e.ribbon !== undefined)
     // 【なぜ】先細りの帯は塗りの図形で、線ではないので `stroke-dasharray` だけでは破線に見えない。
     //   欠損のときは、塗りを薄くして、輪郭に破線を付ける（色だけに頼らない）。
@@ -122,7 +123,7 @@ function edgeSvg(e: SceneEdge, index: number, prefix: string): string {
       '" fill="' +
       color +
       '" fill-opacity="' +
-      (e.dashed ? num(Number(opacity) * 0.4) : opacity) +
+      (e.dashed ? num(Number(opacity) * MISSING_TAPER_FILL_OPACITY) : opacity) +
       '"' +
       (e.dashed
         ? ' stroke="' +
@@ -251,7 +252,7 @@ function legendSwatchSvg(s: SceneLegendItem['swatch'], gradientId: string): stri
           s.y,
           s.r,
           ` fill="${safeColor(s.fill, '#999999')}" stroke="#333333" stroke-width="1"` +
-            (s.dashed ? ` stroke-dasharray="${s.attrMissing === true ? '6 3' : '3 2'}"` : ''),
+            (s.dashed ? ` stroke-dasharray="${nodeDash(s.attrMissing === true).join(' ')}"` : ''),
         ),
       ];
     case 'line':
@@ -277,7 +278,9 @@ function legendSwatchSvg(s: SceneLegendItem['swatch'], gradientId: string): stri
       const end = s.mark === 'arrow' ? right - headLen : right;
       // 矢じりが縮むときの幹の太さも、図と同じ（矢じりの底辺を超えない）。
       const shaft = s.mark === 'arrow' ? Math.min(w, headHalf * 2) : w;
-      const dash = s.dashed ? ` stroke-dasharray="${s.attrMissing === true ? '9 4' : '4 3'}"` : '';
+      const dash = s.dashed
+        ? ` stroke-dasharray="${edgeDash(s.attrMissing === true).join(' ')}"`
+        : '';
       const out: string[] = [];
       let stroke = color;
       if (s.mark === 'gradient') {

@@ -1,10 +1,9 @@
 /** グラフの「束ねる」の操作: 状態の文言（進行、取り消し、確認）と、設定の節（FR-VG-13、14）。 */
-import { BUNDLING_VIEW_STYLES } from '../core/project';
+import { BUNDLING_VIEW_NUMBERS, BUNDLING_VIEW_STYLES, parseBundlingView } from '../core/project';
 import type { BundlingViewSettings, BundlingViewStyle } from '../core/project';
 import { BUNDLING_EDGE_WARNING_LIMIT } from '../render/bundling/settings';
 import { assertNever } from '../core/util/assertNever';
-import { bundlingController } from '../state';
-import type { BundlingView } from '../state';
+import type { BundlingController, BundlingView } from '../state';
 import { useT, useUi } from './hooks';
 import { getNumberFormat } from './intl';
 import { formatPercent } from './percent';
@@ -14,6 +13,7 @@ import { Field } from './ui/Field';
 interface StatusProps {
   readonly view: BundlingView;
   readonly enabled: boolean;
+  readonly controller: BundlingController;
 }
 
 /**
@@ -24,7 +24,7 @@ interface StatusProps {
  * @returns 状態の表示。無効のときは null
  */
 // 【TS】switch の `case 'running':` のように、判別共用体（`phase` で形が決まる型）を分岐で絞り込む。
-export function BundlingStatus({ view, enabled }: StatusProps) {
+export function BundlingStatus({ view, enabled, controller }: StatusProps) {
   const t = useT();
   const locale = useUi((s) => s.locale);
   const nf = getNumberFormat(locale);
@@ -54,7 +54,7 @@ export function BundlingStatus({ view, enabled }: StatusProps) {
           <button
             type="button"
             onClick={() => {
-              bundlingController.cancel();
+              controller.cancel();
             }}
           >
             {t('graph.bundle.cancel')}
@@ -73,7 +73,7 @@ export function BundlingStatus({ view, enabled }: StatusProps) {
           <button
             type="button"
             onClick={() => {
-              bundlingController.confirm();
+              controller.confirm();
             }}
           >
             {t('graph.bundle.start')}
@@ -81,7 +81,7 @@ export function BundlingStatus({ view, enabled }: StatusProps) {
           <button
             type="button"
             onClick={() => {
-              bundlingController.cancel();
+              controller.cancel();
             }}
           >
             {t('graph.bundle.cancel')}
@@ -117,6 +117,7 @@ interface ControlsProps {
   readonly settings: BundlingViewSettings;
   readonly view: BundlingView;
   readonly onChange: (next: BundlingViewSettings) => void;
+  readonly controller: BundlingController;
 }
 
 /**
@@ -128,9 +129,15 @@ interface ControlsProps {
  * @param props - 設定、計算の状態、変更の通知
  * @returns 節の中身
  */
-export function BundlingControls({ settings, view, onChange }: ControlsProps) {
+export function BundlingControls({ settings, view, onChange, controller }: ControlsProps) {
   const t = useT();
-  const stale = view.result !== null && view.result.strength !== settings.strength;
+  const result = view.result;
+  const stale =
+    result !== null &&
+    (result.strength !== settings.strength ||
+      result.iterations !== settings.iterations ||
+      result.epsilonRatio !== settings.epsilonRatio);
+  const { iterations, epsilonRatio } = BUNDLING_VIEW_NUMBERS;
   return (
     <div className="graph-bundle-controls">
       <p className="rl-section-note">{t('graph.bundle.toggleHint')}</p>
@@ -146,6 +153,40 @@ export function BundlingControls({ settings, view, onChange }: ControlsProps) {
             const value = e.currentTarget.valueAsNumber;
             if (Number.isFinite(value) && value >= 0 && value <= 1)
               onChange({ ...settings, strength: value });
+          }}
+        />
+      </Field>
+      <Field label={t('graph.bundle.iterations')}>
+        <input
+          type="number"
+          min={iterations.min}
+          max={iterations.max}
+          step="1"
+          value={settings.iterations ?? iterations.defaultValue}
+          disabled={!settings.enabled}
+          onChange={(e) => {
+            const value = e.currentTarget.valueAsNumber;
+            if (Number.isInteger(value) && value >= iterations.min && value <= iterations.max) {
+              const parsed = parseBundlingView({ ...settings, iterations: value });
+              if (parsed.ok) onChange(parsed.value);
+            }
+          }}
+        />
+      </Field>
+      <Field label={t('graph.bundle.epsilon')}>
+        <input
+          type="number"
+          min={epsilonRatio.min * 100}
+          max={epsilonRatio.max * 100}
+          step="0.1"
+          value={Number(((settings.epsilonRatio ?? epsilonRatio.defaultValue) * 100).toFixed(6))}
+          disabled={!settings.enabled}
+          onChange={(e) => {
+            const value = e.currentTarget.valueAsNumber / 100;
+            if (value >= epsilonRatio.min && value <= epsilonRatio.max) {
+              const parsed = parseBundlingView({ ...settings, epsilonRatio: value });
+              if (parsed.ok) onChange(parsed.value);
+            }
           }}
         />
       </Field>
@@ -167,14 +208,14 @@ export function BundlingControls({ settings, view, onChange }: ControlsProps) {
         type="button"
         disabled={!settings.enabled || view.phase === 'running'}
         onClick={() => {
-          bundlingController.rebundle();
+          controller.rebundle();
         }}
       >
         {t('graph.bundle.rebundle')}
       </button>
       {stale && <p className="rl-status">{t('graph.bundle.stale')}</p>}
       <p className="rl-section-note">{t('graph.bundle.directionNote')}</p>
-      <BundlingStatus view={view} enabled={settings.enabled} />
+      <BundlingStatus view={view} enabled={settings.enabled} controller={controller} />
     </div>
   );
 }

@@ -12,6 +12,7 @@ export interface LibraryInfo {
  */
 export const LIBRARIES: readonly LibraryInfo[] = [
   { name: '@deck.gl/core', license: 'MIT' },
+  { name: '@deck.gl/extensions', license: 'MIT' },
   { name: '@deck.gl/layers', license: 'MIT' },
   { name: '@deck.gl/mapbox', license: 'MIT' },
   { name: 'bidi-js', license: 'MIT' },

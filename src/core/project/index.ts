@@ -25,11 +25,17 @@ export type {
 export { DEFAULT_TIMELINE, parseTimeline } from './timelineView';
 export type { TimelineSettings } from './timelineView';
 export { parseTimeSettings } from './timeView';
-export { BUNDLING_VIEW_STYLES, DEFAULT_BUNDLING_VIEW, parseBundlingView } from './bundlingView';
+export {
+  BUNDLING_VIEW_NUMBERS,
+  BUNDLING_VIEW_STYLES,
+  DEFAULT_BUNDLING_VIEW,
+  parseBundlingView,
+} from './bundlingView';
 export type { BundlingViewSettings, BundlingViewStyle } from './bundlingView';
 export {
   DEFAULT_MAP_VIEW,
   MAP_BACKGROUNDS,
+  MAP_EDGE_DIRECTIONS,
   MAP_EDGE_SHAPES,
   MAP_LABELS,
   MAP_ZOOM_MAX,
@@ -40,6 +46,7 @@ export {
 export type {
   CustomTiles,
   MapBackground,
+  MapEdgeDirection,
   MapEdgeShape,
   MapLabels,
   MapPlaybackSettings,

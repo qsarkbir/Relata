@@ -41,6 +41,7 @@ export {
   bundlingController,
   createBundlingController,
   createWorkerBundlingController,
+  mapBundlingController,
   timerScheduler,
 } from './bundlingController';
 export type {

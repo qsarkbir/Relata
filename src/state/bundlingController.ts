@@ -33,6 +33,8 @@ export interface BundlingOutcome {
   readonly graph: BundleGraph;
   /** この結果を作ったときの強さ。いまの設定と違えば「束ね直す」を促す。 */
   readonly strength: number;
+  readonly iterations?: number;
+  readonly epsilonRatio?: number;
   /**
    * この結果を作ったときの入力の素（`BundlingRequest.sources`）。
    * 【なぜ】入力が変わった直後の 1 回の描画で、古い経路を新しい座標に重ねないよう、画面が今の入力と比べて使う。
@@ -66,6 +68,8 @@ export interface BundlingRequest {
   readonly sources: readonly unknown[];
   /** 束ねる強さ（0〜1）。入力の素に含めない（変えても自動では計算しない）。 */
   readonly strength: number;
+  readonly iterations?: number;
+  readonly epsilonRatio?: number;
   /**
    * 確認を求めるエッジ数の境目。これを超える本数のときは `confirm` で止まる（D-55。既定の 5,000）。
    * 【なぜ】定数は render 側にあり、state は render の値を読めない。値を知っている views が渡す。
@@ -173,7 +177,15 @@ export function createBundlingController(
     void (async () => {
       try {
         const done = await client.run(
-          { edges, settings: { strength: request.strength }, buildGraph: true },
+          {
+            edges,
+            settings: {
+              strength: request.strength,
+              ...(request.iterations === undefined ? {} : { iterations: request.iterations }),
+            },
+            buildGraph: true,
+            ...(request.epsilonRatio === undefined ? {} : { epsilonRatio: request.epsilonRatio }),
+          },
           (p) => {
             if (token === revision && p.cycles > 0)
               publish({ ...view, phase: 'running', progress: p.cycle / p.cycles });
@@ -189,6 +201,8 @@ export function createBundlingController(
             paths: done.paths,
             graph: done.graph,
             strength: request.strength,
+            ...(request.iterations === undefined ? {} : { iterations: request.iterations }),
+            ...(request.epsilonRatio === undefined ? {} : { epsilonRatio: request.epsilonRatio }),
             sources: request.sources,
           },
           error: null,
@@ -302,3 +316,6 @@ export function createWorkerBundlingController(): BundlingController {
 
 /** グラフ図の束ねる計算の窓口（アプリ全体で 1 つ）。 */
 export const bundlingController: BundlingController = createWorkerBundlingController();
+
+/** 地図の束ねる計算の窓口。グラフの計算を中止せず、結果も個別に保つ。 */
+export const mapBundlingController: BundlingController = createWorkerBundlingController();

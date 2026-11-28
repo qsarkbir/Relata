@@ -33,6 +33,7 @@ export function RangeSelectSummary(props: {
   readonly ids: ReadonlySet<NodeId>;
   readonly nodeLabel: (id: NodeId) => string;
   readonly isVisible: (id: NodeId) => boolean;
+  readonly unavailableLabel?: (id: NodeId) => string | undefined;
   readonly passTypes: readonly NodeTypeId[];
   readonly typeLabel: (id: NodeTypeId) => string;
 }) {
@@ -54,12 +55,17 @@ export function RangeSelectSummary(props: {
       {ids.length > 1 && (
         <>
           <ul>
-            {listed.map((id) => (
-              <li key={id}>
-                <bdi>{props.nodeLabel(id)}</bdi>
-                {!props.isVisible(id) && <> ({t('graph.selection.hiddenShort')})</>}
-              </li>
-            ))}
+            {listed.map((id) => {
+              const note =
+                props.unavailableLabel?.(id) ??
+                (props.isVisible(id) ? undefined : t('graph.selection.hiddenShort'));
+              return (
+                <li key={id}>
+                  <bdi>{props.nodeLabel(id)}</bdi>
+                  {note !== undefined && <> ({note})</>}
+                </li>
+              );
+            })}
           </ul>
           {ids.length > listed.length && (
             <p>{t('graph.selection.listMore', { count: nf.format(ids.length - listed.length) })}</p>

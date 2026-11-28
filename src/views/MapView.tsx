@@ -3,19 +3,31 @@ import { useStore } from 'zustand';
 // 【TS】`import type` は型だけを取り込み、実行時には消える（JavaScript に何も残らない）。地図の部品の本体
 //       （maplibre-gl と deck.gl を含む大きな塊）は、下の `import('../map')` で地図を初めて開くときに読む。
 //       型だけの import は、この「遅延して読む」性質を損なわない。
-import type { MapEngine } from '../map';
+import type { MapEngine, MapNetwork, MapPick } from '../map';
 import { sameGeoSource } from '../core/geo';
 import { resolveGeoSource } from '../core/project';
-import { toNodeId } from '../core/model';
+import { mercator } from '../core/layout/geo';
 import type { NodeId } from '../core/model';
-import { graphViewStore, mapViewStore, placeNodes, selectionStore } from '../state';
+import {
+  graphViewStore,
+  mapBundlingController,
+  mapViewStore,
+  placeNodes,
+  selectedGraphEdges,
+  selectionStore,
+} from '../state';
 import { useData, useMapView, useSelection, useT, useUi } from './hooks';
 import { getNumberFormat } from './intl';
 import { MainViewTabs } from './MainViewTabs';
 import { MapSettings } from './MapSettings';
+import { MapSelectionCard } from './MapSelectionCard';
 import { MapUnplaced } from './MapUnplaced';
+import { BundlingStatus } from './BundlingControls';
+import { graphEncoding } from './graphEncoding';
+import { useBundling } from './useBundling';
 import { useNetwork } from './useNetwork';
 import { Chip } from './ui/Chip';
+import { Field } from './ui/Field';
 import { Icon, IconButton } from './ui/icons';
 import { StatusMessage } from './ui/StatusMessage';
 import { Toolbar, ToolbarGroup } from './ui/Toolbar';
@@ -38,7 +50,7 @@ interface Props {
  * 地図そのもの（MapLibre と deck.gl）は `src/map/` にあり、**この部品が最初に描かれたときに**動的 import で
  * 読み込む（それまで、地図の部品もタイルも簡易背景のデータも取りに行かない。NFR-02、D-50）。
  * この部品はストアを読み、値と更新の関数を地図の部品に渡すだけで、計算はしない（座標の取り出しは
- * core、仕分けは state の `placeNodes`）。ノードとエッジの描画は T3-04。
+ * core、仕分けは state の `placeNodes`）。
  *
  * 【なぜ】時間の再生の時計はここに置かない（アプリに 1 つ。D-17）。地図の表示範囲は、利用者の操作が
  * 止まったときだけストアに保存する（動いている間の毎フレームを保存しない）。
@@ -55,6 +67,7 @@ export function MapView({ active }: Props) {
   const geoSource = useMapView((s) => s.geoSource);
   const graphView = useStore(graphViewStore, (s) => s.view);
   const selected = useSelection((s) => s.nodes);
+  const selectedEdges = useSelection((s) => s.edges);
   const network = useNetwork();
   const graph = network?.graph ?? null;
 
@@ -67,6 +80,7 @@ export function MapView({ active }: Props) {
   const [status, setStatus] = useState<EngineStatus>('loading');
   const [engineReady, setEngineReady] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [cardOpen, setCardOpen] = useState(true);
   const drawer = useRef<HTMLElement>(null);
   const drawerToggle = useRef<HTMLButtonElement>(null);
 
@@ -80,6 +94,75 @@ export function MapView({ active }: Props) {
   const placement = useMemo(
     () => (dataset === null || graph === null ? null : placeNodes(dataset, graph, source)),
     [dataset, graph, source],
+  );
+  // 【なぜ】束ねる Worker には、画面のズームや中心から独立したメルカトルの座標を渡す（D-55）。
+  const positions = useMemo(
+    () => new Map(placement?.placed.map((node) => [node.id, mercator(node)])),
+    [placement],
+  );
+  const bundlingView = useBundling({
+    graph,
+    positions,
+    layoutBusy: false,
+    settings: map.bundling,
+    controller: mapBundlingController,
+    taskKey: 'map.bundleTask',
+  });
+  const encoding = useMemo(
+    () => (dataset === null || graph === null ? null : graphEncoding(dataset, graph, map.encoding)),
+    [dataset, graph, map.encoding],
+  );
+  const selectedEdgeList = useMemo(
+    () => (graph === null ? [] : selectedGraphEdges(graph, selectedEdges)),
+    [graph, selectedEdges],
+  );
+  const selectedEdgeKeys = useMemo(() => new Set(selectedEdgeList), [selectedEdgeList]);
+  const bundle = bundlingView.result;
+  const bundled = useMemo(
+    () =>
+      map.bundling.enabled && bundle?.sources[0] === graph && bundle.sources[1] === positions
+        ? {
+            paths: bundle.paths,
+            graph: bundle.graph,
+            style: map.bundling.style,
+            scale: map.encoding.edgeWidth.scale,
+          }
+        : undefined,
+    [
+      map.bundling.enabled,
+      map.bundling.style,
+      graph,
+      positions,
+      bundle,
+      map.encoding.edgeWidth.scale,
+    ],
+  );
+  const mapNetwork = useMemo<MapNetwork | null>(
+    () =>
+      graph === null || encoding === null
+        ? null
+        : {
+            graph,
+            positions,
+            encoding,
+            selected,
+            selectedEdgeKeys,
+            direction: map.direction,
+            edgeShape: map.edgeShape,
+            labels: map.labels,
+            ...(bundled === undefined ? {} : { bundled }),
+          },
+    [
+      graph,
+      positions,
+      encoding,
+      selected,
+      selectedEdgeKeys,
+      map.direction,
+      map.edgeShape,
+      map.labels,
+      bundled,
+    ],
   );
 
   // 最新の値を、地図の部品の作成（1 回だけ）から読むための参照。
@@ -165,6 +248,25 @@ export function MapView({ active }: Props) {
     if (active && engineReady) engineRef.current?.resize();
   }, [active, engineReady]);
 
+  const pickOnMap = useCallback(
+    (item: MapPick | null) => {
+      const selection = selectionStore.getState();
+      if (item === null) selection.clear();
+      else {
+        if (item.kind === 'node') selection.select({ nodes: [item.id] });
+        else if (graph?.hasEdge(item.id) === true)
+          selection.select({ edges: graph.getEdgeAttribute(item.id, 'edgeIds') });
+        setCardOpen(true);
+      }
+    },
+    [graph, setCardOpen],
+  );
+
+  useEffect(() => {
+    if (active && engineReady && mapNetwork !== null)
+      engineRef.current?.setNetwork(mapNetwork, pickOnMap);
+  }, [active, engineReady, mapNetwork, pickOnMap]);
+
   // ---- 表示範囲が未保存（null）のあいだは、データの座標に合わせる。返った値は保存しない（null のまま）。
   // 【なぜ】フィルタの変更のたびに動かすと、見ている場所から飛ぶ。データか出どころが変わったときだけ合わせる。
   // 【なぜ】隠れている間（枠が 0×0）は合わせず、`fitted` も更新しない。0×0 で合わせると結果が壊れ、
@@ -186,11 +288,17 @@ export function MapView({ active }: Props) {
   }, [bbox]);
 
   // 一覧のノードを押すと選択に入り、選択中のノードを押すと選択から外れる（`aria-pressed` の切り替えと合わせる）。
-  const pick = useCallback((id: NodeId) => {
-    const sel = selectionStore.getState();
-    if (sel.nodes.has(id)) sel.remove({ nodes: [id] });
-    else sel.select({ nodes: [id] });
-  }, []);
+  const pick = useCallback(
+    (id: NodeId) => {
+      const sel = selectionStore.getState();
+      if (sel.nodes.has(id)) sel.remove({ nodes: [id] });
+      else {
+        sel.select({ nodes: [id] });
+        setCardOpen(true);
+      }
+    },
+    [setCardOpen],
+  );
 
   const toggleDrawer = (): void => {
     const next = !drawerOpen;
@@ -201,9 +309,15 @@ export function MapView({ active }: Props) {
 
   if (dataset === null || graph === null || placement === null) return null;
 
-  const hasSelection = selected.size > 0;
-  const firstSelected = [...selected][0];
+  const hasSelection = selected.size > 0 || selectedEdges.size > 0;
+  const firstSelected = selected.values().next().value;
   const labelOf = (id: NodeId): string => dataset.nodes.find((n) => n.id === id)?.label ?? id;
+  const selectionTitle =
+    selected.size === 1 && firstSelected !== undefined
+      ? labelOf(firstSelected)
+      : selected.size === 0
+        ? t('evidence.edgeCount', { count: nf.format(selectedEdges.size) })
+        : t('graph.selection.count', { count: nf.format(selected.size) });
   const removed = map.customTiles.removedParams ?? [];
   const keyNotice = map.background === 'custom' && removed.length > 0;
   const noCoordinates = graph.order > 0 && placement.placed.length === 0;
@@ -238,9 +352,12 @@ export function MapView({ active }: Props) {
             }}
           >
             {selected.size === 1 && firstSelected !== undefined ? (
-              <bdi>{labelOf(toNodeId(firstSelected))}</bdi>
+              <>
+                <bdi>{labelOf(firstSelected)}</bdi>
+                {!positions.has(firstSelected) && <> ({t('graph.selection.hiddenShort')})</>}
+              </>
             ) : (
-              t('graph.selection.count', { count: nf.format(selected.size) })
+              selectionTitle
             )}
           </Chip>
         )}
@@ -269,6 +386,19 @@ export function MapView({ active }: Props) {
             onClick={fitAll}
           />
         </ToolbarGroup>
+        <ToolbarGroup>
+          <Field label={t('graph.bundle.toggle')} inline>
+            <input
+              type="checkbox"
+              checked={map.bundling.enabled}
+              onChange={(e) => {
+                mapViewStore.getState().patchMap({
+                  bundling: { ...map.bundling, enabled: e.currentTarget.checked },
+                });
+              }}
+            />
+          </Field>
+        </ToolbarGroup>
         <span className="rl-toolbar-spacer" />
         <button
           type="button"
@@ -281,6 +411,13 @@ export function MapView({ active }: Props) {
           <Icon name="settings" /> {t('map.settings')}
         </button>
       </Toolbar>
+      {!drawerOpen && (
+        <BundlingStatus
+          view={bundlingView}
+          enabled={map.bundling.enabled}
+          controller={mapBundlingController}
+        />
+      )}
       <div className="graph-body" data-drawer={drawerOpen ? 'open' : 'closed'}>
         <div className="graph-main">
           <div className="graph-stage">
@@ -320,6 +457,30 @@ export function MapView({ active }: Props) {
               )}
               <MapUnplaced placement={placement} onPick={pick} selected={selected} />
             </div>
+            {hasSelection && (
+              <MapSelectionCard
+                dataset={dataset}
+                graph={graph}
+                selected={selected}
+                selectedEdges={selectedEdges}
+                edgeKeys={selectedEdgeList}
+                placed={positions}
+                {...(network?.projection.kind === 'applied'
+                  ? { viaType: network.projection.options.via }
+                  : {})}
+                heading={selectionTitle}
+                expanded={cardOpen}
+                onToggle={() => {
+                  setCardOpen((v) => !v);
+                }}
+                onEscape={() => {
+                  selectionStore.getState().clear();
+                  engineHost.current
+                    ?.querySelector<HTMLCanvasElement>('canvas.maplibregl-canvas')
+                    ?.focus();
+                }}
+              />
+            )}
           </div>
         </div>
         <aside
@@ -339,7 +500,11 @@ export function MapView({ active }: Props) {
         >
           <h3 className="graph-drawer-title">{t('map.drawer.title')}</h3>
           <p className="rl-section-note graph-drawer-note">{t('map.settingsScope')}</p>
-          <MapSettings dataset={dataset} geoAttrs={graphView?.geoAttrs} />
+          <MapSettings
+            dataset={dataset}
+            geoAttrs={graphView?.geoAttrs}
+            bundlingView={bundlingView}
+          />
         </aside>
       </div>
     </section>

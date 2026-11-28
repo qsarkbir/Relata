@@ -11,13 +11,14 @@ interface Props {
   readonly dataset: Dataset;
   readonly settings: EncodingSettings;
   readonly onChange: (settings: EncodingSettings) => void;
+  readonly showShape?: boolean;
 }
 /**
  * ノードの大きさ・色・形、サイズ/線幅のスケールとpx範囲を操作する。
  * @param props - 元データ・現在の設定・更新先
  * @returns 保存可能な見た目の操作欄
  */
-export function EncodingControls({ dataset, settings, onChange }: Props) {
+export function EncodingControls({ dataset, settings, onChange, showShape = true }: Props) {
   const t = useT();
   const [invalid, setInvalid] = useState(false);
   const update = (next: EncodingSettings) => {
@@ -110,28 +111,30 @@ export function EncodingControls({ dataset, settings, onChange }: Props) {
             ))}
         </select>
       </label>
-      <label>
-        {t('graph.shapeSource')}{' '}
-        <select
-          aria-label={t('graph.shapeSource')}
-          value={settings.nodeShape.kind === 'nodeType' ? 'nodeType' : settings.nodeShape.shape}
-          onChange={(e) => {
-            const value = e.currentTarget.value;
-            if (value === 'nodeType') update({ ...settings, nodeShape: { kind: 'nodeType' } });
-            else
-              for (const shape of NODE_SHAPES)
-                if (shape === value)
-                  update({ ...settings, nodeShape: { kind: 'constant', shape } });
-          }}
-        >
-          <option value="nodeType">{t('graph.byType')}</option>
-          {NODE_SHAPES.map((shape) => (
-            <option key={shape} value={shape}>
-              {t(`graph.${shape}`)}
-            </option>
-          ))}
-        </select>
-      </label>
+      {showShape && (
+        <label>
+          {t('graph.shapeSource')}{' '}
+          <select
+            aria-label={t('graph.shapeSource')}
+            value={settings.nodeShape.kind === 'nodeType' ? 'nodeType' : settings.nodeShape.shape}
+            onChange={(e) => {
+              const value = e.currentTarget.value;
+              if (value === 'nodeType') update({ ...settings, nodeShape: { kind: 'nodeType' } });
+              else
+                for (const shape of NODE_SHAPES)
+                  if (shape === value)
+                    update({ ...settings, nodeShape: { kind: 'constant', shape } });
+            }}
+          >
+            <option value="nodeType">{t('graph.byType')}</option>
+            {NODE_SHAPES.map((shape) => (
+              <option key={shape} value={shape}>
+                {t(`graph.${shape}`)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {(['nodeSize', 'edgeWidth'] as const).map((key) => (
         <fieldset key={key}>
           <legend>{t(key === 'nodeSize' ? 'graph.nodePixels' : 'graph.edgePixels')}</legend>

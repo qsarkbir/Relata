@@ -131,6 +131,22 @@ describe('FR-VG-13: 束ねる controller（D-55、D-17）', () => {
     expect(controller.getSnapshot().phase).toBe('ready');
   });
 
+  it('FR-VG-13/14: 反復回数と ε の変更は「束ね直す」で Worker に渡し、結果にも控える', async () => {
+    const { controller, waiting, fire } = setup();
+    controller.sync(request());
+    fire();
+    waiting[0]?.resolve(done);
+    await flush();
+    controller.sync(request({ iterations: 80, epsilonRatio: 0.03 }));
+    fire();
+    expect(waiting).toHaveLength(1);
+    controller.rebundle();
+    expect(waiting[1]?.job).toMatchObject({ settings: { iterations: 80 }, epsilonRatio: 0.03 });
+    waiting[1]?.resolve(done);
+    await flush();
+    expect(controller.getSnapshot().result).toMatchObject({ iterations: 80, epsilonRatio: 0.03 });
+  });
+
   it('FR-VG-13: 取り消すと cancelled になり、後から来る結果も失敗も捨てる。束ねない図（結果なし）に戻る', async () => {
     const { controller, waiting, fire, cancels } = setup();
     controller.sync(request());

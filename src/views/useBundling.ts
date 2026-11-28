@@ -9,8 +9,8 @@ import type { RelataGraph } from '../core/graph';
 import type { BundlingViewSettings } from '../core/project';
 import { BUNDLING_EDGE_WARNING_LIMIT } from '../render/bundling/settings';
 import type { NodeId } from '../core/model';
-import { bundleEdgesOf, bundlingController, uiStore } from '../state';
-import type { BundlingView } from '../state';
+import { bundleEdgesOf, uiStore } from '../state';
+import type { BundlingController, BundlingView } from '../state';
 
 /** {@link useBundling} の入力。 */
 export interface UseBundlingInput {
@@ -20,6 +20,8 @@ export interface UseBundlingInput {
   /** 配置の計算中か。 */
   readonly layoutBusy: boolean;
   readonly settings: BundlingViewSettings;
+  readonly controller: BundlingController;
+  readonly taskKey: 'graph.bundleTask' | 'map.bundleTask';
 }
 
 /**
@@ -29,25 +31,36 @@ export interface UseBundlingInput {
  * @returns 計算の状態（段階、進行、結果、失敗の理由）
  */
 export function useBundling(input: UseBundlingInput): BundlingView {
-  const { graph, positions, layoutBusy, settings } = input;
+  const { graph, positions, layoutBusy, settings, controller, taskKey } = input;
   // 【TS】`useSyncExternalStore(購読, 現在の値)` は、React の外にある状態（controller）を安全に読むフック。
   //   `getSnapshot` は変化がなければ同じ参照を返す約束で、controller は状態を新しい値に置き換えるときだけ参照を変える。
-  const view = useSyncExternalStore(bundlingController.subscribe, bundlingController.getSnapshot);
+  const view = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
   useEffect(() => {
     // 【なぜ】入力の素はグラフと座標だけ。ズーム・パン・再生・描き方・強さは含めない（計算し直さない操作）。
-    bundlingController.sync({
+    controller.sync({
       enabled: settings.enabled && graph !== null,
       layoutBusy,
       sources: [graph, positions],
       strength: settings.strength,
+      ...(settings.iterations === undefined ? {} : { iterations: settings.iterations }),
+      ...(settings.epsilonRatio === undefined ? {} : { epsilonRatio: settings.epsilonRatio }),
       limit: BUNDLING_EDGE_WARNING_LIMIT,
       build: () => (graph === null ? [] : bundleEdgesOf(graph, positions)),
     });
-  }, [graph, positions, layoutBusy, settings.enabled, settings.strength]);
-  // 画面を離れる（GraphView が消える）ときは、計算を止めて結果を捨てる。
+  }, [
+    graph,
+    positions,
+    layoutBusy,
+    settings.enabled,
+    settings.strength,
+    settings.iterations,
+    settings.epsilonRatio,
+    controller,
+  ]);
+  // 画面が外れるときは計算を止める。タブの切り替えでは画面は外れない。
   useEffect(
     () => () => {
-      bundlingController.sync({
+      controller.sync({
         enabled: false,
         layoutBusy: false,
         sources: [],
@@ -56,21 +69,21 @@ export function useBundling(input: UseBundlingInput): BundlingView {
         build: () => [],
       });
     },
-    [],
+    [controller],
   );
   const running = view.phase === 'running';
   useEffect(() => {
     if (!running) return;
-    const task = uiStore.getState().startTask({ key: 'graph.bundleTask' }, () => {
-      bundlingController.cancel();
+    const task = uiStore.getState().startTask({ key: taskKey }, () => {
+      controller.cancel();
     });
-    const unsubscribe = bundlingController.subscribe(() => {
-      uiStore.getState().updateTask(task, bundlingController.getSnapshot().progress);
+    const unsubscribe = controller.subscribe(() => {
+      uiStore.getState().updateTask(task, controller.getSnapshot().progress);
     });
     return () => {
       unsubscribe();
       uiStore.getState().endTask(task);
     };
-  }, [running]);
+  }, [running, controller, taskKey]);
   return view;
 }

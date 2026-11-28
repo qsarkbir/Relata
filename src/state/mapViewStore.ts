@@ -2,6 +2,7 @@ import { createStore } from 'zustand/vanilla';
 import type { StoreApi } from 'zustand/vanilla';
 import { DEFAULT_MAP_VIEW, resolveGeoSource } from '../core/project';
 import type { CustomTiles, GraphViewSettings, MapViewSettings, MapViewport } from '../core/project';
+import { isDefaultBundlingView } from './graphViewStore';
 import { DEFAULT_GEO_SOURCE, sameGeoSource } from '../core/geo';
 import type { GeoSource } from '../core/geo';
 import type { DataState } from './dataStore';
@@ -82,10 +83,12 @@ export function isDefaultMapView(m: MapViewSettings): boolean {
     (m.customTiles.removedParams === undefined || m.customTiles.removedParams.length === 0) &&
     m.viewport === null &&
     m.edgeShape === d.edgeShape &&
+    m.direction === d.direction &&
+    JSON.stringify(m.encoding) === JSON.stringify(d.encoding) &&
     m.labels === d.labels &&
     m.playback.particles === d.playback.particles &&
     m.playback.cumulativeDegree === d.playback.cumulativeDegree &&
-    JSON.stringify(m.bundling) === JSON.stringify(d.bundling)
+    isDefaultBundlingView(m.bundling)
   );
 }
 

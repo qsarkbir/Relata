@@ -32,6 +32,7 @@ import { Chip } from './ui/Chip';
 import { BundlingControls, BundlingStatus } from './BundlingControls';
 import { useBundling } from './useBundling';
 import {
+  bundlingController,
   graphViewStore,
   layoutController,
   mapViewStore,
@@ -48,6 +49,7 @@ import { RangeSelectSummary } from './RangeSelectSummary';
 import { buildPanelStore } from './buildPanelStore';
 import { ProjectionIssues } from './ProjectionNotice';
 import { NeighborEvidence, SelectedEdges } from './ProjectionEvidence';
+import { NodeNeighbors, SelectionCard } from './SelectionCard';
 import './graph.css';
 
 /** 図の枠の既定の大きさ（CSS ピクセル）。枠の大きさを測るまでと、測れない環境で使う。 */
@@ -246,6 +248,8 @@ export function GraphView() {
     positions: bundleCoords,
     layoutBusy: busy || dragging,
     settings: bundlingSettings,
+    controller: bundlingController,
+    taskKey: 'graph.bundleTask',
   });
   // 【なぜ】入力が変わった直後の 1 回の描画で、古い経路を新しい座標に重ねない。結果を作ったときの入力と
   //   今の入力が同じときだけ使う（controller は effect で入力の変化を知るため、描画が 1 回先に走る）。
@@ -882,7 +886,13 @@ export function GraphView() {
       {network !== null && !buildPanelOpen && <ProjectionIssues status={network.projection} />}
       <NoCoordinatesNote dataset={dataset} graph={graph} view={view} />
       {/* 【なぜ】引き出しが閉じている間も、計算中・確認・失敗が分かるよう、図の上に状態を出す（開いている間は引き出しの中）。 */}
-      {!drawerOpen && <BundlingStatus view={bundlingView} enabled={bundlingSettings.enabled} />}
+      {!drawerOpen && (
+        <BundlingStatus
+          view={bundlingView}
+          enabled={bundlingSettings.enabled}
+          controller={bundlingController}
+        />
+      )}
       {graph.order === 0 && (
         <StatusMessage
           state={
@@ -1056,109 +1066,76 @@ export function GraphView() {
             </div>
             <TimeFadeNote fade={timeFade} />
             {(selectedId !== undefined || selectedEdges.size > 0) && (
-              <section
-                className="graph-card"
-                aria-label={t('graph.details')}
-                onKeyDown={(e) => {
-                  // 【なぜ】キーボードだけでも選択を解除できるよう、カードの中でも Esc で解除する。
-                  if (e.key === 'Escape') {
-                    selectionStore.getState().clear();
-                    // 【なぜ】カードが消えるとフォーカスが失われる。キーボードの利用者が続けて操作できるよう図へ戻す。
-                    svg.current?.focus();
-                  }
+              <SelectionCard
+                bodyId="graph-card-body"
+                heading={cardHeading}
+                headingRef={cardTitle}
+                expanded={cardOpen}
+                onToggle={() => {
+                  setCardOpen((v) => !v);
+                }}
+                onEscape={() => {
+                  selectionStore.getState().clear();
+                  // カードが消えたら、キーボードの利用者が続けて操作できるよう図へ戻す。
+                  svg.current?.focus();
                 }}
               >
-                <div className="graph-card-head">
-                  <h3 ref={cardTitle} tabIndex={-1} title={cardHeading}>
-                    <bdi>{cardHeading}</bdi>
-                  </h3>
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-expanded={cardOpen}
-                    aria-controls="graph-card-body"
-                    aria-label={t(cardOpen ? 'graph.selection.collapse' : 'graph.selection.expand')}
-                    title={t(cardOpen ? 'graph.selection.collapse' : 'graph.selection.expand')}
-                    onClick={() => {
-                      setCardOpen((v) => !v);
-                    }}
-                  >
-                    <Icon name={cardOpen ? 'chevronUp' : 'chevronDown'} />
-                  </button>
-                </div>
-                <div id="graph-card-body" className="graph-card-body" hidden={!cardOpen}>
-                  {selectedId !== undefined && selected.size <= 1 && (
-                    <p>
-                      <bdi>{selectedId}</bdi>
-                    </p>
-                  )}
-                  {/* 【なぜ】複数選択では、絞り込みのボタンをカードの先頭に置く（単一ノードの操作は出さないため）。 */}
-                  {selected.size > 1 && rangeSummary}
-                  {selectedEdgeKeys.length > 0 && (
-                    <SelectedEdges graph={graph} edgeKeys={selectedEdgeKeys} />
-                  )}
-                  {hiddenEdges && (
-                    <>
-                      <p className="graph-card-hidden">{t('evidence.edgeHidden')}</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // ノードの選択は残し、表示されていないエッジの選択だけを解除する。
-                          selectionStore.getState().select({ nodes: selected });
-                        }}
-                      >
-                        {t('evidence.clearEdges')}
-                      </button>
-                    </>
-                  )}
-                  {selectedId === undefined || selected.size > 1 ? null : selectedVisible ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          // 【なぜ】計算開始時の固定状態を持つWorker結果で、直後の固定操作を上書きしない。
-                          // ドラッグと同じく世代を進め、待機中の結果も失敗も無効にする。
-                          interruptLayout();
-                          patch({
-                            positions: (
-                              graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW
-                            ).positions.map((p) =>
-                              p.id === selectedId ? { ...p, fixed: !p.fixed } : p,
-                            ),
-                          });
-                          resumeLayout();
-                        }}
-                      >
-                        {positions.get(selectedId)?.fixed ? t('graph.unpin') : t('graph.pin')}
-                      </button>
-                      {network?.projection.kind === 'applied' && (
-                        <NeighborEvidence graph={graph} nodeId={selectedId} />
-                      )}
-                      <h4>{t('graph.in')}</h4>
-                      <ul>
-                        {graph.inNeighbors(selectedId).map((id) => (
-                          <li key={id}>
-                            <bdi>{graph.getNodeAttribute(id, 'label')}</bdi>
-                          </li>
-                        ))}
-                      </ul>
-                      <h4>{t('graph.out')}</h4>
-                      <ul>
-                        {graph.outNeighbors(selectedId).map((id) => (
-                          <li key={id}>
-                            <bdi>{graph.getNodeAttribute(id, 'label')}</bdi>
-                          </li>
-                        ))}
-                      </ul>
-                    </>
-                  ) : (
-                    // 【なぜ】フィルタで見えなくなっても選択は消さない（R-19）。理由を文で示し、色だけに頼らない。
-                    <p className="graph-card-hidden">{t('graph.selection.hidden')}</p>
-                  )}
-                  {/* 【なぜ】1 件の選択では、主な操作（固定）を先に置き、絞り込みはカードの末尾に置く（キーボードの順を変えない）。 */}
-                  {selected.size === 1 && rangeSummary}
-                </div>
-              </section>
+                {selectedId !== undefined && selected.size <= 1 && (
+                  <p>
+                    <bdi>{selectedId}</bdi>
+                  </p>
+                )}
+                {/* 【なぜ】複数選択では、絞り込みのボタンをカードの先頭に置く（単一ノードの操作は出さないため）。 */}
+                {selected.size > 1 && rangeSummary}
+                {selectedEdgeKeys.length > 0 && (
+                  <SelectedEdges graph={graph} edgeKeys={selectedEdgeKeys} />
+                )}
+                {hiddenEdges && (
+                  <>
+                    <p className="graph-card-hidden">{t('evidence.edgeHidden')}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // ノードの選択は残し、表示されていないエッジの選択だけを解除する。
+                        selectionStore.getState().select({ nodes: selected });
+                      }}
+                    >
+                      {t('evidence.clearEdges')}
+                    </button>
+                  </>
+                )}
+                {selectedId === undefined || selected.size > 1 ? null : selectedVisible ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // 【なぜ】計算開始時の固定状態を持つWorker結果で、直後の固定操作を上書きしない。
+                        // ドラッグと同じく世代を進め、待機中の結果も失敗も無効にする。
+                        interruptLayout();
+                        patch({
+                          positions: (
+                            graphViewStore.getState().view ?? DEFAULT_GRAPH_VIEW
+                          ).positions.map((p) =>
+                            p.id === selectedId ? { ...p, fixed: !p.fixed } : p,
+                          ),
+                        });
+                        resumeLayout();
+                      }}
+                    >
+                      {positions.get(selectedId)?.fixed ? t('graph.unpin') : t('graph.pin')}
+                    </button>
+                    {network?.projection.kind === 'applied' && (
+                      <NeighborEvidence graph={graph} nodeId={selectedId} />
+                    )}
+                    <NodeNeighbors graph={graph} id={selectedId} />
+                  </>
+                ) : (
+                  // 【なぜ】フィルタで見えなくなっても選択は消さない（R-19）。理由を文で示し、色だけに頼らない。
+                  <p className="graph-card-hidden">{t('graph.selection.hidden')}</p>
+                )}
+                {/* 【なぜ】1 件の選択では、主な操作（固定）を先に置き、絞り込みはカードの末尾に置く（キーボードの順を変えない）。 */}
+                {selected.size === 1 && rangeSummary}
+              </SelectionCard>
             )}
           </div>
           <div role="status">
@@ -1307,6 +1284,7 @@ export function GraphView() {
             <BundlingControls
               settings={bundlingSettings}
               view={bundlingView}
+              controller={bundlingController}
               onChange={(next) => {
                 patch({ bundling: next });
               }}

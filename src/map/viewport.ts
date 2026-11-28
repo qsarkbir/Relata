@@ -8,6 +8,7 @@
 // 【TS】`type GeoBBox` のように、波括弧の中で名前の前に `type` を付けると、その名前だけが型の import になる
 //       （実行時には消える）。値の `MAX_GEO_LAT` と、同じ import の 1 行にまとめて書ける。
 import { MAX_GEO_LAT, MAX_GEO_LON, type GeoBBox } from '../core/geo';
+import { mercator } from '../core/layout/geo';
 import type { MapViewport } from '../core/project/mapView';
 import { MAP_MAX_ZOOM, MAP_MIN_ZOOM, type ZoomRange } from './background';
 
@@ -97,11 +98,10 @@ export function sameViewport(a: MapViewport, b: MapViewport, epsilon = 1e-7): bo
 // 緯度から、メルカトルの y（0〜1。北が 0）。
 // 出典: Web メルカトル（EPSG:3857）の球面メルカトルの式 y = ln(tan(π/4 + φ/2))（φ は緯度）。
 //       Snyder, J. P. (1987) "Map Projections: A Working Manual", USGS Professional Paper 1395, §7（式 7-7）。
-//       これを世界の高さが 1 になるように 2π で割り、北を 0 に向けている。計算量 O(1)。
+//       `mercator` の中心を原点とする度の座標を、世界の幅 1・北端 0 に直す。計算量 O(1)。
 function mercatorY(lat: number): number {
   const clamped = Math.min(MAX_GEO_LAT, Math.max(-MAX_GEO_LAT, lat));
-  const rad = (clamped * Math.PI) / 180;
-  return 0.5 - Math.log(Math.tan(Math.PI / 4 + rad / 2)) / (2 * Math.PI);
+  return 0.5 + mercator({ lat: clamped, lon: 0 }).y / 360;
 }
 
 // メルカトルの y から緯度（上の式の逆。φ = atan(sinh(y'))。Snyder 1987 の式 7-4 に相当）。

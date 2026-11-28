@@ -86,6 +86,8 @@ export type LabelMode = 'all' | 'selected' | 'large';
 export interface BuildSceneOptions {
   /** 有向エッジの表現。既定は arrow。 */
   readonly directedStyle?: DirectedEdgeStyle;
+  /** 通常のエッジを弧にする。往復はこの設定にかかわらず別々の弧にする。 */
+  readonly edgeShape?: 'line' | 'arc';
   /** 図の余白（px）。既定 24。 */
   readonly margin?: number;
   /**
@@ -224,49 +226,27 @@ function shiftLabel(l: SceneLabel, dx: number, dy: number): SceneLabel {
 }
 
 /**
- * グラフ、位置、割り当ての結果から、シーンを作る。
- *
- * 図の範囲は、位置のあるすべてのノードを収める（画面の拡大やパンには左右されない。D-31）。
- * 位置が無い（または有限でない）ノードは、シーンに入れず `omitted.nodesWithoutPosition` に報告する。
- * 端点がシーンに無いエッジも入れない。ノードの位置は、レイアウト（T1-13 以降）の結果をそのまま渡す。
- * 文字の幅の関数が渡されたときは、ラベルと凡例も範囲に収める。
- *
- * 計算量: ノード数 n、エッジ数 m として O(n log n + m)（「大きいノード」の並べ替え）。
+ * グラフと地図で共通のネットワークの図形を、余白や原点の移動を加えずに作る。
+ * 位置だけを `zoom` 倍し、半径・線幅などは画面の px のまま計算する。
  *
  * @param graph - グラフ
  * @param positions - ノードの位置
  * @param encoding - 割り当ての結果
  * @param options - 選択肢
- * @returns シーン
+ * @returns ノード、エッジ、束の帯、位置がなく省いた要素
  */
-export function buildScene(
+export function buildSceneNetwork(
   graph: RelataGraph,
   positions: ReadonlyMap<NodeId, { readonly x: number; readonly y: number }>,
   encoding: SceneEncoding = {},
   options: BuildSceneOptions = {},
-): Scene {
-  const margin = nonNeg(options.margin, 24);
+): Pick<Scene, 'nodes' | 'edges' | 'bundle' | 'omitted'> {
   const zoom =
     options.zoom !== undefined && Number.isFinite(options.zoom) && options.zoom > 0
       ? options.zoom
       : 1;
-  const fontSize = nonNeg(options.labelFontSize, 12);
-  const fontFamily = options.fontFamily ?? 'sans-serif';
-  const font = `${String(fontSize)}px ${fontFamily}`;
-  const measure = options.measureText;
-  // 測定の結果が使えないときは、文字数からの見積もりにする（凡例と同じ）。
-  const measuredWidths = new Map<string, number>();
-  const textWidth = (t: string): number => {
-    const cached = measuredWidths.get(t);
-    if (cached !== undefined) return cached;
-    const w = measure?.(t, font);
-    const width = nonNeg(w, estimateTextWidth(t, fontSize));
-    measuredWidths.set(t, width);
-    return width;
-  };
   const selected = options.selected ?? new Set<NodeId>();
   const showSel = options.includeSelection === true;
-  const labelMode = options.labels ?? 'all';
 
   // 1. ノード（位置の無いものは除く）。ノードの ID は、graphology では文字列。
   const rawNodes: SceneNode[] = [];
@@ -357,7 +337,6 @@ export function buildScene(
   }
   let edgesWithoutEndpoint = 0;
   let widthMatched = 0;
-  const selfLoops = 0;
   graph.forEachEdge((key, attrs, source, target) => {
     const s = byId.get(source as NodeId);
     const t = byId.get(target as NodeId);
@@ -372,10 +351,13 @@ export function buildScene(
     const width =
       w !== undefined && Number.isFinite(w.width) ? Math.max(0, w.width) : DEFAULT_EDGE_WIDTH;
     const reverseWidth = directedWidths.get(JSON.stringify([target, source]));
+    const distance = Math.hypot(t.x - s.x, t.y - s.y);
     const bend =
       attrs.directed && source !== target && reverseWidth !== undefined
-        ? Math.max(24, Math.hypot(t.x - s.x, t.y - s.y) * 0.2, (width + reverseWidth) * 2)
-        : 0;
+        ? Math.max(24, distance * 0.2, (width + reverseWidth) * 2)
+        : options.edgeShape === 'arc'
+          ? distance * 0.2
+          : 0;
     const geometry = edgeGeometry(
       s,
       t,
@@ -399,8 +381,46 @@ export function buildScene(
     });
   });
 
-  // 3. 表示設定で候補を決め、大きいノードを優先して重なりを減らす。
-  const labelNodes = pickLabelNodes(rawNodes, labelMode, selected, options.largeLabelCount ?? 20);
+  return {
+    nodes: rawNodes,
+    edges: rawEdges,
+    ...(bundleLayer === undefined ? {} : { bundle: bundleLayer }),
+    omitted: {
+      nodesWithoutPosition: missingPos,
+      edgesWithoutEndpoint,
+      selfLoops: 0,
+      widthsUnmatched:
+        encoding.widths !== undefined &&
+        encoding.widths.size > 0 &&
+        widthMatched === 0 &&
+        rawEdges.length > 0,
+    },
+  };
+}
+
+/**
+ * 画面の位置からノードのラベルを置き、大きいノードを優先して重なりを減らす。
+ *
+ * @param graph - ノードのラベルを読むグラフ
+ * @param nodes - ラベルを検討するノード（画面の px）
+ * @param textWidth - 文字の幅を測る関数
+ * @param options - ラベル候補と文字の大きさの設定
+ * @returns 採用したラベルと重なりで隠したノード ID
+ */
+export function layoutNodeLabels(
+  graph: RelataGraph,
+  nodes: readonly SceneNode[],
+  textWidth: (text: string) => number,
+  options: Pick<BuildSceneOptions, 'labels' | 'selected' | 'largeLabelCount' | 'labelFontSize'>,
+): ReturnType<typeof placeLabels> {
+  const fontSize = nonNeg(options.labelFontSize, 12);
+  const selected = options.selected ?? new Set<NodeId>();
+  const labelNodes = pickLabelNodes(
+    nodes,
+    options.labels ?? 'all',
+    selected,
+    options.largeLabelCount ?? 20,
+  );
   const labelCandidates: SceneLabel[] = [];
   for (const n of labelNodes) {
     const text = graph.getNodeAttribute(n.id, 'label');
@@ -412,10 +432,49 @@ export function buildScene(
     labelCandidates.push(makeLabel(n.id, text, x, n.y + fontSize * 0.35, fontSize));
   }
 
-  const { visible: rawLabels, hidden: hiddenLabels } = placeLabels(
-    labelCandidates,
+  return placeLabels(labelCandidates, nodes, textWidth);
+}
+
+/**
+ * グラフ、位置、割り当ての結果から、余白と凡例を含むシーンを作る。
+ * 位置の無いノードとエッジは `omitted` に報告する。
+ *
+ * @param graph - グラフ
+ * @param positions - ノードの位置
+ * @param encoding - 割り当ての結果
+ * @param options - 選択肢
+ * @returns シーン
+ */
+export function buildScene(
+  graph: RelataGraph,
+  positions: ReadonlyMap<NodeId, { readonly x: number; readonly y: number }>,
+  encoding: SceneEncoding = {},
+  options: BuildSceneOptions = {},
+): Scene {
+  const margin = nonNeg(options.margin, 24);
+  const fontSize = nonNeg(options.labelFontSize, 12);
+  const fontFamily = options.fontFamily ?? 'sans-serif';
+  const font = `${String(fontSize)}px ${fontFamily}`;
+  const measuredWidths = new Map<string, number>();
+  const textWidth = (t: string): number => {
+    const cached = measuredWidths.get(t);
+    if (cached !== undefined) return cached;
+    const w = options.measureText?.(t, font);
+    const width = nonNeg(w, estimateTextWidth(t, fontSize));
+    measuredWidths.set(t, width);
+    return width;
+  };
+  const {
+    nodes: rawNodes,
+    edges: rawEdges,
+    bundle: bundleLayer,
+    omitted,
+  } = buildSceneNetwork(graph, positions, encoding, options);
+  const { visible: rawLabels, hidden: hiddenLabels } = layoutNodeLabels(
+    graph,
     rawNodes,
     textWidth,
+    options,
   );
 
   // 4. 範囲。ノード・エッジの線幅とラベルを収める。
@@ -548,16 +607,7 @@ export function buildScene(
     ...(legend === undefined ? {} : { legend }),
     fontFamily,
     hiddenLabels,
-    omitted: {
-      nodesWithoutPosition: missingPos,
-      edgesWithoutEndpoint,
-      selfLoops,
-      widthsUnmatched:
-        encoding.widths !== undefined &&
-        encoding.widths.size > 0 &&
-        widthMatched === 0 &&
-        rawEdges.length > 0,
-    },
+    omitted,
   };
 }
 

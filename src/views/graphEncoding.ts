@@ -102,7 +102,11 @@ export function graphEncodingWithLegends(
     settings.nodeSize,
   );
   const widths = encodeEdgeWidths(
-    graph.edges().map((id) => ({ id: toEdgeId(id), weight: graph.getEdgeAttribute(id, 'weight') })),
+    graph.mapEdges((id, { weight, count, missingWeightCount }) => ({
+      id: toEdgeId(id),
+      // 集約の和 0 と、すべての元の重みが欠損している場合を区別する。
+      weight: count > 0 && missingWeightCount === count ? NaN : weight,
+    })),
     settings.edgeWidth,
   );
   let colors: SceneEncoding['colors'];

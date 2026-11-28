@@ -16,6 +16,8 @@
  * このファイルは Worker からも読まれるので、DOM の型に触れない（設計書 §4.1、D-30）。
  */
 
+import { BUNDLING_VIEW_NUMBERS } from '../../core/project/bundlingView';
+
 /** 束ねる対象のエッジ 1 本。 */
 // 【TS】`readonly` の項目は、代入しようとすると型エラーになる。入力を書き換えないことを型で保証する。
 export interface BundleEdge {
@@ -57,7 +59,7 @@ export interface BundlingSettings {
 export const DEFAULT_BUNDLING_SETTINGS = {
   strength: 0.85,
   cycles: 5,
-  iterations: 50,
+  iterations: BUNDLING_VIEW_NUMBERS.iterations.defaultValue,
   stepSize: 0.4,
   compatibilityThreshold: 0.6,
   maxNeighbors: 60,
@@ -86,7 +88,7 @@ export function exceedsBundlingLimit(
 const RANGES: Record<keyof BundlingSettings, { min: number; max: number; integer: boolean }> = {
   strength: { min: 0, max: 1, integer: false },
   cycles: { min: 1, max: 8, integer: true },
-  iterations: { min: 1, max: 500, integer: true },
+  iterations: { ...BUNDLING_VIEW_NUMBERS.iterations, integer: true },
   stepSize: { min: 0.0001, max: 1, integer: false },
   compatibilityThreshold: { min: 0.05, max: 0.99, integer: false },
   maxNeighbors: { min: 1, max: 1000, integer: true },

@@ -74,6 +74,9 @@ describe('geo フィルタと新しい view の項目の往復（FR-PJ-01、FR-M
       background: 'simple',
       viewport: { lon: 10, lat: 20, zoom: 4 },
       edgeShape: 'arc',
+      direction: 'gradient',
+      labels: 'all',
+      bundling: { ...DEFAULT_MAP_VIEW.bundling, iterations: 75, epsilonRatio: 0.03 },
     };
     const full: ProjectParts = {
       ...parts,
